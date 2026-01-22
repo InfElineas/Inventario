@@ -17,13 +17,21 @@ export function AppLayout() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (!session) navigate("/auth");
+      if (!session) {
+        setOrgName("");
+        setLoading(false);
+        navigate("/auth");
+        return;
+      }
+      fetchOrgData(session.user.id);
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (!session) {
+        setOrgName("");
+        setLoading(false);
         navigate("/auth");
       } else {
         fetchOrgData(session.user.id);
@@ -34,16 +42,28 @@ export function AppLayout() {
   }, [navigate]);
 
   const fetchOrgData = async (userId: string) => {
-    const { data } = await supabase
-      .from("organization_memberships")
-      .select("organizations(name)")
-      .eq("user_id", userId)
-      .single();
-    
-    if (data?.organizations) {
-      setOrgName((data.organizations as any).name);
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("organization_memberships")
+        .select("organizations(name)")
+        .eq("user_id", userId)
+        .limit(1);
+
+      if (error) throw error;
+
+      const organization = data?.[0]?.organizations as { name: string } | null | undefined;
+      if (organization?.name) {
+        setOrgName(organization.name);
+      } else {
+        setOrgName("");
+      }
+    } catch (error) {
+      console.error("Error fetching organization:", error);
+      setOrgName("");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   if (loading) {
@@ -60,7 +80,7 @@ export function AppLayout() {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <AppSidebar />
+        <AppSidebar user={user} />
         <SidebarInset className="flex flex-col flex-1">
           <AppHeader user={user} orgName={orgName} />
           <main className="flex-1 overflow-auto">

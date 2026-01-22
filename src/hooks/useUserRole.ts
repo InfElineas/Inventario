@@ -19,6 +19,9 @@ export function useUserRole(userId: string | undefined): UserRoleData {
 
   useEffect(() => {
     if (!userId) {
+      setRole(null);
+      setOrgId(null);
+      setPermissions([]);
       setLoading(false);
       return;
     }

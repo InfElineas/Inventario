@@ -35,6 +35,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { useUserRole } from "@/hooks/useUserRole";
+import { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface NavItem {
   title: string;
@@ -169,9 +171,25 @@ function NavGroupComponent({ group }: { group: NavGroup }) {
   );
 }
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  user: SupabaseUser | null;
+}
+
+export function AppSidebar({ user }: AppSidebarProps) {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const { permissions, loading } = useUserRole(user?.id);
+
+  const visibleGroups = navigationGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (!item.permission) return true;
+        if (loading) return false;
+        return permissions.includes(item.permission);
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -193,7 +211,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="py-2">
-        {navigationGroups.map((group) => (
+        {visibleGroups.map((group) => (
           <NavGroupComponent key={group.label} group={group} />
         ))}
       </SidebarContent>
