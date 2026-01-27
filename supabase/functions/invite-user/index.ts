@@ -12,6 +12,7 @@ interface InviteUserRequest {
   fullName: string;
   role: string;
   orgId: string;
+  password?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -61,7 +62,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Authenticated user:", userId);
 
     // Parse request body
-    const { email, fullName, role, orgId }: InviteUserRequest = await req.json();
+    const { email, fullName, role, orgId, password }: InviteUserRequest = await req.json();
     console.log("Invite request:", { email, fullName, role, orgId });
 
     // Validate required fields
@@ -106,6 +107,8 @@ const handler = async (req: Request): Promise<Response> => {
     const existingUser = existingUsers?.users?.find(u => u.email === email);
 
     let newUserId: string;
+    const passwordValue = typeof password === "string" ? password.trim() : "";
+    const hasPassword = passwordValue.length > 0;
 
     if (existingUser) {
       // User exists, check if already member of this org
@@ -126,12 +129,16 @@ const handler = async (req: Request): Promise<Response> => {
       newUserId = existingUser.id;
       console.log("User already exists, adding to org:", newUserId);
     } else {
-      // Create new user with a temporary password
-      const tempPassword = crypto.randomUUID();
-      
+      if (!hasPassword) {
+        return new Response(
+          JSON.stringify({ error: "Se requiere una contraseña para crear el usuario" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email,
-        password: tempPassword,
+        password: passwordValue,
         email_confirm: true,
         user_metadata: { full_name: fullName },
       });
@@ -168,7 +175,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Generate password reset link for new users
     let resetLink = "";
-    if (!existingUser) {
+    if (!existingUser && !hasPassword) {
       const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
         type: "recovery",
         email: email,
@@ -191,6 +198,8 @@ const handler = async (req: Request): Promise<Response> => {
       viewer: "Visor",
       security_admin: "Administrador de Seguridad",
     };
+
+    const isExistingUser = Boolean(existingUser);
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -223,9 +232,13 @@ const handler = async (req: Request): Promise<Response> => {
             <br>
             <a href="${resetLink}" style="color: #2563eb; word-break: break-all;">${resetLink}</a>
           </p>
-          ` : `
+          ` : isExistingUser ? `
           <p style="color: #3f3f46; font-size: 16px; line-height: 1.6;">
             Ya tienes una cuenta registrada. Puedes iniciar sesión con tu contraseña actual para acceder a la organización.
+          </p>
+          ` : `
+          <p style="color: #3f3f46; font-size: 16px; line-height: 1.6;">
+            Tu administrador te asignó una contraseña temporal. Usa esa contraseña para iniciar sesión y luego cambia tu clave en tu perfil.
           </p>
           `}
           

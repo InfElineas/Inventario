@@ -45,6 +45,7 @@ const createSchema = z.object({
   email: z.string().email("Email inválido"),
   full_name: z.string().min(2, "Mínimo 2 caracteres"),
   role: z.enum(["org_admin", "security_admin", "inventory_manager", "import_operator", "viewer"] as const),
+  password: z.string().min(6, "Mínimo 6 caracteres"),
 });
 
 const editSchema = z.object({
@@ -80,6 +81,7 @@ export function UserFormDialog({ open, onOpenChange, user, orgId, onSuccess }: U
       email: "",
       full_name: "",
       role: "viewer" as AppRole,
+      password: "",
     },
   });
 
@@ -96,6 +98,7 @@ export function UserFormDialog({ open, onOpenChange, user, orgId, onSuccess }: U
           email: "",
           full_name: "",
           role: "viewer",
+          password: "",
         });
       }
     }
@@ -132,6 +135,7 @@ export function UserFormDialog({ open, onOpenChange, user, orgId, onSuccess }: U
             fullName: createData.full_name,
             role: createData.role,
             orgId: orgId,
+            password: createData.password,
           },
         });
 
@@ -171,7 +175,7 @@ export function UserFormDialog({ open, onOpenChange, user, orgId, onSuccess }: U
           <DialogDescription>
             {isEditing 
               ? "Modifica la información del usuario y su rol." 
-              : "Envía una invitación por email al nuevo usuario."}
+              : "Crea un usuario y envía una invitación por email al nuevo usuario."}
           </DialogDescription>
         </DialogHeader>
 
@@ -186,6 +190,22 @@ export function UserFormDialog({ open, onOpenChange, user, orgId, onSuccess }: U
                     <FormLabel>Email</FormLabel>
                     <FormControl>
                       <Input type="email" placeholder="email@empresa.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {!isEditing && (
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contraseña temporal</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="Mínimo 6 caracteres" autoComplete="new-password" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

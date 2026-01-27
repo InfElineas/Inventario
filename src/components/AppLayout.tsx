@@ -66,7 +66,7 @@ export function AppLayout() {
     }
   };
 
-  if (loading) {
+  if (loading && !session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -77,14 +77,25 @@ export function AppLayout() {
     );
   }
 
+  const orgLoading = loading && !!session;
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AppSidebar user={user} />
         <SidebarInset className="flex flex-col flex-1">
-          <AppHeader user={user} orgName={orgName} />
+          <AppHeader user={user} orgName={orgLoading ? "Cargando..." : orgName} />
           <main className="flex-1 overflow-auto">
-            <Outlet context={{ user, session, orgName }} />
+            {orgLoading ? (
+              <div className="min-h-full flex items-center justify-center py-12">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+                  <p className="text-sm text-muted-foreground">Cargando...</p>
+                </div>
+              </div>
+            ) : (
+              <Outlet context={{ user, session, orgName }} />
+            )}
           </main>
         </SidebarInset>
       </div>
