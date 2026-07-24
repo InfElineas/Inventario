@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ELíneas — Inventario</title>
+
+    <!-- Security headers (HTTP headers are preferred in production) -->
+    <meta http-equiv="X-Content-Type-Options"  content="nosniff" />
+    <meta http-equiv="X-XSS-Protection"        content="1; mode=block" />
+    <meta http-equiv="Referrer-Policy"         content="strict-origin-when-cross-origin" />
+    <meta http-equiv="Permissions-Policy"      content="camera=(), microphone=(), geolocation=()" />
+    <!-- Prevent embedding in iframes -->
+    <meta http-equiv="X-Frame-Options"         content="DENY" />
+    <!-- Theme init: apply saved theme before React loads to prevent flash -->
+    <script>
+      (function() {
+        var t = localStorage.getItem('elineas_theme') || 'dark';
+        document.documentElement.classList.add(t);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

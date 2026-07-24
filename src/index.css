@@ -1,0 +1,209 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── SalesOps Dark Theme ────────────────────────────────────
+   Base: pure black canvas · Green #4ade80 as sole accent
+   ─────────────────────────────────────────────────────────── */
+
+@layer base {
+  :root {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, 'Fira Code', monospace;
+
+    /* Canvas */
+    --background:          0 0% 4%;      /* #0a0a0a */
+    --foreground:          0 0% 100%;
+
+    /* Surfaces */
+    --card:                0 0% 8%;      /* #141414 */
+    --card-foreground:     0 0% 100%;
+    --popover:             0 0% 8%;
+    --popover-foreground:  0 0% 100%;
+
+    /* Green accent — primary interactive (#4ade80) */
+    --primary:             142 69% 60%;
+    --primary-foreground:  0 0% 4%;
+
+    /* Elevated / hover surfaces */
+    --secondary:           0 0% 12%;     /* #1e1e1e */
+    --secondary-foreground:0 0% 100%;
+    --muted:               0 0% 10%;     /* #1a1a1a */
+    --muted-foreground:    0 0% 45%;     /* #737373 */
+    --accent:              0 0% 12%;
+    --accent-foreground:   0 0% 100%;
+
+    /* Destructive */
+    --destructive:         0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders — near-invisible on dark */
+    --border:              0 0% 14%;     /* #242424 */
+    --input:               0 0% 10%;
+
+    /* Focus ring — green */
+    --ring:                142 69% 60%;
+
+    --radius: 0.5rem;
+
+    /* ── Status / role semantic colors ──────────────────── */
+    --success:             142 71% 45%;
+    --success-foreground:  0 0% 100%;
+    --warning:             38 95% 55%;
+    --warning-foreground:  0 0% 4%;
+    --purple:              260 65% 65%;
+    --purple-foreground:   0 0% 100%;
+    --neutral:             0 0% 40%;
+    --neutral-foreground:  0 0% 100%;
+    --coral:               14 80% 55%;
+    --coral-foreground:    0 0% 100%;
+
+    /* ── Charts ──────────────────────────────────────────── */
+    --chart-1:  142 69% 60%;   /* green */
+    --chart-2:   38 95% 55%;   /* amber */
+    --chart-3:  260 65% 65%;   /* purple */
+    --chart-4:  199 89% 48%;   /* cyan */
+    --chart-5:    0 72% 51%;   /* red */
+
+    /* ── Sidebar ─────────────────────────────────────────── */
+    --sidebar-background:          0 0% 6%;    /* #0f0f0f */
+    --sidebar-foreground:          0 0% 35%;
+    --sidebar-primary:             0 0% 12%;   /* active bg (subtle) */
+    --sidebar-primary-foreground: 142 69% 60%; /* green active text */
+    --sidebar-accent:              0 0% 10%;
+    --sidebar-accent-foreground:   0 0% 75%;
+    --sidebar-border:              0 0% 11%;
+    --sidebar-ring:               142 69% 60%;
+  }
+
+  .dark {
+    --background:          0 0% 4%;
+    --foreground:          0 0% 100%;
+    --card:                0 0% 8%;
+    --card-foreground:     0 0% 100%;
+    --popover:             0 0% 8%;
+    --popover-foreground:  0 0% 100%;
+    --primary:             142 69% 60%;
+    --primary-foreground:  0 0% 4%;
+    --secondary:           0 0% 12%;
+    --secondary-foreground:0 0% 100%;
+    --muted:               0 0% 10%;
+    --muted-foreground:    0 0% 45%;
+    --accent:              0 0% 12%;
+    --accent-foreground:   0 0% 100%;
+    --destructive:         0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border:              0 0% 14%;
+    --input:               0 0% 10%;
+    --ring:                142 69% 60%;
+    --success:             142 71% 45%;
+    --success-foreground:  0 0% 100%;
+    --warning:             38 95% 55%;
+    --warning-foreground:  0 0% 4%;
+    --purple:              260 65% 65%;
+    --purple-foreground:   0 0% 100%;
+    --neutral:             0 0% 40%;
+    --neutral-foreground:  0 0% 100%;
+    --coral:               14 80% 55%;
+    --coral-foreground:    0 0% 100%;
+    --chart-1:  142 69% 60%;
+    --chart-2:   38 95% 55%;
+    --chart-3:  260 65% 65%;
+    --chart-4:  199 89% 48%;
+    --chart-5:    0 72% 51%;
+    --sidebar-background:          0 0% 6%;
+    --sidebar-foreground:          0 0% 35%;
+    --sidebar-primary:             0 0% 12%;
+    --sidebar-primary-foreground: 142 69% 60%;
+    --sidebar-accent:              0 0% 10%;
+    --sidebar-accent-foreground:   0 0% 75%;
+    --sidebar-border:              0 0% 11%;
+    --sidebar-ring:               142 69% 60%;
+  }
+
+  /* ─── Light mode ───────────────────────────────────────────── */
+  .light {
+    --background:          0 0% 97%;       /* #f7f7f7 */
+    --foreground:          0 0% 9%;        /* #171717 */
+    --card:                0 0% 100%;      /* #ffffff */
+    --card-foreground:     0 0% 9%;
+    --popover:             0 0% 100%;
+    --popover-foreground:  0 0% 9%;
+    --primary:             142 55% 40%;    /* green más oscuro para contraste */
+    --primary-foreground:  0 0% 100%;
+    --secondary:           0 0% 93%;       /* #ededed */
+    --secondary-foreground:0 0% 9%;
+    --muted:               0 0% 93%;
+    --muted-foreground:    0 0% 45%;       /* #737373 */
+    --accent:              0 0% 93%;
+    --accent-foreground:   0 0% 9%;
+    --destructive:         0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border:              0 0% 87%;       /* #dedede */
+    --input:               0 0% 93%;
+    --ring:                142 55% 40%;
+    --success:             142 55% 36%;
+    --success-foreground:  0 0% 100%;
+    --warning:             38 95% 45%;
+    --warning-foreground:  0 0% 100%;
+    --purple:              260 55% 55%;
+    --purple-foreground:   0 0% 100%;
+    --neutral:             0 0% 50%;
+    --neutral-foreground:  0 0% 100%;
+    --coral:               14 80% 50%;
+    --coral-foreground:    0 0% 100%;
+    --chart-1:  142 55% 40%;
+    --chart-2:   38 95% 45%;
+    --chart-3:  260 55% 55%;
+    --chart-4:  199 89% 40%;
+    --chart-5:    0 72% 51%;
+    --sidebar-background:          0 0% 100%;
+    --sidebar-foreground:          0 0% 35%;
+    --sidebar-primary:             0 0% 94%;
+    --sidebar-primary-foreground: 142 55% 35%;
+    --sidebar-accent:              0 0% 93%;
+    --sidebar-accent-foreground:   0 0% 20%;
+    --sidebar-border:              0 0% 88%;
+    --sidebar-ring:               142 55% 40%;
+  }
+}
+
+@keyframes fadeInCard {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html { @apply bg-background; }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1 { letter-spacing: -0.025em; }
+  h2 { letter-spacing: -0.021em; }
+  h3 { letter-spacing: -0.012em; }
+
+  .font-mono, code, kbd, samp, pre {
+    font-family: var(--font-mono);
+  }
+
+  /* Minimal scrollbar */
+  ::-webkit-scrollbar { width: 3px; height: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: #2a2a2a;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+}

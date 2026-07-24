@@ -1,0 +1,157 @@
+{
+  "name": "AnuncioDesact",
+  "type": "object",
+  "properties": {
+    "producto_id": {
+      "type": "string",
+      "description": "ID del producto"
+    },
+    "producto_nombre": {
+      "type": "string",
+      "description": "Nombre del producto"
+    },
+    "producto_codigo": {
+      "type": "string",
+      "description": "C\u00f3digo del producto"
+    },
+    "suministrador": {
+      "type": "string",
+      "description": "Suministrador"
+    },
+    "tipo_caso": {
+      "type": "string",
+      "enum": [
+        "desact_ef_positivo",
+        "sin_id",
+        "activo_ef_cero"
+      ],
+      "description": "Tipo de caso"
+    },
+    "estado_anuncio_tkc": {
+      "type": "string",
+      "description": "Estado anuncio TKC"
+    },
+    "estado_anuncio_el": {
+      "type": "string",
+      "description": "Estado anuncio EL\u00edneas"
+    },
+    "ef_al_detectar": {
+      "type": "number",
+      "description": "EF al momento de detecci\u00f3n"
+    },
+    "fecha_deteccion": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de detecci\u00f3n"
+    },
+    "especialista_inv_id": {
+      "type": "string",
+      "description": "Email del especialista INV"
+    },
+    "especialista_inv_nombre": {
+      "type": "string",
+      "description": "Nombre INV"
+    },
+    "accion_inv": {
+      "type": "string",
+      "enum": [
+        "reactivar",
+        "escalar_ca",
+        "dar_de_baja",
+        "mantener"
+      ],
+      "description": "Acci\u00f3n del inventarista"
+    },
+    "motivo_tkc": {
+      "type": "string",
+      "description": "Motivo TKC"
+    },
+    "motivo_elineas": {
+      "type": "string",
+      "description": "Motivo EL\u00edneas"
+    },
+    "nota_inv": {
+      "type": "string",
+      "description": "Nota INV"
+    },
+    "fecha_inv": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha revisi\u00f3n INV"
+    },
+    "especialista_ca_id": {
+      "type": "string",
+      "description": "Email del especialista CA"
+    },
+    "especialista_ca_nombre": {
+      "type": "string",
+      "description": "Nombre CA"
+    },
+    "accion_ca": {
+      "type": "string",
+      "enum": [
+        "reactivar",
+        "actualizar_precio",
+        "crear_id",
+        "eliminar_anuncio",
+        "mantener"
+      ],
+      "description": "Acci\u00f3n CA"
+    },
+    "precio_nuevo": {
+      "type": "number",
+      "description": "Precio nuevo propuesto por CA"
+    },
+    "nota_ca": {
+      "type": "string",
+      "description": "Nota CA"
+    },
+    "fecha_ca": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha revisi\u00f3n CA"
+    },
+    "auditor_id": {
+      "type": "string",
+      "description": "Email del auditor"
+    },
+    "auditor_nombre": {
+      "type": "string",
+      "description": "Nombre auditor"
+    },
+    "nota_auditor": {
+      "type": "string",
+      "description": "Nota auditor"
+    },
+    "fecha_auditoria": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha auditor\u00eda"
+    },
+    "estado_tarea": {
+      "type": "string",
+      "enum": [
+        "pendiente",
+        "pend_ca",
+        "en_auditoria",
+        "completado",
+        "devuelto"
+      ],
+      "default": "pendiente",
+      "description": "Estado del flujo"
+    },
+    "resolucion_final": {
+      "type": "string",
+      "description": "Resoluci\u00f3n final"
+    },
+    "fecha_resolucion": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de resoluci\u00f3n"
+    }
+  },
+  "required": [
+    "producto_id",
+    "tipo_caso"
+  ]
+}

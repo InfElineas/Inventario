@@ -1,0 +1,139 @@
+{
+  "name": "Inventario",
+  "type": "object",
+  "properties": {
+    "producto_id": {
+      "type": "string",
+      "description": "ID del producto"
+    },
+    "producto_nombre": {
+      "type": "string",
+      "description": "Nombre del producto (denormalizado)"
+    },
+    "producto_codigo": {
+      "type": "string",
+      "description": "C\u00f3digo del producto (denormalizado)"
+    },
+    "suministrador": {
+      "type": "string",
+      "description": "Suministrador"
+    },
+    "fecha_inv": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha del inventario"
+    },
+    "especialista_id": {
+      "type": "string",
+      "description": "Email del especialista INV"
+    },
+    "especialista_nombre": {
+      "type": "string",
+      "description": "Nombre del especialista"
+    },
+    "exist_fisica_tkc": {
+      "type": "number",
+      "description": "Existencia f\u00edsica TKC al momento"
+    },
+    "conteo_real": {
+      "type": "number",
+      "default": 0,
+      "description": "Suma de cantidades de detalles"
+    },
+    "diferencia": {
+      "type": "number",
+      "default": 0,
+      "description": "conteo_real - exist_fisica_tkc"
+    },
+    "resultado": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "faltante",
+        "sobrante"
+      ],
+      "description": "Resultado del conteo"
+    },
+    "clasif_ajuste": {
+      "type": "string",
+      "description": "Clasificaci\u00f3n de ajuste INV"
+    },
+    "notas_inv": {
+      "type": "string",
+      "description": "Notas del inventarista"
+    },
+    "estado_tarea": {
+      "type": "string",
+      "enum": [
+        "en_curso",
+        "pend_fact",
+        "en_auditoria",
+        "completado",
+        "devuelto"
+      ],
+      "default": "en_curso",
+      "description": "Estado del flujo"
+    },
+    "detalles": {
+      "type": "array",
+      "description": "L\u00edneas de detalle (FV/lote/cantidad)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "fecha_vencimiento": {
+            "type": "string"
+          },
+          "no_lote": {
+            "type": "string"
+          },
+          "cantidad": {
+            "type": "number"
+          },
+          "notas": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "auditor_id": {
+      "type": "string",
+      "description": "Email del auditor"
+    },
+    "auditor_nombre": {
+      "type": "string",
+      "description": "Nombre del auditor"
+    },
+    "nota_auditor": {
+      "type": "string",
+      "description": "Nota del auditor"
+    },
+    "fact_no_factura": {
+      "type": "string",
+      "description": "N\u00famero de factura TKC (FACT)"
+    },
+    "fact_clasif": {
+      "type": "string",
+      "description": "Clasificaci\u00f3n FACT"
+    },
+    "fact_notas": {
+      "type": "string",
+      "description": "Notas FACT"
+    },
+    "fact_especialista_id": {
+      "type": "string",
+      "description": "Email del especialista FACT"
+    },
+    "fact_especialista_nombre": {
+      "type": "string",
+      "description": "Nombre del especialista FACT"
+    },
+    "fact_valor_total": {
+      "type": "number",
+      "description": "Valor total del ajuste"
+    }
+  },
+  "required": [
+    "producto_id",
+    "fecha_inv"
+  ]
+}

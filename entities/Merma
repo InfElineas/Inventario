@@ -1,0 +1,217 @@
+{
+  "name": "Merma",
+  "type": "object",
+  "properties": {
+    "producto_id": {
+      "type": "string",
+      "description": "ID del producto"
+    },
+    "producto_nombre": {
+      "type": "string",
+      "description": "Nombre del producto"
+    },
+    "producto_codigo": {
+      "type": "string",
+      "description": "C\u00f3digo del producto"
+    },
+    "suministrador": {
+      "type": "string",
+      "description": "Suministrador"
+    },
+    "fecha_inv": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha del registro"
+    },
+    "especialista_id": {
+      "type": "string",
+      "description": "Email del especialista INV"
+    },
+    "especialista_nombre": {
+      "type": "string",
+      "description": "Nombre del especialista"
+    },
+    "cantidad": {
+      "type": "number",
+      "description": "Cantidad de merma"
+    },
+    "clasif_merma": {
+      "type": "string",
+      "description": "Clasificaci\u00f3n de merma"
+    },
+    "requiere_fact": {
+      "type": "boolean",
+      "default": false,
+      "description": "Requiere paso por FACT"
+    },
+    "destino_final": {
+      "type": "string",
+      "description": "Destino de la merma"
+    },
+    "fecha_destino": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de destino"
+    },
+    "rebaja_confirmada": {
+      "type": "boolean",
+      "default": false,
+      "description": "Rebaja confirmada en sistema externo"
+    },
+    "fecha_rebaja_tienda": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de rebaja en tienda"
+    },
+    "notas": {
+      "type": "string",
+      "description": "Notas INV"
+    },
+    "precio_unitario": {
+      "type": "number",
+      "description": "Precio unitario"
+    },
+    "total_perdida": {
+      "type": "number",
+      "description": "P\u00e9rdida total"
+    },
+    "estado_tarea": {
+      "type": "string",
+      "enum": [
+        "en_curso",
+        "pend_fact",
+        "en_auditoria",
+        "completado",
+        "devuelto",
+        "reconteo_solicitado"
+      ],
+      "default": "en_curso",
+      "description": "Estado del flujo"
+    },
+    "fact_no_factura": {
+      "type": "string",
+      "description": "N\u00famero de factura TKC"
+    },
+    "fact_clasif": {
+      "type": "string",
+      "description": "Clasificaci\u00f3n FACT"
+    },
+    "fact_notas": {
+      "type": "string",
+      "description": "Notas FACT"
+    },
+    "fact_especialista_id": {
+      "type": "string",
+      "description": "Email del especialista FACT"
+    },
+    "fact_especialista_nombre": {
+      "type": "string",
+      "description": "Nombre FACT"
+    },
+    "fact_valor_total": {
+      "type": "number",
+      "description": "Valor total FACT"
+    },
+    "auditor_id": {
+      "type": "string",
+      "description": "Email del auditor"
+    },
+    "auditor_nombre": {
+      "type": "string",
+      "description": "Nombre del auditor"
+    },
+    "nota_auditor": {
+      "type": "string",
+      "description": "Nota del auditor"
+    },
+    "version_reconteo": {
+      "type": "number",
+      "default": 1,
+      "description": "Versi\u00f3n de reconteo"
+    },
+    "destinos": {
+      "type": "array",
+      "description": "Destinos de la merma",
+      "items": {
+        "type": "object",
+        "properties": {
+          "destino": {
+            "type": "string"
+          },
+          "cantidad": {
+            "type": "number"
+          },
+          "fecha_envio": {
+            "type": "string"
+          },
+          "notas": {
+            "type": "string"
+          },
+          "validado_auditor": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      }
+    },
+    "reconteos": {
+      "type": "array",
+      "description": "Historial de reconteos",
+      "items": {
+        "type": "object",
+        "properties": {
+          "solicitado_por": {
+            "type": "string"
+          },
+          "fecha_solicitud": {
+            "type": "string"
+          },
+          "motivo_categoria": {
+            "type": "string"
+          },
+          "motivo_detalle": {
+            "type": "string"
+          },
+          "cantidad_anterior": {
+            "type": "number"
+          },
+          "clasif_anterior": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "recontado_por": {
+            "type": "string"
+          },
+          "fecha_reconteo": {
+            "type": "string"
+          },
+          "cantidad_nueva": {
+            "type": "number"
+          },
+          "clasif_nueva": {
+            "type": "string"
+          },
+          "notas_reconteo": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Registro activo"
+    },
+    "fecha_vencimiento_lote": {
+      "type": "string",
+      "description": "FV del lote afectado"
+    }
+  },
+  "required": [
+    "producto_id",
+    "cantidad",
+    "clasif_merma"
+  ]
+}

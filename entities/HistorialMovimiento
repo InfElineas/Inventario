@@ -1,0 +1,73 @@
+{
+  "name": "HistorialMovimiento",
+  "type": "object",
+  "properties": {
+    "producto_id": {
+      "type": "string",
+      "description": "ID del producto"
+    },
+    "producto_nombre": {
+      "type": "string",
+      "description": "Nombre del producto"
+    },
+    "producto_codigo": {
+      "type": "string",
+      "description": "C\u00f3digo del producto"
+    },
+    "usuario_id": {
+      "type": "string",
+      "description": "Email del usuario que realiz\u00f3 el cambio"
+    },
+    "usuario_nombre": {
+      "type": "string",
+      "description": "Nombre del usuario"
+    },
+    "tipo_cambio": {
+      "type": "string",
+      "enum": [
+        "stock",
+        "precio",
+        "estado_anuncio",
+        "importacion"
+      ],
+      "description": "Tipo de cambio realizado"
+    },
+    "campo": {
+      "type": "string",
+      "description": "Campo espec\u00edfico que cambi\u00f3 (ej: almacen, tienda, precio)"
+    },
+    "valor_anterior": {
+      "type": "string",
+      "description": "Valor antes del cambio"
+    },
+    "valor_nuevo": {
+      "type": "string",
+      "description": "Valor despu\u00e9s del cambio"
+    },
+    "fecha": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha y hora del cambio"
+    },
+    "origen": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "importacion"
+      ],
+      "default": "manual",
+      "description": "Origen del cambio"
+    },
+    "notas": {
+      "type": "string",
+      "description": "Notas adicionales"
+    }
+  },
+  "required": [
+    "producto_id",
+    "usuario_id",
+    "tipo_cambio",
+    "campo",
+    "fecha"
+  ]
+}

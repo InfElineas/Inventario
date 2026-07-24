@@ -1,0 +1,122 @@
+{
+  "name": "LoteIC",
+  "type": "object",
+  "properties": {
+    "lote_id": {
+      "type": "string",
+      "description": "ID del lote"
+    },
+    "producto_id": {
+      "type": "string",
+      "description": "ID del producto"
+    },
+    "producto_nombre": {
+      "type": "string",
+      "description": "Nombre del producto"
+    },
+    "producto_codigo": {
+      "type": "string",
+      "description": "C\u00f3digo del producto"
+    },
+    "fecha_deteccion": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de detecci\u00f3n"
+    },
+    "especialista_inv_id": {
+      "type": "string",
+      "description": "Email del especialista INV"
+    },
+    "especialista_inv_nombre": {
+      "type": "string",
+      "description": "Nombre del especialista INV"
+    },
+    "clasif_inv": {
+      "type": "string",
+      "description": "Clasificaci\u00f3n INV"
+    },
+    "nota_inv": {
+      "type": "string",
+      "description": "Nota del inventarista"
+    },
+    "cant_x_vencer": {
+      "type": "number",
+      "description": "Cantidad por vencer"
+    },
+    "precio_costo": {
+      "type": "number",
+      "description": "Precio de costo"
+    },
+    "precio_actual": {
+      "type": "number",
+      "description": "Precio actual de venta"
+    },
+    "fecha_vencimiento": {
+      "type": "string",
+      "description": "FV del lote"
+    },
+    "fecha_ic": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de intervenci\u00f3n IC"
+    },
+    "especialista_ic_id": {
+      "type": "string",
+      "description": "Email del especialista IC"
+    },
+    "especialista_ic_nombre": {
+      "type": "string",
+      "description": "Nombre IC"
+    },
+    "propuesta_precio_ic": {
+      "type": "number",
+      "description": "Precio propuesto por IC"
+    },
+    "precio_restaurar": {
+      "type": "number",
+      "description": "Precio a restaurar despu\u00e9s"
+    },
+    "notas_ic": {
+      "type": "string",
+      "description": "Notas IC"
+    },
+    "notas_auditor": {
+      "type": "string",
+      "description": "Notas del auditor"
+    },
+    "auditor_id": {
+      "type": "string",
+      "description": "Email del auditor"
+    },
+    "auditor_nombre": {
+      "type": "string",
+      "description": "Nombre del auditor"
+    },
+    "estado_tarea": {
+      "type": "string",
+      "enum": [
+        "pendiente",
+        "en_curso",
+        "pend_fact",
+        "en_auditoria",
+        "completado",
+        "devuelto"
+      ],
+      "default": "pendiente",
+      "description": "Estado del flujo"
+    },
+    "resultado": {
+      "type": "string",
+      "enum": [
+        "vendido",
+        "merma",
+        "parcial"
+      ],
+      "description": "Resultado final"
+    }
+  },
+  "required": [
+    "lote_id",
+    "producto_id"
+  ]
+}

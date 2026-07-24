@@ -1,0 +1,143 @@
+{
+  "name": "Recepcion",
+  "type": "object",
+  "properties": {
+    "no_recepcion": {
+      "type": "string",
+      "description": "N\u00famero de recepci\u00f3n REC-YYYY-NNNN"
+    },
+    "proveedor": {
+      "type": "string",
+      "description": "Proveedor"
+    },
+    "no_orden": {
+      "type": "string",
+      "description": "N\u00famero de orden"
+    },
+    "fecha": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de recepci\u00f3n"
+    },
+    "especialista_id": {
+      "type": "string",
+      "description": "Email del especialista"
+    },
+    "especialista_nombre": {
+      "type": "string",
+      "description": "Nombre del especialista"
+    },
+    "supervisor_id": {
+      "type": "string",
+      "description": "Email del supervisor"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "en_curso",
+        "cerrada",
+        "con_diferencias"
+      ],
+      "default": "en_curso",
+      "description": "Estado de la recepci\u00f3n"
+    },
+    "notas": {
+      "type": "string",
+      "description": "Notas"
+    },
+    "detalles": {
+      "type": "array",
+      "description": "Detalles de productos recibidos",
+      "items": {
+        "type": "object",
+        "properties": {
+          "producto_id": {
+            "type": "string"
+          },
+          "producto_nombre": {
+            "type": "string"
+          },
+          "producto_codigo": {
+            "type": "string"
+          },
+          "cant_esperada": {
+            "type": "number"
+          },
+          "cant_recibida": {
+            "type": "number"
+          },
+          "diferencia": {
+            "type": "number"
+          },
+          "calidad_ok": {
+            "type": "boolean",
+            "default": true
+          },
+          "nota_calidad": {
+            "type": "string"
+          },
+          "no_lote": {
+            "type": "string"
+          },
+          "fecha_vencimiento": {
+            "type": "string"
+          },
+          "temperatura": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "diferencias": {
+      "type": "array",
+      "description": "Diferencias encontradas",
+      "items": {
+        "type": "object",
+        "properties": {
+          "producto_id": {
+            "type": "string"
+          },
+          "producto_nombre": {
+            "type": "string"
+          },
+          "cantidad_diferencia": {
+            "type": "number"
+          },
+          "tipo_diferencia": {
+            "type": "string",
+            "enum": [
+              "pendiente",
+              "aceptada",
+              "reclamada_proveedor",
+              "rechazo_parcial"
+            ],
+            "default": "pendiente"
+          },
+          "resuelto_por": {
+            "type": "string"
+          },
+          "fecha_resolucion": {
+            "type": "string"
+          },
+          "notas": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "total_items": {
+      "type": "number",
+      "default": 0,
+      "description": "Total de items"
+    },
+    "items_confirmados": {
+      "type": "number",
+      "default": 0,
+      "description": "Items confirmados"
+    }
+  },
+  "required": [
+    "proveedor",
+    "fecha"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "name": "AnuncioHistorial",
+  "type": "object",
+  "properties": {
+    "producto_id": {
+      "type": "string",
+      "description": "ID del producto"
+    },
+    "fecha": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha"
+    },
+    "estado_anuncio": {
+      "type": "string",
+      "description": "Estado del anuncio"
+    },
+    "ef": {
+      "type": "number",
+      "description": "Existencia f\u00edsica"
+    },
+    "responsable_id": {
+      "type": "string",
+      "description": "Email del responsable"
+    },
+    "accion": {
+      "type": "string",
+      "description": "Acci\u00f3n realizada"
+    }
+  },
+  "required": [
+    "producto_id",
+    "fecha"
+  ]
+}

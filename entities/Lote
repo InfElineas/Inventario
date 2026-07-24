@@ -1,0 +1,89 @@
+{
+  "name": "Lote",
+  "type": "object",
+  "properties": {
+    "producto_id": {
+      "type": "string",
+      "description": "ID del producto"
+    },
+    "producto_nombre": {
+      "type": "string",
+      "description": "Nombre del producto"
+    },
+    "producto_codigo": {
+      "type": "string",
+      "description": "C\u00f3digo del producto"
+    },
+    "suministrador": {
+      "type": "string",
+      "description": "Suministrador"
+    },
+    "no_lote": {
+      "type": "string",
+      "description": "N\u00famero de lote"
+    },
+    "temperatura": {
+      "type": "string",
+      "enum": [
+        "ambient",
+        "chilled"
+      ],
+      "default": "ambient",
+      "description": "Temperatura"
+    },
+    "fecha_fabricacion": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de fabricaci\u00f3n"
+    },
+    "fecha_vencimiento": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de vencimiento"
+    },
+    "cantidad": {
+      "type": "number",
+      "default": 0,
+      "description": "Cantidad"
+    },
+    "disponibilidad": {
+      "type": "number",
+      "default": 0,
+      "description": "Disponibilidad"
+    },
+    "vigencia_dias": {
+      "type": "number",
+      "description": "D\u00edas hasta vencimiento"
+    },
+    "estado_fv": {
+      "type": "string",
+      "enum": [
+        "vigente",
+        "por_vencer",
+        "critico",
+        "vencido",
+        "sin_fecha"
+      ],
+      "default": "sin_fecha",
+      "description": "Estado de fecha de vencimiento"
+    },
+    "origen": {
+      "type": "string",
+      "enum": [
+        "recepcion",
+        "inventario",
+        "manual",
+        "sync_tkc"
+      ],
+      "default": "manual",
+      "description": "Origen del lote"
+    },
+    "precio_costo": {
+      "type": "number",
+      "description": "Precio de costo"
+    }
+  },
+  "required": [
+    "producto_id"
+  ]
+}

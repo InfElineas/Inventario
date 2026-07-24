@@ -1,0 +1,87 @@
+{
+  "name": "Producto",
+  "type": "object",
+  "properties": {
+    "id_tienda": {
+      "type": "string",
+      "description": "ID de tienda TKC"
+    },
+    "codigo_producto": {
+      "type": "string",
+      "description": "C\u00f3digo del producto"
+    },
+    "nombre": {
+      "type": "string",
+      "description": "Nombre del producto"
+    },
+    "suministrador": {
+      "type": "string",
+      "description": "Proveedor"
+    },
+    "unidad": {
+      "type": "string",
+      "description": "Unidad de medida"
+    },
+    "precio": {
+      "type": "number",
+      "description": "Precio de venta"
+    },
+    "precio_costo": {
+      "type": "number",
+      "description": "Precio de costo"
+    },
+    "categoria_elineas": {
+      "type": "string",
+      "description": "Categor\u00eda EL\u00edneas"
+    },
+    "estado_anuncio": {
+      "type": "string",
+      "enum": [
+        "ACTIVADO",
+        "DESACTIVADO"
+      ],
+      "description": "Estado del anuncio"
+    },
+    "estado_tienda": {
+      "type": "string",
+      "description": "Estado calculado de tienda"
+    },
+    "prioridad_estado": {
+      "type": "number",
+      "description": "Prioridad del estado (1-11)"
+    },
+    "exist_fisica": {
+      "type": "number",
+      "default": 0,
+      "description": "Existencia f\u00edsica"
+    },
+    "almacen": {
+      "type": "number",
+      "default": 0,
+      "description": "Cantidad en almac\u00e9n"
+    },
+    "tienda": {
+      "type": "number",
+      "default": 0,
+      "description": "Cantidad en tienda"
+    },
+    "vigencia_dias": {
+      "type": "number",
+      "description": "D\u00edas de vigencia"
+    },
+    "stock_minimo": {
+      "type": "number",
+      "default": 0,
+      "description": "Stock m\u00ednimo requerido"
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Producto activo"
+    }
+  },
+  "required": [
+    "codigo_producto",
+    "nombre"
+  ]
+}

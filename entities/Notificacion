@@ -1,0 +1,40 @@
+{
+  "name": "Notificacion",
+  "type": "object",
+  "properties": {
+    "usuario_id": {
+      "type": "string",
+      "description": "Email del usuario destinatario"
+    },
+    "tipo": {
+      "type": "string",
+      "description": "Tipo de notificaci\u00f3n"
+    },
+    "titulo": {
+      "type": "string",
+      "description": "T\u00edtulo"
+    },
+    "mensaje": {
+      "type": "string",
+      "description": "Mensaje"
+    },
+    "leida": {
+      "type": "boolean",
+      "default": false,
+      "description": "Le\u00edda"
+    },
+    "referencia_tabla": {
+      "type": "string",
+      "description": "Tabla de referencia"
+    },
+    "referencia_id": {
+      "type": "string",
+      "description": "ID de referencia"
+    }
+  },
+  "required": [
+    "usuario_id",
+    "tipo",
+    "titulo"
+  ]
+}

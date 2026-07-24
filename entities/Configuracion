@@ -1,0 +1,22 @@
+{
+  "name": "Configuracion",
+  "type": "object",
+  "properties": {
+    "clave": {
+      "type": "string",
+      "description": "Clave de configuraci\u00f3n"
+    },
+    "valor": {
+      "type": "string",
+      "description": "Valor"
+    },
+    "descripcion": {
+      "type": "string",
+      "description": "Descripci\u00f3n"
+    }
+  },
+  "required": [
+    "clave",
+    "valor"
+  ]
+}
