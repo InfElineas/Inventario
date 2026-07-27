@@ -11,9 +11,35 @@ import { supabase } from '@/api/supabaseClient'
 import { WAREHOUSES } from '@/services/tkc/warehouses'
 
 const ENDPOINT = '/api/tkc/inventario'
+const ENDPOINT_EXISTENCIA = '/api/tkc/existencia'
 
 /** Almacenes disponibles (catálogo estático de TKC), como claves de la app. */
 export const TKC_ALMACENES = WAREHOUSES.map((w) => w.key)
+
+/** Access token de la sesión actual, o error si ya no hay sesión. */
+async function requireToken() {
+  const { data } = await supabase.auth.getSession()
+  const token = data?.session?.access_token
+  if (!token) throw new Error('Sesión expirada. Vuelve a iniciar sesión.')
+  return token
+}
+
+/** POST autenticado a uno de los endpoints locales de TKC. */
+async function postTkc(endpoint, payload) {
+  const token = await requireToken()
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await res.json().catch(() => null)
+  return { res, data }
+}
 
 /**
  * Pide una página del inventario. El servidor resuelve búsqueda, orden y
@@ -35,23 +61,38 @@ export async function fetchInventarioTkc({
 }) {
   if (!almacen) return { rows: [], pagination: { page: 1, limit, total: 0, totalPages: 1 } }
 
-  const { data } = await supabase.auth.getSession()
-  const token = data?.session?.access_token
-  if (!token) throw new Error('Sesión expirada. Vuelve a iniciar sesión.')
-
-  const res = await fetch(ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ almacen, page, limit, search, sortBy, sortDir, existencia }),
+  const { res, data } = await postTkc(ENDPOINT, {
+    almacen, page, limit, search, sortBy, sortDir, existencia,
   })
 
-  const payload = await res.json().catch(() => null)
-
   if (!res.ok) {
-    throw new Error(payload?.error ?? `Error ${res.status} al consultar TKC`)
+    throw new Error(data?.error ?? `Error ${res.status} al consultar TKC`)
   }
-  return payload
+  return data
+}
+
+/**
+ * Existencia desglosada de UN producto: física, en almacén y en tienda.
+ *
+ * El listado solo conoce el total (`cantidad`); el desglose únicamente lo
+ * publica el submayor, y de producto en producto. Por eso se pide bajo demanda
+ * (al hacer hover sobre la fila) y no para la tabla entera.
+ *
+ * @param {{ almacen: string, idTienda: string }} params
+ *        `idTienda` es el campo `idOnline` de la fila del listado.
+ * @returns {Promise<null | { idTienda: string, codigo: string, nombre: string,
+ *   unidadMedida: string, precio: number,
+ *   existencia: { fisica: number, enAlmacen: number, enTienda: number } }>}
+ *   null si el submayor no tiene ese producto en ese almacén (no es un error).
+ */
+export async function fetchExistenciaTkc({ almacen, idTienda }) {
+  if (!almacen || !idTienda) return null
+
+  const { res, data } = await postTkc(ENDPOINT_EXISTENCIA, { almacen, idTienda })
+
+  if (res.status === 404) return null
+  if (!res.ok) {
+    throw new Error(data?.error ?? `Error ${res.status} al consultar el submayor de TKC`)
+  }
+  return data
 }

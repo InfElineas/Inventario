@@ -11,6 +11,7 @@ import { buildBody, COLS } from '@/services/tkc/body'
 import { normalizeRow } from '@/services/tkc/normalize'
 import { sortColumnIndex, TKC_COLUMN_DEFS, TKC_SORT_COLUMNS, IMAGE_COL } from '@/services/tkc/columns'
 import { keyToTkcValue, warehouseName } from '@/services/tkc/warehouses'
+import { buildSubmayorBody, pickRow, SUBMAYOR_COLS } from '@/services/tkc/submayor'
 
 describe('auth', () => {
   it('extrae el token CSRF del HTML de login', () => {
@@ -214,5 +215,47 @@ describe('warehouses', () => {
   it('warehouseName degrada a "Almacén N" si no está en el catálogo', () => {
     expect(warehouseName('789')).toBe('TKC SUB 789')
     expect(warehouseName('9999')).toBe('Almacén 9999')
+  })
+})
+
+describe('submayor', () => {
+  const body = buildSubmayorBody({ start: 0, length: 25, almacen: '351', search: '139494' })
+
+  it('manda el almacén en singular y la búsqueda global', () => {
+    expect(body).toContain('almacen=351')
+    expect(body).toContain('search%5Bvalue%5D=139494')
+  })
+
+  it('existencia es un booleano aquí, y false significa "sin filtrar"', () => {
+    // Con true un producto a cero desaparecería y el popover diría "sin datos".
+    expect(body).toContain('existencia=false')
+    expect(buildSubmayorBody({ start: 0, length: 25, almacen: '351', soloConExistencia: true }))
+      .toContain('existencia=true')
+  })
+
+  it('reproduce el orden de columnas de TKC, duplicados incluidos', () => {
+    // nombre y precio salen dos veces: es la configuración del propio TKC.
+    expect(SUBMAYOR_COLS[4]).toBe('nombre')
+    expect(SUBMAYOR_COLS[13]).toBe('nombre')
+    expect(SUBMAYOR_COLS[7]).toBe('existencia_fisica')
+    expect(SUBMAYOR_COLS[8]).toBe('almacen')
+    expect(SUBMAYOR_COLS[9]).toBe('tienda')
+    SUBMAYOR_COLS.forEach((col, i) => {
+      expect(body).toContain(`columns%5B${i}%5D%5Bdata%5D=${col}`)
+    })
+  })
+
+  it('solo la columna 0 (checkbox) es no ordenable', () => {
+    expect(body).toContain('columns%5B0%5D%5Borderable%5D=false')
+    expect(body).toContain('columns%5B1%5D%5Borderable%5D=true')
+  })
+
+  it('pickRow exige coincidencia exacta: la búsqueda de TKC es un "contiene"', () => {
+    const rows = [{ idTienda: 1394940 }, { idTienda: 139494 }]
+    expect(pickRow(rows, '139494')).toEqual({ idTienda: 139494 })
+    expect(pickRow(rows, '99999')).toBeNull()
+    expect(pickRow([], '139494')).toBeNull()
+    expect(pickRow(undefined, '139494')).toBeNull()
+    expect(pickRow(rows, '')).toBeNull()
   })
 })

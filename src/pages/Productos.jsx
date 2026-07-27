@@ -4,7 +4,7 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { isExternaConfigured, retryFailed } from '@/services/syncService';
-import { fetchInventarioTkc, TKC_ALMACENES } from '@/services/tkcService';
+import { fetchInventarioTkc, fetchExistenciaTkc, TKC_ALMACENES } from '@/services/tkcService';
 import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL } from '@/services/tkc/columns';
 import { EXISTENCIA_FILTERS } from '@/services/tkc/body';
 import { warehouseName } from '@/services/tkc/warehouses';
@@ -15,6 +15,7 @@ import { Card } from '@/components/ui/card';
 import KPICard from '@/components/shared/KPICard';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import ProductHoverCard from '@/components/shared/ProductHoverCard';
+import ExistenciaHoverCard from '@/components/shared/ExistenciaHoverCard';
 import Pagination from '@/components/shared/Pagination';
 import ProductoModal from '@/components/productos/ProductoModal';
 // Solo se necesita al abrir el modal de importación — se carga bajo demanda.
@@ -56,6 +57,13 @@ const TKC_PAGE_SIZES = [50, 100, 250];
 const TKC_EXISTENCIA_DEFAULT = 'existencia';
 const TKC_EXISTENCIA_LABELS = { todos: 'Todos', existencia: 'Con existencia', 'no-existencia': 'Sin existencia' };
 const TKC_EXISTENCIA_OPTIONS = EXISTENCIA_FILTERS.map((value) => ({ value, label: TKC_EXISTENCIA_LABELS[value] }));
+
+/**
+ * Espera antes de pedir la existencia de una fila. El desglose sale del
+ * submayor de TKC, una petición por producto: sin esta pausa, arrastrar el
+ * ratón por la tabla lanzaría una consulta por cada fila que roza.
+ */
+const TKC_HOVER_DELAY = 300;
 
 // Mismo formato numérico que la tabla de elineas-vd.
 const numberFmt   = new Intl.NumberFormat('es-CU');
@@ -299,6 +307,9 @@ export default function Productos({ initialSource = 'tkc' }) {
   const [syncFailures, setSyncFailures] = useState([]);
   const [showFailures, setShowFailures] = useState(false);
   const [showFailureHistory, setShowFailureHistory] = useState(false);
+  // Fila de TKC bajo el ratón, ya pasado el debounce → dispara la consulta de existencia.
+  const [hoveredTkc, setHoveredTkc] = useState(null);
+  const hoverTimer = useRef(null);
 
   // Auto-select from scanner (?scan=id)
   useEffect(() => {
@@ -360,6 +371,49 @@ export default function Productos({ initialSource = 'tkc' }) {
     () => tkcColOrder.filter(k => tkcCols[k]),
     [tkcColOrder, tkcCols]
   );
+
+  // ── Existencia desglosada (EF / A / T) de la fila bajo el ratón ──
+  // El listado solo trae el total (`cantidad`); el desglose lo publica el
+  // submayor producto a producto, así que se pide solo lo que se mira. La
+  // caché por idTienda hace que volver a una fila ya consultada sea instantáneo.
+  const {
+    data: existenciaTkc,
+    isLoading: loadingExistencia,
+    error: existenciaError,
+  } = useQuery({
+    queryKey: ['tkc_existencia', almacen, hoveredTkc?.idTienda],
+    queryFn: () => fetchExistenciaTkc({ almacen, idTienda: hoveredTkc.idTienda }),
+    enabled: source === 'tkc' && Boolean(almacen) && Boolean(hoveredTkc?.idTienda),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  /** Abre el popover tras el debounce; el rect se captura ya (luego el <tr> puede irse). */
+  const onTkcRowEnter = (row, el) => {
+    clearTimeout(hoverTimer.current);
+    if (!row.idOnline) return;   // sin id online el submayor no puede buscarlo
+    const rect = el.getBoundingClientRect();
+    hoverTimer.current = setTimeout(
+      () => setHoveredTkc({ idTienda: row.idOnline, nombre: row.nombre, rect }),
+      TKC_HOVER_DELAY
+    );
+  };
+
+  const onTkcRowLeave = () => {
+    clearTimeout(hoverTimer.current);
+    setHoveredTkc(null);
+  };
+
+  // Un temporizador vivo tras desmontar dejaría un setState huérfano.
+  useEffect(() => () => clearTimeout(hoverTimer.current), []);
+
+  // Al cambiar de página (o de filtro) las filas se sustituyen: el popover
+  // quedaría anclado a una que ya no está. Solo se consulta lo visible.
+  useEffect(() => {
+    clearTimeout(hoverTimer.current);
+    setHoveredTkc(null);
+  }, [page, almacen, tkcLimit, debouncedSearch, tkcSort, tkcExistencia]);
 
   // ── Last sync time (partial key so SyncContext invalidation propagates) ──
   const { data: lastSyncAt } = useQuery({
@@ -1007,7 +1061,9 @@ export default function Productos({ initialSource = 'tkc' }) {
                       </thead>
                       <tbody className="divide-y divide-border">
                         {tkcRows.map(p => (
-                          <tr key={p.rowId} className="hover:bg-card/60 transition-colors">
+                          <tr key={p.rowId} className="hover:bg-card/60 transition-colors"
+                            onMouseEnter={e => onTkcRowEnter(p, e.currentTarget)}
+                            onMouseLeave={onTkcRowLeave}>
                             {tkcVisibleCols.map(key => {
                               const def = TKC_COLUMN_BY_KEY[key];
                               if (!def) return null;
@@ -1046,6 +1102,16 @@ export default function Productos({ initialSource = 'tkc' }) {
                   {/* total viene de recordsFiltered de TKC, no de rows.length */}
                   <Pagination page={page} total={tkcPagination?.total ?? 0} pageSize={tkcLimit} onPage={setPage} />
                 </Card>
+              )}
+
+              {hoveredTkc && (
+                <ExistenciaHoverCard
+                  rect={hoveredTkc.rect}
+                  nombre={hoveredTkc.nombre}
+                  data={existenciaTkc}
+                  isLoading={loadingExistencia}
+                  error={existenciaError}
+                />
               )}
             </>
           )}
