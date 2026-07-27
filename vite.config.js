@@ -2,11 +2,14 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { fileURLToPath } from 'url'
 import path from 'path'
+import { tkcApiPlugin } from './vite-plugin-tkc.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
-  plugins: [react()],
+  // tkcApiPlugin sirve /api/tkc/inventario en dev y preview: el login de TKC
+  // necesita cookies + CSRF, imposible desde el navegador.
+  plugins: [react(), tkcApiPlugin()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
