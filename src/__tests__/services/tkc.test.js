@@ -176,8 +176,16 @@ describe('normalizeRow', () => {
 describe('columns', () => {
   it('sortColumnIndex traduce la clave al índice del DataTables', () => {
     expect(sortColumnIndex('nombre')).toBe(5)
-    expect(sortColumnIndex('cantidad')).toBe(11)
     expect(sortColumnIndex('precio')).toBe(12)
+  })
+
+  it('no se ordena por existencia: TKC devuelve mal esa columna', () => {
+    // Medido: order[0][column]=11 (cantidad) devuelve valores sin ordenar en
+    // ambas direcciones. Mapear EF a ese índice daría un control que miente, así
+    // que la clave no existe y sortColumnIndex cae en nombre.
+    expect(TKC_SORT_COLUMNS.ef).toBeUndefined()
+    expect(TKC_SORT_COLUMNS.cantidad).toBeUndefined()
+    expect(sortColumnIndex('ef')).toBe(TKC_SORT_COLUMNS.nombre)
   })
 
   it('una clave desconocida cae en nombre, no en undefined', () => {
@@ -186,8 +194,7 @@ describe('columns', () => {
   })
 
   it('las columnas del listado son ordenables; imagen y EF/A/T no', () => {
-    // EF/A/T vienen del submayor, no del DataTables del listado: TKC no sabe
-    // ordenar por ellas.
+    // EF/A/T salen del submayor, no del DataTables del listado.
     for (const def of TKC_COLUMN_DEFS) {
       if (def.key === IMAGE_COL || isStockCol(def.key)) {
         expect(TKC_SORT_COLUMNS[def.key]).toBeUndefined()
@@ -197,6 +204,13 @@ describe('columns', () => {
     }
   })
 
+  it('ya no hay columna "Cantidad": era el mismo dato que EF', () => {
+    expect(TKC_COLUMN_DEFS.find(d => d.key === 'cantidad')).toBeUndefined()
+    const claves = TKC_COLUMN_DEFS.map(d => d.key)
+    // El desglose va justo detrás del nombre, no al final de la tabla.
+    expect(claves.slice(0, 6)).toEqual([IMAGE_COL, 'codigo', 'nombre', 'ef', 'enAlmacen', 'enTienda'])
+  })
+
   it('las tres columnas de existencia están definidas y son numéricas', () => {
     for (const key of STOCK_COLS) {
       const def = TKC_COLUMN_DEFS.find(d => d.key === key)
@@ -204,13 +218,13 @@ describe('columns', () => {
       expect(def.numeric).toBe(true)
       expect(isStockCol(key)).toBe(true)
     }
-    expect(isStockCol('cantidad')).toBe(false)
+    expect(isStockCol('precio')).toBe(false)
   })
 
   it('el índice de orden apunta a la columna correcta de COLS', () => {
     // Contrato con body.js: si los índices se desalinean, TKC ordena por otra cosa.
     expect(COLS[TKC_SORT_COLUMNS.nombre]).toBe('nombre')
-    expect(COLS[TKC_SORT_COLUMNS.cantidad]).toBe('cantidad')
+    expect(COLS[TKC_SORT_COLUMNS.precio]).toBe('precio')
     expect(COLS[TKC_SORT_COLUMNS.marca]).toBe('marca')
     expect(COLS[TKC_SORT_COLUMNS.fechaVencimiento]).toBe('fecha_vencimiento')
   })

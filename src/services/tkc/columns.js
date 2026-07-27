@@ -29,7 +29,12 @@ export const TKC_SORT_COLUMNS = {
   unidadCompra: 8,
   locaciones: 9,
   peso: 10,
-  cantidad: 11,
+  // El hueco 11 es `cantidad`, la existencia total. No se expone como columna
+  // ordenable: TKC ordena mal por ella. Medido contra el backend real (almacén
+  // 351, 20 filas): con dir=desc devuelve [19720, 11469, 35504, 22746, …] y con
+  // dir=asc [1, 1, 4, 1, 3, …] — valores del rango correcto pero sin ordenar, y
+  // la misma lista con y sin filtro de existencia. La columna EF muestra ese
+  // mismo dato desde el submayor y por eso tampoco es ordenable.
   precio: 12,
   cantidadUm: 13,
   unidadMedida: 14,
@@ -71,16 +76,17 @@ export const TKC_COLUMN_DEFS = [
   { key: IMAGE_COL,         label: 'Imagen',        defaultOn: true,  required: false },
   { key: 'codigo',          label: 'Código',        defaultOn: true,  required: true  },
   { key: 'nombre',          label: 'Nombre',        defaultOn: true,  required: true  },
+  // El desglose va justo detrás del nombre: es lo que se consulta a diario.
+  // No existe una columna "Cantidad" aparte porque era el mismo número que EF.
+  { key: 'ef',              label: 'EF',            defaultOn: true,  required: false, numeric: true },
+  { key: 'enAlmacen',       label: 'A (Almacén)',   defaultOn: true,  required: false, numeric: true },
+  { key: 'enTienda',        label: 'T (Tienda)',    defaultOn: true,  required: false, numeric: true },
+  { key: 'precio',          label: 'Precio',        defaultOn: true,  required: false, numeric: true, currency: true },
   { key: 'categoriaOnline', label: 'Categoría',     defaultOn: true,  required: false },
   { key: 'proveedor',       label: 'Proveedor',     defaultOn: true,  required: false },
   { key: 'suministrador',   label: 'Suministrador', defaultOn: false, required: false },
   { key: 'marca',           label: 'Marca',         defaultOn: true,  required: false },
   { key: 'unidadMedida',    label: 'U/M',           defaultOn: true,  required: false },
-  { key: 'cantidad',        label: 'Cantidad',      defaultOn: true,  required: false, numeric: true },
-  { key: 'ef',              label: 'EF',            defaultOn: true,  required: false, numeric: true },
-  { key: 'enAlmacen',       label: 'A (Almacén)',   defaultOn: true,  required: false, numeric: true },
-  { key: 'enTienda',        label: 'T (Tienda)',    defaultOn: true,  required: false, numeric: true },
-  { key: 'precio',          label: 'Precio',        defaultOn: true,  required: false, numeric: true, currency: true },
   { key: 'fechaVencimiento',label: 'Vence',         defaultOn: true,  required: false },
   { key: 'categoriaAlmacen',label: 'Cat. almacén',  defaultOn: false, required: false },
   { key: 'locaciones',      label: 'Locaciones',    defaultOn: false, required: false },
