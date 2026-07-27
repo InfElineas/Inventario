@@ -9,7 +9,6 @@ import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL } from 
 import { EXISTENCIA_FILTERS } from '@/services/tkc/body';
 import { warehouseName } from '@/services/tkc/warehouses';
 import { getLastSync } from '@/lib/useAutoSync';
-import { useSyncManager } from '@/lib/SyncContext';
 import { fetchAllProductos, fetchAllRows } from '@/lib/supabaseUtils';
 import { notifToast } from '@/lib/notifToast';
 import { Card } from '@/components/ui/card';
@@ -263,11 +262,10 @@ function SearchableSelect({ value, onChange, options, placeholder, maxWidth = 'm
 }
 
 // ── Main component ────────────────────────────────────────────
-export default function Productos({ initialSource = 'elineas' }) {
+export default function Productos({ initialSource = 'tkc' }) {
   const { user } = useAuth();
   const { almacen, setAlmacen, almacenesConfig } = useAlmacen();
   const queryClient = useQueryClient();
-  const { syncOne, isRunning } = useSyncManager();
   const role = user?.role || 'inv';
 
   // ── Source toggle ──────────────────────────────────────────
@@ -540,8 +538,6 @@ export default function Productos({ initialSource = 'elineas' }) {
     ? new Date(iso).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' })
     : null;
 
-  const canSync = isExternaConfigured && ['administrador', 'inv', 'superadmin'].includes(role);
-
   const selected = productos.find(p => p.id === selectedId);
 
   // ── RENDER ─────────────────────────────────────────────────
@@ -571,15 +567,11 @@ export default function Productos({ initialSource = 'elineas' }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Source toggle */}
+          {/* Fuente: solo TKC */}
           {isExternaConfigured && (
             <div className="flex rounded-lg border border-border overflow-hidden text-sm">
-              <button onClick={() => switchSource('elineas')}
-                className={`px-3 py-1.5 transition-colors ${source === 'elineas' ? 'bg-[#4ade80]/10 text-[#4ade80]' : 'bg-card text-muted-foreground hover:text-foreground'}`}>
-                ELíneas
-              </button>
               <button onClick={() => switchSource('tkc')}
-                className={`px-3 py-1.5 border-l border-border flex items-center gap-1.5 transition-colors ${source === 'tkc' ? 'bg-[#4ade80]/10 text-[#4ade80]' : 'bg-card text-muted-foreground hover:text-foreground'}`}>
+                className={`px-3 py-1.5 flex items-center gap-1.5 transition-colors ${source === 'tkc' ? 'bg-[#4ade80]/10 text-[#4ade80]' : 'bg-card text-muted-foreground hover:text-foreground'}`}>
                 <Database className="w-3.5 h-3.5" />
                 TKC
               </button>
@@ -597,15 +589,6 @@ export default function Productos({ initialSource = 'elineas' }) {
               ...almacenes.map(a => ({ value: a, label: warehouseName(a) })),
             ]}
           />
-
-          {/* Sync → ELíneas (TKC view) */}
-          {source === 'tkc' && canSync && almacen && (
-            <button onClick={() => syncOne(almacen)} disabled={isRunning || !almacen}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#4ade80]/10 hover:bg-[#4ade80]/20 text-[#4ade80] text-sm font-medium border border-[#4ade80]/20 transition-colors disabled:opacity-50">
-              <RefreshCw className={`w-4 h-4 ${isRunning ? 'animate-spin' : ''}`} />
-              {isRunning ? 'Sincronizando…' : 'Sincronizar → ELíneas'}
-            </button>
-          )}
 
           {/* Import (ELíneas view) */}
           {source === 'elineas' && (role === 'administrador' || role === 'inv') && (
