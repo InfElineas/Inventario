@@ -3,7 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
-import { isExternaConfigured, fetchAlmacenes, fetchProductosExterno, retryFailed } from '@/services/syncService';
+import { isExternaConfigured, retryFailed } from '@/services/syncService';
+import { fetchInventarioTkc, TKC_ALMACENES } from '@/services/tkcService';
+import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL } from '@/services/tkc/columns';
+import { EXISTENCIA_FILTERS } from '@/services/tkc/body';
+import { warehouseName } from '@/services/tkc/warehouses';
 import { getLastSync } from '@/lib/useAutoSync';
 import { useSyncManager } from '@/lib/SyncContext';
 import { fetchAllProductos, fetchAllRows } from '@/lib/supabaseUtils';
@@ -47,15 +51,27 @@ const DEFAULT_FILTERS = {
   estadoTienda: 'all', estadoAnuncio: 'all', precioMin: '', precioMax: '',
 };
 
-const TKC_FILTER_OPTS = [
-  { value: 'SIN RESERVA',    label: 'Sin Reserva'   },
-  { value: 'NO TIENDA',      label: 'No Tienda'     },
-  { value: 'ULTIMAS PIEZAS', label: 'Últ. Piezas'   },
-  { value: 'AGOTADO',        label: 'Agotado'       },
-  { value: 'PROXIMO',        label: 'Próximo'       },
-  { value: 'DISPONIBLE',     label: 'Disponible'    },
-  { value: 'SIN ID',         label: 'Sin ID'        },
-];
+// ── TKC (lectura directa del DataTables de TKC) ───────────────
+const TKC_COLS_KEY   = 'tkc_cols';
+const TKC_PAGE_SIZES = [50, 100, 250];
+const TKC_EXISTENCIA_DEFAULT = 'existencia';
+const TKC_EXISTENCIA_LABELS = { todos: 'Todos', existencia: 'Con existencia', 'no-existencia': 'Sin existencia' };
+const TKC_EXISTENCIA_OPTIONS = EXISTENCIA_FILTERS.map((value) => ({ value, label: TKC_EXISTENCIA_LABELS[value] }));
+
+// Mismo formato numérico que la tabla de elineas-vd.
+const numberFmt   = new Intl.NumberFormat('es-CU');
+const currencyFmt = new Intl.NumberFormat('es-CU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Formatea una celda TKC según su definición de columna. Vacío → "—". */
+function formatTkcCell(value, def) {
+  if (def?.numeric) {
+    if (value === null || value === undefined || value === '') return '—';
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '—';
+    return def.currency ? currencyFmt.format(n) : numberFmt.format(n);
+  }
+  return value === '' || value === null || value === undefined ? '—' : String(value);
+}
 
 // ── Helpers ───────────────────────────────────────────────────
 function calcEstadoAnuncio(idTienda, ef, a, t) {
@@ -113,24 +129,6 @@ const EA_LABEL = {
   'DESACTIVADO MUERTO EF>0': 'MUERTO EF>0',
   'SIN ID EF=0':             'SIN ID',
   'SIN ID EF>0':             'SIN ID c/EF',
-};
-const EA_COLOR = {
-  'ACTIVADO':                'text-[#4ade80] bg-[#4ade80]/10',
-  'DESACTIVADO EF=0':        'text-[#facc15] bg-[#facc15]/10',
-  'DESACTIVADO EF>0':        'text-[#fb923c] bg-[#fb923c]/10',
-  'DESACTIVADO MUERTO EF=0': 'text-[#e24b4a] bg-[#e24b4a]/10',
-  'DESACTIVADO MUERTO EF>0': 'text-[#e24b4a] bg-[#e24b4a]/10',
-  'SIN ID EF=0':             'text-[#64748b] bg-[#64748b]/10',
-  'SIN ID EF>0':             'text-[#94a3b8] bg-[#94a3b8]/10',
-};
-const ET_COLOR = {
-  'SIN RESERVA':    'text-[#e24b4a] bg-[#e24b4a]/10 border-[#e24b4a]/30',
-  'NO TIENDA':      'text-[#fb923c] bg-[#fb923c]/10 border-[#fb923c]/30',
-  'ULTIMAS PIEZAS': 'text-[#facc15] bg-[#facc15]/10 border-[#facc15]/30',
-  'PROXIMO':        'text-[#60a5fa] bg-[#60a5fa]/10 border-[#60a5fa]/30',
-  'DISPONIBLE':     'text-[#4ade80] bg-[#4ade80]/10 border-[#4ade80]/30',
-  'AGOTADO':        'text-[#e24b4a] bg-[#e24b4a]/10 border-[#e24b4a]/30',
-  'SIN ID':         'text-[#64748b] bg-[#64748b]/10 border-[#64748b]/30',
 };
 const ET_LABEL_COLOR = {
   'SIN RESERVA':'#e24b4a','NO TIENDA':'#fb923c','ULTIMAS PIEZAS':'#facc15',
@@ -192,6 +190,22 @@ function FailureHistoryRecord({ record, onRetry, isPending }) {
       )}
     </div>
   );
+}
+
+/**
+ * Valor retrasado hasta que deja de cambiar durante `delay` ms.
+ *
+ * La tabla TKC busca en el servidor: sin esto, cada tecla lanzaría una petición
+ * al DataTables de TKC (~3 s cada una). `useDeferredValue` no sirve aquí —
+ * solo retrasa el render, no la petición.
+ */
+function useDebounced(value, delay = 400) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
 }
 
 function SearchableSelect({ value, onChange, options, placeholder, maxWidth = 'max-w-[160px]' }) {
@@ -259,7 +273,8 @@ export default function Productos({ initialSource = 'elineas' }) {
   // ── Source toggle ──────────────────────────────────────────
   const [source, setSource] = useState(initialSource);
   const [search, setSearch] = useState('');
-  const deferredSearch = useDeferredValue(search);
+  const deferredSearch = useDeferredValue(search);   // ELíneas: filtra en memoria
+  const debouncedSearch = useDebounced(search, 400); // TKC: filtra en el servidor
   const [page, setPage] = useState(1);
   const [hoveredProduct, setHoveredProduct] = useState(null);
   const resetPage = () => setPage(1);
@@ -275,8 +290,14 @@ export default function Productos({ initialSource = 'elineas' }) {
   const { sort, setSort, onSort } = useSortable('nombre');
 
   // ── TKC state ─────────────────────────────────────────────
-  const [filterEstado, setFilterEstado] = useState('all');
-  const [sortByTKC, setSortByTKC] = useState('prioridad');
+  // La tabla TKC es "server-side": búsqueda, orden y página van en el queryKey y
+  // los resuelve TKC, no un useMemo. Por eso lleva su propio estado de columnas
+  // y su propio tamaño de página (el endpoint admite hasta 500).
+  const [tkcLimit, setTkcLimit] = useState(TKC_PAGE_SIZES[0]);
+  const [tkcCols, setTkcCols] = useState(() => loadColsWithOrder(TKC_COLS_KEY, TKC_COLUMN_DEFS).visible);
+  const [tkcColOrder, setTkcColOrder] = useState(() => loadColsWithOrder(TKC_COLS_KEY, TKC_COLUMN_DEFS).order);
+  const { sort: tkcSort, setSort: setTkcSort, onSort: onTkcSort } = useSortable('nombre');
+  const [tkcExistencia, setTkcExistencia] = useState(TKC_EXISTENCIA_DEFAULT);
   const [syncFailures, setSyncFailures] = useState([]);
   const [showFailures, setShowFailures] = useState(false);
   const [showFailureHistory, setShowFailureHistory] = useState(false);
@@ -289,15 +310,13 @@ export default function Productos({ initialSource = 'elineas' }) {
   }, []);
 
   // ── Almacenes ──────────────────────────────────────────────
-  const { data: allAlmacenes = [] } = useQuery({
-    queryKey: ['almacenes_externos'],
-    queryFn: fetchAlmacenes,
-    staleTime: 5 * 60 * 1000,
-    select: (d) => Array.isArray(d) ? d : [],
-  });
+  // Catálogo estático de TKC (src/services/tkc/warehouses.js). Antes esta lista
+  // se deducía paginando invGlobal hasta 500k filas solo para recoger los
+  // "No. Almacén" únicos; las claves son las mismas, así que useAlmacen() y las
+  // restricciones de almacenes_config por usuario siguen funcionando igual.
   const almacenes = useMemo(
-    () => filterAlmacenesByConfig(allAlmacenes, almacenesConfig),
-    [allAlmacenes, almacenesConfig]
+    () => filterAlmacenesByConfig(TKC_ALMACENES, almacenesConfig),
+    [almacenesConfig]
   );
 
   // ── ELíneas productos ──────────────────────────────────────
@@ -308,15 +327,41 @@ export default function Productos({ initialSource = 'elineas' }) {
     enabled: Boolean(almacen),
   });
 
-  // ── TKC productos (direct external read) ──────────────────
-  const { data: tkcProductos = [], isLoading: loadingTKC } = useQuery({
-    queryKey: ['bd_tkc_ext', almacen],
-    queryFn: () => fetchProductosExterno(almacen),
-    select: (d) => Array.isArray(d) ? d : [],
-    enabled: Boolean(almacen) && isExternaConfigured,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+  // ── TKC productos (lectura directa del DataTables de TKC) ──
+  // Paginado en servidor: cada cambio de página, búsqueda u orden es una
+  // petición nueva. placeholderData mantiene la página anterior en pantalla
+  // mientras llega la siguiente, para que paginar no parpadee.
+  const {
+    data: tkcData,
+    isLoading: loadingTKC,
+    isFetching: fetchingTKC,
+    error: tkcError,
+  } = useQuery({
+    queryKey: ['tkc_inv', almacen, page, tkcLimit, debouncedSearch.trim(), tkcSort.key, tkcSort.dir, tkcExistencia],
+    queryFn: () => fetchInventarioTkc({
+      almacen,
+      page,
+      limit: tkcLimit,
+      search: debouncedSearch.trim(),
+      sortBy: tkcSort.key,
+      sortDir: tkcSort.dir,
+      existencia: tkcExistencia,
+    }),
+    enabled: source === 'tkc' && Boolean(almacen),
+    placeholderData: (prev) => prev,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    retry: false,
   });
+
+  const tkcRows       = tkcData?.rows ?? [];
+  const tkcPagination = tkcData?.pagination;
+
+  // Columnas visibles en el orden elegido por el usuario (ColPicker).
+  const tkcVisibleCols = useMemo(
+    () => tkcColOrder.filter(k => tkcCols[k]),
+    [tkcColOrder, tkcCols]
+  );
 
   // ── Last sync time (partial key so SyncContext invalidation propagates) ──
   const { data: lastSyncAt } = useQuery({
@@ -425,45 +470,12 @@ export default function Productos({ initialSource = 'elineas' }) {
     }
   }, [filtered, sort]);
 
-  // ── TKC computed ───────────────────────────────────────────
-  const enriched = useMemo(() => tkcProductos.map(p => {
-    const ef = Number(p.exist_fisica ?? 0), a = Number(p.almacen ?? 0), t = Number(p.tienda ?? 0);
-    return {
-      ...p, ef, a, t,
-      estadoTienda:  calcEstadoTienda(p.id_tienda, ef, a, t),
-      estadoAnuncio: calcEstadoAnuncio(p.id_tienda, ef, a, t),
-    };
-  }), [tkcProductos]);
-
-  const tkcVisible = useMemo(() => {
-    let rows = enriched;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      rows = rows.filter(p =>
-        p.nombre?.toLowerCase().includes(q) ||
-        p.codigo_producto?.toLowerCase().includes(q) ||
-        p.suministrador?.toLowerCase().includes(q)
-      );
-    }
-    if (filterEstado !== 'all') rows = rows.filter(p => p.estadoTienda.estado === filterEstado);
-    if (sortByTKC === 'prioridad') return [...rows].sort((a, b) => a.estadoTienda.prio - b.estadoTienda.prio);
-    if (sortByTKC === 'nombre')    return [...rows].sort((a, b) => (a.nombre ?? '').localeCompare(b.nombre ?? ''));
-    if (sortByTKC === 'ef_desc')   return [...rows].sort((a, b) => b.ef - a.ef);
-    return rows;
-  }, [enriched, search, filterEstado, sortByTKC]);
-
-  const tkcSummary = useMemo(() => {
-    const c = {};
-    enriched.forEach(p => { const e = p.estadoTienda.estado; c[e] = (c[e] ?? 0) + 1; });
-    return c;
-  }, [enriched]);
-
-  // ── Paginated (shared) ─────────────────────────────────────
+  // ── Paginated (solo ELíneas) ───────────────────────────────
+  // La vista TKC ya recibe la página hecha del servidor (tkcRows).
   const paginated = useMemo(() => {
-    const data = source === 'elineas' ? sortedEL : tkcVisible;
     const from = (page - 1) * PAGE_SIZE;
-    return data.slice(from, from + PAGE_SIZE);
-  }, [source, sortedEL, tkcVisible, page]);
+    return sortedEL.slice(from, from + PAGE_SIZE);
+  }, [sortedEL, page]);
 
   // ── Mutations ──────────────────────────────────────────────
   const updateMut = useMutation({
@@ -501,7 +513,6 @@ export default function Productos({ initialSource = 'elineas' }) {
     onSuccess: (result) => {
       setSyncFailures(result.failures ?? []);
       setShowFailures((result.failures ?? []).length > 0);
-      queryClient.invalidateQueries({ queryKey: ['bd_tkc_ext', almacen] });
       queryClient.invalidateQueries({ queryKey: ['productos', almacen] });
       queryClient.invalidateQueries({ queryKey: ['sync_failures_history', almacen] });
     },
@@ -517,21 +528,19 @@ export default function Productos({ initialSource = 'elineas' }) {
   const SET_FILTER = (key) => (e) => { setAdvFilters(f => ({ ...f, [key]: e.target.value })); resetPage(); };
 
   const hayFiltrosEL  = search || Object.values(advFilters).some(v => v && v !== 'all');
-  const hayFiltrosTKC = search || filterEstado !== 'all';
+  const hayFiltrosTKC = search || tkcSort.key !== 'nombre' || tkcSort.dir !== 'asc'
+    || tkcExistencia !== TKC_EXISTENCIA_DEFAULT;
 
   const resetFiltros = () => {
     setSearch(''); setAdvFilters(DEFAULT_FILTERS); setSort({ key: 'nombre', dir: 'asc' });
-    setFilterEstado('all'); setSortByTKC('prioridad'); resetPage();
+    setTkcSort({ key: 'nombre', dir: 'asc' }); setTkcExistencia(TKC_EXISTENCIA_DEFAULT); resetPage();
   };
 
   const formatSync = (iso) => iso
     ? new Date(iso).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' })
     : null;
 
-  const canSync  = isExternaConfigured && ['administrador', 'inv', 'superadmin'].includes(role);
-  const countGap = isExternaConfigured && almacen && !loadingEL && !loadingTKC
-    ? tkcProductos.length - productos.length
-    : null;
+  const canSync = isExternaConfigured && ['administrador', 'inv', 'superadmin'].includes(role);
 
   const selected = productos.find(p => p.id === selectedId);
 
@@ -546,18 +555,17 @@ export default function Productos({ initialSource = 'elineas' }) {
           <div className="flex flex-wrap items-center gap-2 mt-0.5">
             {almacen ? (
               <p className="text-sm text-muted-foreground">
-                <span className="text-foreground font-medium">{productos.length}</span> ELíneas
-                {isExternaConfigured && (
-                  <> · <span className="text-foreground font-medium">{tkcProductos.length}</span> TKC</>
+                {source === 'tkc' ? (
+                  <>
+                    <span className="text-foreground font-medium">{tkcPagination?.total ?? '—'}</span> en TKC
+                    {' · '}{warehouseName(almacen)}
+                  </>
+                ) : (
+                  <><span className="text-foreground font-medium">{productos.length}</span> ELíneas</>
                 )}
               </p>
             ) : (
               <p className="text-sm text-muted-foreground">Gestión del catálogo TKC / ELíneas</p>
-            )}
-            {countGap !== null && countGap > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#BA7517]/10 text-[#BA7517] border border-[#BA7517]/20 font-medium">
-                +{countGap} solo en TKC
-              </span>
             )}
           </div>
         </div>
@@ -586,7 +594,7 @@ export default function Productos({ initialSource = 'elineas' }) {
             maxWidth="max-w-[180px]"
             options={[
               { value: '', label: '— Almacén —' },
-              ...almacenes.map(a => ({ value: a, label: `Almacén ${a}` })),
+              ...almacenes.map(a => ({ value: a, label: warehouseName(a) })),
             ]}
           />
 
@@ -622,12 +630,12 @@ export default function Productos({ initialSource = 'elineas' }) {
           </span>
           <button
             onClick={() => {
-              queryClient.invalidateQueries({ queryKey: ['bd_tkc_ext', almacen] })
-              queryClient.invalidateQueries({ queryKey: ['productos',   almacen] })
+              queryClient.invalidateQueries({ queryKey: ['tkc_inv', almacen] })
+              queryClient.invalidateQueries({ queryKey: ['productos', almacen] })
             }}
-            disabled={loadingTKC || loadingEL}
+            disabled={fetchingTKC}
             className="flex items-center gap-1 hover:text-foreground transition-colors disabled:opacity-50">
-            <RefreshCw className={`w-3 h-3 ${(loadingTKC || loadingEL) ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3 h-3 ${fetchingTKC ? 'animate-spin' : ''}`} />
             Actualizar vista
           </button>
         </div>
@@ -903,28 +911,15 @@ export default function Productos({ initialSource = 'elineas' }) {
                 </div>
               )}
 
-              {/* Chips de estado tienda */}
-              {enriched.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {TKC_FILTER_OPTS.map(f =>
-                    tkcSummary[f.value] ? (
-                      <button key={f.value}
-                        onClick={() => { setFilterEstado(filterEstado === f.value ? 'all' : f.value); resetPage(); }}
-                        className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${ET_COLOR[f.value] ?? 'text-muted-foreground bg-muted border-border'} ${filterEstado === f.value ? 'ring-1 ring-current' : ''}`}>
-                        {f.label} <span className="opacity-70">({tkcSummary[f.value]})</span>
-                      </button>
-                    ) : null
-                  )}
-                </div>
-              )}
-
-              {/* Búsqueda + orden */}
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <div className="relative flex-1">
+              {/* Búsqueda + columnas + tamaño de página.
+                  Todo va al servidor: la búsqueda es `search[value]` del DataTables
+                  de TKC, no un filtro en memoria. Por eso lleva debounce. */}
+              <div className="rounded-xl border border-border bg-card p-3 space-y-2.5">
+                <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input value={search} onChange={e => { setSearch(e.target.value); resetPage(); }}
-                    placeholder="Buscar por nombre, código o suministrador…"
-                    className="w-full pl-9 pr-9 py-2 text-sm rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[#4ade80]/50" />
+                    placeholder="Buscar por nombre, código, proveedor…"
+                    className="w-full pl-9 pr-9 py-2 text-sm rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground hover:border-[#4ade80]/30 transition-colors focus:outline-none focus:ring-1 focus:ring-[#4ade80]/50" />
                   {search && (
                     <button onClick={() => { setSearch(''); resetPage(); }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -932,96 +927,142 @@ export default function Productos({ initialSource = 'elineas' }) {
                     </button>
                   )}
                 </div>
-                <select value={sortByTKC} onChange={e => setSortByTKC(e.target.value)}
-                  className="px-3 py-2 text-sm rounded-lg bg-card border border-border text-foreground focus:outline-none focus:ring-1 focus:ring-[#4ade80]/50">
-                  <option value="prioridad">Por prioridad</option>
-                  <option value="nombre">Por nombre</option>
-                  <option value="ef_desc">Mayor EF primero</option>
-                </select>
-                {hayFiltrosTKC && (
-                  <button onClick={resetFiltros}
-                    className="flex items-center gap-1 text-xs text-[#e24b4a] hover:text-[#e24b4a]/80 px-2">
-                    <X className="w-3 h-3" /> Limpiar
-                  </button>
-                )}
+
+                <div className="flex flex-wrap gap-2 items-center">
+                  <div className="relative">
+                    <select value={tkcLimit}
+                      onChange={e => { setTkcLimit(Number(e.target.value)); resetPage(); }}
+                      className={FILTER_CLS}>
+                      {TKC_PAGE_SIZES.map(n => <option key={n} value={n}>{n} / página</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                  </div>
+
+                  <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
+                    {TKC_EXISTENCIA_OPTIONS.map(option => (
+                      <button key={option.value} type="button"
+                        onClick={() => { setTkcExistencia(option.value); resetPage(); }}
+                        className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
+                          tkcExistencia === option.value
+                            ? 'bg-[#4ade80]/10 text-[#4ade80]'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}>
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <ColPicker cols={TKC_COLUMN_DEFS} visible={tkcCols}
+                    onChange={(next) => { setTkcCols(next); saveColsWithOrder(TKC_COLS_KEY, next, tkcColOrder); }}
+                    storageKey={TKC_COLS_KEY} order={tkcColOrder}
+                    onOrderChange={(next) => { setTkcColOrder(next); saveColsWithOrder(TKC_COLS_KEY, tkcCols, next); }} />
+
+                  <div className="flex items-center gap-2 ml-auto">
+                    {fetchingTKC && <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />}
+                    {tkcPagination && (
+                      <span className="text-xs text-muted-foreground">
+                        {tkcPagination.total} resultados · pág. {tkcPagination.page}/{tkcPagination.totalPages}
+                      </span>
+                    )}
+                    {hayFiltrosTKC && (
+                      <button onClick={resetFiltros}
+                        className="flex items-center gap-1 text-xs text-[#e24b4a] hover:text-[#e24b4a]/80 transition-colors">
+                        <X className="w-3 h-3" /> Limpiar
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* Tabla TKC */}
-              {loadingTKC ? (
-                <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
-                  <RefreshCw className="w-4 h-4 animate-spin mr-2" /> Cargando desde BD externa…
+              {/* Tabla TKC — mismas columnas y mismos datos que elineas-vd.
+                  Las filas llegan ya paginadas y ordenadas por TKC; aquí solo se
+                  eligen y ordenan columnas (ColPicker) y se formatean celdas. */}
+              {tkcError ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-2 text-center">
+                  <AlertTriangle className="w-8 h-8 text-[#e24b4a] opacity-70" />
+                  <p className="text-sm text-[#e24b4a]">No se pudo cargar el inventario de TKC</p>
+                  <p className="text-xs text-muted-foreground max-w-md">{tkcError.message}</p>
                 </div>
-              ) : enriched.length === 0 ? (
+              ) : loadingTKC ? (
+                <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+                  <RefreshCw className="w-4 h-4 animate-spin mr-2" /> Consultando TKC…
+                </div>
+              ) : tkcRows.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
                   <Database className="w-8 h-8 opacity-40" />
-                  <p className="text-sm">Sin datos para el almacén {almacen}</p>
-                </div>
-              ) : tkcVisible.length === 0 ? (
-                <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-                  Sin resultados para los filtros aplicados
+                  <p className="text-sm">
+                    {search.trim()
+                      ? 'Ningún producto coincide con la búsqueda'
+                      : `Sin datos en TKC para ${warehouseName(almacen)}`}
+                  </p>
                 </div>
               ) : (
-                <div className="rounded-lg border border-border overflow-hidden">
+                <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-border bg-card text-xs font-medium text-muted-foreground">
-                          <th className="w-14 px-3 py-2.5 text-left">Img</th>
-                          <th className="px-3 py-2.5 text-left min-w-[200px]">Nombre</th>
-                          <th className="px-3 py-2.5 text-left hidden sm:table-cell">Código</th>
-                          <th className="px-3 py-2.5 text-left hidden lg:table-cell">Suministrador</th>
-                          <th className="px-3 py-2.5 text-center w-12">EF</th>
-                          <th className="px-3 py-2.5 text-center w-12">A</th>
-                          <th className="px-3 py-2.5 text-center w-12">T</th>
-                          <th className="px-3 py-2.5 text-right hidden sm:table-cell">Precio</th>
-                          <th className="px-3 py-2.5 text-center hidden lg:table-cell">Est. Anuncio</th>
-                          <th className="px-3 py-2.5 text-center">Est. Tienda</th>
+                        <tr className="border-b border-border bg-card">
+                          {tkcVisibleCols.map(key => {
+                            const def = TKC_COLUMN_BY_KEY[key];
+                            if (!def) return null;
+                            // La imagen no la ordena TKC: no es una columna del DataTables.
+                            if (TKC_SORT_COLUMNS[key] === undefined) {
+                              return (
+                                <th key={key} className="w-14 px-3 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">
+                                  {def.label}
+                                </th>
+                              );
+                            }
+                            return (
+                              <SortTh key={key} colKey={key} label={def.label} sort={tkcSort}
+                                onSort={(k) => { onTkcSort(k); resetPage(); }}
+                                align={def.numeric ? 'right' : 'left'}
+                                className={key === 'nombre' ? 'min-w-[220px]' : ''} />
+                            );
+                          })}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {paginated.map(p => (
-                          <tr key={p.id_tienda ?? p.codigo_producto} className="hover:bg-card/60 transition-colors">
-                            <td className="px-3 py-2">
-                              <ProductImg fotos={p.fotos} nombre={p.nombre} />
-                            </td>
-                            <td className="px-3 py-2 cursor-pointer"
-                              onMouseEnter={e => setHoveredProduct({ p, rect: e.currentTarget.getBoundingClientRect() })}
-                              onMouseLeave={() => setHoveredProduct(null)}>
-                              <p className="font-medium leading-snug line-clamp-2 max-w-xs hover:text-[#4ade80] transition-colors">{p.nombre}</p>
-                              {p.id_tienda && <span className="text-[10px] text-muted-foreground font-mono">#{p.id_tienda}</span>}
-                            </td>
-                            <td className="px-3 py-2 hidden sm:table-cell">
-                              <span className="font-mono text-xs text-muted-foreground">{p.codigo_producto || '—'}</span>
-                            </td>
-                            <td className="px-3 py-2 hidden lg:table-cell">
-                              <span className="text-xs text-muted-foreground">{p.suministrador?.replace('SEL ', '') || '—'}</span>
-                            </td>
-                            <td className="px-3 py-2 text-center">
-                              <span className={`font-mono tabular-nums font-semibold ${p.ef === 0 ? 'text-[#e24b4a]' : ''}`}>{p.ef}</span>
-                            </td>
-                            <td className="px-3 py-2 text-center font-mono tabular-nums text-muted-foreground">{p.a}</td>
-                            <td className="px-3 py-2 text-center font-mono tabular-nums text-muted-foreground">{p.t}</td>
-                            <td className="px-3 py-2 text-right font-mono text-sm hidden sm:table-cell">
-                              {p.precio_costo > 0 ? `$${Number(p.precio_costo).toFixed(2)}` : '—'}
-                            </td>
-                            <td className="px-3 py-2 text-center hidden lg:table-cell">
-                              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium ${EA_COLOR[p.estadoAnuncio] ?? 'text-muted-foreground'}`}>
-                                {p.estadoAnuncio}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2 text-center">
-                              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium border ${ET_COLOR[p.estadoTienda.estado] ?? 'text-muted-foreground border-transparent'}`}>
-                                {p.estadoTienda.estado}
-                              </span>
-                            </td>
+                        {tkcRows.map(p => (
+                          <tr key={p.rowId} className="hover:bg-card/60 transition-colors">
+                            {tkcVisibleCols.map(key => {
+                              const def = TKC_COLUMN_BY_KEY[key];
+                              if (!def) return null;
+
+                              if (key === IMAGE_COL) {
+                                return (
+                                  <td key={key} className="px-3 py-2">
+                                    <ProductImg fotos={p.imagenes} nombre={p.nombre} />
+                                  </td>
+                                );
+                              }
+                              if (key === 'nombre') {
+                                return (
+                                  <td key={key} className="px-3 py-2 min-w-[220px]">
+                                    <p className="font-medium leading-snug line-clamp-2">{p.nombre || '—'}</p>
+                                  </td>
+                                );
+                              }
+
+                              const mono = def.numeric || key === 'codigo' || key === 'codigoPyme'
+                                || key === 'idOnline' || key === 'gtin';
+                              return (
+                                <td key={key}
+                                  className={`px-3 py-2 whitespace-nowrap ${mono ? 'font-mono' : ''} ${
+                                    def.numeric ? 'text-right tabular-nums' : 'text-muted-foreground'
+                                  }`}>
+                                  {formatTkcCell(p[key], def)}
+                                </td>
+                              );
+                            })}
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                  {hoveredProduct && <ProductHoverCard producto={hoveredProduct.p} rect={hoveredProduct.rect} />}
-                  <Pagination page={page} total={tkcVisible.length} pageSize={PAGE_SIZE} onPage={setPage} />
-                </div>
+                  {/* total viene de recordsFiltered de TKC, no de rows.length */}
+                  <Pagination page={page} total={tkcPagination?.total ?? 0} pageSize={tkcLimit} onPage={setPage} />
+                </Card>
               )}
             </>
           )}
