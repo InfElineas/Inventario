@@ -12,6 +12,7 @@ import { WAREHOUSES } from '@/services/tkc/warehouses'
 
 const ENDPOINT = '/api/tkc/inventario'
 const ENDPOINT_EXISTENCIA = '/api/tkc/existencia'
+const ENDPOINT_EXISTENCIAS = '/api/tkc/existencias'
 
 /** Almacenes disponibles (catálogo estático de TKC), como claves de la app. */
 export const TKC_ALMACENES = WAREHOUSES.map((w) => w.key)
@@ -67,6 +68,34 @@ export async function fetchInventarioTkc({
 
   if (!res.ok) {
     throw new Error(data?.error ?? `Error ${res.status} al consultar TKC`)
+  }
+  return data
+}
+
+/**
+ * Existencias desglosadas de varios productos de un almacén, para las columnas
+ * EF / A / T de la tabla.
+ *
+ * El servidor mantiene un mapa del almacén completo (ver
+ * `services/tkc/existencias.js`), así que esta llamada casi nunca golpea TKC: la
+ * primera de cada almacén espera a la primera página del submayor y las demás
+ * salen del caché. Mientras el mapa se completa en segundo plano,
+ * `progreso.listo` es false y faltan ids en la respuesta — el llamador debe
+ * volver a preguntar.
+ *
+ * @param {{ almacen: string, ids: string[], refrescar?: boolean }} params
+ *        `ids` son los `idOnline` de las filas visibles.
+ * @returns {Promise<{ existencias: Record<string, {fisica: number, enAlmacen: number, enTienda: number}>,
+ *   progreso: { cargadas: number, total: number, listo: boolean, error: string|null } }>}
+ */
+export async function fetchExistenciasTkc({ almacen, ids, refrescar = false }) {
+  const vacio = { existencias: {}, progreso: { cargadas: 0, total: 0, listo: true, error: null } }
+  if (!almacen || !ids?.length) return vacio
+
+  const { res, data } = await postTkc(ENDPOINT_EXISTENCIAS, { almacen, ids, refrescar })
+
+  if (!res.ok) {
+    throw new Error(data?.error ?? `Error ${res.status} al consultar el submayor de TKC`)
   }
   return data
 }

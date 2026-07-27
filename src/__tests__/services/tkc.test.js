@@ -9,7 +9,9 @@ import { describe, it, expect } from 'vitest'
 import { extractCsrfToken, parseCookies, mergeCookies, getSetCookies } from '@/services/tkc/auth'
 import { buildBody, COLS } from '@/services/tkc/body'
 import { normalizeRow } from '@/services/tkc/normalize'
-import { sortColumnIndex, TKC_COLUMN_DEFS, TKC_SORT_COLUMNS, IMAGE_COL } from '@/services/tkc/columns'
+import {
+  sortColumnIndex, TKC_COLUMN_DEFS, TKC_SORT_COLUMNS, IMAGE_COL, STOCK_COLS, isStockCol,
+} from '@/services/tkc/columns'
 import { keyToTkcValue, warehouseName } from '@/services/tkc/warehouses'
 import { buildSubmayorBody, pickRow, SUBMAYOR_COLS } from '@/services/tkc/submayor'
 
@@ -183,11 +185,26 @@ describe('columns', () => {
     expect(sortColumnIndex(undefined)).toBe(TKC_SORT_COLUMNS.nombre)
   })
 
-  it('todas las columnas de datos son ordenables; la imagen no', () => {
+  it('las columnas del listado son ordenables; imagen y EF/A/T no', () => {
+    // EF/A/T vienen del submayor, no del DataTables del listado: TKC no sabe
+    // ordenar por ellas.
     for (const def of TKC_COLUMN_DEFS) {
-      if (def.key === IMAGE_COL) expect(TKC_SORT_COLUMNS[def.key]).toBeUndefined()
-      else expect(TKC_SORT_COLUMNS[def.key]).toBeTypeOf('number')
+      if (def.key === IMAGE_COL || isStockCol(def.key)) {
+        expect(TKC_SORT_COLUMNS[def.key]).toBeUndefined()
+      } else {
+        expect(TKC_SORT_COLUMNS[def.key]).toBeTypeOf('number')
+      }
     }
+  })
+
+  it('las tres columnas de existencia están definidas y son numéricas', () => {
+    for (const key of STOCK_COLS) {
+      const def = TKC_COLUMN_DEFS.find(d => d.key === key)
+      expect(def, `falta la columna ${key}`).toBeDefined()
+      expect(def.numeric).toBe(true)
+      expect(isStockCol(key)).toBe(true)
+    }
+    expect(isStockCol('cantidad')).toBe(false)
   })
 
   it('el índice de orden apunta a la columna correcta de COLS', () => {
