@@ -52,7 +52,10 @@ const DEFAULT_FILTERS = {
 };
 
 // ── TKC (lectura directa del DataTables de TKC) ───────────────
-const TKC_COLS_KEY   = 'tkc_cols';
+// v2: se quitó "Cantidad" (era el mismo valor que EF) y el desglose EF/A/T pasó
+// justo detrás del nombre. Sin cambiar la clave, quien ya abrió la tabla
+// conservaría el orden viejo con las tres columnas pegadas al final.
+const TKC_COLS_KEY   = 'tkc_cols_v2';
 const TKC_PAGE_SIZES = [50, 100, 250];
 const TKC_EXISTENCIA_DEFAULT = 'existencia';
 const TKC_EXISTENCIA_LABELS = { todos: 'Todos', existencia: 'Con existencia', 'no-existencia': 'Sin existencia' };
