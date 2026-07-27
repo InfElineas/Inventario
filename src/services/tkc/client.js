@@ -1,10 +1,14 @@
 /**
  * Cliente TKC: mantiene una cookie de sesión cacheada a nivel de módulo (dura
- * lo que dure el proceso del servidor) y consulta el endpoint DataTables de
- * inventario. Si la sesión expira (respuesta no-JSON / 401 / 403), vuelve a
- * loguearse una vez y reintenta.
+ * lo que dure el proceso del servidor) y consulta los endpoints DataTables de
+ * TKC. Si la sesión expira (respuesta no-JSON / 401 / 403), vuelve a loguearse
+ * una vez y reintenta.
  *
  * Portado de `elineas-vd` (`src/modules/inventory/tkc/client.ts`).
+ *
+ * `tkcPost` es la parte genérica (cookie + reintento + parseo): la comparten el
+ * endpoint de inventario de aquí y el del submayor (`submayor.js`), que
+ * necesitan la MISMA sesión — de lo contrario cada uno haría su propio login.
  */
 
 import { login } from './auth.js'
@@ -51,12 +55,12 @@ function looksLikeExpiredSession(response) {
   return !(response.headers.get('content-type') ?? '').includes('json')
 }
 
-function postPage(config, cookie, body) {
-  return fetch(`${config.tkcBase}${FETCH_PATH}`, {
+function postOnce(config, cookie, { path, referer, body }) {
+  return fetch(`${config.tkcBase}${path}`, {
     method: 'POST',
     headers: {
       Cookie: cookie,
-      Referer: `${config.tkcBase}/provider/products`,
+      Referer: `${config.tkcBase}${referer}`,
       ...REQUEST_HEADERS,
     },
     body,
@@ -65,25 +69,25 @@ function postPage(config, cookie, body) {
 }
 
 /**
- * Pide una página del DataTables de inventario.
+ * POST autenticado a un DataTables de TKC, con reintento único si la sesión
+ * caducó.
  *
  * @param {{ tkcBase: string, tkcUser: string, tkcPass: string }} config
- * @param {import('./body.js').BodyParams} params
- * @returns {Promise<{ success: boolean, draw: number, recordsTotal: number, recordsFiltered: number, data: object[] }>}
+ * @param {{ path: string, referer: string, body: string, label?: string }} request
+ *        `referer` es relativo a `tkcBase`; TKC lo comprueba en algunos endpoints.
+ * @returns {Promise<object>} La respuesta JSON tal cual.
  */
-export async function fetchInventoryPage(config, params) {
-  const body = buildBody(params)
-
+export async function tkcPost(config, { path, referer, body, label = 'TKC' }) {
   let cookie = await ensureCookie(config, false)
-  let response = await postPage(config, cookie, body)
+  let response = await postOnce(config, cookie, { path, referer, body })
 
   if (looksLikeExpiredSession(response)) {
     cookie = await ensureCookie(config, true)
-    response = await postPage(config, cookie, body)
+    response = await postOnce(config, cookie, { path, referer, body })
   }
 
   if (!response.ok && response.status !== 200) {
-    throw new Error(`TKC inventario HTTP ${response.status}`)
+    throw new Error(`TKC ${label} HTTP ${response.status}`)
   }
 
   try {
@@ -93,4 +97,20 @@ export async function fetchInventoryPage(config, params) {
       `Respuesta de TKC no es JSON válido: ${error instanceof Error ? error.message : String(error)}`,
     )
   }
+}
+
+/**
+ * Pide una página del DataTables de inventario.
+ *
+ * @param {{ tkcBase: string, tkcUser: string, tkcPass: string }} config
+ * @param {import('./body.js').BodyParams} params
+ * @returns {Promise<{ success: boolean, draw: number, recordsTotal: number, recordsFiltered: number, data: object[] }>}
+ */
+export function fetchInventoryPage(config, params) {
+  return tkcPost(config, {
+    path: FETCH_PATH,
+    referer: '/provider/products',
+    body: buildBody(params),
+    label: 'inventario',
+  })
 }

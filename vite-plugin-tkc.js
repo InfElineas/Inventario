@@ -1,5 +1,10 @@
 /**
- * Plugin de Vite que expone el inventario de TKC en `POST /api/tkc/inventario`.
+ * Plugin de Vite que expone el inventario de TKC:
+ *
+ *   POST /api/tkc/inventario  — una página del listado.
+ *   POST /api/tkc/existencia  — el desglose EF / almacén / tienda de UN producto,
+ *                               que solo publica el submayor. Réplica de
+ *                               `GET /api/inventory/{idTienda}?almacen=` de ap-api.
  *
  * Existe porque el flujo de TKC **no puede correr en el navegador**: hace login
  * por formulario manejando CSRF y cabeceras Cookie/Set-Cookie (prohibidas para
@@ -15,9 +20,13 @@
 
 import { loadEnv } from 'vite'
 import { listInventory } from './src/services/tkc/normalize.js'
+import { fetchExistencia } from './src/services/tkc/submayor.js'
 import { keyToTkcValue } from './src/services/tkc/warehouses.js'
 
-const ENDPOINT = '/api/tkc/inventario'
+const ENDPOINTS = {
+  inventario: '/api/tkc/inventario',
+  existencia: '/api/tkc/existencia',
+}
 const MAX_BODY = 64 * 1024
 
 /** TTL del caché de tokens validados: evita un viaje a Supabase por request. */
@@ -88,7 +97,9 @@ export function tkcApiPlugin() {
   let authConfigured = false
 
   const middleware = async (req, res, next) => {
-    if (!req.url || req.url.split('?')[0] !== ENDPOINT) return next()
+    const path = req.url?.split('?')[0]
+    const route = Object.keys(ENDPOINTS).find((k) => ENDPOINTS[k] === path)
+    if (!route) return next()
     if (req.method !== 'POST') return json(res, 405, { error: 'Método no permitido' })
 
     if (!tkc?.tkcBase || !tkc.tkcUser || !tkc.tkcPass) {
@@ -115,6 +126,22 @@ export function tkcApiPlugin() {
         return json(res, 400, {
           error: `Almacén desconocido: "${body.almacen ?? ''}". No está en el catálogo de TKC.`,
         })
+      }
+
+      if (route === 'existencia') {
+        const idTienda = String(body.idTienda ?? '').trim()
+        if (!idTienda) {
+          return json(res, 400, { error: 'Falta idTienda (el campo id_online del listado).' })
+        }
+
+        const producto = await fetchExistencia(tkc, { idTienda, almacen: tkcValue })
+        if (!producto) {
+          // 404 y no 502: el submayor respondió bien, el producto no está ahí.
+          return json(res, 404, {
+            error: `El submayor no tiene el producto ${idTienda} en este almacén.`,
+          })
+        }
+        return json(res, 200, producto)
       }
 
       const result = await listInventory(tkc, {
