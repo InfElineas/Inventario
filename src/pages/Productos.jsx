@@ -4,8 +4,8 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { isExternaConfigured, retryFailed } from '@/services/syncService';
-import { fetchInventarioTkc, fetchExistenciaTkc, TKC_ALMACENES } from '@/services/tkcService';
-import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL } from '@/services/tkc/columns';
+import { fetchInventarioTkc, fetchExistenciaTkc, fetchExistenciasTkc, TKC_ALMACENES } from '@/services/tkcService';
+import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL, isStockCol } from '@/services/tkc/columns';
 import { EXISTENCIA_FILTERS } from '@/services/tkc/body';
 import { warehouseName } from '@/services/tkc/warehouses';
 import { getLastSync } from '@/lib/useAutoSync';
@@ -372,10 +372,38 @@ export default function Productos({ initialSource = 'tkc' }) {
     [tkcColOrder, tkcCols]
   );
 
-  // ── Existencia desglosada (EF / A / T) de la fila bajo el ratón ──
+  // ── Existencias (EF / A / T) de las filas visibles ─────────────
   // El listado solo trae el total (`cantidad`); el desglose lo publica el
-  // submayor producto a producto, así que se pide solo lo que se mira. La
-  // caché por idTienda hace que volver a una fila ya consultada sea instantáneo.
+  // submayor. El servidor cachea un mapa del almacén completo, así que se piden
+  // solo los ids en pantalla y las demás páginas ya salen de ese mapa. Mientras
+  // se completa en segundo plano, `progreso.listo` es false y se vuelve a
+  // preguntar cada 2 s en vez de dejar las columnas vacías.
+  const tkcIds = useMemo(
+    () => tkcRows.map(r => r.idOnline).filter(Boolean),
+    [tkcRows]
+  );
+
+  const { data: existenciasData, error: existenciasError } = useQuery({
+    queryKey: ['tkc_existencias', almacen, tkcIds],
+    queryFn: () => fetchExistenciasTkc({ almacen, ids: tkcIds }),
+    enabled: source === 'tkc' && Boolean(almacen) && tkcIds.length > 0,
+    placeholderData: (prev) => prev,
+    refetchInterval: (query) => (query.state.data?.progreso?.listo ? false : 2000),
+    staleTime: 60 * 1000,
+    retry: false,
+  });
+
+  const existencias = existenciasData?.existencias ?? {};
+  const existenciasProgreso = existenciasData?.progreso;
+  // Sin datos todavía para un id: "…" si el mapa sigue construyéndose, "—" si ya
+  // terminó (ese producto no está en el submayor de este almacén).
+  const stockPendiente = Boolean(tkcIds.length) && !existenciasProgreso?.listo && !existenciasError;
+
+  // ── Existencia de la fila bajo el ratón ────────────────────────
+  // Normalmente ya está en el mapa de arriba y el popover es instantáneo. La
+  // consulta individual (~1 s) solo entra si el mapa aún no cubre esa fila.
+  const hoveredEnMapa = hoveredTkc?.idTienda ? existencias[hoveredTkc.idTienda] : null;
+
   const {
     data: existenciaTkc,
     isLoading: loadingExistencia,
@@ -383,11 +411,24 @@ export default function Productos({ initialSource = 'tkc' }) {
   } = useQuery({
     queryKey: ['tkc_existencia', almacen, hoveredTkc?.idTienda],
     queryFn: () => fetchExistenciaTkc({ almacen, idTienda: hoveredTkc.idTienda }),
-    enabled: source === 'tkc' && Boolean(almacen) && Boolean(hoveredTkc?.idTienda),
+    enabled: source === 'tkc' && Boolean(almacen) && Boolean(hoveredTkc?.idTienda) && !hoveredEnMapa,
     staleTime: 5 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
     retry: false,
   });
+
+  /**
+   * "Actualizar vista": además de releer el listado, tira el mapa de existencias
+   * cacheado en el servidor (`refrescar`) para que las columnas EF/A/T no se
+   * queden en la foto de hace 10 minutos.
+   */
+  const refrescarVistaTkc = () => {
+    queryClient.invalidateQueries({ queryKey: ['tkc_inv', almacen] });
+    queryClient.invalidateQueries({ queryKey: ['productos', almacen] });
+    fetchExistenciasTkc({ almacen, ids: tkcIds, refrescar: true })
+      .catch(() => {})   // el error ya lo reporta la query de la tabla
+      .finally(() => queryClient.invalidateQueries({ queryKey: ['tkc_existencias', almacen] }));
+  };
 
   /** Abre el popover tras el debounce; el rect se captura ya (luego el <tr> puede irse). */
   const onTkcRowEnter = (row, el) => {
@@ -666,10 +707,7 @@ export default function Productos({ initialSource = 'tkc' }) {
             }
           </span>
           <button
-            onClick={() => {
-              queryClient.invalidateQueries({ queryKey: ['tkc_inv', almacen] })
-              queryClient.invalidateQueries({ queryKey: ['productos', almacen] })
-            }}
+            onClick={refrescarVistaTkc}
             disabled={fetchingTKC}
             className="flex items-center gap-1 hover:text-foreground transition-colors disabled:opacity-50">
             <RefreshCw className={`w-3 h-3 ${fetchingTKC ? 'animate-spin' : ''}`} />
@@ -995,6 +1033,19 @@ export default function Productos({ initialSource = 'tkc' }) {
                     onOrderChange={(next) => { setTkcColOrder(next); saveColsWithOrder(TKC_COLS_KEY, tkcCols, next); }} />
 
                   <div className="flex items-center gap-2 ml-auto">
+                    {/* El mapa del submayor se completa en segundo plano: sin esto,
+                        las columnas EF/A/T en "…" parecerían rotas. */}
+                    {existenciasProgreso && !existenciasProgreso.listo && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground" title="Descargando el submayor del almacén">
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                        Existencias {existenciasProgreso.cargadas}/{existenciasProgreso.total || '?'}
+                      </span>
+                    )}
+                    {existenciasError && (
+                      <span className="text-xs text-[#e24b4a]" title={existenciasError.message}>
+                        Existencias no disponibles
+                      </span>
+                    )}
                     {fetchingTKC && <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />}
                     {tkcPagination && (
                       <span className="text-xs text-muted-foreground">
@@ -1042,10 +1093,15 @@ export default function Productos({ initialSource = 'tkc' }) {
                           {tkcVisibleCols.map(key => {
                             const def = TKC_COLUMN_BY_KEY[key];
                             if (!def) return null;
-                            // La imagen no la ordena TKC: no es una columna del DataTables.
+                            // Ni la imagen ni EF/A/T son columnas del DataTables de TKC,
+                            // así que no se pueden ordenar en el servidor.
                             if (TKC_SORT_COLUMNS[key] === undefined) {
                               return (
-                                <th key={key} className="w-14 px-3 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">
+                                <th key={key}
+                                  title={isStockCol(key) ? 'Del submayor de TKC — no ordenable' : undefined}
+                                  className={`px-3 py-2.5 text-xs font-medium text-muted-foreground whitespace-nowrap ${
+                                    def.numeric ? 'text-right' : 'w-14 text-left'
+                                  }`}>
                                   {def.label}
                                 </th>
                               );
@@ -1082,6 +1138,22 @@ export default function Productos({ initialSource = 'tkc' }) {
                                   </td>
                                 );
                               }
+                              // EF / A / T salen del mapa del submayor, no de la fila.
+                              if (isStockCol(key)) {
+                                const ex = existencias[p.idOnline];
+                                const value = ex && {
+                                  ef: ex.fisica, enAlmacen: ex.enAlmacen, enTienda: ex.enTienda,
+                                }[key];
+                                return (
+                                  <td key={key} className="px-3 py-2 text-right tabular-nums font-mono whitespace-nowrap">
+                                    {ex
+                                      ? <span className={key === 'ef' && value === 0 ? 'text-[#e24b4a]' : ''}>
+                                          {numberFmt.format(value)}
+                                        </span>
+                                      : <span className="text-muted-foreground/50">{stockPendiente ? '…' : '—'}</span>}
+                                  </td>
+                                );
+                              }
 
                               const mono = def.numeric || key === 'codigo' || key === 'codigoPyme'
                                 || key === 'idOnline' || key === 'gtin';
@@ -1108,7 +1180,7 @@ export default function Productos({ initialSource = 'tkc' }) {
                 <ExistenciaHoverCard
                   rect={hoveredTkc.rect}
                   nombre={hoveredTkc.nombre}
-                  data={existenciaTkc}
+                  data={hoveredEnMapa ? { existencia: hoveredEnMapa } : existenciaTkc}
                   isLoading={loadingExistencia}
                   error={existenciaError}
                 />

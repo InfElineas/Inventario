@@ -1,10 +1,12 @@
 /**
  * Plugin de Vite que expone el inventario de TKC:
  *
- *   POST /api/tkc/inventario  — una página del listado.
- *   POST /api/tkc/existencia  — el desglose EF / almacén / tienda de UN producto,
- *                               que solo publica el submayor. Réplica de
- *                               `GET /api/inventory/{idTienda}?almacen=` de ap-api.
+ *   POST /api/tkc/inventario   — una página del listado.
+ *   POST /api/tkc/existencia   — el desglose EF / almacén / tienda de UN producto,
+ *                                que solo publica el submayor. Réplica de
+ *                                `GET /api/inventory/{idTienda}?almacen=` de ap-api.
+ *   POST /api/tkc/existencias  — el mismo desglose para muchos ids de golpe,
+ *                                servido desde el mapa por almacén (existencias.js).
  *
  * Existe porque el flujo de TKC **no puede correr en el navegador**: hace login
  * por formulario manejando CSRF y cabeceras Cookie/Set-Cookie (prohibidas para
@@ -21,12 +23,16 @@
 import { loadEnv } from 'vite'
 import { listInventory } from './src/services/tkc/normalize.js'
 import { fetchExistencia } from './src/services/tkc/submayor.js'
+import { getExistencias } from './src/services/tkc/existencias.js'
 import { keyToTkcValue } from './src/services/tkc/warehouses.js'
 
 const ENDPOINTS = {
   inventario: '/api/tkc/inventario',
   existencia: '/api/tkc/existencia',
+  existencias: '/api/tkc/existencias',
 }
+/** Tope de ids por petición: una página de la tabla son 250 como mucho. */
+const MAX_IDS = 500
 const MAX_BODY = 64 * 1024
 
 /** TTL del caché de tokens validados: evita un viaje a Supabase por request. */
@@ -126,6 +132,16 @@ export function tkcApiPlugin() {
         return json(res, 400, {
           error: `Almacén desconocido: "${body.almacen ?? ''}". No está en el catálogo de TKC.`,
         })
+      }
+
+      if (route === 'existencias') {
+        const ids = Array.isArray(body.ids) ? body.ids.slice(0, MAX_IDS).map(String) : undefined
+        const result = await getExistencias(tkc, {
+          almacen: tkcValue,
+          ids,
+          refrescar: body.refrescar === true,
+        })
+        return json(res, 200, result)
       }
 
       if (route === 'existencia') {

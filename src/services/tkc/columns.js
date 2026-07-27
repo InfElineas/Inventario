@@ -48,6 +48,19 @@ export const TKC_SORT_KEYS = Object.keys(TKC_SORT_COLUMNS)
 export const IMAGE_COL = 'imagen'
 
 /**
+ * Columnas del desglose de existencia (submayor), en el orden EF / A / T.
+ *
+ * No salen del listado sino de `services/tkc/existencias.js`, y por eso NO son
+ * ordenables: TKC ordena por las columnas de su DataTables, y estas no lo son.
+ * Ordenar por ellas obligaría a traer el almacén entero antes de paginar.
+ */
+export const STOCK_COLS = ['ef', 'enAlmacen', 'enTienda']
+const STOCK_COL_SET = new Set(STOCK_COLS)
+
+/** ¿La columna se sirve del mapa del submayor y no de la fila del listado? */
+export const isStockCol = (key) => STOCK_COL_SET.has(key)
+
+/**
  * Columnas mostrables, en el orden por defecto de elineas-vd.
  *
  * - `defaultOn` / `required`: los consume `ColPicker`.
@@ -64,6 +77,9 @@ export const TKC_COLUMN_DEFS = [
   { key: 'marca',           label: 'Marca',         defaultOn: true,  required: false },
   { key: 'unidadMedida',    label: 'U/M',           defaultOn: true,  required: false },
   { key: 'cantidad',        label: 'Cantidad',      defaultOn: true,  required: false, numeric: true },
+  { key: 'ef',              label: 'EF',            defaultOn: true,  required: false, numeric: true },
+  { key: 'enAlmacen',       label: 'A (Almacén)',   defaultOn: true,  required: false, numeric: true },
+  { key: 'enTienda',        label: 'T (Tienda)',    defaultOn: true,  required: false, numeric: true },
   { key: 'precio',          label: 'Precio',        defaultOn: true,  required: false, numeric: true, currency: true },
   { key: 'fechaVencimiento',label: 'Vence',         defaultOn: true,  required: false },
   { key: 'categoriaAlmacen',label: 'Cat. almacén',  defaultOn: false, required: false },
