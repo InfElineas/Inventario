@@ -1,0 +1,34 @@
+# Lo que nunca debe entrar en el contexto de build.
+#
+# `.env` queda fuera a propósito: los secretos de TKC (TKC_USER/TKC_PASS) solo
+# se inyectan en RUNTIME vía `env_file`, nunca en una capa de la imagen. Las
+# variables VITE_* sí hacen falta al construir (Vite las incrusta en el bundle)
+# y llegan como build args desde docker-compose.
+
+.env
+.env.*
+!.env.example
+
+node_modules
+dist
+dist-ssr
+
+.git
+.gitignore
+.claude
+.codegraph
+.vscode
+.idea
+.vite
+
+Dockerfile
+Dockerfile.dev
+docker-compose*.yml
+.dockerignore
+
+*.log
+npm-debug.log*
+supabase/.temp
+
+README.md
+TODO.md

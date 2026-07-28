@@ -1,0 +1,42 @@
+# Producción: build de Vite servido por `server/index.js` en el puerto 3003.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# El `.env` del proyecto aporta las dos mitades:
+#   · build args  — VITE_* que Vite incrusta en el bundle.
+#   · env_file    — TKC_* y VITE_SUPABASE_* que el servidor lee en runtime
+#                   (verifica el token de Supabase y hace login en TKC).
+#
+# El puerto se publica en 3003 del host; el Caddy externo del servidor le hace
+# proxy a ese puerto.
+
+# Nombre de proyecto propio: sin él, dev y prod comparten el proyecto derivado
+# del directorio y el mismo servicio `app`, así que levantar uno recrearía —y
+# tumbaría— el otro.
+name: inventario-prod
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+        VITE_SUPABASE_EXTERNA_URL: ${VITE_SUPABASE_EXTERNA_URL}
+        VITE_SUPABASE_EXTERNA_ANON_KEY: ${VITE_SUPABASE_EXTERNA_ANON_KEY}
+        VITE_BASE44_APP_ID: ${VITE_BASE44_APP_ID:-}
+        VITE_BASE44_APP_BASE_URL: ${VITE_BASE44_APP_BASE_URL:-}
+        VITE_BASE44_FUNCTIONS_VERSION: ${VITE_BASE44_FUNCTIONS_VERSION:-}
+    image: inventario-prod
+    container_name: inventario-prod
+    restart: unless-stopped
+    env_file:
+      - .env
+    # PORT se fija aquí y no se toma del .env: la imagen expone 3003 y el
+    # mapeo de abajo apunta a 3003. Cambiar solo el .env descuadraría ambos.
+    environment:
+      PORT: 3003
+      NODE_ENV: production
+    ports:
+      - "3003:3003"
