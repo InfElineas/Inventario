@@ -1,9 +1,18 @@
+<<<<<<< HEAD
 # Fuera del contexto de build.
 #
 # `.env` no entra en la imagen: las variables VITE_* llegan como build args
 # (docker-compose interpola desde el `.env` del host) y quedan incrustadas en el
 # bundle, que es público de todos modos. Cualquier secreto futuro sin prefijo
 # VITE_ no debe acabar en una capa.
+=======
+# Lo que nunca debe entrar en el contexto de build.
+#
+# `.env` queda fuera a propósito: los secretos de TKC (TKC_USER/TKC_PASS) solo
+# se inyectan en RUNTIME vía `env_file`, nunca en una capa de la imagen. Las
+# variables VITE_* sí hacen falta al construir (Vite las incrusta en el bundle)
+# y llegan como build args desde docker-compose.
+>>>>>>> 3b1c6a9 (feat(docker): add Docker support for development and production environments)
 
 .env
 .env.*
@@ -22,9 +31,19 @@ dist-ssr
 .vite
 
 Dockerfile
+<<<<<<< HEAD
+=======
+Dockerfile.dev
+>>>>>>> 3b1c6a9 (feat(docker): add Docker support for development and production environments)
 docker-compose*.yml
 .dockerignore
 
 *.log
 npm-debug.log*
 supabase/.temp
+<<<<<<< HEAD
+=======
+
+README.md
+TODO.md
+>>>>>>> 3b1c6a9 (feat(docker): add Docker support for development and production environments)

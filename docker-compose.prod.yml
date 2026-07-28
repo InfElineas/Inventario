@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Producción: build de Vite servido por nginx en el puerto 3003.
 #
 #   docker compose -f docker-compose.prod.yml up -d --build
@@ -5,13 +6,34 @@
 # Los `${VITE_*}` los interpola docker compose desde el `.env` del directorio.
 # No hay `env_file` en runtime a propósito: nginx sirve archivos ya construidos,
 # los valores viajan dentro del bundle. Cambiar una VITE_* exige `--build`.
+=======
+# Producción: build de Vite servido por `server/index.js` en el puerto 3003.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# El `.env` del proyecto aporta las dos mitades:
+#   · build args  — VITE_* que Vite incrusta en el bundle.
+#   · env_file    — TKC_* y VITE_SUPABASE_* que el servidor lee en runtime
+#                   (verifica el token de Supabase y hace login en TKC).
+#
+# El puerto se publica en 3003 del host; el Caddy externo del servidor le hace
+# proxy a ese puerto.
+
+# Nombre de proyecto propio: sin él, dev y prod comparten el proyecto derivado
+# del directorio y el mismo servicio `app`, así que levantar uno recrearía —y
+# tumbaría— el otro.
+>>>>>>> 3b1c6a9 (feat(docker): add Docker support for development and production environments)
 name: inventario-prod
 
 services:
   app:
     build:
       context: .
+<<<<<<< HEAD
       target: prod
+=======
+      dockerfile: Dockerfile
+>>>>>>> 3b1c6a9 (feat(docker): add Docker support for development and production environments)
       args:
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
@@ -20,8 +42,21 @@ services:
         VITE_BASE44_APP_ID: ${VITE_BASE44_APP_ID:-}
         VITE_BASE44_APP_BASE_URL: ${VITE_BASE44_APP_BASE_URL:-}
         VITE_BASE44_FUNCTIONS_VERSION: ${VITE_BASE44_FUNCTIONS_VERSION:-}
+<<<<<<< HEAD
     image: inventario:prod
     container_name: inventario-prod
     restart: unless-stopped
+=======
+    image: inventario-prod
+    container_name: inventario-prod
+    restart: unless-stopped
+    env_file:
+      - .env
+    # PORT se fija aquí y no se toma del .env: la imagen expone 3003 y el
+    # mapeo de abajo apunta a 3003. Cambiar solo el .env descuadraría ambos.
+    environment:
+      PORT: 3003
+      NODE_ENV: production
+>>>>>>> 3b1c6a9 (feat(docker): add Docker support for development and production environments)
     ports:
       - "3003:3003"

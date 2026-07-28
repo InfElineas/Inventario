@@ -1,0 +1,26 @@
+# Imagen de DESARROLLO: Vite dev server con HMR.
+#
+# El código fuente NO se copia para trabajar (eso lo hace el bind mount de
+# docker-compose.dev.yml); aquí solo se instalan las dependencias, que viven
+# dentro de la imagen. Así `node_modules` del host —compilado para otra
+# plataforma— nunca pisa el del contenedor.
+#
+# La API de TKC la sirve `vite-plugin-tkc.js` dentro del propio proceso de
+# Vite, así que en dev no hace falta `server/index.js`.
+
+FROM node:24-alpine
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Copia de respaldo del código: permite `docker run` sin mount, aunque el flujo
+# normal sea el bind mount del compose.
+COPY . .
+
+EXPOSE 5173
+
+# --host expone el servidor en 0.0.0.0; si no, Vite escucha solo en el
+# localhost del contenedor y el puerto publicado no responde.
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
