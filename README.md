@@ -64,7 +64,44 @@ VITE_SUPABASE_EXTERNA_ANON_KEY=<tkc-anon-key>
 
 ---
 
+<<<<<<< HEAD
 ## Instalación y desarrollo
+=======
+## Docker
+
+Un solo `Dockerfile` con dos destinos. Antes de construir, el `.env` del
+directorio debe tener las `VITE_*`: docker compose las interpola como build args
+y Vite las incrusta en el bundle.
+
+**Desarrollo** — Vite dev server con HMR, `http://localhost:5173`:
+
+```bash
+docker compose up --build
+```
+
+El código se monta desde el host, así que los cambios recargan en caliente sin
+reconstruir.
+
+**Producción** — `dist/` servido por nginx en el puerto **3003**:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+La app en esta rama es un SPA estático sin servidor propio, así que la imagen
+final es nginx (unprivileged, corre como uid 101) sobre `dist/`: fallback SPA a
+`index.html`, gzip, y caché inmutable solo para `/assets/` —que llevan hash en el
+nombre— con `no-cache` en `index.html`. El Caddy externo del servidor le hace
+proxy al 3003.
+
+Tras cambiar una `VITE_*` hay que **reconstruir** (`--build`), no basta
+reiniciar: el valor viaja dentro del bundle, no en el entorno del contenedor.
+
+Cada compose usa su propio nombre de proyecto (`inventario-dev` /
+`inventario-prod`), así que ambos pueden correr a la vez sin pisarse.
+
+**Publish your changes**
+>>>>>>> 98a41de (Initial commit: add Docker support for development and production environments)
 
 ```bash
 # Instalar dependencias

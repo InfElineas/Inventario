@@ -1,0 +1,27 @@
+# Producción: build de Vite servido por nginx en el puerto 3003.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Los `${VITE_*}` los interpola docker compose desde el `.env` del directorio.
+# No hay `env_file` en runtime a propósito: nginx sirve archivos ya construidos,
+# los valores viajan dentro del bundle. Cambiar una VITE_* exige `--build`.
+name: inventario-prod
+
+services:
+  app:
+    build:
+      context: .
+      target: prod
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+        VITE_SUPABASE_EXTERNA_URL: ${VITE_SUPABASE_EXTERNA_URL}
+        VITE_SUPABASE_EXTERNA_ANON_KEY: ${VITE_SUPABASE_EXTERNA_ANON_KEY}
+        VITE_BASE44_APP_ID: ${VITE_BASE44_APP_ID:-}
+        VITE_BASE44_APP_BASE_URL: ${VITE_BASE44_APP_BASE_URL:-}
+        VITE_BASE44_FUNCTIONS_VERSION: ${VITE_BASE44_FUNCTIONS_VERSION:-}
+    image: inventario:prod
+    container_name: inventario-prod
+    restart: unless-stopped
+    ports:
+      - "3003:3003"

@@ -1,0 +1,30 @@
+# Fuera del contexto de build.
+#
+# `.env` no entra en la imagen: las variables VITE_* llegan como build args
+# (docker-compose interpola desde el `.env` del host) y quedan incrustadas en el
+# bundle, que es público de todos modos. Cualquier secreto futuro sin prefijo
+# VITE_ no debe acabar en una capa.
+
+.env
+.env.*
+!.env.example
+
+node_modules
+dist
+dist-ssr
+
+.git
+.gitignore
+.claude
+.codegraph
+.vscode
+.idea
+.vite
+
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+*.log
+npm-debug.log*
+supabase/.temp

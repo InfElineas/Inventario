@@ -1,0 +1,33 @@
+# Desarrollo: Vite dev server con HMR en http://localhost:5173
+#
+#   docker compose up --build
+#
+# Nombre de proyecto propio para que dev y prod puedan convivir: comparten
+# directorio y nombre de servicio, y sin esto `up` en uno recrearía —y
+# tumbaría— el contenedor del otro.
+name: inventario-dev
+
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    image: inventario:dev
+    container_name: inventario-dev
+    restart: unless-stopped
+    ports:
+      # 5173 y no 3003: el 3003 lo ocupa la imagen de producción.
+      - "5173:5173"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      # Los eventos inotify no siempre cruzan el bind mount (Docker Desktop, WSL
+      # sobre /mnt/c): con polling el HMR funciona en todos los casos.
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      # El bind mount da la recarga en caliente; el volumen anónimo protege las
+      # dependencias instaladas en la imagen de quedar tapadas por el
+      # node_modules del host, compilado para otra plataforma.
+      - .:/app
+      - /app/node_modules
