@@ -1153,7 +1153,9 @@ export default function Productos({ initialSource = 'tkc' }) {
                                       ? <span className={key === 'ef' && value === 0 ? 'text-[#e24b4a]' : ''}>
                                           {numberFmt.format(value)}
                                         </span>
-                                      : <span className="text-muted-foreground/50">{stockPendiente ? '…' : '—'}</span>}
+                                      : stockPendiente
+                                        ? <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground/50 inline-block" />
+                                        : <span className="text-muted-foreground/50">—</span>}
                                   </td>
                                 );
                               }
