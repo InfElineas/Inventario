@@ -4,10 +4,6 @@
 # se inyectan en RUNTIME vía `env_file`, nunca en una capa de la imagen. Las
 # variables VITE_* sí hacen falta al construir (Vite las incrusta en el bundle)
 # y llegan como build args desde docker-compose.
-<<<<<<< HEAD
->>>>>>> 3b1c6a9 (feat(docker): add Docker support for development and production environments)
-=======
->>>>>>> 5e46933 (refactor(docker): clean up Docker configuration and update README)
 
 .env
 .env.*
@@ -27,10 +23,6 @@ dist-ssr
 
 Dockerfile
 Dockerfile.dev
-<<<<<<< HEAD
->>>>>>> 3b1c6a9 (feat(docker): add Docker support for development and production environments)
-=======
->>>>>>> 5e46933 (refactor(docker): clean up Docker configuration and update README)
 docker-compose*.yml
 .dockerignore
 
@@ -40,7 +32,3 @@ supabase/.temp
 
 README.md
 TODO.md
-<<<<<<< HEAD
->>>>>>> 3b1c6a9 (feat(docker): add Docker support for development and production environments)
-=======
->>>>>>> 5e46933 (refactor(docker): clean up Docker configuration and update README)
