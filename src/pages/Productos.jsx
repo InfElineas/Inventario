@@ -22,7 +22,7 @@ import ProductoModal from '@/components/productos/ProductoModal';
 const ImportarProductos = lazy(() => import('@/components/productos/ImportarProductos'));
 import {
   Search, Package, AlertTriangle, Hash, ToggleLeft, Upload, ChevronDown, X,
-  Database, RefreshCw, Clock, History,
+  Database, RefreshCw, Clock,
 } from 'lucide-react';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
@@ -967,27 +967,7 @@ export default function Productos({ initialSource = 'tkc' }) {
                 </div>
               )}
 
-              {/* Historial de fallidos */}
-              {failureHistory.length > 0 && (
-                <div>
-                  <button onClick={() => setShowFailureHistory(v => !v)}
-                    className="flex items-center gap-1.5 text-xs text-[#e24b4a] hover:text-[#e24b4a]/80 transition-colors">
-                    <History className="w-3.5 h-3.5" />
-                    Historial de fallidos
-                    <span className="px-1.5 py-0.5 rounded-full bg-[#e24b4a]/15 font-medium">{failureHistory.length}</span>
-                    <ChevronDown className={`w-3 h-3 transition-transform ${showFailureHistory ? 'rotate-180' : ''}`} />
-                  </button>
-                  {showFailureHistory && (
-                    <div className="mt-2 space-y-2">
-                      {failureHistory.map(record => (
-                        <FailureHistoryRecord key={record.id} record={record}
-                          onRetry={(fs) => retryMut.mutate(fs)}
-                          isPending={retryMut.isPending} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Historial de fallidos: oculto de UI, lógica intacta (failureHistory, showFailureHistory, FailureHistoryRecord) */}
 
               {/* Búsqueda + columnas + tamaño de página.
                   Todo va al servidor: la búsqueda es `search[value]` del DataTables
@@ -1120,9 +1100,7 @@ export default function Productos({ initialSource = 'tkc' }) {
                       </thead>
                       <tbody className="divide-y divide-border">
                         {tkcRows.map(p => (
-                          <tr key={p.rowId} className="hover:bg-card/60 transition-colors"
-                            onMouseEnter={e => onTkcRowEnter(p, e.currentTarget)}
-                            onMouseLeave={onTkcRowLeave}>
+                          <tr key={p.rowId} className="hover:bg-card/60 transition-colors">
                             {tkcVisibleCols.map(key => {
                               const def = TKC_COLUMN_BY_KEY[key];
                               if (!def) return null;
@@ -1136,7 +1114,9 @@ export default function Productos({ initialSource = 'tkc' }) {
                               }
                               if (key === 'nombre') {
                                 return (
-                                  <td key={key} className="px-3 py-2 min-w-[220px]">
+                                  <td key={key} className="px-3 py-2 min-w-[220px]"
+                                    onMouseEnter={e => onTkcRowEnter(p, e.currentTarget)}
+                                    onMouseLeave={onTkcRowLeave}>
                                     <p className="font-medium leading-snug line-clamp-2">{p.nombre || '—'}</p>
                                   </td>
                                 );
