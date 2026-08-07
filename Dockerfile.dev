@@ -8,12 +8,12 @@
 # La API de TKC la sirve `vite-plugin-tkc.js` dentro del propio proceso de
 # Vite, así que en dev no hace falta `server/index.js`.
 
-FROM node:24-alpine
+FROM oven/bun:1-alpine
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 
 # Copia de respaldo del código: permite `docker run` sin mount, aunque el flujo
 # normal sea el bind mount del compose.
@@ -23,4 +23,4 @@ EXPOSE 5173
 
 # --host expone el servidor en 0.0.0.0; si no, Vite escucha solo en el
 # localhost del contenedor y el puerto publicado no responde.
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["bun", "run", "dev", "--", "--host", "0.0.0.0"]
