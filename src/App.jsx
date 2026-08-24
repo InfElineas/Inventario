@@ -78,7 +78,7 @@ const AuthenticatedApp = () => {
           <Route path="/mermas"         element={<Mermas />} />
           <Route path="/lotes"          element={<Lotes />} />
           <Route path="/recepciones"    element={<Recepciones />} />
-          <Route path="/anuncios"       element={<RoleGuard element={<Anuncios />} roles={['inv','ca','auditor','jefe_depto','administrador','superadmin']} />} />
+          <Route path="/anuncios"       element={<RoleGuard element={<Anuncios />} roles={['inv','ca','esp_anuncio','auditor','jefe_depto','administrador','superadmin']} />} />
           <Route path="/notificaciones" element={<Notificaciones />} />
           <Route path="/productos"      element={<Productos />} />
           <Route path="/bd-tkc"          element={<Productos initialSource="tkc" />} />

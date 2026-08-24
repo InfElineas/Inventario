@@ -4,6 +4,7 @@ export const ROLES = {
   fact:         { label: 'Facturación',     color: 'bg-warning text-warning-foreground' },
   auditor:      { label: 'Auditor',         color: 'bg-success text-success-foreground' },
   ca:           { label: 'Comercial',       color: 'bg-coral text-coral-foreground' },
+  esp_anuncio:  { label: 'Esp. Anuncios',    color: 'bg-[#0EA5E9] text-white' },
   ic:           { label: 'Intervención',    color: 'bg-warning text-warning-foreground' },
   supervisor:   { label: 'Supervisor',      color: 'bg-neutral text-neutral-foreground' },
   jefe_depto:   { label: 'Jefe de Depto.', color: 'bg-[#6366F1] text-white' },
@@ -195,4 +196,8 @@ export const TIPO_CASO_LABELS = {
   desact_ef_positivo: { label: 'DESACT EF>0', bg: 'bg-[#E24B4A14]', text: 'text-[#E24B4A]' },
   sin_id: { label: 'Sin ID', bg: 'bg-[#BA751714]', text: 'text-[#BA7517]' },
   activo_ef_cero: { label: 'Activo EF=0', bg: 'bg-[#88878014]', text: 'text-[#888780]' },
+  // Casos originados por el especialista de anuncios desde la detección de TKC
+  muerto: { label: 'Muerto', bg: 'bg-[#E24B4A14]', text: 'text-[#E24B4A]' },
+  desactivado: { label: 'Desactivado', bg: 'bg-[#FB923C14]', text: 'text-[#FB923C]' },
+  codigo_marcado: { label: 'Código marcado', bg: 'bg-[#0EA5E914]', text: 'text-[#0EA5E9]' },
 };

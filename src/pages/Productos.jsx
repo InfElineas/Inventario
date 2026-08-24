@@ -9,6 +9,7 @@ import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL, isStoc
 import { EXISTENCIA_FILTERS } from '@/services/tkc/body';
 import { warehouseName } from '@/services/tkc/warehouses';
 import { getLastSync } from '@/lib/useAutoSync';
+import { calcEstadoAnuncio, grupoAnuncio } from '@/lib/anuncioEstado';
 import { fetchAllProductos, fetchAllRows } from '@/lib/supabaseUtils';
 import { notifToast } from '@/lib/notifToast';
 import { Card } from '@/components/ui/card';
@@ -84,17 +85,6 @@ function formatTkcCell(value, def) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────
-function calcEstadoAnuncio(idTienda, ef, a, t) {
-  const hasId = idTienda && String(idTienda).trim() !== '';
-  if (!hasId && ef === 0)           return 'SIN ID EF=0';
-  if (!hasId && ef > 0)             return 'SIN ID EF>0';
-  if (hasId && a === 0 && t > 6)   return 'DESACTIVADO MUERTO EF=0';
-  if (hasId && t === 0 && ef > 10) return 'DESACTIVADO MUERTO EF>0';
-  if (hasId && ef === 0)           return 'DESACTIVADO EF=0';
-  if (hasId && ef > 0)             return 'ACTIVADO';
-  return 'DESACTIVADO EF=0';
-}
-
 function calcEstadoTienda(idTienda, ef, a, t) {
   const hasId = idTienda && String(idTienda).trim() !== '';
   if (!hasId && ef === 0)          return { estado: 'SIN ID',         prio: 10 };
@@ -112,14 +102,6 @@ function calcEstadoTienda(idTienda, ef, a, t) {
 
 function calcEtLabel(idTienda, ef, a, t) {
   return calcEstadoTienda(idTienda, ef, a, t).estado;
-}
-
-function grupoAnuncio(idTienda, ef, a, t) {
-  const full = calcEstadoAnuncio(idTienda, ef, a, t);
-  if (full === 'ACTIVADO') return 'ACTIVADO';
-  if (full.includes('MUERTO')) return 'MUERTO';
-  if (full.startsWith('DESACTIVADO')) return 'DESACTIVADO';
-  return 'SIN ID';
 }
 
 const EA_STYLE = {

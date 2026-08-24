@@ -19,8 +19,17 @@ import { useConfirm } from '@/lib/useConfirm';
 import { format } from 'date-fns';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
+import DeteccionTkc from '@/components/anuncios/DeteccionTkc';
+
+// El especialista de anuncios entra directo a la detección; los demás roles
+// siguen viendo primero los casos del workflow.
+const TAB_CASOS = 'casos';
+const TAB_TKC   = 'tkc';
 
 export default function Anuncios() {
+  // null = sin elección explícita, se resuelve por rol más abajo (el rol llega
+  // por query, así que no puede ser el valor inicial del useState).
+  const [tab, setTab] = useState(null);
   const [filterTipo, setFilterTipo] = useState('all');
   const [filterEstado, setFilterEstado] = useState('all');
   const [searchQ, setSearchQ] = useState('');
@@ -30,6 +39,7 @@ export default function Anuncios() {
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const role = user?.role || 'inv';
+  const activeTab = tab ?? (role === 'esp_anuncio' ? TAB_TKC : TAB_CASOS);
 
   const { data: anunciosRaw, isLoading } = useQuery({
     queryKey: ['anuncios'],
@@ -88,6 +98,36 @@ export default function Anuncios() {
         <p className="text-sm text-muted-foreground mt-0.5">Gestión de anuncios desactivados y sin ID</p>
       </div>
 
+      {/* Pestañas */}
+      <div className="flex gap-2 border-b border-border">
+        <button
+          type="button"
+          onClick={() => setTab(TAB_CASOS)}
+          className={`px-3 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+            activeTab === TAB_CASOS
+              ? 'border-primary text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Casos
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab(TAB_TKC)}
+          className={`px-3 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+            activeTab === TAB_TKC
+              ? 'border-primary text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Detección TKC
+        </button>
+      </div>
+
+      {activeTab === TAB_TKC && <DeteccionTkc role={role} />}
+
+      {activeTab === TAB_CASOS && (
+      <>
       <div className="grid grid-cols-3 gap-4">
         <KPICard title={"DESACT EF>0"} value={counts.desact_ef} icon={AlertTriangle} color="text-[#E24B4A]" bgColor="bg-[#E24B4A]/10" />
         <KPICard title="Sin ID con stock" value={counts.sin_id} icon={Hash} color="text-[#BA7517]" bgColor="bg-[#BA7517]/10" />
@@ -164,6 +204,8 @@ export default function Anuncios() {
           </div>
         </Card>
       </div>
+      </>
+      )}
 
       <Dialog open={!!selectedId} onOpenChange={(o) => { if (!o) setSelectedId(null); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
@@ -196,6 +238,21 @@ const TIPO_CASO_WHY = {
     titulo: '¿Por qué está aquí?',
     desc: 'El anuncio aparece activo en TKC pero la existencia física registrada es cero. Puede generar ventas de un producto sin stock real.',
     accion: 'INV debe confirmar si el stock es real, ajustar el conteo o desactivar el anuncio.',
+  },
+  muerto: {
+    titulo: '¿Por qué está aquí?',
+    desc: 'El especialista de anuncios lo detectó como anuncio muerto en TKC: tiene ID de tienda pero el reparto entre almacén y tienda deja el producto sin poder venderse.',
+    accion: 'INV debe revisar el reparto de existencia y decidir si reactivar, transferir stock o dar de baja.',
+  },
+  desactivado: {
+    titulo: '¿Por qué está aquí?',
+    desc: 'El especialista de anuncios lo detectó desactivado en TKC.',
+    accion: 'INV debe determinar si corresponde reactivar el anuncio o escalarlo a CA.',
+  },
+  codigo_marcado: {
+    titulo: '¿Por qué está aquí?',
+    desc: 'El código del producto contiene uno de los fragmentos que el especialista de anuncios configuró para revisión.',
+    accion: 'INV debe revisar el producto según el criterio por el que se marcó ese código.',
   },
 };
 

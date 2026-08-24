@@ -27,6 +27,13 @@ const ROLE_PERMISSIONS = {
     auditoria:      ['read'],
     notificaciones: ['read', 'mark_read'],
   },
+  esp_anuncio: {
+    // Detecta productos con problemas en TKC y los escala al workflow de
+    // anuncios; no procesa los pasos INV/CA/Auditor del caso.
+    anuncios:       ['read', 'detect_tkc', 'escalate'],
+    productos:      ['read'],
+    notificaciones: ['read', 'mark_read'],
+  },
   ca: {
     anuncios:       ['read', 'process_ca'],
     lotes:          ['read', 'create_ic'],

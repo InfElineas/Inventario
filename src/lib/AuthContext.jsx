@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
 
     const { data: perfil, error } = await supabase
       .from('usuarios')
-      .select('id, email, full_name, role, activo, almacen_num, nickname, avatar_url, almacenes_config, sync_config, departamento')
+      .select('id, email, full_name, role, activo, almacen_num, nickname, avatar_url, almacenes_config, sync_config, anuncio_config, departamento')
       .eq('email', supabaseUser.email)
       .single();
 
@@ -51,6 +51,7 @@ export const AuthProvider = ({ children }) => {
       almacen_num:      perfil.almacen_num || '',
       almacenes_config: Array.isArray(perfil.almacenes_config) ? perfil.almacenes_config : [],
       sync_config:      perfil.sync_config && typeof perfil.sync_config === 'object' ? perfil.sync_config : {},
+      anuncio_config:   perfil.anuncio_config && typeof perfil.anuncio_config === 'object' ? perfil.anuncio_config : {},
       nickname:         perfil.nickname    || '',
       avatar_url:       resolvedAvatar,
       departamento:     perfil.departamento || null,

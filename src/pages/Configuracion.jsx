@@ -4,9 +4,14 @@ import { supabase } from '@/api/supabaseClient'
 import { fetchAlmacenes, isExternaConfigured } from '@/services/syncService'
 import { useAuth } from '@/lib/AuthContext'
 import { useSyncManager } from '@/lib/SyncContext'
-import { Check, Warehouse, RefreshCw, Clock, Plus, Trash2, AlertTriangle, Zap } from 'lucide-react'
+import { Check, Warehouse, RefreshCw, Clock, Plus, Trash2, AlertTriangle, Zap, Tag } from 'lucide-react'
 
 const SYNC_ROLES = ['administrador', 'inv', 'superadmin']
+
+// Quién configura los fragmentos de código de la detección de anuncios.
+const ANUNCIO_CFG_ROLES = ['esp_anuncio', 'administrador', 'superadmin']
+
+const MAX_CODIGO_FLAGS = 20
 
 const DEFAULT_TIMES = ['08:00', '12:00', '16:00', '20:00', '06:00', '10:00', '14:00', '18:00']
 
@@ -16,6 +21,13 @@ function initSyncConfig(raw) {
     auto_sync:      cfg.auto_sync      ?? false,
     horarios:       Array.isArray(cfg.horarios) && cfg.horarios.length ? [...cfg.horarios] : ['08:00'],
     almacenes_sync: Array.isArray(cfg.almacenes_sync) ? [...cfg.almacenes_sync] : [],
+  }
+}
+
+function initAnuncioConfig(raw) {
+  const cfg = raw && typeof raw === 'object' ? raw : {}
+  return {
+    codigo_flags: Array.isArray(cfg.codigo_flags) ? [...cfg.codigo_flags] : [],
   }
 }
 
@@ -89,14 +101,19 @@ export default function Configuracion() {
 
   const [almacenesConfig, setAlmacenesConfig] = useState([])
   const [syncCfg,         setSyncCfg]         = useState(initSyncConfig(null))
+  const [anuncioCfg,      setAnuncioCfg]      = useState(initAnuncioConfig(null))
+  const [flagDraft,       setFlagDraft]       = useState('')
   const [saved,           setSaved]           = useState(false)
   const [saveError,       setSaveError]       = useState('')
+
+  const canAnuncioCfg = ANUNCIO_CFG_ROLES.includes(role)
 
   // Sincronizar estado local cuando el usuario carga desde la DB
   useEffect(() => {
     if (!user) return
     setAlmacenesConfig(Array.isArray(user.almacenes_config) ? user.almacenes_config : [])
     setSyncCfg(initSyncConfig(user.sync_config))
+    setAnuncioCfg(initAnuncioConfig(user.anuncio_config))
   }, [user?.email]) // solo re-sync cuando cambia el usuario, no en cada render
 
   const {
@@ -149,6 +166,21 @@ export default function Configuracion() {
         : [...c.almacenes_sync, a],
     }))
 
+  // ── Fragmentos de código (detección de anuncios) ─────────────
+  const addFlag = () => {
+    const v = flagDraft.trim().toUpperCase()
+    if (!v) return
+    setAnuncioCfg(c => (
+      c.codigo_flags.includes(v) || c.codigo_flags.length >= MAX_CODIGO_FLAGS
+        ? c
+        : { ...c, codigo_flags: [...c.codigo_flags, v] }
+    ))
+    setFlagDraft('')
+  }
+
+  const removeFlag = (f) =>
+    setAnuncioCfg(c => ({ ...c, codigo_flags: c.codigo_flags.filter(x => x !== f) }))
+
   const syncAlmacenes    = almacenesConfig.length ? almacenesConfig : allAlmacenes
   const manualAlmacenes  = syncAlmacenes  // alias for sync section
 
@@ -177,6 +209,9 @@ export default function Configuracion() {
         almacenes_config: almacenesConfig,
         almacen_num:      almacenesConfig[0] || user.almacen_num || '',
         sync_config:      { ...syncCfg, timezone_offset: new Date().getTimezoneOffset() },
+        // Solo se envía si el rol la puede editar, para no sobrescribir con
+        // '{}' la config de un usuario cuyo rol no muestra esta sección.
+        ...(canAnuncioCfg ? { anuncio_config: anuncioCfg } : {}),
       }
 
       const { error } = await supabase.from('usuarios').update(payload).eq('email', user.email)
@@ -190,7 +225,9 @@ export default function Configuracion() {
     },
     onError: (err) => {
       const msg = err?.message || ''
-      if (msg.includes('sync_config') || msg.includes('almacenes_config')) {
+      if (msg.includes('anuncio_config')) {
+        setSaveError('Ejecuta migration_v37_esp_anuncio.sql en Supabase SQL Editor primero.')
+      } else if (msg.includes('sync_config') || msg.includes('almacenes_config')) {
         setSaveError('Ejecuta migration_v8.sql y migration_v9.sql en Supabase SQL Editor primero.')
       } else {
         setSaveError(msg || 'Error al guardar. Intenta de nuevo.')
@@ -216,6 +253,63 @@ export default function Configuracion() {
 
         {/* ══ COLUMNA IZQUIERDA: configuración ══ */}
         <div className="space-y-5">
+
+          {/* Fragmentos de código — detección de anuncios */}
+          {canAnuncioCfg && (
+            <Section
+              icon={Tag}
+              title="Códigos a marcar en Anuncios"
+              description="Los productos cuyo código contenga alguno de estos fragmentos se marcan en la detección de TKC."
+            >
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <input
+                    value={flagDraft}
+                    onChange={e => setFlagDraft(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addFlag() } }}
+                    placeholder="Ej. XX, -PR, ZZ"
+                    maxLength={12}
+                    className="flex-1 px-3 py-2 text-xs rounded-lg bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#0EA5E9]/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={addFlag}
+                    disabled={!flagDraft.trim() || anuncioCfg.codigo_flags.length >= MAX_CODIGO_FLAGS}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    <Plus className="w-3 h-3" /> Agregar
+                  </button>
+                </div>
+
+                {anuncioCfg.codigo_flags.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground italic">
+                    Sin fragmentos configurados — no se marcará ningún producto por código.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {anuncioCfg.codigo_flags.map(f => (
+                      <span
+                        key={f}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono bg-[#0EA5E9]/10 text-[#0EA5E9] border border-[#0EA5E9]/25"
+                      >
+                        {f}
+                        <button
+                          type="button"
+                          onClick={() => removeFlag(f)}
+                          title={`Quitar ${f}`}
+                          className="hover:opacity-60 leading-none font-bold"
+                        >×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-[11px] text-muted-foreground">
+                  {anuncioCfg.codigo_flags.length}/{MAX_CODIGO_FLAGS} fragmentos · no distingue mayúsculas
+                </p>
+              </div>
+            </Section>
+          )}
 
           {/* Almacenes */}
           <Section

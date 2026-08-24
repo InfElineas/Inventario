@@ -38,7 +38,7 @@ const NAV_GROUPS = [
     label: 'FACTURACIÓN',
     groupIcon: 'Megaphone',
     items: [
-      { path: '/anuncios', label: 'Anuncios', icon: 'Megaphone', roles: ['inv','ca','auditor','jefe_depto','administrador','superadmin'] },
+      { path: '/anuncios', label: 'Anuncios', icon: 'Megaphone', roles: ['inv','ca','esp_anuncio','auditor','jefe_depto','administrador','superadmin'] },
     ],
   },
   {
