@@ -123,11 +123,15 @@ export function sanitizeError(error) {
   if (msg.includes('jwt') || msg.includes('token') || msg.includes('auth')) {
     return 'Error de sesión — vuelve a iniciar sesión';
   }
-  if (msg.includes('violates') || msg.includes('constraint') || msg.includes('unique')) {
-    return 'Datos duplicados o inválidos';
-  }
+  // Antes que la rama de constraints: los errores de RLS dicen
+  // "new row violates row-level security policy", así que caían en
+  // 'Datos duplicados o inválidos' por el 'violates' y ocultaban que
+  // en realidad era un problema de permisos.
   if (msg.includes('permission') || msg.includes('denied') || msg.includes('policy')) {
     return 'Sin permisos para esta operación';
+  }
+  if (msg.includes('violates') || msg.includes('constraint') || msg.includes('unique')) {
+    return 'Datos duplicados o inválidos';
   }
   if (msg.includes('network') || msg.includes('fetch')) {
     return 'Error de conexión — verifica tu red';

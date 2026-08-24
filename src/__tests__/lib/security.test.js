@@ -143,6 +143,13 @@ describe('sanitizeError', () => {
     expect(sanitizeError({ message: 'permission denied for table productos' })).toMatch(/permisos/i);
   });
 
+  it('clasifica un error de RLS como permisos, no como duplicado', () => {
+    // El mensaje de RLS contiene 'violates' y 'policy': debe ganar la
+    // rama de permisos, no la de constraints.
+    const rls = 'new row violates row-level security policy for table "lotes_ic"';
+    expect(sanitizeError({ message: rls })).toMatch(/permisos/i);
+  });
+
   it('detecta errores de red', () => {
     expect(sanitizeError({ message: 'network error' })).toMatch(/conexión/i);
   });

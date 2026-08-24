@@ -37,6 +37,7 @@ export default function Lotes() {
   const createIcMut = useMutation({
     mutationFn: (data) => base44.entities.LoteIC.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['lotes'] }); setSelectedId(null); },
+    onError: (error) => alert(error.message),
   });
 
   const counts = {
