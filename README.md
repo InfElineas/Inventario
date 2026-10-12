@@ -1,69 +1,81 @@
-**Welcome to your Base44 project** 
+# Inventario ELíneas
 
-**About**
+Sistema de gestión de inventario para **ELíneas** (mercadoelineas.com): conteos,
+mermas, vencimientos, recepciones y anuncios de tienda online, con flujos de
+aprobación por rol (inventarista → facturación → auditor) y sincronización
+contra **TKC**, el sistema externo de inventario de la empresa.
 
-View and Edit  your app on [Base44.com](http://Base44.com) 
+SPA de React servida por Vite, con **Supabase** (Postgres + Auth + RLS) como
+backend de datos y un pequeño servidor **Express** que hace de pasarela hacia
+TKC.
 
-This project contains everything you need to run your app locally.
+## Documentación
 
-**Edit the code in your local development environment**
+| Documento | Contenido |
+|---|---|
+| [docs/arquitectura.md](docs/arquitectura.md) | Estructura del código, capas, autenticación, integración con TKC |
+| [docs/modulos.md](docs/modulos.md) | Cada módulo funcional, roles y máquinas de estado |
+| [docs/base-de-datos.md](docs/base-de-datos.md) | Tablas, RLS, triggers y el historial de migraciones |
+| [docs/despliegue.md](docs/despliegue.md) | Variables de entorno, Docker, despliegue y sus requisitos |
 
-Any change pushed to the repo will also be reflected in the Base44 Builder.
+## Stack
 
-**Prerequisites:** 
+- **React 18** + **Vite 6** + **React Router 6**
+- **TanStack React Query** para el estado del servidor
+- **Supabase JS** (Postgres, Auth, RLS)
+- **Radix UI** + **Tailwind CSS**
+- **Vitest** + Testing Library
+- **Express** (`server/index.js`) solo para la pasarela de TKC
 
-1. Clone the repository using the project's Git URL 
-2. Navigate to the project directory
-3. Install dependencies: `npm install`
-4. Create an `.env.local` file and set the right environment variables
-
-```
-VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=your_backend_url
-
-e.g.
-VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6
-VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
-```
-
-Run the app: `npm run dev`
-
-## Docker
-
-Copia `.env.example` a `.env` y rellena las variables antes de construir: las
-`VITE_*` se incrustan en el bundle al construir la imagen de producción, y las
-`TKC_*` las lee el servidor en runtime.
-
-**Desarrollo** — Vite dev server con HMR, `http://localhost:5173`:
+## Arranque rápido
 
 ```bash
-docker compose -f docker-compose.dev.yml up --build
+npm install
 ```
 
-El código se monta desde el host, así que los cambios recargan en caliente sin
-reconstruir. La API de TKC (`/api/tkc/*`) la sirve `vite-plugin-tkc.js` dentro
-del propio proceso de Vite.
+Crea un `.env` en la raíz:
 
-**Producción** — build estático + `server/index.js` en el puerto **3003**:
+```
+VITE_SUPABASE_URL=https://<proyecto>.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon key>
+VITE_SUPABASE_EXTERNA_URL=https://<proyecto-externo>.supabase.co
+VITE_SUPABASE_EXTERNA_ANON_KEY=<anon key externa>
+TKC_BASE=<url de TKC>
+TKC_USER=<usuario>
+TKC_PASS=<password>
+```
+
+Las `VITE_*` se incrustan en el bundle al construir; las `TKC_*` las lee el
+servidor en runtime y nunca llegan al navegador. Detalle completo en
+[docs/despliegue.md](docs/despliegue.md).
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+npm run dev     # http://localhost:5173
 ```
 
-Imagen en dos etapas: Vite construye `dist/`, y la etapa final solo lleva Node,
-el build y el servidor (sin `node_modules`: ese código usa únicamente módulos
-nativos de Node). Tras cambiar una `VITE_*` en el `.env` hay que **reconstruir**
-—no basta reiniciar—, porque su valor viaja dentro del bundle.
+La base de datos necesita las migraciones aplicadas. Ver
+[docs/base-de-datos.md](docs/base-de-datos.md).
 
-Cada compose usa su propio nombre de proyecto (`inventario-dev` /
-`inventario-prod`), así que ambos pueden correr a la vez sin pisarse.
+## Scripts
 
-**Publish your changes**
+| Script | Qué hace |
+|---|---|
+| `npm run dev` | Servidor de desarrollo de Vite con HMR |
+| `npm run build` | Build de producción en `dist/` |
+| `npm run preview` | Sirve el build localmente |
+| `npm start` | Levanta `server/index.js` (sirve `dist/` + `/api/tkc/*`) |
+| `npm test` | Suite de Vitest |
+| `npm run test:watch` | Vitest en modo watch |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | `tsc` sobre `jsconfig.json` |
 
-Open [Base44.com](http://Base44.com) and click on Publish.
+## Estado de las pruebas
 
-**Docs & Support**
+15 archivos de test, 233 tests. Cubren la clasificación de anuncios, las
+validaciones de mermas e inventario, el servicio de notificaciones, la
+sanitización de errores y permisos, los hooks compartidos y la integración con
+TKC.
 
-Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
-
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+```bash
+npm test
+```
