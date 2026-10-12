@@ -30,3 +30,8 @@ dist-ssr
 .env
 .vite
 supabase/.temp/
+
+# Volcados de la migración desde Supabase: artefactos de un momento concreto,
+# no código. Se regeneran con pg_dump (ver docs/migracion-supabase.md).
+inventario_schema.sql
+inventario_datos.sql
