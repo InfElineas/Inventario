@@ -17,6 +17,7 @@ Cada fase termina en una **comprobación**. Si no pasa, no se avanza.
 | Varios roles en el IS | Gana el de mayor precedencia (`src/lib/roles.js`) |
 | Vínculo IS ↔ app | El **email**. `auth.users` no se migra |
 | API de datos | `/api/*` del mismo origen que la SPA — sin CORS ni certificado nuevo |
+| URL canónica | `inv.mercadoelineas.com`. La otra se retira en el corte |
 | `usuarios.activo` | Se conserva como interruptor local |
 
 ## Estado del entorno
@@ -219,13 +220,35 @@ healthcheck.
 ## Fase 6 — Corte
 
 1. Avisar a los usuarios y **congelar escrituras** (apagar `inventario-prod`).
-2. Dump final de datos desde Supabase.
-3. Cargar en `inventario`, ya con el esquema de la fase 1 aplicado.
-4. Levantar la versión nueva.
-5. Comprobar: login con el IS, el rol espejado, una lectura y una escritura
+2. **Retirar el despliegue antiguo de `inventario.mercadoelineas.com`** (ver
+   abajo). Es lo primero, no lo último.
+3. Levantar la versión nueva.
+4. Comprobar: login con el IS, el rol espejado, una lectura y una escritura
    reales.
-6. Desprogramar el Edge Function `sync-auto` y pasarlo a `pg_cron` o a un
-   contenedor con cron.
+5. Desprogramar el Edge Function `sync-auto`: el catálogo pasa a
+   `sync_productos_desde_invglobal()` con `pg_cron`.
+
+No hay carga de datos históricos: el sistema no estaba en uso y el catálogo se
+repuebla solo (ver fase 2).
+
+### El despliegue duplicado
+
+Hay **dos despliegues sin relación entre sí**, y solo uno es el bueno:
+
+| URL | Dónde | Qué sirve |
+|---|---|---|
+| `inv.mercadoelineas.com` | Cloudflare → VPS → Caddy → `inventario-prod` | El build actual (Vite 8/rolldown). **El canónico** |
+| `inventario.mercadoelineas.com` | Cloudflare, actualizado por FTP. Nada que ver con el VPS | Un build viejo (era Vite 6) |
+
+**El viejo es un riesgo, no un residuo.** Habla directamente con Supabase desde
+el navegador, así que seguiría leyendo y escribiendo en la base vieja después
+de la migración. Dos sistemas vivos sobre bases distintas, y nadie se entera
+hasta que los datos no cuadran. Hay que apagarlo o redirigirlo **antes** de
+levantar la versión nueva.
+
+El campo URL del sistema en el IS debe quedar en `https://inv.mercadoelineas.com`.
+Es informativo: el navegador nunca habla con el IS —lo hace nuestro servidor,
+de servidor a servidor—, así que `ALLOWED_ORIGIN` no condiciona esta elección.
 
 **Rollback:** mientras no se toque Supabase, volver atrás es desplegar la imagen
 anterior y reactivar el proyecto. Por eso Supabase **no se cancela** hasta pasar
@@ -235,7 +258,9 @@ unos días en producción con el sistema nuevo.
 
 ## Lo que sigue abierto
 
-- Si los **Permisos** del IS entran en juego o basta el rol.
+- Las reglas de autorización se indexan por **rol**, no por permisos: el único
+  endpoint que expone el IS es `/api/user-roles/me`, que devuelve roles. La
+  pestaña Permisos de su consola no tiene endpoint documentado.
 - La forma exacta del payload de `/api/user-roles/me`: `resolveRole()` acepta
   hoy objetos y cadenas, y se ajusta cuando veamos una respuesta real.
 - Qué hacer con la **BD externa** (`VITE_SUPABASE_EXTERNA_*`), que es el origen
