@@ -31,10 +31,12 @@ export default function AdminUsuarios() {
   const queryClient = useQueryClient();
 
   // ── Verificación de rol — primera línea de defensa en cliente ──
-  if (!user || (user.role !== 'administrador' && user.role !== 'superadmin')) return <AccessDenied />;
-  const isSuperAdmin = user.role === 'superadmin';
+  // El guard se evalúa aquí pero no corta hasta después de los hooks: React
+  // exige que se llamen todos en el mismo orden en cada render, y un `return`
+  // antes los dejaba fuera.
+  const esAdmin = user?.role === 'administrador' || user?.role === 'superadmin';
+  const isSuperAdmin = user?.role === 'superadmin';
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const { confirmDialog, ConfirmDialogNode } = useConfirm();
 
   const { data: usuariosRaw, isLoading } = useQuery({
@@ -48,6 +50,8 @@ export default function AdminUsuarios() {
       // Admins regulares no ven usuarios superadmin
       return (data ?? []).filter(u => isSuperAdmin || u.role !== 'superadmin');
     },
+    // Sin esto, quien no sea admin dispararía igual la consulta al montar.
+    enabled: esAdmin,
   });
   const usuarios = usuariosRaw ?? [];
 
@@ -71,6 +75,9 @@ export default function AdminUsuarios() {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-usuarios'] }),
   });
+
+  // Ya se llamaron todos los hooks: aquí sí puede cortar el render.
+  if (!esAdmin) return <AccessDenied />;
 
   const pendientes = usuarios.filter(u => !u.activo);
   const activos    = usuarios.filter(u => u.activo);
