@@ -20,17 +20,17 @@ TKC.
 
 ## Stack
 
-- **React 18** + **Vite 6** + **React Router 6**
+- **React 19** (con React Compiler) + **Vite 8** (rolldown) + **React Router 7**
 - **TanStack React Query** para el estado del servidor
 - **Supabase JS** (Postgres, Auth, RLS)
 - **Radix UI** + **Tailwind CSS**
-- **Vitest** + Testing Library
+- **Vitest 4** + Testing Library
 - **Express** (`server/index.js`) solo para la pasarela de TKC
 
 ## Arranque rápido
 
 ```bash
-npm install
+bun install
 ```
 
 Crea un `.env` en la raíz:
@@ -50,7 +50,7 @@ servidor en runtime y nunca llegan al navegador. Detalle completo en
 [docs/despliegue.md](docs/despliegue.md).
 
 ```bash
-npm run dev     # http://localhost:5173
+bun run dev     # http://localhost:5173
 ```
 
 La base de datos necesita las migraciones aplicadas. Ver
@@ -60,22 +60,22 @@ La base de datos necesita las migraciones aplicadas. Ver
 
 | Script | Qué hace |
 |---|---|
-| `npm run dev` | Servidor de desarrollo de Vite con HMR |
-| `npm run build` | Build de producción en `dist/` |
-| `npm run preview` | Sirve el build localmente |
-| `npm start` | Levanta `server/index.js` (sirve `dist/` + `/api/tkc/*`) |
-| `npm test` | Suite de Vitest |
-| `npm run test:watch` | Vitest en modo watch |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | `tsc` sobre `jsconfig.json` |
+| `bun run dev` | Servidor de desarrollo de Vite con HMR |
+| `bun run build` | Build de producción en `dist/` |
+| `bun run preview` | Sirve el build localmente |
+| `bun run start` | Levanta `server/index.js` (sirve `dist/` + `/api/tkc/*`) |
+| `bun run test` | Suite de Vitest |
+| `bun run test:watch` | Vitest en modo watch |
+| `bun run lint` | ESLint |
+| `bun run typecheck` | `tsc` sobre `jsconfig.json` |
 
 ## Estado de las pruebas
 
-15 archivos de test, 233 tests. Cubren la clasificación de anuncios, las
+18 archivos de test, 269 tests. Cubren la clasificación de anuncios, las
 validaciones de mermas e inventario, el servicio de notificaciones, la
 sanitización de errores y permisos, los hooks compartidos y la integración con
 TKC.
 
 ```bash
-npm test
+bun run test
 ```

@@ -30,8 +30,8 @@ TKC se consulta a través de la pasarela y no directamente desde el cliente.
 ## Desarrollo
 
 ```bash
-npm install
-npm run dev          # http://localhost:5173
+bun install
+bun run dev          # http://localhost:5173
 ```
 
 La API de TKC la sirve `vite-plugin-tkc.js` dentro del propio proceso de Vite,
@@ -52,8 +52,8 @@ El build genera `dist/`, pero **`dist/` por sí solo no es la aplicación
 completa**.
 
 ```bash
-npm run build        # genera dist/
-npm start            # sirve dist/ + /api/tkc/* en el puerto 3003
+bun run build        # genera dist/
+bun run start            # sirve dist/ + /api/tkc/* en el puerto 3003
 ```
 
 Con Docker:
@@ -144,8 +144,8 @@ Antes de dar por desplegada una versión:
 
 - [ ] Migraciones nuevas aplicadas en el SQL Editor
 - [ ] `.env` con las siete variables; `VITE_*` correctas **antes** de construir
-- [ ] `npm run build` sin errores
-- [ ] `npm test` en verde
+- [ ] `bun run build` sin errores
+- [ ] `bun run test` en verde
 - [ ] Proceso Node sirviendo `/api/tkc/*`
 - [ ] Regla de reescritura para la SPA
 - [ ] Comprobar en el navegador: login, una pantalla de Supabase y una de TKC
