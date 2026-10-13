@@ -169,13 +169,21 @@ export function createDatosApiMiddleware() {
           clausula = clausula ? `${clausula} AND (${or})` : `WHERE (${or})`
         }
 
+        // Solo las columnas pedidas. `fotos` es jsonb y pesa; traerla cuando
+        // nadie la mira multiplica el tamaño de la respuesta por varias veces.
+        let proyeccion = '*'
+        if (Array.isArray(cuerpo.campos) && cuerpo.campos.length > 0) {
+          const cols = await Promise.all(cuerpo.campos.map((c) => columnaSegura(tabla, c)))
+          proyeccion = cols.join(', ')
+        }
+
         const orderBy = await orden(tabla, cuerpo.orderBy)
         const lim = limite(cuerpo.limit)
         // Desplazamiento para recorrer tablas grandes por páginas: `productos`
         // tiene 55.000 filas y el tope por petición las truncaría en silencio.
         const desde = Math.max(0, Math.floor(Number(cuerpo.offset) || 0))
         const { rows } = await query(
-          `SELECT * FROM ${tabla} ${clausula} ORDER BY ${orderBy} LIMIT ${lim} OFFSET ${desde}`,
+          `SELECT ${proyeccion} FROM ${tabla} ${clausula} ORDER BY ${orderBy} LIMIT ${lim} OFFSET ${desde}`,
           valores,
         )
         return responder(res, 200, { data: rows })
@@ -217,6 +225,31 @@ export function createDatosApiMiddleware() {
         const clausula = await where(tabla, condiciones, valores)
         const { rowCount } = await query(`DELETE FROM ${tabla} ${clausula}`, valores)
         return responder(res, 200, { borradas: rowCount })
+      }
+
+      // ── Valores distintos de una columna ─────────────────────
+      // Para los desplegables de filtro. Antes la pantalla se descargaba los
+      // 55.000 productos solo para quedarse con los suministradores únicos.
+      if (accion === 'distinct') {
+        if (!puedeLeer(ctx, tablaPerm)) return responder(res, 403, { error: 'Sin permiso' })
+        const col = await columnaSegura(tabla, cuerpo.campo)
+
+        const condiciones = { ...(cuerpo.conditions ?? {}) }
+        const propio = filtroPropias(ctx, tablaPerm)
+        if (propio) condiciones[propio.campo] = propio.valor
+
+        const valores = []
+        const clausula = await where(tabla, condiciones, valores)
+        // Los vacíos no son una opción de filtro: ensucian el desplegable.
+        const noVacio = `${col} IS NOT NULL AND ${col}::text <> ''`
+
+        const { rows } = await query(
+          `SELECT DISTINCT ${col} AS valor FROM ${tabla}
+            ${clausula ? `${clausula} AND ${noVacio}` : `WHERE ${noVacio}`}
+            ORDER BY ${col}`,
+          valores,
+        )
+        return responder(res, 200, { data: rows.map((r) => r.valor) })
       }
 
       if (SOLO_LECTURA.has(tabla)) {

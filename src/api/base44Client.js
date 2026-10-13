@@ -53,11 +53,26 @@ async function pedir(entidad, accion, cuerpo = {}) {
 
 function entidad(nombre) {
   return {
-    list: async (orderBy, limit) =>
-      (await pedir(nombre, 'list', { orderBy, limit })).data ?? [],
+    list: async (orderBy, limit, campos) =>
+      (await pedir(nombre, 'list', { orderBy, limit, campos })).data ?? [],
 
-    filter: async (conditions, orderBy, limit, offset) =>
-      (await pedir(nombre, 'filter', { conditions, orderBy, limit, offset })).data ?? [],
+    /**
+     * `campos` limita las columnas que devuelve el servidor. Importa más de lo
+     * que parece: `productos` tiene 31 columnas y una de ellas (`fotos`) es
+     * jsonb. Una pantalla que solo pinta cinco no tiene por qué descargar las
+     * otras veintiséis, y son 55.000 filas.
+     */
+    filter: async (conditions, orderBy, limit, offset, campos) =>
+      (await pedir(nombre, 'filter', { conditions, orderBy, limit, offset, campos })).data ?? [],
+
+    /**
+     * Valores distintos de una columna, resueltos en la base.
+     *
+     * Para los desplegables de filtro. La alternativa —descargar la tabla
+     * entera y quedarse con los únicos— costaba 56 peticiones por desplegable.
+     */
+    distinct: async (campo, conditions = {}) =>
+      (await pedir(nombre, 'distinct', { campo, conditions })).data ?? [],
 
     /**
      * Busca texto en varias columnas a la vez (ILIKE con OR), combinado con

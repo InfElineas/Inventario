@@ -216,11 +216,14 @@ export default function TabImportar() {
     const idx0 = buildRowIndex(dataRows[0])
     const almacenNum = s(col(idx0, 'No. Almacén', 'No. Almacen', 'almacen', 'almacén', 'no almacen') ?? '')
 
-    // Cargar productos para match
+    // Cargar productos para match. Solo las tres columnas con las que se
+    // construyen los índices de abajo: el resto viajaría para nada.
     const products = await fetchAllRows(
       'Producto',
       almacenNum ? { almacen_num: almacenNum } : {},
       'nombre',
+      2000,
+      ['id', 'id_tienda', 'codigo_producto'],
     )
 
     const idMap = {}; const codigoMap = {}

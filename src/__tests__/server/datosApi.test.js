@@ -15,6 +15,7 @@ const COLUMNAS = {
   mermas: ['id', 'estado_tarea', 'especialista_id', 'cantidad', 'created_date', 'fact_no_factura', 'auditor_id'],
   notificaciones: ['id', 'usuario_id', 'leida', 'titulo', 'created_date'],
   lotes_vigencia: ['id', 'estado_fv', 'created_date'],
+  productos: ['id', 'nombre', 'activo', 'suministrador', 'categoria_elineas', 'almacen_num', 'exist_fisica', 'fotos', 'created_date'],
 };
 
 const { createDatosApiMiddleware } = await import('@/server/datosApi');
@@ -275,5 +276,62 @@ describe('solo lectura', () => {
   it('pero sí leerla', async () => {
     const res = await llamar('/api/datos/Lote/list', {});
     expect(res.statusCode).toBe(200);
+  });
+});
+
+describe('columnas pedidas', () => {
+  it('sin campos trae todo', async () => {
+    await llamar('/api/datos/Producto/filter', { conditions: { activo: true } });
+    expect(ultimoSql()).toContain('SELECT * FROM productos');
+  });
+
+  it('con campos trae solo esos, y ninguno es `fotos`', async () => {
+    await llamar('/api/datos/Producto/filter', {
+      conditions: { activo: true },
+      campos: ['nombre', 'exist_fisica'],
+    });
+    expect(ultimoSql()).toContain('SELECT "nombre", "exist_fisica" FROM productos');
+    expect(ultimoSql()).not.toContain('fotos');
+  });
+
+  it('una columna inventada se rechaza en vez de interpolarse', async () => {
+    const res = await llamar('/api/datos/Producto/filter', {
+      campos: ['nombre', 'id); DROP TABLE productos; --'],
+    });
+    expect(res.statusCode).toBe(400);
+    expect(ultimoSql()).not.toContain('DROP TABLE');
+  });
+});
+
+describe('distinct', () => {
+  it('resuelve los valores únicos en la base, sin traerse las filas', async () => {
+    query.mockImplementation(async (sql, valores) => {
+      if (sql.includes('information_schema.columns')) {
+        return { rows: (COLUMNAS[valores[0]] ?? []).map((c) => ({ column_name: c })) };
+      }
+      return { rows: [{ valor: 'ACME' }, { valor: 'Beta' }] };
+    });
+
+    const res = await llamar('/api/datos/Producto/distinct', {
+      campo: 'suministrador', conditions: { activo: true },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.cuerpo.data).toEqual(['ACME', 'Beta']);
+    expect(ultimoSql()).toContain('SELECT DISTINCT "suministrador" AS valor');
+    expect(ultimoSql()).toContain('WHERE "activo" = $1 AND "suministrador" IS NOT NULL');
+    expect(ultimosValores()).toEqual([true]);
+  });
+
+  it('sin condiciones el WHERE sigue siendo válido', async () => {
+    await llamar('/api/datos/Producto/distinct', { campo: 'almacen_num' });
+    // Sin esto saldría `FROM productos AND ...`, que no es SQL.
+    expect(ultimoSql()).toContain('FROM productos WHERE "almacen_num" IS NOT NULL');
+  });
+
+  it('un campo inventado no llega a la consulta', async () => {
+    const res = await llamar('/api/datos/Producto/distinct', { campo: 'suministrador; DROP TABLE productos' });
+    expect(res.statusCode).toBe(400);
+    expect(ultimoSql()).not.toContain('DROP TABLE');
   });
 });

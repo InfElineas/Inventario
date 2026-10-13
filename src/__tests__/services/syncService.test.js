@@ -72,23 +72,23 @@ describe('syncFromExternal', () => {
 });
 
 describe('fetchAlmacenes', () => {
-  it('devuelve los almacenes únicos y ordenados numéricamente', async () => {
+  it('pide los valores distintos a la base, no una página de productos', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ data: [] }) });
+    await fetchAlmacenes();
+
+    const [url, opciones] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/datos/Producto/distinct');
+    expect(JSON.parse(opciones.body)).toEqual({
+      campo: 'almacen_num', conditions: { activo: true },
+    });
+  });
+
+  it('ordena numéricamente', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ data: [
-        { almacen_num: '593' }, { almacen_num: '480' },
-        { almacen_num: '593' }, { almacen_num: '1000' },
-      ] }),
+      json: async () => ({ data: ['1000', '480', '593'] }),
     });
     // 1000 después de 593: el orden es numérico, no alfabético.
     expect(await fetchAlmacenes()).toEqual(['480', '593', '1000']);
-  });
-
-  it('ignora los almacenes vacíos', async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({ data: [{ almacen_num: '480' }, { almacen_num: '' }, { almacen_num: null }] }),
-    });
-    expect(await fetchAlmacenes()).toEqual(['480']);
   });
 });

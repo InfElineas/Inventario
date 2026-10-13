@@ -424,7 +424,10 @@ export default function Dashboard() {
   // ── Productos ────────────────────────────────────────────
   const { data: prodRowsRaw, isLoading: loadingProds } = useQuery({
     queryKey: ['dash_prods', almacen],
-    queryFn:  () => fetchAllProductos(almacen, 'almacen_num, id_tienda, exist_fisica, almacen, tienda'),
+    // Solo estas cinco columnas: el panel cuenta y suma, no muestra fichas.
+    // La lista iba como cadena y `fetchAllProductos` la ignoraba, así que hasta
+    // ahora el panel se descargaba las 31 columnas, `fotos` incluida.
+    queryFn:  () => fetchAllProductos(almacen, ['almacen_num', 'id_tienda', 'exist_fisica', 'almacen', 'tienda']),
     select:   d => Array.isArray(d) ? d : [],
   })
   const prodRows = prodRowsRaw ?? []

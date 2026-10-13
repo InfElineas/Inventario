@@ -8,7 +8,7 @@ import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL, isStoc
 import { EXISTENCIA_FILTERS } from '@/services/tkc/body';
 import { warehouseName } from '@/services/tkc/warehouses';
 import { getLastSync } from '@/lib/useAutoSync';
-import { fetchAllProductos, fetchAllRows } from '@/lib/paginacion';
+import { fetchAllProductos } from '@/lib/paginacion';
 import { notifToast } from '@/lib/notifToast';
 import { Card } from '@/components/ui/card';
 import KPICard from '@/components/shared/KPICard';
@@ -494,10 +494,9 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   // ── Suministradores y categorías ──────────────────────────
   const { data: suministradoresRaw } = useQuery({
     queryKey: ['filter-suministradores'],
-    queryFn: async () => {
-      const rows = await fetchAllRows('Producto', { activo: true }, 'nombre');
-      return [...new Set(rows.map(p => p.suministrador).filter(Boolean))].sort();
-    },
+    // Lo resuelve la base con un DISTINCT. Antes esto se descargaba los 55.000
+    // productos —con sus 31 columnas— para quedarse con una lista de nombres.
+    queryFn: () => base44.entities.Producto.distinct('suministrador', { activo: true }),
     staleTime: 15 * 60 * 1000,
     select: d => Array.isArray(d) ? d : [],
   });
@@ -505,10 +504,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
 
   const { data: categoriasRaw } = useQuery({
     queryKey: ['filter-categorias'],
-    queryFn: async () => {
-      const rows = await fetchAllRows('Producto', { activo: true }, 'nombre');
-      return [...new Set(rows.map(p => p.categoria_elineas).filter(Boolean))].sort();
-    },
+    queryFn: () => base44.entities.Producto.distinct('categoria_elineas', { activo: true }),
     staleTime: 15 * 60 * 1000,
     select: d => Array.isArray(d) ? d : [],
   });

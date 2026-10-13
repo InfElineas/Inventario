@@ -31,10 +31,17 @@ export function humanizeSyncError(msg) {
   return msg
 }
 
-/** Almacenes disponibles, a partir de los productos ya sincronizados. */
+/**
+ * Almacenes disponibles, a partir de los productos ya sincronizados.
+ *
+ * Lo resuelve la base. Antes pedía las primeras 2000 filas ordenadas por
+ * almacén y se quedaba con sus valores únicos, lo que además de descargar 2000
+ * productos para leer una columna solo podía devolver los almacenes más bajos:
+ * con 55.000 productos, las 2000 primeras filas de ese orden caben de sobra
+ * dentro del primer almacén.
+ */
 export async function fetchAlmacenes() {
-  const productos = await base44.entities.Producto.filter({ activo: true }, 'almacen_num', 2000)
-  const vistos = new Set(productos.map((p) => p.almacen_num).filter(Boolean))
+  const vistos = await base44.entities.Producto.distinct('almacen_num', { activo: true })
   return [...vistos].sort((a, b) => {
     const na = parseInt(a, 10)
     const nb = parseInt(b, 10)
