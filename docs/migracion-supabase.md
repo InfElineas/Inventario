@@ -18,6 +18,7 @@ Cada fase termina en una **comprobación**. Si no pasa, no se avanza.
 | Vínculo IS ↔ app | El **email**. `auth.users` no se migra |
 | API de datos | `/api/*` del mismo origen que la SPA — sin CORS ni certificado nuevo |
 | URL canónica | `inv.mercadoelineas.com`. La otra se retira en el corte |
+| Quién entra | Lo decide el IS: cuenta + rol en el sistema `inventario`. **Sin restricción de dominio** |
 | `usuarios.activo` | Se conserva como interruptor local |
 
 ## Estado del entorno
@@ -187,6 +188,12 @@ el caso negativo — que un rol que no debe, no pueda.
    de rol queda de solo lectura con enlace al IS).
 4. `tkcService` pasa a autenticarse con la sesión del IS en vez del token de
    Supabase.
+5. Quitar la **restricción de dominio** de `Login.jsx` (`COMPANY_DOMAIN`): la
+   pantalla rechaza en el navegador cualquier correo que no termine en
+   `@mercadoelineas.com`, y quien decide el acceso pasa a ser el IS. Si no se
+   quita, un usuario externo con rol asignado no podría ni intentar entrar.
+   El trigger equivalente de la base (`handle_new_auth_user`) ya desapareció al
+   portar el esquema.
 
 **Comprobación:** recorrer en el navegador los flujos completos — merma de punta
 a punta, conteo con diferencia, recepción con cierre, escalado de anuncio.
