@@ -4,9 +4,11 @@
 #   1. `build`   — instala dependencias con Bun y genera `dist/` con Vite.
 #   2. `runtime` — solo Bun + el build + el servidor de `server/index.js`.
 #
-# La etapa final no lleva `node_modules`: `server/index.js` y todo
-# `src/services/tkc/*` usan únicamente módulos nativos de Node/Bun (comprobado:
-# ningún import externo), así que la imagen se queda en Bun + código propio.
+# La etapa final lleva un `node_modules` mínimo: desde la migración a
+# PostgreSQL propio + Identity Server, el servidor necesita `pg` (cliente de
+# base de datos) y `jose` (verificación del JWT contra el JWKS). El resto del
+# código propio sigue usando solo módulos nativos, y las dependencias del
+# frontend ya viajan compiladas dentro de `dist/`.
 #
 # Las variables VITE_* se incrustan en el bundle al construir, por eso llegan
 # como ARG. Los secretos de TKC NO: los lee el servidor en runtime desde el
@@ -34,7 +36,16 @@ ARG VITE_BASE44_FUNCTIONS_VERSION
 
 RUN bun run build
 
-# ────────────────────────── 2. runtime ──────────────────────────
+# ──────────────────── 2. dependencias del servidor ────────────────────
+# Manifiesto propio y mínimo: así la imagen final no arrastra las dependencias
+# del frontend, que ya están compiladas en dist/.
+FROM oven/bun:1-alpine AS serverdeps
+
+WORKDIR /app
+COPY docker/server-deps.package.json ./package.json
+RUN bun install --production
+
+# ────────────────────────── 3. runtime ──────────────────────────
 FROM oven/bun:1-alpine AS runtime
 
 WORKDIR /app
@@ -44,6 +55,7 @@ ENV PORT=3003
 
 # `type: module` vive en package.json: sin él Node/Bun no tratan los .js como ESM.
 COPY package.json ./
+COPY --from=serverdeps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY server ./server
 COPY src/server ./src/server

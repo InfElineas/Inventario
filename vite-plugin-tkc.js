@@ -24,11 +24,16 @@
 
 import { loadEnv } from 'vite'
 import { createTkcApiMiddleware, makeTokenVerifier } from './src/server/tkcApi.js'
+import { createAuthApiMiddleware } from './src/server/authApi.js'
 
 export function tkcApiPlugin() {
   let middleware = null
+  let authMiddleware = null
 
-  const dispatch = (req, res, next) => middleware(req, res, next)
+  // /api/auth/* primero, luego /api/tkc/*, y lo que no sea de ninguno sigue
+  // su camino hacia Vite.
+  const dispatch = (req, res, next) =>
+    authMiddleware(req, res, () => middleware(req, res, next))
 
   return {
     name: 'tkc-api',
@@ -56,6 +61,15 @@ export function tkcApiPlugin() {
         : null
 
       middleware = createTkcApiMiddleware({ tkc, verifyToken })
+
+      // Los módulos compartidos con producción (identity.js, db.js) leen de
+      // process.env, pero loadEnv solo devuelve un objeto: hay que volcarlas.
+      // Sin pisar lo que ya venga del shell, que tiene precedencia.
+      for (const clave of ['AUTH_API_URL', 'SYSTEM_SLUG', 'DATABASE_URL']) {
+        if (!process.env[clave] && env[clave]) process.env[clave] = env[clave]
+      }
+
+      authMiddleware = createAuthApiMiddleware()
     },
 
     configureServer(server) {

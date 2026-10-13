@@ -26,6 +26,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadEnvFile } from './env.js'
 import { createTkcApiMiddleware, makeTokenVerifier } from '../src/server/tkcApi.js'
+import { createAuthApiMiddleware } from '../src/server/authApi.js'
+import { isIdentityConfigured } from '../src/server/identity.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT_DIR = path.join(__dirname, '..')
@@ -53,7 +55,15 @@ if (!verifyToken) {
   console.warn('[tkc-api] Falta VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY: /api/tkc/* responderá 503.')
 }
 
+if (!isIdentityConfigured()) {
+  console.warn('[auth-api] Falta AUTH_API_URL: /api/auth/* responderá 503.')
+}
+if (!process.env.DATABASE_URL) {
+  console.warn('[db] Falta DATABASE_URL: las rutas que tocan la base fallarán.')
+}
+
 const tkcMiddleware = createTkcApiMiddleware({ tkc, verifyToken })
+const authMiddleware = createAuthApiMiddleware()
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -110,7 +120,10 @@ async function serveStatic(req, res) {
 }
 
 const server = createServer((req, res) => {
-  tkcMiddleware(req, res, () => serveStatic(req, res)).catch((error) => {
+  // Cadena: /api/auth/* → /api/tkc/* → estáticos de dist/.
+  authMiddleware(req, res, () =>
+    tkcMiddleware(req, res, () => serveStatic(req, res)),
+  ).catch((error) => {
     console.error('[server] error inesperado:', error)
     if (!res.headersSent) res.statusCode = 500
     res.end('Error interno')

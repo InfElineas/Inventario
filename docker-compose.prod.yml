@@ -40,3 +40,12 @@ services:
       NODE_ENV: production
     ports:
       - "3003:3003"
+    # La base vive en el contenedor ELINEAS_BD, al que se llega por esta red
+    # usando su NOMBRE como host (las IP cambian al recrear un contenedor).
+    # DATABASE_URL, AUTH_API_URL y SYSTEM_SLUG llegan por el env_file de arriba.
+    networks:
+      - elineas_default
+
+networks:
+  elineas_default:
+    external: true

@@ -4,8 +4,15 @@ import { ROLES } from '@/lib/constants';
 
 describe('ROLE_PRECEDENCE', () => {
   it('cubre todos los roles de ROLES salvo ic, que no tiene permisos', () => {
-    const esperados = Object.keys(ROLES).filter((r) => r !== 'ic').sort();
-    expect([...ROLE_PRECEDENCE].sort()).toEqual(esperados);
+    // La inclusión se comprueba en un solo sentido: todo rol de la aplicación
+    // debe tener precedencia, o un usuario con ese rol se quedaría sin acceso.
+    // Al revés se admite: la precedencia puede nombrar roles que ya existen en
+    // el Identity Server pero cuya rama de funcionalidad aún no se ha
+    // fusionado aquí.
+    const esperados = Object.keys(ROLES).filter((r) => r !== 'ic');
+    for (const rol of esperados) {
+      expect(ROLE_PRECEDENCE).toContain(rol);
+    }
   });
 
   it('no repite roles', () => {

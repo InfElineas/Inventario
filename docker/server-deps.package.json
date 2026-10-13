@@ -1,0 +1,22 @@
+{
+  "_comentario": [
+    "Dependencias que necesita SOLO el servidor en runtime (server/ y src/server/).",
+    "La imagen de producción no lleva el node_modules completo del proyecto: las",
+    "dependencias del frontend ya viajan dentro de dist/, compiladas por Vite.",
+    "",
+    "Se instala en su propia etapa del Dockerfile con este manifiesto, y el",
+    "node_modules resultante se copia a /app. Vive en docker/ y no en server/ a",
+    "propósito: un package.json dentro de server/ sería el más cercano para",
+    "server/index.js y, sin 'type': 'module', Node y Bun lo tratarían como",
+    "CommonJS y el ESM dejaría de funcionar.",
+    "",
+    "Mantener en sintonía con las versiones del package.json raíz."
+  ],
+  "name": "inventario-server-deps",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "jose": "^6.2.12",
+    "pg": "^8.23.1"
+  }
+}
