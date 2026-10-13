@@ -829,7 +829,10 @@ CREATE TABLE inventario.sync_auto_log (
 
 
 CREATE TABLE inventario.usuarios (
-    id uuid NOT NULL,
+    -- En Supabase el id venía de auth.users(id) por clave foránea. Esa tabla no
+    -- migra y el vínculo con el Identity Server es el email, así que la columna
+    -- genera su propio valor: sin esto el primer login de cada usuario falla.
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
     email text NOT NULL,
     full_name text,
     role text DEFAULT 'inv'::text NOT NULL,
