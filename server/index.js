@@ -28,6 +28,7 @@ import { loadEnvFile } from './env.js'
 import { createTkcApiMiddleware } from '../src/server/tkcApi.js'
 import { createAuthApiMiddleware } from '../src/server/authApi.js'
 import { createDatosApiMiddleware } from '../src/server/datosApi.js'
+import { createSyncApiMiddleware } from '../src/server/syncApi.js'
 import { isIdentityConfigured } from '../src/server/identity.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -58,6 +59,7 @@ if (!process.env.DATABASE_URL) {
 const tkcMiddleware = createTkcApiMiddleware({ tkc })
 const authMiddleware = createAuthApiMiddleware()
 const datosMiddleware = createDatosApiMiddleware()
+const syncMiddleware = createSyncApiMiddleware()
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -117,7 +119,9 @@ const server = createServer((req, res) => {
   // Cadena: /api/auth/* → /api/tkc/* → estáticos de dist/.
   authMiddleware(req, res, () =>
     datosMiddleware(req, res, () =>
-      tkcMiddleware(req, res, () => serveStatic(req, res)),
+      syncMiddleware(req, res, () =>
+        tkcMiddleware(req, res, () => serveStatic(req, res)),
+      ),
     ),
   ).catch((error) => {
     console.error('[server] error inesperado:', error)

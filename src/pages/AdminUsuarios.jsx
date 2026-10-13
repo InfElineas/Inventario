@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
-import { sanitizeError } from '@/lib/security';
 import AccessDenied from '@/components/shared/AccessDenied';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +9,7 @@ import { UserCheck, UserX, UserCog } from 'lucide-react';
 import { ROLES, DEPARTAMENTOS } from '@/lib/constants';
 import { format } from 'date-fns';
 import { useConfirm } from '@/lib/useConfirm';
+import { base44 } from '@/api/base44Client';
 
 // superadmin solo puede asignarse desde el panel SA, no desde aquí
 const ROLE_OPTIONS = ['inv', 'fact', 'auditor', 'ca', 'supervisor', 'jefe_depto', 'administrador'];
@@ -18,7 +17,7 @@ const ROLE_OPTIONS_SA = [...ROLE_OPTIONS, 'superadmin'];
 
 // ── Audit log helper ─────────────────────────────────────
 async function logAdminAction(adminEmail, accion, targetEmail, detalle = {}) {
-  await supabase.from('admin_audit_log').insert({
+  await base44.entities.AdminAuditLog.create({
     admin_email:  adminEmail,
     accion,
     target_email: targetEmail,
@@ -42,13 +41,9 @@ export default function AdminUsuarios() {
   const { data: usuariosRaw, isLoading } = useQuery({
     queryKey: ['admin-usuarios'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('usuarios')
-        .select('*')
-        .order('created_date', { ascending: false });
-      if (error) throw new Error(sanitizeError(error));
+      const data = await base44.entities.Usuario.list('-created_date');
       // Admins regulares no ven usuarios superadmin
-      return (data ?? []).filter(u => isSuperAdmin || u.role !== 'superadmin');
+      return data.filter(u => isSuperAdmin || u.role !== 'superadmin');
     },
     // Sin esto, quien no sea admin dispararía igual la consulta al montar.
     enabled: esAdmin,
@@ -59,8 +54,7 @@ export default function AdminUsuarios() {
     mutationFn: async ({ id, targetEmail, data: updateData, accion }) => {
       // Segunda línea de defensa: verificar rol en el momento de la mutación
       if (user?.role !== 'administrador' && user?.role !== 'superadmin') throw new Error('No autorizado');
-      const { error } = await supabase.from('usuarios').update(updateData).eq('id', id);
-      if (error) throw new Error(sanitizeError(error));
+      await base44.entities.Usuario.update(id, updateData);
       await logAdminAction(user.email, accion, targetEmail, updateData);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-usuarios'] }),
@@ -69,8 +63,7 @@ export default function AdminUsuarios() {
   const deleteMut = useMutation({
     mutationFn: async ({ id, targetEmail }) => {
       if (user?.role !== 'administrador' && user?.role !== 'superadmin') throw new Error('No autorizado');
-      const { error } = await supabase.from('usuarios').delete().eq('id', id);
-      if (error) throw new Error(sanitizeError(error));
+      await base44.entities.Usuario.delete(id);
       await logAdminAction(user.email, 'rechazar', targetEmail, {});
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-usuarios'] }),

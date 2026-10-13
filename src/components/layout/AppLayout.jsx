@@ -2,7 +2,6 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useRef, useEffect, lazy, Suspense} from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { runSmartNotifications, requestBrowserPermission } from '@/lib/notificationService';
 import { Search, Calendar, ScanLine, LogOut, ChevronDown, Sun, Moon, UserCircle, RefreshCw } from 'lucide-react';
@@ -140,14 +139,8 @@ export default function AppLayout() {
     queryKey: ['notifications-unread'],
     queryFn:  async () => {
       if (!user?.email) return [];
-      const { data } = await supabase
-        .from('notificaciones')
-        .select('*')
-        .eq('usuario_id', user.email)
-        .eq('leida', false)
-        .order('created_date', { ascending: false })
-        .limit(50);
-      return data ?? [];
+      // El servidor impone el filtro por usuario; aquí solo se pide no leídas.
+      return base44.entities.Notificacion.filter({ leida: false }, '-created_date', 50);
     },
     enabled:        !!user?.email,
     refetchInterval: 15000,
@@ -220,11 +213,7 @@ export default function AppLayout() {
   const { data: prodAlertsRaw } = useQuery({
     queryKey: ['alert-productos'],
     queryFn:  async () => {
-      const { data } = await supabase
-        .from('productos')
-        .select('id, exist_fisica, stock_minimo, activo')
-        .limit(500);
-      return data || [];
+      return base44.entities.Producto.filter({ activo: true }, undefined, 500);
     },
     staleTime: 5 * 60 * 1000,
     enabled:   !!user?.email,

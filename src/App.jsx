@@ -5,7 +5,6 @@ import { queryClientInstance } from '@/lib/query-client';
 import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { SyncProvider } from '@/lib/SyncContext';
-import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import AccessDenied from '@/components/shared/AccessDenied';
 import AppLayout from '@/components/layout/AppLayout';
 import Login from '@/pages/Login';
@@ -65,7 +64,6 @@ const AuthenticatedApp = () => {
     );
   }
 
-  if (authError?.type === 'user_not_registered') return <UserNotRegisteredError />;
   if (!isAuthenticated) return null;
 
   return (

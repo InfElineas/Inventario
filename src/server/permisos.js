@@ -88,8 +88,11 @@ const CREACION = {
   historial_movimientos: { roles: '*' },
   notificaciones:        { roles: '*' },
   workflow_eventos:      { roles: '*' },
+  admin_audit_log:       { roles: '*' },
   comentarios_supervision: { roles: '*' },
   sync_auto_log:         { roles: '*' },
+  workflow_eventos:      { roles: '*' },
+  admin_audit_log:       { roles: '*' },
 }
 
 // ── Borrado ────────────────────────────────────────────────────

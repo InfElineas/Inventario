@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { DEPARTAMENTOS } from '@/lib/constants';
 import { sanitizeText } from '@/lib/security';
@@ -12,6 +11,16 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MessageSquare, Send, ClipboardList, TrendingDown, PackageOpen, Megaphone, Clock, X, Eye } from 'lucide-react';
 import { format } from 'date-fns';
+import { base44 } from '@/api/base44Client';
+
+// Las pestañas trabajan con nombres de tabla; la API los expone por entidad.
+const ENTIDAD_DE = {
+  mermas:          'Merma',
+  inventarios:     'Inventario',
+  recepciones:     'Recepcion',
+  anuncios_desact: 'AnuncioDesact',
+  lotes_ic:        'LoteIC',
+};
 
 // ── Configuración de pestañas por departamento ────────────────
 const DEPT_TABS = {
@@ -120,12 +129,7 @@ export default function Supervision() {
     queryKey: ['supervision-tasks', tabla],
     queryFn: async () => {
       if (!tabla) return [];
-      const { data } = await supabase
-        .from(tabla)
-        .select('*')
-        .order('created_date', { ascending: false })
-        .limit(150);
-      return data ?? [];
+      return base44.entities[ENTIDAD_DE[tabla]].list('-created_date', 150);
     },
     enabled: !!tabla,
   });
@@ -136,12 +140,9 @@ export default function Supervision() {
     queryKey: ['supervision-comments', tabla, selectedId],
     queryFn: async () => {
       if (!tabla || !selectedId) return [];
-      const { data } = await supabase
-        .from('comentarios_supervision')
-        .select('*')
-        .eq('tabla', tabla)
-        .eq('registro_id', selectedId)
-        .order('created_date', { ascending: true });
+      const data = await base44.entities.ComentarioSupervision.filter(
+        { tabla, registro_id: selectedId }, 'created_date',
+      );
       return data ?? [];
     },
     enabled: !!selectedId && !!tabla,
@@ -151,14 +152,13 @@ export default function Supervision() {
   // ── Agregar comentario ──
   const addCommentMut = useMutation({
     mutationFn: async (text) => {
-      const { error } = await supabase.from('comentarios_supervision').insert({
+      await base44.entities.ComentarioSupervision.create({
         tabla,
         registro_id:  selectedId,
         autor_id:     user.email,
         autor_nombre: user.full_name || user.email,
         comentario:   sanitizeText(text, 1000),
       });
-      if (error) throw error;
     },
     onSuccess: () => { setComment(''); refetchComments(); },
   });

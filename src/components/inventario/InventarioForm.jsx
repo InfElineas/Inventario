@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { supabase } from '@/api/supabaseClient';
-import { supabaseExterna } from '@/api/externalSupabase';
 import { useAlmacen } from '@/lib/useAlmacen';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +9,7 @@ import AlertBanner from '@/components/shared/AlertBanner';
 import BarcodeScanner from '@/components/inventario/BarcodeScanner';
 import { Plus, Trash2, Save, ScanLine, Package } from 'lucide-react';
 import { format } from 'date-fns';
+import { base44 } from '@/api/base44Client';
 
 const CLASIF_AJUSTE = ['Faltante por deterioro', 'Faltante por robo', 'Faltante sin justificar', 'Sobrante por transferencia', 'Sobrante por devolución', 'Error de sistema', 'Ajuste administrativo'];
 
@@ -60,30 +59,24 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
     const trimmed = code.trim();
 
     // 1. Buscar en BD interna
-    let q = supabase
-      .from('productos')
-      .select('id, nombre, codigo_producto, id_tienda, exist_fisica, almacen, tienda, precio_costo, suministrador, fotos, almacen_num')
-      .eq('activo', true)
-      .eq('codigo_producto', trimmed);
-    if (almacen) q = q.eq('almacen_num', almacen);
-    const { data } = await q.limit(1);
+    const data = await base44.entities.Producto.filter(
+      { codigo_producto: trimmed, activo: true, ...(almacen ? { almacen_num: almacen } : {}) },
+      undefined, 1,
+    );
 
     if (data?.[0]) {
       setProducto(data[0]);
       return;
     }
 
-    // 2. Verificar en catálogo externo para dar mensaje útil
-    if (supabaseExterna) {
-      const { data: ext } = await supabaseExterna
-        .from('products')
-        .select('nombre')
-        .eq('codigo', trimmed)
-        .limit(1);
-      if (ext?.[0]) {
-        alert(`"${ext[0].nombre}" existe en el catálogo pero no está importado en el almacén${almacen ? ` ${almacen}` : ''}.`);
-        return;
-      }
+    // 2. Buscar en el catálogo completo, sin filtrar por almacén, para dar un
+    // mensaje útil: el producto puede existir pero no estar en este almacén.
+    const enOtros = await base44.entities.Producto.filter(
+      { codigo_producto: trimmed, activo: true }, undefined, 1,
+    );
+    if (enOtros[0]) {
+      alert(`"${enOtros[0].nombre}" existe en el catálogo pero no está en el almacén${almacen ? ` ${almacen}` : ''}.`);
+      return;
     }
 
     alert(`No se encontró ningún producto con el código: ${trimmed}`);

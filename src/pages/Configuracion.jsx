@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/api/supabaseClient'
+import { base44 } from '@/api/base44Client'
 import { fetchAlmacenes, isExternaConfigured } from '@/services/syncService'
 import { useAuth } from '@/lib/AuthContext'
 import { useSyncManager } from '@/lib/SyncContext'
@@ -155,11 +155,7 @@ export default function Configuracion() {
   const { data: syncLogsRaw, refetch: refetchLogs } = useQuery({
     queryKey: ['sync_auto_log_cfg', user?.email],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('sync_auto_log')
-        .select('almacen, synced_at, synced, errors')
-        .eq('user_email', user.email)
-      return data ?? []
+      return base44.entities.SyncAutoLog.filter({ user_email: user.email })
     },
     enabled: canSync && !!user?.email,
     staleTime: 30_000,
@@ -179,8 +175,18 @@ export default function Configuracion() {
         sync_config:      { ...syncCfg, timezone_offset: new Date().getTimezoneOffset() },
       }
 
-      const { error } = await supabase.from('usuarios').update(payload).eq('email', user.email)
-      if (error) throw error
+      // Endpoint propio: la fila se identifica por la sesión, no por un id
+      // que mande el cliente, y solo acepta columnas de preferencias.
+      const res = await fetch('/api/auth/perfil', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const datos = await res.json().catch(() => null)
+        throw new Error(datos?.error ?? 'No se pudo guardar')
+      }
     },
     onSuccess: () => {
       setSaved(true)

@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { supabase } from '@/api/supabaseClient';
 import { useAlmacen } from '@/lib/useAlmacen';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { Search, Package } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 
 export default function ProductSearch({ onSelect, placeholder: placeholderRaw }) {
   const placeholder = placeholderRaw ?? 'Buscar producto por nombre o código...';
@@ -18,18 +18,13 @@ export default function ProductSearch({ onSelect, placeholder: placeholderRaw })
     if (val.length < 2) { setResults([]); setOpen(false); return; }
     setLoading(true);
     try {
-      let q = supabase
-        .from('productos')
-        .select('id, nombre, codigo_producto, suministrador, exist_fisica, precio_costo, id_tienda, almacen_num, fotos')
-        .eq('activo', true)
-        .limit(15);
-
-      if (almacen) q = q.eq('almacen_num', almacen);
-
-      // Búsqueda por nombre o código
-      q = q.or(`nombre.ilike.%${val}%,codigo_producto.ilike.%${val}%`);
-
-      const { data } = await q.order('nombre', { ascending: true });
+      const data = await base44.entities.Producto.buscar(
+        val,
+        ['nombre', 'codigo_producto'],
+        { activo: true, ...(almacen ? { almacen_num: almacen } : {}) },
+        'nombre',
+        15,
+      );
       setResults(data ?? []);
       setOpen(true);
     } catch {}

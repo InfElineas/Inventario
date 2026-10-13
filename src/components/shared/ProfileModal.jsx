@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '@/api/supabaseClient'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useTheme } from '@/lib/useTheme'
 import { Sun, Moon, User, Settings2, ArrowRight } from 'lucide-react'
@@ -17,11 +16,14 @@ export default function ProfileModal({ user, open, onClose }) {
   const saveMut = useMutation({
     mutationFn: async () => {
       if (!user?.email) return
-      const { error } = await supabase
-        .from('usuarios')
-        .update({ nickname: nickname.trim() || null })
-        .eq('email', user.email)
-      if (error) throw error
+      // Endpoint propio: la fila la identifica la sesión, no un id del cliente.
+      const res = await fetch('/api/auth/perfil', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname: nickname.trim() || null }),
+      })
+      if (!res.ok) throw new Error('No se pudo guardar el perfil')
     },
     onSuccess: () => {
       setSaved(true)

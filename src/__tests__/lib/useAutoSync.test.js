@@ -1,33 +1,24 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 
-// ── Mock de supabase: synced_at configurable por prueba + upsert espiado ──
+// El registro de sincronización se consulta por la API; escribirlo pasó al
+// servidor, que es quien ejecuta el sync.
 const mockSyncedAt = vi.hoisted(() => ({ current: null }));
-const upsertMock   = vi.hoisted(() => vi.fn().mockResolvedValue({}));
+const filter = vi.hoisted(() => vi.fn());
 
-vi.mock('@/api/supabaseClient', () => ({
-  supabase: {
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          eq: () => ({
-            maybeSingle: () => Promise.resolve({ data: { synced_at: mockSyncedAt.current } }),
-          }),
-        }),
-      }),
-      upsert: upsertMock,
-    }),
-  },
+vi.mock('@/api/base44Client', () => ({
+  base44: { entities: new Proxy({}, { get: () => ({ filter }) }) },
 }));
 
-import { useAutoSync, getLastSync, setLastSync } from '@/lib/useAutoSync';
+import { useAutoSync, getLastSync } from '@/lib/useAutoSync';
 
 beforeEach(() => {
   mockSyncedAt.current = null;
-  upsertMock.mockClear();
+  filter.mockImplementation(async () =>
+    mockSyncedAt.current ? [{ synced_at: mockSyncedAt.current }] : []);
 });
 
-describe('getLastSync / setLastSync', () => {
+describe('getLastSync', () => {
   it('getLastSync devuelve el synced_at que retorna la consulta', async () => {
     mockSyncedAt.current = '2026-07-17T10:00:00.000Z';
     const result = await getLastSync('a@mercadoelineas.com', '1');
@@ -39,11 +30,11 @@ describe('getLastSync / setLastSync', () => {
     expect(await getLastSync('a@mercadoelineas.com', '1')).toBeNull();
   });
 
-  it('setLastSync llama a upsert con los datos correctos', async () => {
-    await setLastSync('a@mercadoelineas.com', '1', 10, 2);
-    expect(upsertMock).toHaveBeenCalledWith(
-      expect.objectContaining({ user_email: 'a@mercadoelineas.com', almacen: '1', synced: 10, errors: 2 }),
-      { onConflict: 'user_email,almacen' }
+  it('getLastSync consulta por usuario y almacén', async () => {
+    mockSyncedAt.current = '2026-07-17T10:00:00.000Z';
+    await getLastSync('a@mercadoelineas.com', '1');
+    expect(filter).toHaveBeenCalledWith(
+      { user_email: 'a@mercadoelineas.com', almacen: '1' }, undefined, 1,
     );
   });
 });

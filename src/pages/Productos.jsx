@@ -1,15 +1,14 @@
 import { useState, useEffect, useRef, useMemo, useDeferredValue, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
-import { isExternaConfigured, retryFailed } from '@/services/syncService';
+import { isExternaConfigured, syncFromExternal } from '@/services/syncService';
 import { fetchInventarioTkc, fetchExistenciaTkc, fetchExistenciasTkc, TKC_ALMACENES } from '@/services/tkcService';
 import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL, isStockCol } from '@/services/tkc/columns';
 import { EXISTENCIA_FILTERS } from '@/services/tkc/body';
 import { warehouseName } from '@/services/tkc/warehouses';
 import { getLastSync } from '@/lib/useAutoSync';
-import { fetchAllProductos, fetchAllRows } from '@/lib/supabaseUtils';
+import { fetchAllProductos, fetchAllRows } from '@/lib/paginacion';
 import { notifToast } from '@/lib/notifToast';
 import { Card } from '@/components/ui/card';
 import KPICard from '@/components/shared/KPICard';
@@ -26,6 +25,7 @@ import {
 } from 'lucide-react';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
+import { base44 } from '@/api/base44Client';
 
 // ── Constants ─────────────────────────────────────────────────
 const PAGE_SIZE = 50;
@@ -475,12 +475,9 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   const { data: failureHistoryRaw } = useQuery({
     queryKey: ['sync_failures_history', almacen],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('historial_movimientos')
-        .select('id, valor_nuevo, fecha')
-        .eq('campo', 'sync_errores')
-        .order('fecha', { ascending: false })
-        .limit(100);
+      const data = await base44.entities.HistorialMovimiento.filter(
+        { campo: 'sync_errores' }, '-fecha', 100,
+      );
       return (data ?? []).map(r => {
         try {
           const p = JSON.parse(r.valor_nuevo);
@@ -498,11 +495,8 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   const { data: suministradoresRaw } = useQuery({
     queryKey: ['filter-suministradores'],
     queryFn: async () => {
-      const rows = await fetchAllRows(
-        (from, to) => supabase.from('productos').select('suministrador').eq('activo', true)
-          .not('suministrador', 'is', null).neq('suministrador', '').range(from, to)
-      );
-      return [...new Set(rows.map(p => p.suministrador))].sort();
+      const rows = await fetchAllRows('Producto', { activo: true }, 'nombre');
+      return [...new Set(rows.map(p => p.suministrador).filter(Boolean))].sort();
     },
     staleTime: 15 * 60 * 1000,
     select: d => Array.isArray(d) ? d : [],
@@ -512,11 +506,8 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   const { data: categoriasRaw } = useQuery({
     queryKey: ['filter-categorias'],
     queryFn: async () => {
-      const rows = await fetchAllRows(
-        (from, to) => supabase.from('productos').select('categoria_elineas').eq('activo', true)
-          .not('categoria_elineas', 'is', null).neq('categoria_elineas', '').range(from, to)
-      );
-      return [...new Set(rows.map(p => p.categoria_elineas))].sort();
+      const rows = await fetchAllRows('Producto', { activo: true }, 'nombre');
+      return [...new Set(rows.map(p => p.categoria_elineas).filter(Boolean))].sort();
     },
     staleTime: 15 * 60 * 1000,
     select: d => Array.isArray(d) ? d : [],
@@ -583,8 +574,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   const updateMut = useMutation({
     mutationFn: async ({ id, data }) => {
       const producto = productos.find(p => p.id === id);
-      const { error } = await supabase.from('productos').update(data).eq('id', id);
-      if (error) throw error;
+      await base44.entities.Producto.update(id, data);
       if (producto) {
         const CAMPOS_TIPO = {
           exist_fisica: 'stock', almacen: 'stock', tienda: 'stock',
@@ -598,7 +588,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
           valor_anterior: String(producto[campo] ?? ''), valor_nuevo: String(valor_nuevo ?? ''),
           origen: 'manual',
         }));
-        if (registros.length) await supabase.from('historial_movimientos').insert(registros);
+        if (registros.length) await base44.entities.HistorialMovimiento.createMany(registros);
       }
     },
     onSuccess: () => {
@@ -608,13 +598,12 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   });
 
   const retryMut = useMutation({
-    mutationFn: (customFailures) => {
-      const toRetry = Array.isArray(customFailures) ? customFailures : syncFailures;
-      return retryFailed(toRetry, almacen);
-    },
-    onSuccess: (result) => {
-      setSyncFailures(result.failures ?? []);
-      setShowFailures((result.failures ?? []).length > 0);
+    // Ya no hay lotes fallidos que reintentar: el sync es una sola sentencia
+    // SQL en el servidor, así que "reintentar" es volver a lanzarlo.
+    mutationFn: () => syncFromExternal(almacen),
+    onSuccess: () => {
+      setSyncFailures([]);
+      setShowFailures(false);
       queryClient.invalidateQueries({ queryKey: ['productos', almacen] });
       queryClient.invalidateQueries({ queryKey: ['sync_failures_history', almacen] });
     },

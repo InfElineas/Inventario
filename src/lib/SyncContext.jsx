@@ -1,9 +1,8 @@
 import { createContext, useContext, useState, useRef, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/AuthContext'
-import { supabase } from '@/api/supabaseClient'
+import { base44 } from '@/api/base44Client'
 import { syncFromExternal } from '@/services/syncService'
-import { setLastSync } from '@/lib/useAutoSync'
 import { notifToast } from '@/lib/notifToast'
 
 const SyncCtx = createContext(null)
@@ -22,7 +21,7 @@ async function notifyFailures(almacen, failures, userEmail) {
     resumen:  resumen + extra,
   })
   try {
-    await supabase.from('notificaciones').insert({
+    await base44.entities.Notificacion.create({
       usuario_id: userEmail || 'soporte@mercadoelineas.com',
       tipo:       'sistema',
       titulo:     `${failures.length} productos fallaron en sync — Almacén ${almacen}`,
@@ -69,7 +68,6 @@ export function SyncProvider({ children }) {
       qc.invalidateQueries({ queryKey: ['dash_prods'] })
       qc.invalidateQueries({ queryKey: ['last_sync_tkc'] })
       qc.invalidateQueries({ queryKey: ['sa-sync-log'] })
-      if (userEmailRef.current && almacen) setLastSync(userEmailRef.current, almacen, result.synced, result.errors)
       if ((result.failures ?? []).length > 0) notifyFailures(almacen, result.failures, userEmailRef.current)
       const errMsg    = result.errors  > 0 ? `, ${result.errors} errores`          : ''
       const changeMsg = result.changes > 0 ? ` · ${result.changes} campos cambiados` : ''
@@ -120,7 +118,6 @@ export function SyncProvider({ children }) {
           totalErrors += result.errors ?? 0
           allFailures.push(...(result.failures ?? []))
           setLastResults(r => ({ ...r, [alm]: { ok: true, synced: result.synced, errors: result.errors } }))
-          if (userEmailRef.current) setLastSync(userEmailRef.current, alm, result.synced, result.errors)
           qc.invalidateQueries({ queryKey: ['bd_tkc',    alm] })
           qc.invalidateQueries({ queryKey: ['productos', alm] })
         } catch (e) {

@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react'
 import { readSheetNames, readSheetObjects } from '@/lib/spreadsheet'
-import { supabase } from '@/api/supabaseClient'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle, Loader2, X, RotateCcw, ChevronDown, ChevronRight } from 'lucide-react'
+import { base44 } from '@/api/base44Client'
+import { fetchAllRows } from '@/lib/paginacion'
 
 // ── Normalización de valores ──────────────────────────────────
 const ESTADO_MAP = {
@@ -216,11 +217,11 @@ export default function TabImportar() {
     const almacenNum = s(col(idx0, 'No. Almacén', 'No. Almacen', 'almacen', 'almacén', 'no almacen') ?? '')
 
     // Cargar productos para match
-    let query = supabase.from('productos').select('id, id_tienda, codigo_producto')
-    if (almacenNum) query = query.eq('almacen_num', almacenNum)
-    const { data: productsRaw, error: qErr } = await query
-    const products = productsRaw ?? []
-    if (qErr) console.error('productos query error:', qErr)
+    const products = await fetchAllRows(
+      'Producto',
+      almacenNum ? { almacen_num: almacenNum } : {},
+      'nombre',
+    )
 
     const idMap = {}; const codigoMap = {}
     for (const p of products) {
@@ -242,7 +243,7 @@ export default function TabImportar() {
   }
 
   async function handleImport() {
-    const table    = selectedSheet === 'BD Ajuste I-F' ? 'inventarios' : 'mermas'
+    const entidad  = selectedSheet === 'BD Ajuste I-F' ? 'Inventario' : 'Merma'
     const toInsert = allRows
       .filter(r => r._matched)
       .map(({ _matched, _idTienda, _codigo, _nombre, ...r }) => r)
@@ -254,13 +255,14 @@ export default function TabImportar() {
 
     for (let i = 0; i < toInsert.length; i += BATCH) {
       const batch = toInsert.slice(i, i + BATCH)
-      const { error } = await supabase.from(table).insert(batch)
-      if (error) { errors += batch.length; console.error('import error:', error) }
-      else done += batch.length
+      try {
+        await base44.entities[entidad].createMany(batch)
+        done += batch.length
+      } catch (e) { errors += batch.length; console.error('import error:', e) }
       setProgress(Math.round(((i + batch.length) / toInsert.length) * 100))
     }
 
-    setResult({ done, errors, skipped: allRows.length - toInsert.length, table })
+    setResult({ done, errors, skipped: allRows.length - toInsert.length, table: entidad })
     setStatus('done')
   }
 

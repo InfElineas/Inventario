@@ -9,6 +9,8 @@
  */
 
 import { signIn, signOut, isIdentityConfigured } from './identity.js'
+import { queryOne } from './db.js'
+import { CAMPOS_PROPIOS_USUARIO } from './permisos.js'
 import { resolverSesion, sincronizarDesdeIS } from './session.js'
 import { fijarCookiesSesion, limpiarCookiesSesion, leerCookies, COOKIE_SESSION } from './cookies.js'
 
@@ -112,6 +114,33 @@ export function createAuthApiMiddleware() {
         const sesion = await resolverSesion(req, res)
         if (!sesion) return responder(res, 401, { error: 'Sin sesión' })
         return responder(res, 200, { user: perfilPublico(sesion.usuario) })
+      }
+
+      // ── Preferencias del propio usuario ──────────────────────
+      // Endpoint propio en vez del UPDATE genérico: la fila se identifica por
+      // la sesión, no por un id que mande el cliente, y solo se aceptan las
+      // columnas de preferencias. `role` y `activo` quedan fuera — el rol lo
+      // escribe el login a partir de lo que diga el IS.
+      if (ruta === '/api/auth/perfil' && req.method === 'POST') {
+        const sesion = await resolverSesion(req, res)
+        if (!sesion) return responder(res, 401, { error: 'Sin sesión' })
+
+        const cuerpo = await leerJson(req)
+        const cambios = {}
+        for (const campo of CAMPOS_PROPIOS_USUARIO) {
+          if (Object.hasOwn(cuerpo, campo)) cambios[campo] = cuerpo[campo]
+        }
+        if (Object.keys(cambios).length === 0) {
+          return responder(res, 400, { error: 'Nada que guardar' })
+        }
+
+        const claves = Object.keys(cambios)
+        const asignaciones = claves.map((c, i) => `"${c}" = $${i + 2}`)
+        const usuario = await queryOne(
+          `UPDATE usuarios SET ${asignaciones.join(', ')} WHERE email = $1 RETURNING *`,
+          [sesion.email, ...claves.map((c) => cambios[c])],
+        )
+        return responder(res, 200, { user: perfilPublico(usuario) })
       }
 
       // ── Logout ───────────────────────────────────────────────

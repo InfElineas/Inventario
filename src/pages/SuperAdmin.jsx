@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
+import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -55,16 +55,16 @@ function TabSistema() {
         { count: workflow_eventos }, { data: syncErrors }, { data: lastActivity },
         { data: pendientes },
       ] = await Promise.all([
-        supabase.from('productos').select('*', { count: 'exact', head: true }),
-        supabase.from('usuarios').select('*', { count: 'exact', head: true }).eq('activo', true),
-        supabase.from('mermas').select('*', { count: 'exact', head: true }),
-        supabase.from('inventarios').select('*', { count: 'exact', head: true }),
-        supabase.from('recepciones').select('*', { count: 'exact', head: true }),
-        supabase.from('notificaciones').select('*', { count: 'exact', head: true }).eq('leida', false),
-        supabase.from('workflow_eventos').select('*', { count: 'exact', head: true }),
-        supabase.from('notificaciones').select('mensaje, created_date').eq('es_error', true).eq('link', '/bd-tkc').order('created_date', { ascending: false }).limit(5),
-        supabase.from('workflow_eventos').select('actor_id, actor_nombre, actor_rol, estado_nuevo, tabla, created_at').order('created_at', { ascending: false }).limit(8),
-        supabase.from('mermas').select('id', { count: 'exact', head: true }).in('estado_tarea', ['pend_fact', 'en_auditoria', 'reconteo_solicitado']),
+        base44.entities.Producto.count(),
+        base44.entities.Usuario.count({ activo: true }),
+        base44.entities.Merma.count(),
+        base44.entities.Inventario.count(),
+        base44.entities.Recepcion.count(),
+        base44.entities.Notificacion.count({ leida: false }),
+        base44.entities.WorkflowEvento.count(),
+        base44.entities.Notificacion.filter({ es_error: true, link: '/bd-tkc' }, '-created_date', 5),
+        base44.entities.WorkflowEvento.list('-created_date', 8),
+        base44.entities.Merma.count({ estado_tarea: ['pend_fact', 'en_auditoria', 'reconteo_solicitado'] }),
       ]);
       return { productos, usuarios, mermas, inventarios, recepciones, notificaciones, workflow_eventos, syncErrors: syncErrors ?? [], lastActivity: lastActivity ?? [], pendientes };
     },
@@ -137,45 +137,30 @@ function TabDiagnostico() {
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['sa-diagnostico'],
     queryFn: async () => {
-      // Verificar seleccionando columnas específicas — si la columna/tabla no existe, da error
-      const ok = async (fn) => { try { await fn(); return true; } catch { return false; } };
-      const noErr = async (fn) => { const { error } = await fn(); return !error; };
+      // Comprueba que cada tabla responde. Antes se verificaba si se habían
+      // aplicado las migraciones v11/v13/v16/v19/v20 de Supabase; con el
+      // esquema ya portado a ELINEAS_BD eso dejó de tener sentido.
+      const vive = async (entidad) => {
+        try { await base44.entities[entidad].count(); return true } catch { return false }
+      };
 
       const [
-        v11_tabla, v11_cols,
-        v13_col,
-        v16_tabla,
-        v19_superadmin,
-        v20_link, v20_eserror,
+        sync_auto_log, mermas, workflow_eventos, usuarios, notificaciones,
       ] = await Promise.all([
-        // v11: tabla sync_auto_log
-        noErr(() => supabase.from('sync_auto_log').select('user_email').limit(1)),
-        // v11: columnas synced y errors
-        noErr(() => supabase.from('sync_auto_log').select('synced, errors').limit(1)),
-        // v13: columna mermas.almacen_num
-        noErr(() => supabase.from('mermas').select('almacen_num').limit(1)),
-        // v16: tabla workflow_eventos
-        noErr(() => supabase.from('workflow_eventos').select('tabla, estado_nuevo, actor_id').limit(1)),
-        // v19: rol superadmin existe en la tabla usuarios
-        noErr(() => supabase.from('usuarios').select('id').eq('role', 'superadmin').limit(1)),
-        // v20: columna notificaciones.link
-        noErr(() => supabase.from('notificaciones').select('link').limit(1)),
-        // v20: columna notificaciones.es_error
-        noErr(() => supabase.from('notificaciones').select('es_error').limit(1)),
+        vive('SyncAutoLog'), vive('Merma'), vive('WorkflowEvento'),
+        vive('Usuario'), vive('Notificacion'),
       ]);
 
-      return { v11_tabla, v11_cols, v13_col, v16_tabla, v19_superadmin, v20_link, v20_eserror };
+      return { sync_auto_log, mermas, workflow_eventos, usuarios, notificaciones };
     },
   });
 
   const checks = data ? [
-    { label: 'Tabla sync_auto_log',              ok: data.v11_tabla,       migration: 'migration_v11_sync_auto.sql'        },
-    { label: 'Columnas synced/errors en sync_auto_log', ok: data.v11_cols, migration: 'migration_v11_sync_auto.sql'        },
-    { label: 'Columna mermas.almacen_num',        ok: data.v13_col,        migration: 'migration_v13_mermas_almacen.sql'   },
-    { label: 'Tabla workflow_eventos',            ok: data.v16_tabla,      migration: 'migration_v16_workflow_eventos.sql' },
-    { label: 'Rol superadmin configurado',        ok: data.v19_superadmin, migration: 'migration_v19_superadmin.sql'       },
-    { label: 'Columna notificaciones.link',       ok: data.v20_link,       migration: 'migration_v20_notif_link.sql'       },
-    { label: 'Columna notificaciones.es_error',   ok: data.v20_eserror,    migration: 'migration_v20_notif_link.sql'       },
+    { label: 'Tabla usuarios',          ok: data.usuarios,         migration: 'migracion_a_elineas_bd.sql' },
+    { label: 'Tabla mermas',            ok: data.mermas,           migration: 'migracion_a_elineas_bd.sql' },
+    { label: 'Tabla notificaciones',    ok: data.notificaciones,   migration: 'migracion_a_elineas_bd.sql' },
+    { label: 'Tabla workflow_eventos',  ok: data.workflow_eventos, migration: 'migracion_a_elineas_bd.sql' },
+    { label: 'Tabla sync_auto_log',     ok: data.sync_auto_log,    migration: 'migracion_a_elineas_bd.sql' },
   ] : [];
 
   const allOk = checks.every(c => c.ok);
@@ -258,12 +243,7 @@ function TabSincronizacion() {
   const { data: syncLogRaw } = useQuery({
     queryKey: ['sa-sync-log'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('sync_auto_log')
-        .select('*')
-        .order('synced_at', { ascending: false })
-        .limit(100);
-      return data ?? [];
+      return base44.entities.SyncAutoLog.list('-synced_at', 100);
     },
     refetchInterval: 30000,
   });
@@ -278,12 +258,10 @@ function TabSincronizacion() {
   const { data: schedulesRaw } = useQuery({
     queryKey: ['sa-schedules'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('usuarios')
-        .select('email, full_name, sync_config')
-        .eq('activo', true)
-        .filter('sync_config->>auto_sync', 'eq', 'true');
-      return data ?? [];
+      // El filtro por dentro del jsonb se hace aquí: la API expone igualdad
+      // sobre columnas, no navegación dentro del JSON.
+      const activos = await base44.entities.Usuario.filter({ activo: true });
+      return activos.filter(u => u.sync_config?.auto_sync === true);
     },
   });
   const schedules = schedulesRaw ?? [];
@@ -484,14 +462,9 @@ function TabLogsSinc() {
   const { data: rawLogsRaw, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['sa-logs-sync'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('notificaciones')
-        .select('mensaje, created_date')
-        .eq('es_error', true)
-        .eq('link', '/bd-tkc')
-        .order('created_date', { ascending: false })
-        .limit(500);
-      return data ?? [];
+      return base44.entities.Notificacion.filter(
+        { es_error: true, link: '/bd-tkc' }, '-created_date', 500,
+      );
     },
   });
   const rawLogs = rawLogsRaw ?? [];
@@ -811,8 +784,9 @@ function TabMantenimiento({ confirmDialog }) {
       confirm: '¿Eliminar notificaciones leídas con más de 30 días?',
       fn: async () => {
         const cutoff = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
-        const { count } = await supabase.from('notificaciones').delete({ count: 'exact' })
-          .eq('leida', true).lt('created_date', cutoff);
+        const count = await base44.entities.Notificacion.purgar({
+          leida: true, created_date: { lt: cutoff },
+        });
         return `${count ?? 0} notificaciones eliminadas`;
       },
     },
@@ -825,8 +799,7 @@ function TabMantenimiento({ confirmDialog }) {
       confirm: '¿Eliminar eventos de auditoría con más de 90 días?',
       fn: async () => {
         const cutoff = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
-        const { count } = await supabase.from('workflow_eventos').delete({ count: 'exact' })
-          .lt('created_at', cutoff);
+        const count = await base44.entities.WorkflowEvento.purgar({ created_date: { lt: cutoff } });
         return `${count ?? 0} eventos eliminados`;
       },
     },
@@ -839,8 +812,7 @@ function TabMantenimiento({ confirmDialog }) {
       confirm: '¿Eliminar historial con más de 180 días?',
       fn: async () => {
         const cutoff = new Date(Date.now() - 180 * 24 * 3600 * 1000).toISOString();
-        const { count } = await supabase.from('historial_movimientos').delete({ count: 'exact' })
-          .lt('fecha', cutoff);
+        const count = await base44.entities.HistorialMovimiento.purgar({ fecha: { lt: cutoff } });
         return `${count ?? 0} registros eliminados`;
       },
     },
@@ -852,8 +824,8 @@ function TabMantenimiento({ confirmDialog }) {
       color: '#4ade80',
       confirm: '¿Limpiar sync_auto_log de entradas antiguas (más de 60 días)?',
       fn: async () => {
-        const { count } = await supabase.from('sync_auto_log').select('*', { count: 'exact', head: true });
-        return `sync_auto_log tiene ${count ?? 0} registros (uno por usuario/almacén — no se limpia)`;
+        const count = await base44.entities.SyncAutoLog.count();
+        return `sync_auto_log tiene ${count} registros (uno por usuario/almacén — no se limpia)`;
       },
     },
     {
@@ -870,10 +842,10 @@ function TabMantenimiento({ confirmDialog }) {
 
   const sendBroadcast = async () => {
     if (!broadcastMsg.trim()) return;
-    const { data: users } = await supabase.from('usuarios').select('email').eq('activo', true);
-    if (!users?.length) return;
+    const users = await base44.entities.Usuario.filter({ activo: true });
+    if (!users.length) return;
     await Promise.all(users.map(u =>
-      supabase.from('notificaciones').insert({
+      base44.entities.Notificacion.create({
         usuario_id: u.email, tipo: 'sistema',
         titulo: 'Comunicado del sistema', mensaje: broadcastMsg, leida: false,
       })
@@ -964,34 +936,35 @@ function TabUsuarios({ confirmDialog }) {
   const { data: usuariosRaw } = useQuery({
     queryKey: ['sa-usuarios'],
     queryFn: async () => {
-      const { data } = await supabase.from('usuarios').select('*').order('created_date', { ascending: false });
+      const data = await base44.entities.Usuario.list('-created_date');
       return data ?? [];
     },
   });
   const usuarios = usuariosRaw ?? [];
 
   const updateMut = useMutation({
-    mutationFn: ({ id, data }) => supabase.from('usuarios').update(data).eq('id', id),
+    mutationFn: ({ id, data }) => base44.entities.Usuario.update(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sa-usuarios'] }),
   });
 
   const deleteMut = useMutation({
-    mutationFn: (id) => supabase.from('usuarios').delete().eq('id', id),
+    mutationFn: (id) => base44.entities.Usuario.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sa-usuarios'] }),
   });
 
   const createMut = useMutation({
     mutationFn: async () => {
       setCreateError('');
-      if (form.password) {
-        const { error } = await supabase.auth.signUp({ email: form.email, password: form.password });
-        if (error && !error.message.toLowerCase().includes('already registered')) throw error;
-      }
-      const { error } = await supabase.from('usuarios').upsert({
+      // La cuenta y la contraseña viven en el Identity Server: aquí solo se
+      // crea el perfil local. El rol que se ponga aquí lo sobrescribirá el
+      // primer login con el que diga el IS.
+      const existentes = await base44.entities.Usuario.filter({ email: form.email }, undefined, 1);
+      const datos = {
         email: form.email, full_name: form.full_name, role: form.role,
         departamento: form.role === 'jefe_depto' ? form.departamento : null, activo: true,
-      }, { onConflict: 'email' });
-      if (error) throw error;
+      };
+      if (existentes[0]) await base44.entities.Usuario.update(existentes[0].id, datos);
+      else await base44.entities.Usuario.create(datos);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sa-usuarios'] });
@@ -1085,8 +1058,7 @@ function TabAuditoria() {
   const { data: eventosRaw, isLoading } = useQuery({
     queryKey: ['sa-auditoria'],
     queryFn: async () => {
-      const { data } = await supabase.from('workflow_eventos').select('*').order('created_at', { ascending: false }).limit(300);
-      return data ?? [];
+      return base44.entities.WorkflowEvento.list('-created_date', 200);
     },
   });
   const eventos = eventosRaw ?? [];
@@ -1094,8 +1066,7 @@ function TabAuditoria() {
   const { data: adminLogRaw } = useQuery({
     queryKey: ['sa-admin-log'],
     queryFn: async () => {
-      const { data } = await supabase.from('admin_audit_log').select('*').order('created_at', { ascending: false }).limit(100);
-      return data ?? [];
+      return base44.entities.AdminAuditLog.list('-created_date', 200);
     },
   });
   const adminLog = adminLogRaw ?? [];

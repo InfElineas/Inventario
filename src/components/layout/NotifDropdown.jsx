@@ -5,9 +5,9 @@ import {
   ArrowRight, Database, UserPlus, AlertTriangle, Send, ExternalLink,
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { base44 } from '@/api/base44Client';
 
 const TYPE_CFG = {
   merma:     { Icon: Package,       color: '#E24B4A', defaultLink: '/mermas'    },
@@ -51,7 +51,7 @@ export default function NotifDropdown({ notifications: notificationsRaw }) {
   }, []);
 
   const markOne = useMutation({
-    mutationFn: (id) => supabase.from('notificaciones').update({ leida: true }).eq('id', id),
+    mutationFn: (id) => base44.entities.Notificacion.marcarLeidas([id]),
     onSuccess:  () => queryClient.invalidateQueries({ queryKey: ['notifications-unread'] }),
   });
 
@@ -59,14 +59,14 @@ export default function NotifDropdown({ notifications: notificationsRaw }) {
     mutationFn: () => {
       const ids = notifications.map(n => n.id);
       if (!ids.length) return Promise.resolve();
-      return supabase.from('notificaciones').update({ leida: true }).in('id', ids);
+      return base44.entities.Notificacion.marcarLeidas(ids);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications-unread'] }),
   });
 
   const reportToSupport = useMutation({
     mutationFn: async (notif) => {
-      await supabase.from('notificaciones').insert({
+      await base44.entities.Notificacion.create({
         usuario_id: 'soporte@mercadoelineas.com',
         tipo:       'sistema',
         titulo:     `[REPORTE] ${notif.titulo}`,

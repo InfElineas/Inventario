@@ -22,6 +22,7 @@ const BASE = '/api/datos'
 const ENTIDADES = new Set([
   'Producto', 'AnuncioDesact', 'Merma', 'Lote', 'LoteIC',
   'Inventario', 'Recepcion', 'Notificacion', 'HistorialMovimiento', 'Usuario',
+  'WorkflowEvento', 'ComentarioSupervision', 'AdminAuditLog', 'SyncAutoLog',
 ])
 
 /**
@@ -55,8 +56,17 @@ function entidad(nombre) {
     list: async (orderBy, limit) =>
       (await pedir(nombre, 'list', { orderBy, limit })).data ?? [],
 
-    filter: async (conditions, orderBy, limit) =>
-      (await pedir(nombre, 'filter', { conditions, orderBy, limit })).data ?? [],
+    filter: async (conditions, orderBy, limit, offset) =>
+      (await pedir(nombre, 'filter', { conditions, orderBy, limit, offset })).data ?? [],
+
+    /**
+     * Busca texto en varias columnas a la vez (ILIKE con OR), combinado con
+     * las condiciones. Lo usa el buscador de productos.
+     */
+    buscar: async (texto, campos, conditions = {}, orderBy, limit) =>
+      (await pedir(nombre, 'filter', {
+        conditions, orderBy, limit, search: { texto, campos },
+      })).data ?? [],
 
     /** Cuenta sin traerse las filas. Un array se traduce a IN; un escalar, a =. */
     count: async (conditions = {}) =>
@@ -64,9 +74,25 @@ function entidad(nombre) {
 
     create: async (data) => (await pedir(nombre, 'create', { data })).data,
 
+    /** Inserta varias filas de una vez. Máximo 1000 por llamada. */
+    createMany: async (filas) => (await pedir(nombre, 'createMany', { data: filas })).creadas ?? 0,
+
     update: async (id, data) => (await pedir(nombre, 'update', { id, data })).data,
 
     delete: async (id) => { await pedir(nombre, 'delete', { id }) },
+
+    /**
+     * Marca notificaciones como leídas. El servidor acota el UPDATE a las
+     * filas del propio usuario, así que mandar ids ajenos no hace nada.
+     */
+    marcarLeidas: async (ids) => (await pedir(nombre, 'marcarLeidas', { ids })).actualizadas ?? 0,
+
+    /**
+     * Borra las filas que cumplan las condiciones. Solo administración y solo
+     * tablas de registro. Las condiciones son obligatorias: sirve para limpiar
+     * lo viejo, no para vaciar la tabla.
+     */
+    purgar: async (conditions) => (await pedir(nombre, 'purgar', { conditions })).borradas ?? 0,
   }
 }
 

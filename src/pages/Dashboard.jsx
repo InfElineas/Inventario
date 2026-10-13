@@ -1,11 +1,11 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/api/supabaseClient'
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen'
-import { fetchAllProductos } from '@/lib/supabaseUtils'
+import { fetchAllProductos } from '@/lib/paginacion'
 import { isExternaConfigured, fetchAlmacenes } from '@/services/syncService'
 import { ChevronDown, Clock, CalendarDays, X } from 'lucide-react'
+import { base44 } from '@/api/base44Client';
 
 const PERIODS = [
   { key: '7D',  label: '7D',  days: 7   },
@@ -403,15 +403,10 @@ export default function Dashboard() {
   const { data: lastSync } = useQuery({
     queryKey: ['last_sync_tkc'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('historial_movimientos')
-        .select('fecha, valor_nuevo')
-        .eq('tipo_cambio', 'importacion')
-        .eq('campo', 'sync_externo')
-        .not('fecha', 'is', null)
-        .order('fecha', { ascending: false })
-        .limit(1)
-      return data?.[0] ?? null
+      const filas = await base44.entities.HistorialMovimiento.filter(
+        { tipo_cambio: 'importacion', campo: 'sync_externo' }, '-fecha', 1,
+      )
+      return filas[0] ?? null
     },
     staleTime: 60 * 1000,
   })
@@ -462,13 +457,12 @@ export default function Dashboard() {
   const { data: mermasRaw } = useQuery({
     queryKey: ['dash_mermas', period, customFrom, customTo, almacen],
     queryFn: async () => {
-      let q = supabase.from('mermas')
-        .select('id,producto_nombre,producto_codigo,cantidad,total_perdida,estado_tarea,clasif_merma,created_date')
-        .gte('created_date', startDate.toISOString())
-      if (almacen) q = q.eq('almacen_num', almacen)
-      if (isCustomActive && customTo) q = q.lte('created_date', endDate.toISOString())
-      const { data } = await q.order('created_date', { ascending: false }).limit(100)
-      return data ?? []
+      const rango = { gte: startDate.toISOString() }
+      if (isCustomActive && customTo) rango.lte = endDate.toISOString()
+      return base44.entities.Merma.filter(
+        { created_date: rango, ...(almacen ? { almacen_num: almacen } : {}) },
+        '-created_date', 100,
+      )
     },
     select: d => Array.isArray(d) ? d : [],
   })
@@ -478,13 +472,12 @@ export default function Dashboard() {
   const { data: inventariosRaw } = useQuery({
     queryKey: ['dash_inventarios', period, customFrom, customTo, almacen],
     queryFn: async () => {
-      let q = supabase.from('inventarios')
-        .select('id,producto_nombre,diferencia,estado_tarea,clasif_ajuste,created_date')
-        .gte('created_date', startDate.toISOString())
-      if (almacen) q = q.eq('almacen_num', almacen)
-      if (isCustomActive && customTo) q = q.lte('created_date', endDate.toISOString())
-      const { data } = await q.order('created_date', { ascending: false }).limit(100)
-      return data ?? []
+      const rango = { gte: startDate.toISOString() }
+      if (isCustomActive && customTo) rango.lte = endDate.toISOString()
+      return base44.entities.Inventario.filter(
+        { created_date: rango, ...(almacen ? { almacen_num: almacen } : {}) },
+        '-created_date', 100,
+      )
     },
     select: d => Array.isArray(d) ? d : [],
   })
@@ -494,11 +487,10 @@ export default function Dashboard() {
   const { data: lotesRaw } = useQuery({
     queryKey: ['dash_lotes'],
     queryFn: async () => {
-      const { data } = await supabase.from('lotes_vigencia')
-        .select('id,producto_nombre,estado_fv,fecha_vencimiento,cantidad')
-        .in('estado_fv', ['vencido','critico','por_vencer'])
-        .order('fecha_vencimiento', { ascending: true }).limit(50)
-      return data ?? []
+      return base44.entities.Lote.filter(
+        { estado_fv: ['vencido', 'critico', 'por_vencer'] },
+        'fecha_vencimiento', 50,
+      )
     },
     select: d => Array.isArray(d) ? d : [],
   })

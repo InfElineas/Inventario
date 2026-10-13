@@ -1,5 +1,5 @@
-import { supabase } from '@/api/supabaseClient'
 import { toast } from '@/components/ui/use-toast'
+import { base44 } from '@/api/base44Client'
 
 /**
  * Muestra un toast temporal Y crea una notificación en la BD.
@@ -28,19 +28,16 @@ export async function notifToast({
   variant = 'default',
 }) {
   // 1. Insertar notificación en BD como NO LEÍDA
-  const { data: notif, error } = await supabase
-    .from('notificaciones')
-    .insert({
-      usuario_id: userEmail,
-      tipo,
-      titulo,
-      mensaje,
-      leida: false,
-    })
-    .select('id')
-    .single()
-
-  if (error) console.error('notifToast: error insertando notificación', error.message)
+  const notif = await base44.entities.Notificacion.create({
+    usuario_id: userEmail,
+    tipo,
+    titulo,
+    mensaje,
+    leida: false,
+  }).catch((e) => {
+    console.error('notifToast: error insertando notificación', e.message)
+    return null
+  })
 
   // 2. Invalidar campana para mostrar el badge inmediatamente
   queryClient?.invalidateQueries({ queryKey: ['notifications-unread'] })
@@ -54,10 +51,7 @@ export async function notifToast({
     duration,
     onClose: async () => {
       if (!notif?.id) return
-      await supabase
-        .from('notificaciones')
-        .update({ leida: true })
-        .eq('id', notif.id)
+      await base44.entities.Notificacion.marcarLeidas([notif.id])
       queryClient?.invalidateQueries({ queryKey: ['notifications-unread'] })
     },
   })

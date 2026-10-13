@@ -1,4 +1,4 @@
-import { supabase } from '@/api/supabaseClient'
+import { base44 } from '@/api/base44Client'
 
 // ── Labels ─────────────────────────────────────────────────
 
@@ -29,16 +29,14 @@ const ESTADO_LABEL = {
 
 async function insertNotif(email, tipo, titulo, mensaje, link = null, es_error = false) {
   if (!email) return
-  await supabase.from('notificaciones').insert({ usuario_id: email, tipo, titulo, mensaje, leida: false, link, es_error })
+  await base44.entities.Notificacion.create({ usuario_id: email, tipo, titulo, mensaje, leida: false, link, es_error })
 }
 
 async function notificarRol(rol, tipo, titulo, mensaje, excluirEmail = null, link = null) {
-  const { data: usuarios } = await supabase
-    .from('usuarios')
-    .select('email')
-    .eq('role', rol)
-    .eq('activo', true)
-  if (!usuarios?.length) return
+  // Consulta "quiénes tienen el rol X": el IS solo sabe responder por el
+  // usuario autenticado, por eso usuarios.role se espeja en cada login.
+  const usuarios = await base44.entities.Usuario.filter({ role: rol, activo: true })
+  if (!usuarios.length) return
   await Promise.all(
     usuarios
       .filter(u => u.email !== excluirEmail)
@@ -47,13 +45,10 @@ async function notificarRol(rol, tipo, titulo, mensaje, excluirEmail = null, lin
 }
 
 async function notificarJefe(departamento, tipo, titulo, mensaje, link = null) {
-  const { data: jefes } = await supabase
-    .from('usuarios')
-    .select('email')
-    .eq('role', 'jefe_depto')
-    .eq('departamento', departamento)
-    .eq('activo', true)
-  if (!jefes?.length) return
+  const jefes = await base44.entities.Usuario.filter({
+    role: 'jefe_depto', departamento, activo: true,
+  })
+  if (!jefes.length) return
   await Promise.all(jefes.map(j => insertNotif(j.email, tipo, titulo, mensaje, link)))
 }
 
@@ -65,7 +60,7 @@ async function notificarJefe(departamento, tipo, titulo, mensaje, link = null) {
  */
 export async function logTransicion(tabla, registro, estadoNuevo, actor, datos = {}) {
   try {
-    await supabase.from('workflow_eventos').insert({
+    await base44.entities.WorkflowEvento.create({
       tabla,
       registro_id:  registro.id,
       estado_antes: registro.estado_tarea ?? null,

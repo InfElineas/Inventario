@@ -26,17 +26,20 @@ import { loadEnv } from 'vite'
 import { createTkcApiMiddleware } from './src/server/tkcApi.js'
 import { createAuthApiMiddleware } from './src/server/authApi.js'
 import { createDatosApiMiddleware } from './src/server/datosApi.js'
+import { createSyncApiMiddleware } from './src/server/syncApi.js'
 
 export function tkcApiPlugin() {
   let middleware = null
   let authMiddleware = null
   let datosMiddleware = null
+  let syncMiddleware = null
 
   // /api/auth/* primero, luego /api/tkc/*, y lo que no sea de ninguno sigue
   // su camino hacia Vite.
   const dispatch = (req, res, next) =>
     authMiddleware(req, res, () =>
-      datosMiddleware(req, res, () => middleware(req, res, next)))
+      datosMiddleware(req, res, () =>
+        syncMiddleware(req, res, () => middleware(req, res, next))))
 
   return {
     name: 'tkc-api',
@@ -69,6 +72,7 @@ export function tkcApiPlugin() {
 
       authMiddleware = createAuthApiMiddleware()
       datosMiddleware = createDatosApiMiddleware()
+      syncMiddleware = createSyncApiMiddleware()
     },
 
     configureServer(server) {

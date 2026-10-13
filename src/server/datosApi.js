@@ -13,7 +13,7 @@ import { query, queryOne, transaction } from './db.js'
 import { columnaSegura, soloColumnas } from './columnas.js'
 import { resolverSesion } from './session.js'
 import {
-  puedeLeer, puedeCrear, puedeActualizar, puedeBorrar, filtroPropias,
+  puedeLeer, puedeCrear, puedeActualizar, puedeBorrar, filtroPropias, esAdmin,
 } from './permisos.js'
 
 // Mismo mapeo que tenía base44Client.
@@ -29,6 +29,10 @@ const TABLA = {
   Notificacion:        'notificaciones',
   HistorialMovimiento: 'historial_movimientos',
   Usuario:             'usuarios',
+  WorkflowEvento:      'workflow_eventos',
+  ComentarioSupervision: 'comentarios_supervision',
+  AdminAuditLog:       'admin_audit_log',
+  SyncAutoLog:         'sync_auto_log',
 }
 
 // Las vistas no se escriben; `productos` lo llena el sync.
@@ -93,6 +97,15 @@ async function where(tabla, condiciones, valores) {
       partes.push(`${col} IN (${marcadores.join(', ')})`)
     } else if (valor === null) {
       partes.push(`${col} IS NULL`)
+    } else if (valor && typeof valor === 'object' && !(valor instanceof Date)) {
+      // Rango: { gte, lte, gt, lt }. Lo necesita el panel para acotar por
+      // periodo; sin esto habría que traerse todo y filtrar en el navegador.
+      const OPERADORES = { gte: '>=', lte: '<=', gt: '>', lt: '<' }
+      for (const [clave2, op] of Object.entries(OPERADORES)) {
+        if (valor[clave2] !== undefined) {
+          partes.push(`${col} ${op} $${valores.push(valor[clave2])}`)
+        }
+      }
     } else {
       partes.push(`${col} = $${valores.push(valor)}`)
     }
@@ -135,20 +148,75 @@ export function createDatosApiMiddleware() {
         if (propio) condiciones[propio.campo] = propio.valor
 
         const valores = []
-        const clausula = await where(tabla, condiciones, valores)
+        let clausula = await where(tabla, condiciones, valores)
 
         if (accion === 'count') {
           const { rows } = await query(`SELECT count(*)::int AS total FROM ${tabla} ${clausula}`, valores)
           return responder(res, 200, { count: rows[0]?.total ?? 0 })
         }
 
+        // Búsqueda de texto: { campos: ['nombre','codigo'], texto: 'x' }.
+        // Va aparte de las condiciones porque es un OR entre columnas, no un
+        // AND de igualdades. Los campos se validan como cualquier otro
+        // identificador y el texto va parametrizado.
+        if (cuerpo.search?.texto && Array.isArray(cuerpo.search.campos)) {
+          const patron = `%${String(cuerpo.search.texto)}%`
+          const marcador = `$${valores.push(patron)}`
+          const cols = await Promise.all(
+            cuerpo.search.campos.map((c) => columnaSegura(tabla, c)),
+          )
+          const or = cols.map((c) => `${c} ILIKE ${marcador}`).join(' OR ')
+          clausula = clausula ? `${clausula} AND (${or})` : `WHERE (${or})`
+        }
+
         const orderBy = await orden(tabla, cuerpo.orderBy)
         const lim = limite(cuerpo.limit)
+        // Desplazamiento para recorrer tablas grandes por páginas: `productos`
+        // tiene 55.000 filas y el tope por petición las truncaría en silencio.
+        const desde = Math.max(0, Math.floor(Number(cuerpo.offset) || 0))
         const { rows } = await query(
-          `SELECT * FROM ${tabla} ${clausula} ORDER BY ${orderBy} LIMIT ${lim}`,
+          `SELECT * FROM ${tabla} ${clausula} ORDER BY ${orderBy} LIMIT ${lim} OFFSET ${desde}`,
           valores,
         )
         return responder(res, 200, { data: rows })
+      }
+
+      // ── Marcar notificaciones como leídas ────────────────────
+      // El servidor acota el UPDATE a las filas del propio usuario, así que
+      // mandar ids ajenos no sirve de nada.
+      if (accion === 'marcarLeidas' && tabla === 'notificaciones') {
+        const ids = Array.isArray(cuerpo.ids) ? cuerpo.ids : []
+        if (ids.length === 0) return responder(res, 200, { actualizadas: 0 })
+
+        const marcadores = ids.map((_, i) => `$${i + 2}`)
+        const { rowCount } = await query(
+          `UPDATE notificaciones SET leida = true
+            WHERE usuario_id = $1 AND id IN (${marcadores.join(', ')})`,
+          [ctx.email, ...ids],
+        )
+        return responder(res, 200, { actualizadas: rowCount })
+      }
+
+      // ── Purga (solo administración) ──────────────────────────
+      // Vacía una tabla de registro. Acotada a las tres que el panel ofrece
+      // limpiar: son históricos que crecen sin parar, no datos del negocio.
+      if (accion === 'purgar') {
+        const PURGABLES = ['notificaciones', 'workflow_eventos', 'historial_movimientos']
+        if (!esAdmin(ctx.rol)) return responder(res, 403, { error: 'Sin permiso' })
+        if (!PURGABLES.includes(tabla)) {
+          return responder(res, 400, { error: `${entidad} no se puede purgar` })
+        }
+        // Las condiciones son obligatorias: estas tareas limpian lo viejo
+        // (más de 30 o 90 días), no vacían la tabla. Sin este requisito, un
+        // cuerpo vacío borraría el histórico entero.
+        const condiciones = cuerpo.conditions ?? {}
+        if (Object.keys(condiciones).length === 0) {
+          return responder(res, 400, { error: 'La purga exige condiciones' })
+        }
+        const valores = []
+        const clausula = await where(tabla, condiciones, valores)
+        const { rowCount } = await query(`DELETE FROM ${tabla} ${clausula}`, valores)
+        return responder(res, 200, { borradas: rowCount })
       }
 
       if (SOLO_LECTURA.has(tabla)) {
@@ -172,6 +240,38 @@ export function createDatosApiMiddleware() {
           valores,
         )
         return responder(res, 201, { data: fila })
+      }
+
+      // ── Creación por lotes ───────────────────────────────────
+      // La importación de productos y el registro de movimientos insertan
+      // cientos de filas de golpe; una petición por fila sería inviable.
+      if (accion === 'createMany') {
+        const filas = Array.isArray(cuerpo.data) ? cuerpo.data : []
+        if (filas.length === 0) return responder(res, 200, { creadas: 0 })
+        if (filas.length > 1000) return responder(res, 400, { error: 'Máximo 1000 filas por lote' })
+
+        const limpias = await Promise.all(filas.map((f) => soloColumnas(tabla, f)))
+        for (const fila of limpias) {
+          if (!puedeCrear(ctx, tablaPerm, fila)) {
+            return responder(res, 403, { error: 'Sin permiso' })
+          }
+        }
+
+        // Todas las filas comparten columnas: se toman las de la primera.
+        const claves = Object.keys(limpias[0])
+        if (claves.length === 0) return responder(res, 400, { error: 'Sin datos' })
+        const cols = await Promise.all(claves.map((c) => columnaSegura(tabla, c)))
+
+        const valores = []
+        const grupos = limpias.map((fila) =>
+          `(${claves.map((c) => `$${valores.push(fila[c] ?? null)}`).join(', ')})`,
+        )
+
+        const { rowCount } = await query(
+          `INSERT INTO ${tabla} (${cols.join(', ')}) VALUES ${grupos.join(', ')}`,
+          valores,
+        )
+        return responder(res, 201, { creadas: rowCount })
       }
 
       // ── Actualización ────────────────────────────────────────

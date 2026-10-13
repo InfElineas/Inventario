@@ -1,19 +1,16 @@
-import { supabase } from '@/api/supabaseClient';
+import { base44 } from '@/api/base44Client';
 
 // ── Notificar a los jefes de departamento ─────────────────────
 // Inserta una notificación directamente para cada jefe activo
 // del departamento indicado. Sin deduplicación: es por evento real.
 export async function notifyJefeDepto(departamento, tipo, titulo, mensaje) {
   try {
-    const { data: jefes } = await supabase
-      .from('usuarios')
-      .select('email')
-      .eq('role', 'jefe_depto')
-      .eq('departamento', departamento)
-      .eq('activo', true);
-    if (!jefes?.length) return;
+    const jefes = await base44.entities.Usuario.filter({
+      role: 'jefe_depto', departamento, activo: true,
+    });
+    if (!jefes.length) return;
     await Promise.all(jefes.map(j =>
-      supabase.from('notificaciones').insert({
+      base44.entities.Notificacion.create({
         usuario_id: j.email,
         tipo,
         titulo,
@@ -55,7 +52,7 @@ export function markFired(key) {
 // ── Crear una notificación en Supabase ─────────────────────
 async function push(email, tipo, titulo, mensaje, dedupKey) {
   if (wasFired(dedupKey)) return;
-  const { error } = await supabase.from('notificaciones').insert({
+  const { error } = await base44.entities.Notificacion.create({
     usuario_id: email,
     tipo,
     titulo,
@@ -251,10 +248,7 @@ export async function runSmartNotifications({
 
   // 9. Usuarios pendientes de aprobación (admin) — consulta directa a DB
   if (role === 'administrador') {
-    const { count: np } = await supabase
-      .from('usuarios')
-      .select('*', { count: 'exact', head: true })
-      .eq('activo', false);
+    const np = await base44.entities.Usuario.count({ activo: false });
     if ((np ?? 0) > 0) {
       rules.push({
         tipo: 'usuario',
@@ -267,10 +261,7 @@ export async function runSmartNotifications({
 
   // 9. Recepciones con diferencias (inv / admin)
   if (['inv', 'administrador'].includes(role)) {
-    const { count: nd } = await supabase
-      .from('recepciones')
-      .select('*', { count: 'exact', head: true })
-      .eq('estado', 'con_diferencias');
+    const nd = await base44.entities.Recepcion.count({ estado: 'con_diferencias' });
     if ((nd ?? 0) > 0) {
       rules.push({
         tipo: 'recepcion',

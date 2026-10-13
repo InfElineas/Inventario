@@ -1,23 +1,22 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// ── Mock de supabase: contadores configurables por prueba + insert espiado ──
+// ── Mock de la API: contadores configurables por prueba + create espiado ──
 const mockCounts = vi.hoisted(() => ({ usuariosPendientes: 0, recepcionesDiferencias: 0 }));
-const insertMock = vi.hoisted(() => vi.fn().mockResolvedValue({ error: null }));
+const insertMock = vi.hoisted(() => vi.fn().mockResolvedValue({}));
 
-vi.mock('@/api/supabaseClient', () => ({
-  supabase: {
-    from: (table) => {
-      if (table === 'notificaciones') {
-        return { insert: insertMock };
-      }
-      if (table === 'usuarios') {
-        return { select: () => ({ eq: () => Promise.resolve({ count: mockCounts.usuariosPendientes }) }) };
-      }
-      if (table === 'recepciones') {
-        return { select: () => ({ eq: () => Promise.resolve({ count: mockCounts.recepcionesDiferencias }) }) };
-      }
-      return { select: () => ({ eq: () => Promise.resolve({ data: [] }) }) };
-    },
+vi.mock('@/api/base44Client', () => ({
+  base44: {
+    entities: new Proxy({}, {
+      get: (_, entidad) => ({
+        create: insertMock,
+        filter: async () => [],
+        count: async () => (
+          entidad === 'Usuario' ? mockCounts.usuariosPendientes
+          : entidad === 'Recepcion' ? mockCounts.recepcionesDiferencias
+          : 0
+        ),
+      }),
+    }),
   },
 }));
 

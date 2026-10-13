@@ -1,7 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { supabase } from '@/api/supabaseClient';
-import { sanitizeError } from '@/lib/security';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Bell, Check, CheckCheck } from 'lucide-react';
@@ -30,8 +28,7 @@ export default function Notificaciones() {
   const markAllRead = async () => {
     const ids = notifs.filter(n => !n.leida).map(n => n.id);
     if (!ids.length) return;
-    const { error } = await supabase.from('notificaciones').update({ leida: true }).in('id', ids);
-    if (error) { alert(sanitizeError(error)); return; }
+    await base44.entities.Notificacion.marcarLeidas(ids);
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
   };
 

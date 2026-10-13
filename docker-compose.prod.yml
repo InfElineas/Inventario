@@ -4,7 +4,6 @@
 #
 # El `.env` del proyecto aporta las dos mitades:
 #   · build args  — VITE_* que Vite incrusta en el bundle.
-#   · env_file    — TKC_* y VITE_SUPABASE_* que el servidor lee en runtime
 #                   (verifica el token de Supabase y hace login en TKC).
 #
 # El puerto se publica en 3003 del host; el Caddy externo del servidor le hace
@@ -21,13 +20,6 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
-        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
-        VITE_SUPABASE_EXTERNA_URL: ${VITE_SUPABASE_EXTERNA_URL}
-        VITE_SUPABASE_EXTERNA_ANON_KEY: ${VITE_SUPABASE_EXTERNA_ANON_KEY}
-        VITE_BASE44_APP_ID: ${VITE_BASE44_APP_ID:-}
-        VITE_BASE44_APP_BASE_URL: ${VITE_BASE44_APP_BASE_URL:-}
-        VITE_BASE44_FUNCTIONS_VERSION: ${VITE_BASE44_FUNCTIONS_VERSION:-}
     image: inventario-prod
     container_name: inventario-prod
     restart: unless-stopped

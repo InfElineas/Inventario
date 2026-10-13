@@ -1,24 +1,17 @@
 import { useEffect, useRef } from 'react'
-import { supabase } from '@/api/supabaseClient'
+import { base44 } from '@/api/base44Client'
 
 const ONE_HOUR_MS = 15 * 60 * 1000
 
 export async function getLastSync(email, almacen) {
-  const { data } = await supabase
-    .from('sync_auto_log')
-    .select('synced_at')
-    .eq('user_email', email)
-    .eq('almacen', almacen)
-    .maybeSingle()
-  return data?.synced_at ?? null
+  const filas = await base44.entities.SyncAutoLog.filter(
+    { user_email: email, almacen }, undefined, 1,
+  )
+  return filas[0]?.synced_at ?? null
 }
 
-export async function setLastSync(email, almacen, synced = 0, errors = 0) {
-  await supabase.from('sync_auto_log').upsert(
-    { user_email: email, almacen, synced_at: new Date().toISOString(), synced, errors },
-    { onConflict: 'user_email,almacen' }
-  )
-}
+// El registro de la última sincronización lo escribe /api/sync/productos, que
+// es quien la ejecuta. Antes lo hacía el navegador porque el sync corría aquí.
 
 /**
  * Devuelve true si el almacén no se ha sincronizado en la última hora.

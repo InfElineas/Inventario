@@ -10,8 +10,8 @@ import AlertBanner from '@/components/shared/AlertBanner';
 import { ALL_CLASIF_MERMA, CLASIF_MERMA_SIN_FACT, DESTINOS_MERMA } from '@/lib/constants';
 import { Save, ScanLine } from 'lucide-react';
 import { format } from 'date-fns';
-import { supabase } from '@/api/supabaseClient';
 import { useAlmacen } from '@/lib/useAlmacen';
+import { base44 } from '@/api/base44Client';
 
 // Extraída del formulario para poder probarla sin renderizar el componente.
 export function validateMerma({ producto, cantidad, clasif, fechaInv, notas }) {
@@ -46,13 +46,10 @@ export default function MermaForm({ user, onSubmit, onCancel, isPending: isPendi
   const handleScanResult = async (code) => {
     setShowScanner(false);
     const trimmed = code.trim();
-    let q = supabase
-      .from('productos')
-      .select('id, nombre, codigo_producto, id_tienda, exist_fisica, precio_costo, suministrador, almacen_num')
-      .eq('activo', true)
-      .eq('codigo_producto', trimmed);
-    if (almacen) q = q.eq('almacen_num', almacen);
-    const { data } = await q.limit(1);
+    const data = await base44.entities.Producto.filter(
+      { codigo_producto: trimmed, activo: true, ...(almacen ? { almacen_num: almacen } : {}) },
+      undefined, 1,
+    );
     if (data?.[0]) { setProducto(data[0]); return; }
     alert(`No se encontró producto con código: ${trimmed}`);
   };

@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
-import { supabase } from '@/api/supabaseClient';
-import { supabaseExterna } from '@/api/externalSupabase';
 import { useAlmacen } from '@/lib/useAlmacen';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Camera, CameraOff, Search, X, ScanLine, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { base44 } from '@/api/base44Client';
 
 /**
  * BarcodeScannerModal
@@ -28,37 +27,26 @@ export default function BarcodeScannerModal({ onSelect, onClose }) {
   const handleCode = async (code) => {
     const clean = code.trim();
 
-    // 1. Buscar primero en BD interna por codigo_producto
-    let q = supabase
-      .from('productos')
-      .select('id, nombre, codigo_producto, id_tienda, exist_fisica, almacen, tienda, suministrador')
-      .eq('activo', true)
-      .eq('codigo_producto', clean);
-    if (almacen) q = q.eq('almacen_num', almacen);
-    const { data: interno } = await q.limit(1);
+    // 1. Buscar primero en el almacén activo
+    const interno = await base44.entities.Producto.filter(
+      { codigo_producto: clean, activo: true, ...(almacen ? { almacen_num: almacen } : {}) },
+      undefined, 1,
+    );
 
-    if (interno?.[0]) {
+    if (interno[0]) {
       setStatus({ type: 'success', message: `✓ ${interno[0].nombre}` });
       setTimeout(() => { onSelect(interno[0]); onClose(); }, 800);
       return;
     }
 
-    // 2. Fallback: buscar en BD externa (catálogo completo) por campo codigo
-    if (supabaseExterna) {
-      const { data: externo } = await supabaseExterna
-        .from('products')
-        .select('id, codigo, nombre, suministrador')
-        .eq('codigo', clean)
-        .limit(1);
-
-      if (externo?.[0]) {
-        // Producto existe en catálogo pero no está importado en este almacén
-        setStatus({
-          type: 'error',
-          message: `"${externo[0].nombre}" existe en el catálogo pero no está importado en el almacén${almacen ? ` ${almacen}` : ''}.`,
-        });
-        return;
-      }
+    // 2. Buscar en el catálogo completo, sin filtrar por almacén, para dar un
+    // mensaje útil: el producto puede existir pero no estar en este almacén.
+    const enOtros = await base44.entities.Producto.filter(
+      { codigo_producto: clean, activo: true }, undefined, 1,
+    );
+    if (enOtros[0]) {
+      alert(`"${enOtros[0].nombre}" existe en el catálogo pero no está en el almacén${almacen ? ` ${almacen}` : ''}.`);
+      return;
     }
 
     setStatus({ type: 'error', message: `Sin coincidencia para: "${clean}"` });
