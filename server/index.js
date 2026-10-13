@@ -27,6 +27,7 @@ import { fileURLToPath } from 'node:url'
 import { loadEnvFile } from './env.js'
 import { createTkcApiMiddleware, makeTokenVerifier } from '../src/server/tkcApi.js'
 import { createAuthApiMiddleware } from '../src/server/authApi.js'
+import { createDatosApiMiddleware } from '../src/server/datosApi.js'
 import { isIdentityConfigured } from '../src/server/identity.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -64,6 +65,7 @@ if (!process.env.DATABASE_URL) {
 
 const tkcMiddleware = createTkcApiMiddleware({ tkc, verifyToken })
 const authMiddleware = createAuthApiMiddleware()
+const datosMiddleware = createDatosApiMiddleware()
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -122,7 +124,9 @@ async function serveStatic(req, res) {
 const server = createServer((req, res) => {
   // Cadena: /api/auth/* → /api/tkc/* → estáticos de dist/.
   authMiddleware(req, res, () =>
-    tkcMiddleware(req, res, () => serveStatic(req, res)),
+    datosMiddleware(req, res, () =>
+      tkcMiddleware(req, res, () => serveStatic(req, res)),
+    ),
   ).catch((error) => {
     console.error('[server] error inesperado:', error)
     if (!res.headersSent) res.statusCode = 500
