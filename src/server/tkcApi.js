@@ -14,6 +14,7 @@ import { listInventory } from '../services/tkc/normalize.js'
 import { fetchExistencia } from '../services/tkc/submayor.js'
 import { getExistencias } from '../services/tkc/existencias.js'
 import { keyToTkcValue } from '../services/tkc/warehouses.js'
+import { resolverSesion } from './session.js'
 
 const TKC_API_ENDPOINTS = {
   inventario: '/api/tkc/inventario',
@@ -24,8 +25,6 @@ const TKC_API_ENDPOINTS = {
 const MAX_BODY = 64 * 1024
 /** Tope de ids por petición: una página de la tabla son 250 como mucho. */
 const MAX_IDS = 500
-/** TTL del caché de tokens validados: evita un viaje a Supabase por request. */
-const TOKEN_TTL_MS = 60_000
 
 function json(res, status, payload) {
   const body = JSON.stringify(payload)
@@ -53,47 +52,15 @@ function readBody(req) {
   })
 }
 
-/**
- * Valida el access token de Supabase del usuario contra `/auth/v1/user`.
- *
- * Sin esto el endpoint sería un proxy abierto a TKC con credenciales de
- * servicio compartidas: cualquiera que conociera la URL consultaría el
- * inventario sin pasar por el login de la app.
- */
-export function makeTokenVerifier({ supabaseUrl, supabaseKey }) {
-  const cache = new Map()
-
-  return async function verify(token) {
-    if (!token) return false
-    const hit = cache.get(token)
-    if (hit && hit > Date.now()) return true
-
-    const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` },
-    })
-    if (!res.ok) {
-      cache.delete(token)
-      return false
-    }
-    cache.set(token, Date.now() + TOKEN_TTL_MS)
-    // Poda perezosa: el caché solo crece con tokens vivos de esta sesión.
-    if (cache.size > 200) {
-      const now = Date.now()
-      for (const [k, exp] of cache) if (exp <= now) cache.delete(k)
-    }
-    return true
-  }
-}
 
 /**
  * @param {object} deps
  * @param {{tkcBase: string, tkcUser: string, tkcPass: string}} deps.tkc
- * @param {((token: string) => Promise<boolean>) | null} deps.verifyToken
  *        `null` cuando no hay Supabase configurado: el middleware responde 503
  *        en vez de dejar pasar peticiones sin validar.
  * @returns {(req: object, res: object, next: () => any) => Promise<void>}
  */
-export function createTkcApiMiddleware({ tkc, verifyToken }) {
+export function createTkcApiMiddleware({ tkc }) {
   return async function tkcApiMiddleware(req, res, next) {
     const path = req.url?.split('?')[0]
     const route = Object.keys(TKC_API_ENDPOINTS).find((k) => TKC_API_ENDPOINTS[k] === path)
@@ -105,15 +72,11 @@ export function createTkcApiMiddleware({ tkc, verifyToken }) {
         error: 'TKC no configurado: falta TKC_BASE, TKC_USER o TKC_PASS en .env',
       })
     }
-    if (!verifyToken) {
-      return json(res, 503, {
-        error: 'Falta VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY para validar la sesión',
-      })
-    }
 
     try {
-      const bearer = (req.headers.authorization ?? '').replace(/^Bearer\s+/i, '')
-      if (!(await verifyToken(bearer))) {
+      // La sesión llega en la cookie httpOnly que fija /api/auth/login, no en
+      // una cabecera: el navegador no tiene acceso al token para ponerlo él.
+      if (!(await resolverSesion(req, res))) {
         return json(res, 401, { error: 'Sesión no válida' })
       }
 

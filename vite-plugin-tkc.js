@@ -23,7 +23,7 @@
  */
 
 import { loadEnv } from 'vite'
-import { createTkcApiMiddleware, makeTokenVerifier } from './src/server/tkcApi.js'
+import { createTkcApiMiddleware } from './src/server/tkcApi.js'
 import { createAuthApiMiddleware } from './src/server/authApi.js'
 import { createDatosApiMiddleware } from './src/server/datosApi.js'
 
@@ -57,13 +57,8 @@ export function tkcApiPlugin() {
         tkcPass: pick('TKC_PASS'),
       }
 
-      const supabaseUrl = pick('VITE_SUPABASE_URL').replace(/\/+$/, '')
-      const supabaseKey = pick('VITE_SUPABASE_ANON_KEY')
-      const verifyToken = supabaseUrl && supabaseKey
-        ? makeTokenVerifier({ supabaseUrl, supabaseKey })
-        : null
 
-      middleware = createTkcApiMiddleware({ tkc, verifyToken })
+      middleware = createTkcApiMiddleware({ tkc })
 
       // Los módulos compartidos con producción (identity.js, db.js) leen de
       // process.env, pero loadEnv solo devuelve un objeto: hay que volcarlas.

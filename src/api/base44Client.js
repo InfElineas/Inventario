@@ -1,129 +1,101 @@
-import { supabase } from './supabaseClient';
-import { sanitizeError } from '@/lib/security';
+/**
+ * Acceso a datos del navegador.
+ *
+ * Mantiene la interfaz que ya usaban las páginas (list, filter, count, create,
+ * update, delete) y cambia solo por dentro: antes hablaba con Supabase
+ * directamente desde el navegador; ahora llama a la API de este mismo servidor,
+ * que es quien habla con ELINEAS_BD.
+ *
+ * El cambio importante no es el transporte, es dónde vive la autorización. Con
+ * Supabase, las reglas las hacía cumplir RLS dentro de Postgres y el navegador
+ * tenía credenciales para llegar a la base. Ahora el navegador no tiene ninguna:
+ * la sesión viaja en cookies httpOnly que el JavaScript de la página no puede
+ * leer, y quien decide qué se puede hacer es `src/server/permisos.js`.
+ *
+ * Por eso aquí no hay comprobaciones de permiso: serían decorativas. Lo que el
+ * servidor rechace llega como un error y se muestra.
+ */
 
-// ── Mapeo entidad → tabla ─────────────────────────────────
-const TABLE = {
-  Producto:            'productos',
-  AnuncioDesact:       'anuncios_desact',
-  Merma:               'mermas',
-  // Lote se lee desde la vista lotes_vigencia, que recalcula estado_fv/
-  // vigencia_dias contra la fecha actual (ver migration_v29). Nada en el
-  // código crea/actualiza Lote directamente, así que apuntar la entidad
-  // completa a la vista es seguro.
-  Lote:                'lotes_vigencia',
-  LoteIC:              'lotes_ic',
-  Inventario:          'inventarios',
-  Recepcion:           'recepciones',
-  Notificacion:        'notificaciones',
-  HistorialMovimiento: 'historial_movimientos',
-};
+const BASE = '/api/datos'
 
-// ── Columnas permitidas en orderBy (whitelist anti-injection) ─
-const ALLOWED_ORDER_COLUMNS = new Set([
-  'created_date', 'updated_date', 'fecha', 'fecha_inv',
-  'fecha_vencimiento', 'fecha_deteccion', 'nombre', 'producto_nombre',
-  'estado_tarea', 'estado_fv', 'estado_anuncio', 'cantidad',
-  'total_perdida', 'exist_fisica', 'precio', 'precio_costo',
-  'no_recepcion', 'no_lote', 'tipo_caso', 'tipo_cambio',
-]);
+/** Entidades que acepta el servidor (ver TABLA en src/server/datosApi.js). */
+const ENTIDADES = new Set([
+  'Producto', 'AnuncioDesact', 'Merma', 'Lote', 'LoteIC',
+  'Inventario', 'Recepcion', 'Notificacion', 'HistorialMovimiento', 'Usuario',
+])
 
-function parseOrder(str) {
-  if (!str) return { column: 'created_date', ascending: false };
-  const asc    = !str.startsWith('-');
-  const column = asc ? str : str.slice(1);
-  if (!ALLOWED_ORDER_COLUMNS.has(column)) {
-    // Columna desconocida → fallback seguro, NO lanzar excepción
-    return { column: 'created_date', ascending: false };
+/**
+ * Llamada a la API. `credentials: 'include'` es imprescindible: sin él el
+ * navegador no manda las cookies de sesión y todo responde 401.
+ */
+async function pedir(entidad, accion, cuerpo = {}) {
+  const res = await fetch(`${BASE}/${entidad}/${accion}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(cuerpo),
+  })
+
+  const datos = await res.json().catch(() => null)
+
+  if (!res.ok) {
+    // La sesión caducó o se revocó desde el IS: no tiene sentido seguir
+    // mostrando una pantalla con datos a medias.
+    if (res.status === 401) {
+      window.location.href = '/login'
+      throw new Error('Sesión expirada')
+    }
+    throw new Error(datos?.error ?? `Error ${res.status}`)
   }
-  return { column, ascending: asc };
+  return datos
 }
 
-function entity(table) {
+function entidad(nombre) {
   return {
-    list: async (orderBy, limit) => {
-      const { column, ascending } = parseOrder(orderBy);
-      let q = supabase.from(table).select('*').order(column, { ascending });
-      if (limit) q = q.limit(limit);
-      const { data, error } = await q;
-      if (error) throw new Error(sanitizeError(error));
-      return data ?? [];
-    },
+    list: async (orderBy, limit) =>
+      (await pedir(nombre, 'list', { orderBy, limit })).data ?? [],
 
-    filter: async (conditions, orderBy, limit) => {
-      const { column, ascending } = parseOrder(orderBy);
-      let q = supabase.from(table).select('*').order(column, { ascending });
-      Object.entries(conditions).forEach(([k, v]) => { q = q.eq(k, v); });
-      if (limit) q = q.limit(limit);
-      const { data, error } = await q;
-      if (error) throw new Error(sanitizeError(error));
-      return data ?? [];
-    },
+    filter: async (conditions, orderBy, limit) =>
+      (await pedir(nombre, 'filter', { conditions, orderBy, limit })).data ?? [],
 
-    /**
-     * Cuántas filas cumplen las condiciones, SIN traérselas.
-     *
-     * `head: true` hace que Postgres devuelva solo la cabecera con el total, así
-     * que la respuesta no lleva filas. Está para los contadores de los badges,
-     * que antes se calculaban descargando cientos de registros para hacerles un
-     * .filter().length.
-     *
-     * Un valor array se traduce a `in`, y uno escalar a `eq`.
-     */
-    count: async (conditions = {}) => {
-      let q = supabase.from(table).select('*', { count: 'exact', head: true });
-      Object.entries(conditions).forEach(([k, v]) => {
-        q = Array.isArray(v) ? q.in(k, v) : q.eq(k, v);
-      });
-      const { count, error } = await q;
-      if (error) throw new Error(sanitizeError(error));
-      return count ?? 0;
-    },
+    /** Cuenta sin traerse las filas. Un array se traduce a IN; un escalar, a =. */
+    count: async (conditions = {}) =>
+      (await pedir(nombre, 'count', { conditions })).count ?? 0,
 
-    create: async (data) => {
-      const { data: row, error } = await supabase.from(table).insert(data).select().single();
-      if (error) throw new Error(sanitizeError(error));
-      return row;
-    },
+    create: async (data) => (await pedir(nombre, 'create', { data })).data,
 
-    update: async (id, data) => {
-      const { data: row, error } = await supabase.from(table).update(data).eq('id', id).select().single();
-      if (error) throw new Error(sanitizeError(error));
-      return row;
-    },
+    update: async (id, data) => (await pedir(nombre, 'update', { id, data })).data,
 
-    delete: async (id) => {
-      const { error } = await supabase.from(table).delete().eq('id', id);
-      if (error) throw new Error(sanitizeError(error));
-    },
-  };
+    delete: async (id) => { await pedir(nombre, 'delete', { id }) },
+  }
 }
 
 export const base44 = {
   entities: new Proxy({}, {
-    get(_, name) {
-      const table = TABLE[name];
-      if (!table) throw new Error(`Entidad no mapeada: ${name}`);
-      return entity(table);
+    get(_, nombre) {
+      if (!ENTIDADES.has(nombre)) throw new Error(`Entidad no mapeada: ${nombre}`)
+      return entidad(nombre)
     },
   }),
 
   auth: {
+    /**
+     * Usuario de la sesión actual, o null.
+     *
+     * El servidor renueva el JWT por dentro si hacía falta, así que desde aquí
+     * solo hay dos respuestas posibles: hay sesión o no la hay.
+     */
     me: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-      const { data: perfil } = await supabase
-        .from('usuarios')
-        .select('full_name, role')
-        .eq('email', user.email)
-        .single();
-      return {
-        id:        user.id,
-        email:     user.email,
-        full_name: perfil?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || '',
-        role:      perfil?.role || 'inv',
-      };
+      const res = await fetch('/api/auth/me', { credentials: 'include' })
+      if (!res.ok) return null
+      const datos = await res.json().catch(() => null)
+      return datos?.user ?? null
     },
-    logout:          () => supabase.auth.signOut(),
-    redirectToLogin: () => { window.location.href = '/login'; },
+
+    logout: async () => {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+    },
+
+    redirectToLogin: () => { window.location.href = '/login' },
   },
-};
+}

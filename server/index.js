@@ -25,7 +25,7 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadEnvFile } from './env.js'
-import { createTkcApiMiddleware, makeTokenVerifier } from '../src/server/tkcApi.js'
+import { createTkcApiMiddleware } from '../src/server/tkcApi.js'
 import { createAuthApiMiddleware } from '../src/server/authApi.js'
 import { createDatosApiMiddleware } from '../src/server/datosApi.js'
 import { isIdentityConfigured } from '../src/server/identity.js'
@@ -43,17 +43,9 @@ const tkc = {
   tkcUser: process.env.TKC_USER ?? '',
   tkcPass: process.env.TKC_PASS ?? '',
 }
-const supabaseUrl = (process.env.VITE_SUPABASE_URL ?? '').replace(/\/+$/, '')
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY ?? ''
-const verifyToken = supabaseUrl && supabaseKey
-  ? makeTokenVerifier({ supabaseUrl, supabaseKey })
-  : null
 
 if (!tkc.tkcBase || !tkc.tkcUser || !tkc.tkcPass) {
   console.warn('[tkc-api] Falta TKC_BASE/TKC_USER/TKC_PASS: /api/tkc/* responderá 503.')
-}
-if (!verifyToken) {
-  console.warn('[tkc-api] Falta VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY: /api/tkc/* responderá 503.')
 }
 
 if (!isIdentityConfigured()) {
@@ -63,7 +55,7 @@ if (!process.env.DATABASE_URL) {
   console.warn('[db] Falta DATABASE_URL: las rutas que tocan la base fallarán.')
 }
 
-const tkcMiddleware = createTkcApiMiddleware({ tkc, verifyToken })
+const tkcMiddleware = createTkcApiMiddleware({ tkc })
 const authMiddleware = createAuthApiMiddleware()
 const datosMiddleware = createDatosApiMiddleware()
 

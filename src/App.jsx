@@ -9,7 +9,6 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import AccessDenied from '@/components/shared/AccessDenied';
 import AppLayout from '@/components/layout/AppLayout';
 import Login from '@/pages/Login';
-import ActualizarPassword from '@/pages/ActualizarPassword';
 
 // Páginas autenticadas cargadas bajo demanda — cada una queda en su propio
 // chunk, así el login inicial no descarga el código de Reportes, Productos,
@@ -119,7 +118,6 @@ function App() {
           <SyncProvider>
             <Routes>
               <Route path="/login"                element={<Login />} />
-              <Route path="/actualizar-password"  element={<ActualizarPassword />} />
               <Route path="*"                     element={<AuthenticatedApp />} />
             </Routes>
           </SyncProvider>

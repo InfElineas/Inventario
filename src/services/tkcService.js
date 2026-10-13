@@ -4,10 +4,9 @@
  * Único punto de entrada que usa la UI. No toca Supabase para los datos: llama
  * al endpoint local `/api/tkc/inventario` (middleware de Vite en dev/preview,
  * `server/index.js` en producción), que es quien hace el login en TKC y consulta
- * su DataTables. Supabase solo aporta el access token que autentica la llamada.
+ * su DataTables. La sesión la aporta la cookie httpOnly que fija /api/auth/login.
  */
 
-import { supabase } from '@/api/supabaseClient'
 import { WAREHOUSES } from '@/services/tkc/warehouses'
 
 const ENDPOINT = '/api/tkc/inventario'
@@ -17,24 +16,14 @@ const ENDPOINT_EXISTENCIAS = '/api/tkc/existencias'
 /** Almacenes disponibles (catálogo estático de TKC), como claves de la app. */
 export const TKC_ALMACENES = WAREHOUSES.map((w) => w.key)
 
-/** Access token de la sesión actual, o error si ya no hay sesión. */
-async function requireToken() {
-  const { data } = await supabase.auth.getSession()
-  const token = data?.session?.access_token
-  if (!token) throw new Error('Sesión expirada. Vuelve a iniciar sesión.')
-  return token
-}
-
 /** POST autenticado a uno de los endpoints locales de TKC. */
 async function postTkc(endpoint, payload) {
-  const token = await requireToken()
-
+  // La sesión viaja en la cookie httpOnly, no en una cabecera: el JavaScript
+  // de la página no tiene acceso al token y no puede ponerlo él.
   const res = await fetch(endpoint, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
 
