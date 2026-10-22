@@ -6,6 +6,7 @@ import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-route
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { SyncProvider } from '@/lib/SyncContext';
 import AccessDenied from '@/components/shared/AccessDenied';
+import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import AppLayout from '@/components/layout/AppLayout';
 import Login from '@/pages/Login';
 
@@ -114,10 +115,14 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <SyncProvider>
-            <Routes>
-              <Route path="/login"                element={<Login />} />
-              <Route path="*"                     element={<AuthenticatedApp />} />
-            </Routes>
+            {/* Último recurso: lo que falle fuera del layout —el login, la
+                propia carga de rutas— tampoco debe dejar la ventana en blanco. */}
+            <ErrorBoundary>
+              <Routes>
+                <Route path="/login"                element={<Login />} />
+                <Route path="*"                     element={<AuthenticatedApp />} />
+              </Routes>
+            </ErrorBoundary>
           </SyncProvider>
         </Router>
         <Toaster />

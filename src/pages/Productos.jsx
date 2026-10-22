@@ -1171,7 +1171,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                 <ExistenciaHoverCard
                   rect={hoveredTkc.rect}
                   nombre={hoveredTkc.nombre}
-                  data={hoveredEnMapa ? { existencia: hoveredEnMapa } : existenciaTkc}
+                  data={existenciaTkc}
                   isLoading={loadingExistencia}
                   error={existenciaError}
                 />

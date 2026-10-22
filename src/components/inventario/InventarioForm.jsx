@@ -13,7 +13,6 @@ import SelectorCoincidencias from '@/components/shared/SelectorCoincidencias';
 import { buscarPorCodigo, avisoSinCoincidencia } from '@/lib/buscarPorCodigo';
 import { Plus, Trash2, Save, ScanLine } from 'lucide-react';
 import { format } from 'date-fns';
-import { base44 } from '@/api/base44Client';
 import { fetchExistenciaTkc } from '@/services/tkcService';
 
 const CLASIF_AJUSTE = ['Faltante por deterioro', 'Faltante por robo', 'Faltante sin justificar', 'Sobrante por transferencia', 'Sobrante por devolución', 'Error de sistema', 'Ajuste administrativo'];

@@ -10,6 +10,7 @@ import { ToastAction } from '@/components/ui/toast';
 import { useTheme } from '@/lib/useTheme';
 import ProfileModal from '@/components/shared/ProfileModal';
 import { useSyncManager } from '@/lib/SyncContext';
+import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import { ROLES } from '@/lib/constants';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
@@ -425,7 +426,13 @@ export default function AppLayout() {
         {/* ── Content ─────────────────────────────────── */}
         <main className="flex-1 p-4 lg:p-6">
           <div className="max-w-[1400px] mx-auto">
-            <Outlet />
+            {/* El fallo de una pantalla queda dentro: el menú, el encabezado y
+                la navegación siguen en pie. La `key` reinicia el límite al
+                cambiar de ruta; sin ella, el error se quedaría pegado y
+                navegar a otro sitio seguiría mostrándolo. */}
+            <ErrorBoundary key={location.pathname}>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
       </div>
