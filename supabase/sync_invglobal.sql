@@ -52,7 +52,12 @@ BEGIN
       COALESCE(g."Reserva", 0)                                 AS almacen,
       COALESCE(g."Tienda", 0)                                  AS tienda,
       COALESCE(g."Precio", 0)                                  AS precio_costo,
-      COALESCE(g."Fotos", '[]'::jsonb)                         AS fotos
+      COALESCE(g."Fotos", '[]'::jsonb)                         AS fotos,
+      -- El estado que TKC publica: 'Activado', 'Desactivado', 'Muerto' o
+      -- 'Sin Id'. La vista lo calcula de `is_dead` y `status_provider`, que
+      -- son campos suyos. NO va a `estado_anuncio`: esa columna la editan los
+      -- usuarios a mano en la ficha y sobrescribirla borraría su trabajo.
+      NULLIF(btrim(COALESCE(g."Estado Anuncio", '')), '')      AS estado_anuncio_tkc
     FROM public."invGlobal" g
     WHERE btrim(COALESCE(g."Cód. Prod.", '')) <> ''
       AND btrim(COALESCE(g."No. Almacén", '')) <> ''
@@ -69,12 +74,12 @@ BEGIN
     INSERT INTO inventario.productos (
       almacen_num, codigo_producto, id_tienda, nombre, suministrador,
       categoria_elineas, unidad_medida, exist_fisica, almacen, tienda,
-      precio_costo, fotos, activo, updated_date
+      precio_costo, fotos, estado_anuncio_tkc, activo, updated_date
     )
     SELECT
       almacen_num, codigo_producto, id_tienda, nombre, suministrador,
       categoria_elineas, unidad_medida, exist_fisica, almacen, tienda,
-      precio_costo, fotos, true, now()
+      precio_costo, fotos, estado_anuncio_tkc, true, now()
     FROM origen
     ON CONFLICT (almacen_num, clave_sync) DO UPDATE SET
       id_tienda         = EXCLUDED.id_tienda,
@@ -88,6 +93,7 @@ BEGIN
       tienda            = EXCLUDED.tienda,
       precio_costo      = EXCLUDED.precio_costo,
       fotos             = EXCLUDED.fotos,
+      estado_anuncio_tkc = EXCLUDED.estado_anuncio_tkc,
       -- Si el producto había desaparecido del origen y vuelve, se reactiva.
       activo            = true,
       updated_date      = now()
