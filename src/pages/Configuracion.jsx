@@ -426,7 +426,7 @@ export default function Configuracion() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium">Almacén {alm}</p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          {result?.ok === true  && <span className="text-[#4ade80]">{result.synced} prods · {result.errors} err</span>}
+                          {result?.ok === true  && <span className="text-[#4ade80]">{result.synced} prods · {result.desactivados ?? 0} baja</span>}
                           {result?.ok === false && <span className="text-[#e24b4a] truncate block max-w-[180px]">{result.msg}</span>}
                           {result === undefined && <>Sync: {fmtSync(log?.synced_at)}</>}
                         </p>

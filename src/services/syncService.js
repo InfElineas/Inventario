@@ -52,8 +52,19 @@ export async function fetchAlmacenes() {
 /**
  * Lanza la sincronización en el servidor.
  *
+ * El servidor responde con los nombres de la función SQL —`sincronizados`,
+ * `desactivados`— pero las pantallas y la tabla `sync_auto_log` llevan desde
+ * siempre hablando de `synced`. La traducción se hace aquí, en un solo sitio,
+ * en vez de repartirla por las cinco pantallas que leen el resultado.
+ *
+ * `errors` y `failures` existían cuando el sync lo hacía el navegador lote a
+ * lote y algunos podían fallar por separado. Ahora es una sola sentencia SQL:
+ * o funciona entera o lanza. Por eso van siempre vacíos, y es la verdad, no un
+ * relleno.
+ *
  * @param {string} almacenNum almacén concreto, o vacío para todos
- * @returns {Promise<{ sincronizados: number, desactivados: number, almacen: string }>}
+ * @returns {Promise<{ synced: number, desactivados: number, almacen: string,
+ *   errors: number, failures: [] }>}
  */
 export async function syncFromExternal(almacenNum) {
   const res = await fetch('/api/sync/productos', {
@@ -65,5 +76,12 @@ export async function syncFromExternal(almacenNum) {
 
   const datos = await res.json().catch(() => null)
   if (!res.ok) throw new Error(humanizeSyncError(datos?.error ?? `Error ${res.status}`))
-  return datos
+
+  return {
+    ...datos,
+    synced: datos?.sincronizados ?? 0,
+    desactivados: datos?.desactivados ?? 0,
+    errors: 0,
+    failures: [],
+  }
 }

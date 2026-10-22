@@ -59,6 +59,30 @@ describe('syncFromExternal', () => {
     expect(r.sincronizados).toBe(100);
   });
 
+  it('traduce la respuesta a los nombres que leen las pantallas', async () => {
+    // El servidor dice `sincronizados`; las pantallas leen `synced`. Sin esta
+    // traducción el aviso decía «0 productos» y la etiqueta «undefined sync»
+    // aunque el sync hubiera funcionado.
+    fetchMock.mockResolvedValue({
+      ok: true, json: async () => ({ sincronizados: 1076, desactivados: 12, almacen: '789' }),
+    });
+
+    const r = await syncFromExternal('789');
+
+    expect(r.synced).toBe(1076);
+    expect(r.desactivados).toBe(12);
+    // Una sola sentencia SQL: o va entera o lanza. No hay fallos por fila.
+    expect(r.errors).toBe(0);
+    expect(r.failures).toEqual([]);
+  });
+
+  it('una respuesta sin cifras no deja `undefined` suelto', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
+    const r = await syncFromExternal('789');
+    expect(r.synced).toBe(0);
+    expect(r.desactivados).toBe(0);
+  });
+
   it('sin almacén sincroniza todos', async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
     await syncFromExternal('');

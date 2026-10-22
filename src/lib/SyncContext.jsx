@@ -61,7 +61,7 @@ export function SyncProvider({ children }) {
       const qc = queryClientRef.current
       setLastResults(r => ({
         ...r,
-        [almacen]: { ok: true, synced: result.synced, errors: result.errors, failures: result.failures ?? [], changes: result.changes },
+        [almacen]: { ok: true, synced: result.synced, desactivados: result.desactivados, errors: result.errors, failures: result.failures ?? [], changes: result.changes },
       }))
       qc.invalidateQueries({ queryKey: ['bd_tkc',       almacen] })
       qc.invalidateQueries({ queryKey: ['productos',    almacen] })
@@ -71,9 +71,12 @@ export function SyncProvider({ children }) {
       if ((result.failures ?? []).length > 0) notifyFailures(almacen, result.failures, userEmailRef.current)
       const errMsg    = result.errors  > 0 ? `, ${result.errors} errores`          : ''
       const changeMsg = result.changes > 0 ? ` · ${result.changes} campos cambiados` : ''
+      // Los desactivados son los que ya no están en invGlobal: desaparecen del
+      // catálogo sin que nadie los borre, así que conviene decirlo.
+      const bajaMsg   = result.desactivados > 0 ? ` · ${result.desactivados} dados de baja` : ''
       notifToast({
         titulo:    `Almacén ${almacen} sincronizado`,
-        mensaje:   `${result.synced} productos${errMsg}${changeMsg}`,
+        mensaje:   `${result.synced} productos${errMsg}${changeMsg}${bajaMsg}`,
         tipo:      'sistema',
         userEmail: userEmailRef.current,
         queryClient: qc,
@@ -117,7 +120,7 @@ export function SyncProvider({ children }) {
           totalSynced += result.synced ?? 0
           totalErrors += result.errors ?? 0
           allFailures.push(...(result.failures ?? []))
-          setLastResults(r => ({ ...r, [alm]: { ok: true, synced: result.synced, errors: result.errors } }))
+          setLastResults(r => ({ ...r, [alm]: { ok: true, synced: result.synced, desactivados: result.desactivados, errors: result.errors } }))
           qc.invalidateQueries({ queryKey: ['bd_tkc',    alm] })
           qc.invalidateQueries({ queryKey: ['productos', alm] })
         } catch (e) {
