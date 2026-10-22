@@ -20,8 +20,16 @@ import { fetchSubmayorPage } from './submayor.js'
 
 /** Filas por petición. Medido: 500 filas ≈ 4,5 s; subirlo no acelera TKC. */
 const PAGE_SIZE = 500
-/** Peticiones simultáneas. TKC es un backend de producción compartido. */
-const CONCURRENCY = 3
+/**
+ * Peticiones simultáneas contra el submayor.
+ *
+ * TKC es un backend de producción compartido, así que esto es un reparto de
+ * su capacidad, no un parámetro libre. Con 3 el recorrido de un almacén de
+ * 9.000 productos tardaba ~37 s; con 6 son ~19 s, a cambio del doble de carga
+ * en picos. Si TKC empieza a dar errores o a responder lento cuando alguien
+ * abre el catálogo, este número es lo primero que hay que bajar.
+ */
+const CONCURRENCY = 6
 /** Cuánto se reutiliza un mapa antes de reconstruirlo. */
 const TTL_MS = 10 * 60 * 1000
 /** Tope de almacenes cacheados a la vez (~175 KB cada uno en el peor caso). */
