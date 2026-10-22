@@ -488,6 +488,18 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   });
   const suministradores = suministradoresRaw ?? [];
 
+  // Los estados que TKC produce de verdad. Codificarlos a mano engañaba:
+  // «Desactivado» es inalcanzable —en los datos reales `is_dead` y
+  // `status_provider` son complementarios, así que nunca se da el caso de
+  // «ni muerto ni activo»— y el filtro parecía roto en vez de vacío.
+  const { data: estadosAnuncioRaw } = useQuery({
+    queryKey: ['filter-estado-anuncio', almacen],
+    queryFn: () => base44.entities.Producto.distinct('estado_anuncio_tkc', { activo: true, ...(almacen ? { almacen_num: almacen } : {}) }),
+    staleTime: 15 * 60 * 1000,
+    select: d => Array.isArray(d) ? d : [],
+  });
+  const estadosAnuncio = estadosAnuncioRaw ?? [];
+
   const { data: categoriasRaw } = useQuery({
     queryKey: ['filter-categorias'],
     queryFn: () => base44.entities.Producto.distinct('categoria_elineas', { activo: true }),
@@ -1011,10 +1023,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   <div className="relative">
                     <select value={advFilters.estadoAnuncio} onChange={SET_FILTER('estadoAnuncio')} className={FILTER_CLS}>
                       <option value="all">Anuncio: todos</option>
-                      <option value="Activado">Activado</option>
-                      <option value="Desactivado">Desactivado</option>
-                      <option value="Muerto">Muerto</option>
-                      <option value="Sin Id">Sin ID</option>
+                      {estadosAnuncio.map(e => <option key={e} value={e}>{e}</option>)}
                     </select>
                     <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
                   </div>
