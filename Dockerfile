@@ -10,9 +10,10 @@
 # código propio sigue usando solo módulos nativos, y las dependencias del
 # frontend ya viajan compiladas dentro de `dist/`.
 #
-# Las variables VITE_* se incrustan en el bundle al construir, por eso llegan
-# como ARG. Los secretos de TKC NO: los lee el servidor en runtime desde el
-# entorno del contenedor (ver docker-compose.prod.yml).
+# No hay ARG: el bundle ya no incrusta ninguna variable. Las VITE_* existían
+# para darle al navegador las credenciales de Supabase, y el navegador ya no
+# habla con ninguna base. Todo —TKC, ELINEAS_BD, Identity Server— lo lee el
+# servidor en runtime del entorno del contenedor (ver docker-compose.prod.yml).
 
 # ─────────────────────────── 1. build ───────────────────────────
 FROM oven/bun:1-alpine AS build

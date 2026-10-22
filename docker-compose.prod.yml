@@ -2,9 +2,9 @@
 #
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
-# El `.env` del proyecto aporta las dos mitades:
-#   · build args  — VITE_* que Vite incrusta en el bundle.
-#                   (verifica el token de Supabase y hace login en TKC).
+# El `.env` del proyecto lo lee el contenedor en runtime (env_file). Ya no hay
+# build args: desde que el navegador dejó de hablar con Supabase no queda
+# ninguna VITE_* que incrustar en el bundle.
 #
 # El puerto se publica en 3003 del host, que es a donde cloudflared enruta
 # inv.mercadoelineas.com (/etc/cloudflared/config.yml). El Caddy del servidor
@@ -25,7 +25,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
     image: inventario-prod
     container_name: inventario-prod
     restart: unless-stopped
