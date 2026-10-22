@@ -241,38 +241,24 @@ export function createDatosApiMiddleware() {
       // que la cubra. De ahí la lentitud.
       //
       // Ahora vuelve una fila por (almacén, estado) —unas 140— y el navegador
-      // solo suma.
-      //
-      // El CASE reproduce `calcEst` de Dashboard.jsx, que a su vez es
-      // `calcEstadoTienda` de Productos.jsx. Son tres copias de la misma
-      // regla: si cambia una, hay que cambiar las tres.
+      // solo suma. El estado es la columna generada `estado_tienda`: la regla
+      // vive en su definición y no en un CASE repetido aquí.
       if (accion === 'resumen' && tabla === 'productos') {
         if (!puedeLeer(ctx, tablaPerm)) return responder(res, 403, { error: 'Sin permiso' })
 
         const valores = []
         const clausula = await where(tabla, { activo: true, ...(cuerpo.conditions ?? {}) }, valores)
 
-        // Las columnas admiten NULL; el navegador las leía con `?? 0`.
         const ef = 'COALESCE(exist_fisica, 0)'
         const alm = 'COALESCE(almacen, 0)'
         const tnd = 'COALESCE(tienda, 0)'
-        // `calcEst` descarta el id con trim; los contadores sueltos de abajo
-        // solo miran que la cadena no esté vacía, igual que el `&&` de JS.
-        const conIdTrim = `id_tienda IS NOT NULL AND btrim(id_tienda) <> ''`
+        // Los contadores sueltos solo miran que el id no esté vacío, igual que
+        // el `&&` de JavaScript; `estado_tienda` además le hace trim.
         const conId = `id_tienda IS NOT NULL AND id_tienda <> ''`
 
         const { rows } = await query(
           `SELECT almacen_num,
-                  CASE
-                    WHEN NOT (${conIdTrim}) AND ${ef} = 0 THEN 'SIN ID'
-                    WHEN (${conIdTrim}) AND ${ef} = 0      THEN 'AGOTADO'
-                    WHEN ${alm} = 0 AND ${tnd} > 6         THEN 'SIN RESERVA'
-                    WHEN ${tnd} = 0                        THEN 'NO TIENDA'
-                    WHEN ${tnd} > 1 AND ${tnd} < ${alm} AND ${alm} <= 10 THEN 'ULTIMAS PIEZAS'
-                    WHEN ${alm} < ${tnd} AND ${tnd} <= 10  THEN 'ULTIMAS PIEZAS'
-                    WHEN ${tnd} <= 10                      THEN 'PROXIMO'
-                    ELSE 'DISPONIBLE'
-                  END AS estado,
+                  estado_tienda AS estado,
                   count(*)::int AS total,
                   count(*) FILTER (WHERE ${ef} > 0)::int AS con_stock,
                   count(*) FILTER (WHERE ${tnd} > 0)::int AS en_tienda,
@@ -282,7 +268,7 @@ export function createDatosApiMiddleware() {
                   count(*) FILTER (WHERE NOT (${conId}) AND ${ef} = 0)::int AS sin_id_ef0,
                   count(*) FILTER (WHERE (${conId}) AND ${ef} = 0)::int AS agotados
              FROM ${tabla} ${clausula}
-            GROUP BY almacen_num, estado`,
+            GROUP BY almacen_num, estado_tienda`,
           valores,
         )
         return responder(res, 200, { data: rows })

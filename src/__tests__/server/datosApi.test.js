@@ -17,7 +17,9 @@ const COLUMNAS = {
   lotes_vigencia: ['id', 'estado_fv', 'created_date'],
   // Marca el tiempo en `synced_at`: no tiene `created_date`.
   sync_auto_log: ['user_email', 'almacen', 'synced_at', 'synced', 'errors'],
-  productos: ['id', 'nombre', 'activo', 'suministrador', 'categoria_elineas', 'almacen_num', 'exist_fisica', 'fotos', 'created_date'],
+  productos: ['id', 'nombre', 'activo', 'suministrador', 'categoria_elineas', 'almacen_num',
+              'exist_fisica', 'almacen', 'tienda', 'id_tienda', 'fotos', 'created_date',
+              'estado_tienda', 'estado_anuncio_tkc'],
 };
 
 const { createDatosApiMiddleware } = await import('@/server/datosApi');
@@ -376,7 +378,9 @@ describe('resumen del catálogo', () => {
     expect(res.statusCode).toBe(200);
     expect(res.cuerpo.data[0].estado).toBe('AGOTADO');
     // Lo que importa: ni SELECT de filas ni paginación. Una sola agregación.
-    expect(ultimoSql()).toContain('GROUP BY almacen_num, estado');
+    expect(ultimoSql()).toContain('GROUP BY almacen_num, estado_tienda');
+    // La regla del estado vive en la columna generada, no en un CASE aquí.
+    expect(ultimoSql()).not.toContain('ULTIMAS PIEZAS');
     expect(ultimoSql()).not.toContain('OFFSET');
   });
 
