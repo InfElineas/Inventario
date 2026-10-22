@@ -143,10 +143,10 @@ BEGIN
      AND NOT EXISTS (
        SELECT 1
        FROM inventario.catalogo_origen g
-       WHERE btrim(COALESCE(g."No. Almacén", '')) = p.almacen_num
+       WHERE btrim(COALESCE(g.almacen_num, '')) = p.almacen_num
          AND COALESCE(
-               NULLIF(btrim(COALESCE(g."IdTienda", '')), ''),
-               'cod:' || btrim(COALESCE(g."Cód. Prod.", ''))
+               NULLIF(btrim(COALESCE(g.id_tienda, '')), ''),
+               'cod:' || btrim(COALESCE(g.codigo_producto, ''))
              ) = p.clave_sync
      );
   GET DIAGNOSTICS v_desactivados = ROW_COUNT;
