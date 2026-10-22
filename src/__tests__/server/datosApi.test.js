@@ -15,6 +15,8 @@ const COLUMNAS = {
   mermas: ['id', 'estado_tarea', 'especialista_id', 'cantidad', 'created_date', 'fact_no_factura', 'auditor_id'],
   notificaciones: ['id', 'usuario_id', 'leida', 'titulo', 'created_date'],
   lotes_vigencia: ['id', 'estado_fv', 'created_date'],
+  // Marca el tiempo en `synced_at`: no tiene `created_date`.
+  sync_auto_log: ['user_email', 'almacen', 'synced_at', 'synced', 'errors'],
   productos: ['id', 'nombre', 'activo', 'suministrador', 'categoria_elineas', 'almacen_num', 'exist_fisica', 'fotos', 'created_date'],
 };
 
@@ -333,5 +335,29 @@ describe('distinct', () => {
     const res = await llamar('/api/datos/Producto/distinct', { campo: 'suministrador; DROP TABLE productos' });
     expect(res.statusCode).toBe(400);
     expect(ultimoSql()).not.toContain('DROP TABLE');
+  });
+});
+
+describe('orden por defecto en tablas sin created_date', () => {
+  it('sync_auto_log se lee sin orden explícito y no revienta', async () => {
+    // Antes daba 500: el orden por defecto es `created_date`, esa tabla no la
+    // tiene, y el respaldo volvía a pedir la misma columna inexistente.
+    const res = await llamar('/api/datos/SyncAutoLog/filter', {
+      conditions: { user_email: 'yo@mercadoelineas.com' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(ultimoSql()).toContain('ORDER BY "synced_at" DESC');
+  });
+
+  it('una columna inventada cae al respaldo de esa tabla, no a created_date', async () => {
+    const res = await llamar('/api/datos/SyncAutoLog/list', { orderBy: '-inventada' });
+    expect(res.statusCode).toBe(200);
+    expect(ultimoSql()).toContain('ORDER BY "synced_at" DESC');
+  });
+
+  it('donde sí existe, se sigue usando created_date', async () => {
+    await llamar('/api/datos/Merma/list', {});
+    expect(ultimoSql()).toContain('ORDER BY "created_date" ASC');
   });
 });

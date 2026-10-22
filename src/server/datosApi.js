@@ -10,7 +10,7 @@
  */
 
 import { query, queryOne, transaction } from './db.js'
-import { columnaSegura, soloColumnas } from './columnas.js'
+import { columnaSegura, columnasDe, soloColumnas } from './columnas.js'
 import { resolverSesion } from './session.js'
 import {
   puedeLeer, puedeCrear, puedeActualizar, puedeBorrar, filtroPropias, esAdmin,
@@ -42,6 +42,8 @@ const SOLO_LECTURA = new Set(['lotes_vigencia', 'bd_tkc'])
 const TABLA_PERMISOS = { lotes_vigencia: 'lotes' }
 
 const ORDEN_POR_DEFECTO = 'created_date'
+// Respaldos de orden, por preferencia, para las tablas sin `created_date`.
+const RESPALDOS_ORDEN = ['created_date', 'synced_at', 'fecha', 'created_at', 'id']
 const LIMITE_MAXIMO = 2000
 const LIMITE_CUERPO = 1024 * 1024
 
@@ -68,18 +70,21 @@ async function leerJson(req) {
 
 /** "-created_date" → ORDER BY "created_date" DESC */
 async function orden(tabla, orderBy) {
+  const columnas = await columnasDe(tabla)
   const asc = !String(orderBy ?? '').startsWith('-')
   const nombre = asc ? (orderBy || ORDEN_POR_DEFECTO) : String(orderBy).slice(1)
-  let col
-  try {
-    col = await columnaSegura(tabla, nombre)
-  } catch {
-    // Una columna desconocida no es motivo para romper la pantalla: se cae al
-    // orden por defecto, igual que hacía base44Client.
-    col = await columnaSegura(tabla, ORDEN_POR_DEFECTO)
-    return `${col} DESC`
-  }
-  return `${col} ${asc ? 'ASC' : 'DESC'}`
+
+  if (columnas.has(nombre)) return `"${nombre}" ${asc ? 'ASC' : 'DESC'}`
+
+  // Una columna desconocida no es motivo para romper la pantalla: se cae al
+  // orden por defecto, igual que hacía base44Client. Pero no todas las tablas
+  // tienen `created_date` —`sync_auto_log` marca el tiempo en `synced_at`—, y
+  // antes el propio respaldo reventaba: leer esa tabla sin indicar orden daba
+  // 500. Así que el respaldo se busca entre las columnas que la tabla sí
+  // tiene, y si ninguna encaja vale cualquiera con tal de que el orden sea
+  // estable: la paginación por OFFSET repite filas si el orden no es fijo.
+  const respaldo = RESPALDOS_ORDEN.find((c) => columnas.has(c)) ?? [...columnas].sort()[0]
+  return `"${respaldo}" DESC`
 }
 
 /**
