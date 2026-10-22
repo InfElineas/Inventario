@@ -15,7 +15,7 @@ y **falta** (no hay nada).
 |---|---|---|
 | Escanear códigos de barra | Hecho | `src/components/inventario/BarcodeScanner.jsx` |
 | Mostrar **los** productos con ese código, con imagen | Hecho | `src/lib/buscarPorCodigo.js`, `src/components/shared/SelectorCoincidencias.jsx` |
-| Las 3 cantidades del submayor | Falta | El formulario solo muestra EF |
+| Las 3 cantidades del submayor | Hecho | `src/components/inventario/InventarioForm.jsx` |
 | Conteo real | Hecho | Suma de las líneas de detalle |
 | Reserva ideal | Falta | — |
 | Fecha de vencimiento | Hecho | Una por línea de detalle |
@@ -53,14 +53,25 @@ no cabe un selector —es un lote, no una pantalla—, así que hay que decidir:
 rechazan esas filas pidiendo el ID de tienda, o se importan marcadas para
 revisión.
 
-### Las 3 cantidades
+### Las 3 cantidades, y contra qué se compara el conteo
 
-El dato existe y el servidor ya sabe traerlo: `getExistencias`
-(`src/services/tkc/existencias.js`) construye el mapa `idTienda → {fisica,
-enAlmacen, enTienda}` que llena las columnas EF/A/T del catálogo. El formulario
-de inventario no lo usa; muestra solo `producto.exist_fisica`.
+El formulario muestra física, en almacén y en tienda, consultadas al submayor
+de TKC para el producto seleccionado.
 
-Es el pendiente más barato de la lista.
+Lo importante no es enseñarlas, es **de dónde sale el número con el que se
+calcula la diferencia**. Antes era `productos.exist_fisica`, que es nuestra
+copia de `invGlobal` y puede llevar días sin sincronizar: el inventario se
+comparaba contra un número viejo. Ahora manda el submayor, que es lo que dice
+TKC en ese momento.
+
+Cuando los dos no coinciden, el formulario lo dice y explica contra cuál se
+está comparando. Si el submayor no tiene el producto en ese almacén, si la
+consulta falla, o si el producto no tiene ID de tienda, se usa el catálogo y
+también se avisa.
+
+Esto explica además una diferencia que se ve en pantalla: el panel de control
+cuenta sobre nuestra base y la pestaña TKC del catálogo pregunta a TKC en
+vivo, así que los totales no cuadran mientras el sync esté atrasado.
 
 ---
 
@@ -149,12 +160,10 @@ para revisión?
 
 ## Orden sugerido
 
-1. **Las 3 cantidades del submayor.** No depende de nadie y el dato ya está en
-   el servidor.
-2. **Clasificación INV siempre, no solo con diferencia**, y los filtros del
+1. **Clasificación INV siempre, no solo con diferencia**, y los filtros del
    listado. Cambios pequeños y acotados.
-3. **Reserva ideal**, en cuanto se sepan las columnas.
-4. **Subir / bajar a tienda**, en cuanto se sepa si toca TKC.
-5. **Alerta de faltante/sobrante cruzado** e **intercambios de similares**. Son
+2. **Reserva ideal**, en cuanto se sepan las columnas.
+3. **Subir / bajar a tienda**, en cuanto se sepa si toca TKC.
+4. **Alerta de faltante/sobrante cruzado** e **intercambios de similares**. Son
    los dos más complejos: cruzan registros entre sí y necesitan una definición
    de «precio similar» que todavía no existe.

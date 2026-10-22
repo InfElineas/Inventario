@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAlmacen } from '@/lib/useAlmacen';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,7 @@ import { buscarPorCodigo, avisoSinCoincidencia } from '@/lib/buscarPorCodigo';
 import { Plus, Trash2, Save, ScanLine } from 'lucide-react';
 import { format } from 'date-fns';
 import { base44 } from '@/api/base44Client';
+import { fetchExistenciaTkc } from '@/services/tkcService';
 
 const CLASIF_AJUSTE = ['Faltante por deterioro', 'Faltante por robo', 'Faltante sin justificar', 'Sobrante por transferencia', 'Sobrante por devolución', 'Error de sistema', 'Ajuste administrativo'];
 
@@ -60,8 +62,25 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
 
   const elegirCoincidencia = (p) => { setProducto(p); setCoincidencias(null); };
 
+  // Desglose del submayor: física, en almacén y en tienda. Es el dato de TKC
+  // en el momento. Nuestra `productos.exist_fisica` es una copia de invGlobal
+  // que puede llevar días sin sincronizar, y contra ese número desfasado se
+  // venía calculando la diferencia del inventario.
+  const { data: submayor, isLoading: cargandoSubmayor, isError: errorSubmayor } = useQuery({
+    queryKey: ['submayor-producto', almacen, producto?.id_tienda],
+    queryFn: () => fetchExistenciaTkc({ almacen, idTienda: producto.id_tienda }),
+    enabled: Boolean(almacen && producto?.id_tienda),
+    staleTime: 60_000,
+    retry: false,
+  });
+
   const conteoReal = detalles.reduce((s, d) => s + (Number(d.cantidad) || 0), 0);
-  const efTkc = producto?.exist_fisica || 0;
+  const efLocal = producto?.exist_fisica || 0;
+  const desglose = submayor?.existencia ?? null;
+  // El submayor manda cuando responde; si no tiene el producto o falla, se usa
+  // nuestra copia y se dice de dónde sale.
+  const efTkc = desglose ? desglose.fisica : efLocal;
+  const desfase = desglose && desglose.fisica !== efLocal;
   const diferencia = conteoReal - efTkc;
 
   const addDetalle = () => setDetalles([...detalles, { fecha_vencimiento: '', no_lote: '', cantidad: 0 }]);
@@ -213,9 +232,49 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
               <div className="col-span-2 sm:col-span-1"><p className="text-[10px] text-muted-foreground uppercase">Producto</p><p className="text-sm font-medium line-clamp-2">{producto.nombre}</p></div>
               <div><p className="text-[10px] text-muted-foreground uppercase">Código</p><p className="text-sm font-medium">{producto.codigo_producto}</p></div>
               <div><p className="text-[10px] text-muted-foreground uppercase">Suministrador</p><p className="text-sm font-medium">{producto.suministrador || '—'}</p></div>
-              <div><p className="text-[10px] text-muted-foreground uppercase">EF TKC</p><p className="text-sm font-medium">{efTkc}</p></div>
+              <div><p className="text-[10px] text-muted-foreground uppercase">ID tienda</p><p className="text-sm font-medium font-mono">{producto.id_tienda || '—'}</p></div>
             </div>
           </div>
+
+          {/* Las tres cantidades del submayor */}
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              ['EF (física)', desglose?.fisica],
+              ['A (almacén)', desglose?.enAlmacen],
+              ['T (tienda)',  desglose?.enTienda],
+            ].map(([etiqueta, valor]) => (
+              <div key={etiqueta} className="bg-secondary/50 rounded-lg px-3 py-2 text-center" style={{ borderRadius: '8px' }}>
+                <p className="text-[10px] text-muted-foreground uppercase">{etiqueta}</p>
+                <p className="text-lg font-semibold tabular-nums">
+                  {cargandoSubmayor ? '…' : desglose ? valor : '—'}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* De dónde sale el número con el que se compara el conteo */}
+          {cargandoSubmayor && (
+            <p className="text-xs text-muted-foreground">Consultando el submayor de TKC…</p>
+          )}
+          {!cargandoSubmayor && desfase && (
+            <p className="text-xs text-[#BA7517] bg-[#BA7517]/10 px-3 py-2 rounded-md">
+              El submayor dice <strong>{desglose.fisica}</strong> y nuestro catálogo{' '}
+              <strong>{efLocal}</strong>. Se compara contra el submayor, que es el dato de TKC
+              ahora mismo; el catálogo lleva sin sincronizar desde la última vez.
+            </p>
+          )}
+          {!cargandoSubmayor && !desglose && producto.id_tienda && (
+            <p className="text-xs text-muted-foreground bg-secondary/60 px-3 py-2 rounded-md">
+              {errorSubmayor
+                ? `No se pudo consultar el submayor. Se compara contra el catálogo: EF ${efLocal}.`
+                : `El submayor no tiene este producto en el almacén ${almacen}. Se compara contra el catálogo: EF ${efLocal}.`}
+            </p>
+          )}
+          {!producto.id_tienda && (
+            <p className="text-xs text-muted-foreground bg-secondary/60 px-3 py-2 rounded-md">
+              Sin ID de tienda no hay submayor que consultar. Se compara contra el catálogo: EF {efLocal}.
+            </p>
+          )}
 
           {/* Detail lines */}
           <div className="space-y-2">
