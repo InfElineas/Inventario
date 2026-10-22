@@ -6,8 +6,14 @@
 #   · build args  — VITE_* que Vite incrusta en el bundle.
 #                   (verifica el token de Supabase y hace login en TKC).
 #
-# El puerto se publica en 3003 del host; el Caddy externo del servidor le hace
-# proxy a ese puerto.
+# El puerto se publica en 3003 del host, que es a donde cloudflared enruta
+# inv.mercadoelineas.com (/etc/cloudflared/config.yml). El Caddy del servidor
+# está puenteado: tiene una regla para este dominio, pero el tráfico entra por
+# el túnel y nunca pasa por él.
+#
+# OJO: `image` y `container_name` coinciden con los del despliegue anterior, así
+# que un `up --build` sustituye el sistema en vivo y pisa la imagen vieja. Antes
+# de hacerlo, guárdala:  docker tag inventario-prod inventario-prod:respaldo
 
 # Nombre de proyecto propio: sin él, dev y prod comparten el proyecto derivado
 # del directorio y el mismo servicio `app`, así que levantar uno recrearía —y
