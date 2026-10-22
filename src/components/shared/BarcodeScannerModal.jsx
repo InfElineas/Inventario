@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Camera, CameraOff, Search, X, ScanLine, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { base44 } from '@/api/base44Client';
+import SelectorCoincidencias from '@/components/shared/SelectorCoincidencias';
+import { buscarPorCodigo, avisoSinCoincidencia } from '@/lib/buscarPorCodigo';
 
 /**
  * BarcodeScannerModal
@@ -23,33 +24,27 @@ export default function BarcodeScannerModal({ onSelect, onClose }) {
   const [selectedCamera, setSelectedCamera] = useState('');
   const [status, setStatus] = useState(null); // { type: 'success'|'error', message }
   const [scanning, setScanning] = useState(false);
+  // Varios anuncios comparten código de barras: cuando pasa, elige el usuario.
+  const [coincidencias, setCoincidencias] = useState(null);
+
+  const aceptar = (producto) => {
+    setStatus({ type: 'success', message: `✓ ${producto.nombre}` });
+    setTimeout(() => { onSelect(producto); onClose(); }, 800);
+  };
 
   const handleCode = async (code) => {
-    const clean = code.trim();
+    setCoincidencias(null);
+    const resultado = await buscarPorCodigo(code, almacen);
 
-    // 1. Buscar primero en el almacén activo
-    const interno = await base44.entities.Producto.filter(
-      { codigo_producto: clean, activo: true, ...(almacen ? { almacen_num: almacen } : {}) },
-      undefined, 1,
-    );
+    const aviso = avisoSinCoincidencia(resultado, almacen);
+    if (aviso) { setStatus({ type: 'error', message: aviso }); return; }
 
-    if (interno[0]) {
-      setStatus({ type: 'success', message: `✓ ${interno[0].nombre}` });
-      setTimeout(() => { onSelect(interno[0]); onClose(); }, 800);
-      return;
-    }
+    if (resultado.enAlmacen.length === 1) { aceptar(resultado.enAlmacen[0]); return; }
 
-    // 2. Buscar en el catálogo completo, sin filtrar por almacén, para dar un
-    // mensaje útil: el producto puede existir pero no estar en este almacén.
-    const enOtros = await base44.entities.Producto.filter(
-      { codigo_producto: clean, activo: true }, undefined, 1,
-    );
-    if (enOtros[0]) {
-      alert(`"${enOtros[0].nombre}" existe en el catálogo pero no está en el almacén${almacen ? ` ${almacen}` : ''}.`);
-      return;
-    }
-
-    setStatus({ type: 'error', message: `Sin coincidencia para: "${clean}"` });
+    // Más de uno: la cámara estorba mientras se elige.
+    stopCamera();
+    setStatus(null);
+    setCoincidencias(resultado);
   };
 
   const startCamera = async (deviceId = selectedCamera) => {
@@ -132,8 +127,17 @@ export default function BarcodeScannerModal({ onSelect, onClose }) {
         </div>
 
         <div className="p-5 space-y-4">
+          {coincidencias && (
+            <SelectorCoincidencias
+              codigo={coincidencias.codigo}
+              productos={coincidencias.enAlmacen}
+              onSelect={aceptar}
+              onCancel={() => { setCoincidencias(null); startCamera(); }}
+            />
+          )}
+
           {/* Viewfinder */}
-          <div className="relative bg-black rounded-xl overflow-hidden" style={{ aspectRatio: '4/3' }}>
+          <div className={`relative bg-black rounded-xl overflow-hidden ${coincidencias ? 'hidden' : ''}`} style={{ aspectRatio: '4/3' }}>
             <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
 
             {/* Inactive overlay */}

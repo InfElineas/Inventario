@@ -7,27 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import ProductSearch from '@/components/shared/ProductSearch';
 import AlertBanner from '@/components/shared/AlertBanner';
 import BarcodeScanner from '@/components/inventario/BarcodeScanner';
-import { Plus, Trash2, Save, ScanLine, Package } from 'lucide-react';
+import ProductThumb from '@/components/shared/ProductThumb';
+import SelectorCoincidencias from '@/components/shared/SelectorCoincidencias';
+import { buscarPorCodigo, avisoSinCoincidencia } from '@/lib/buscarPorCodigo';
+import { Plus, Trash2, Save, ScanLine } from 'lucide-react';
 import { format } from 'date-fns';
 import { base44 } from '@/api/base44Client';
 
 const CLASIF_AJUSTE = ['Faltante por deterioro', 'Faltante por robo', 'Faltante sin justificar', 'Sobrante por transferencia', 'Sobrante por devolución', 'Error de sistema', 'Ajuste administrativo'];
-
-function ProductThumb({ fotos, nombre }) {
-  const [err, setErr] = useState(false);
-  const src = Array.isArray(fotos) && fotos.length > 0 ? fotos[0] : null;
-  if (!src || err) {
-    return (
-      <div className="w-16 h-16 rounded-lg shrink-0 border border-border bg-muted flex items-center justify-center">
-        <Package className="w-6 h-6 text-muted-foreground/40" />
-      </div>
-    );
-  }
-  return (
-    <img src={src} alt={nombre} onError={() => setErr(true)}
-      className="w-16 h-16 rounded-lg object-cover shrink-0 border border-border bg-muted" />
-  );
-}
 
 // Extraída del formulario para poder probarla sin renderizar el componente.
 export function validateInventario({ producto, detalles, fechaInv, notas }) {
@@ -52,35 +39,26 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
   const [fechaInv, setFechaInv] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [showScanner, setShowScanner] = useState(false);
   const [validError, setValidError] = useState('');
+  const [coincidencias, setCoincidencias] = useState(null);
+  const [avisoEscaneo, setAvisoEscaneo] = useState('');
   const [pendingData, setPendingData] = useState(null);
 
+  // Un código de barras puede corresponder a varios anuncios. Si hay más de
+  // uno, elige el usuario: es el único que tiene el producto delante.
   const handleScanResult = async (code) => {
     setShowScanner(false);
-    const trimmed = code.trim();
+    setCoincidencias(null);
+    setAvisoEscaneo('');
 
-    // 1. Buscar en BD interna
-    const data = await base44.entities.Producto.filter(
-      { codigo_producto: trimmed, activo: true, ...(almacen ? { almacen_num: almacen } : {}) },
-      undefined, 1,
-    );
+    const resultado = await buscarPorCodigo(code, almacen);
+    const aviso = avisoSinCoincidencia(resultado, almacen);
+    if (aviso) { setAvisoEscaneo(aviso); return; }
 
-    if (data?.[0]) {
-      setProducto(data[0]);
-      return;
-    }
-
-    // 2. Buscar en el catálogo completo, sin filtrar por almacén, para dar un
-    // mensaje útil: el producto puede existir pero no estar en este almacén.
-    const enOtros = await base44.entities.Producto.filter(
-      { codigo_producto: trimmed, activo: true }, undefined, 1,
-    );
-    if (enOtros[0]) {
-      alert(`"${enOtros[0].nombre}" existe en el catálogo pero no está en el almacén${almacen ? ` ${almacen}` : ''}.`);
-      return;
-    }
-
-    alert(`No se encontró ningún producto con el código: ${trimmed}`);
+    if (resultado.enAlmacen.length === 1) { setProducto(resultado.enAlmacen[0]); return; }
+    setCoincidencias(resultado);
   };
+
+  const elegirCoincidencia = (p) => { setProducto(p); setCoincidencias(null); };
 
   const conteoReal = detalles.reduce((s, d) => s + (Number(d.cantidad) || 0), 0);
   const efTkc = producto?.exist_fisica || 0;
@@ -212,6 +190,19 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
             <ScanLine className="w-4 h-4" />
           </Button>
         </div>
+      )}
+
+      {coincidencias && (
+        <SelectorCoincidencias
+          codigo={coincidencias.codigo}
+          productos={coincidencias.enAlmacen}
+          onSelect={elegirCoincidencia}
+          onCancel={() => setCoincidencias(null)}
+        />
+      )}
+
+      {avisoEscaneo && (
+        <p className="text-xs text-[#BA7517] bg-[#BA7517]/10 px-3 py-2 rounded-md">{avisoEscaneo}</p>
       )}
 
       {producto && (

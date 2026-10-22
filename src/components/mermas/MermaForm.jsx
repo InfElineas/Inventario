@@ -6,12 +6,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import ProductSearch from '@/components/shared/ProductSearch';
 import BarcodeScanner from '@/components/inventario/BarcodeScanner';
+import SelectorCoincidencias from '@/components/shared/SelectorCoincidencias';
+import { buscarPorCodigo, avisoSinCoincidencia } from '@/lib/buscarPorCodigo';
 import AlertBanner from '@/components/shared/AlertBanner';
 import { ALL_CLASIF_MERMA, CLASIF_MERMA_SIN_FACT, DESTINOS_MERMA } from '@/lib/constants';
 import { Save, ScanLine } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAlmacen } from '@/lib/useAlmacen';
-import { base44 } from '@/api/base44Client';
 
 // Extraída del formulario para poder probarla sin renderizar el componente.
 export function validateMerma({ producto, cantidad, clasif, fechaInv, notas }) {
@@ -42,16 +43,22 @@ export default function MermaForm({ user, onSubmit, onCancel, isPending: isPendi
   const [fechaInv, setFechaInv] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [showScanner, setShowScanner] = useState(false);
   const [validError, setValidError] = useState('');
+  const [coincidencias, setCoincidencias] = useState(null);
+  const [avisoEscaneo, setAvisoEscaneo] = useState('');
 
+  // Un código de barras puede corresponder a varios anuncios. Si hay más de
+  // uno, elige el usuario: es el único que tiene el producto delante.
   const handleScanResult = async (code) => {
     setShowScanner(false);
-    const trimmed = code.trim();
-    const data = await base44.entities.Producto.filter(
-      { codigo_producto: trimmed, activo: true, ...(almacen ? { almacen_num: almacen } : {}) },
-      undefined, 1,
-    );
-    if (data?.[0]) { setProducto(data[0]); return; }
-    alert(`No se encontró producto con código: ${trimmed}`);
+    setCoincidencias(null);
+    setAvisoEscaneo('');
+
+    const resultado = await buscarPorCodigo(code, almacen);
+    const aviso = avisoSinCoincidencia(resultado, almacen);
+    if (aviso) { setAvisoEscaneo(aviso); return; }
+
+    if (resultado.enAlmacen.length === 1) { setProducto(resultado.enAlmacen[0]); return; }
+    setCoincidencias(resultado);
   };
 
   const sinFact = CLASIF_MERMA_SIN_FACT.includes(clasif);
@@ -90,6 +97,19 @@ export default function MermaForm({ user, onSubmit, onCancel, isPending: isPendi
 
   return (
     <div className="space-y-5">
+      {coincidencias && (
+        <SelectorCoincidencias
+          codigo={coincidencias.codigo}
+          productos={coincidencias.enAlmacen}
+          onSelect={(p) => { setProducto(p); setCoincidencias(null); }}
+          onCancel={() => setCoincidencias(null)}
+        />
+      )}
+
+      {avisoEscaneo && (
+        <p className="text-xs text-[#BA7517] bg-[#BA7517]/10 px-3 py-2 rounded-md">{avisoEscaneo}</p>
+      )}
+
       {showScanner ? (
         <BarcodeScanner onResult={handleScanResult} onClose={() => setShowScanner(false)} />
       ) : (
