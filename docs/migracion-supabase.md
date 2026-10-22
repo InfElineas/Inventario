@@ -28,7 +28,10 @@ Cada fase termina en una **comprobación**. Si no pasa, no se avanza.
   `ELINEAS_BD` como host, nunca la IP.
 - `inventario-prod` **todavía no está** en esa red (lo dice la guía de la BD).
 - Backups: ya programados por el gestor de la base.
-- `pg_cron` disponible — destino natural del Edge Function `sync-auto`.
+- `pg_cron` **disponible pero sin instalar**. Activarlo exige tocar
+  `shared_preload_libraries` y reiniciar un Postgres que sirve también al
+  Identity Server, transferencias y fleet. Para un `SELECT` de 3 segundos no
+  compensa: el sync va por cron del host (ver fase 6).
 
 ---
 
@@ -232,8 +235,39 @@ healthcheck.
 3. Levantar la versión nueva.
 4. Comprobar: login con el IS, el rol espejado, una lectura y una escritura
    reales.
-5. Desprogramar el Edge Function `sync-auto`: el catálogo pasa a
-   `sync_productos_desde_invglobal()` con `pg_cron`.
+5. Desprogramar el Edge Function `sync-auto`. ✅ El catálogo lo sincroniza
+   ahora un cron del host, cada hora al minuto 40:
+
+   ```
+   40 * * * * docker exec ELINEAS_BD psql -U elineasadmin -d ELINEAS_BD -c "SELECT inventario.sync_productos_desde_invglobal(NULL);" >> /home/soporte/sync-catalogo.log 2>&1
+   ```
+
+### Por qué cada hora, y por qué al minuto 40
+
+La fuente no es una tabla sino la vista `public."invGlobal"`, que une la
+**última ejecución** de dos procesos independientes:
+
+| Tabla | Qué trae | Cuándo corre (UTC) |
+|---|---|---|
+| `ap_rows` / `ap_runs` | anuncios: nombre, código, precio, fotos | cada 6 h — 04:05, 10:06, 16:09, 22:05 |
+| `sub_rows` / `sub_runs` | submayor: física, almacén, tienda | 11:03 y 17:04 |
+
+Esas dos horas de `sub_runs` son las 06:00 y 12:00 locales del contenedor
+`elineas-transferencia-catalog-cron-1` (el servidor va en CDT, la base en UTC).
+
+Dos consecuencias:
+
+- **Las existencias se congelan hasta 18 horas.** Entre las 17:04 y las 11:03
+  del día siguiente, `invGlobal` sirve el stock de la tarde anterior aunque los
+  anuncios se hayan refrescado dos veces. No lo arregla sincronizar más a
+  menudo: la fuente es la que es. Por eso el formulario de inventario consulta
+  el submayor en vivo (ver `docs/requisitos-inventario.md`).
+- **Las cargas se saltan.** El 21/10/2026 faltó la de las 11:03 y alguien lanzó
+  ambas a mano a las 13:30.
+
+De ahí la frecuencia: cada hora se recupera solo de cualquier carga perdida, y
+a 2,9 segundos por pasada son unos 70 segundos de CPU al día. El minuto 40
+evita pisar las cargas, que arrancan entre los minutos :03 y :09.
 
 No hay carga de datos históricos: el sistema no estaba en uso y el catálogo se
 repuebla solo (ver fase 2).
