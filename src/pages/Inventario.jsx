@@ -19,6 +19,7 @@ import { notifyJefeDepto } from '@/lib/notificationService';
 import { logTransicion, notificarTransicion } from '@/lib/workflowService';
 import { useConfirm } from '@/lib/useConfirm';
 import { CLASIF_FACT, ESTADO_FACT } from '@/lib/constants'
+import { ESTADO_POR_RESULTADO, estadoContradictorio } from '@/lib/ajusteFact'
 import SortTh from '@/components/shared/SortTh'
 import { useSortable } from '@/lib/useSortable';
 
@@ -282,7 +283,11 @@ export default function Inventario() {
 
 function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpdating: isUpdatingRaw }) {
   const isUpdating = isUpdatingRaw ?? false;
-  const [factData, setFactData] = useState({ fact_no_factura: '', fact_clasif: '', fact_notas: '', fact_estado: '' });
+  const [factData, setFactData] = useState({
+    fact_no_factura: '', fact_clasif: '', fact_notas: '',
+    // Propuesto a partir del conteo; facturación puede cambiarlo.
+    fact_estado: ESTADO_POR_RESULTADO[inv.resultado] ?? '',
+  });
   const [auditorNota, setAuditorNota] = useState('');
   const [nuevoConteo, setNuevoConteo] = useState(String(inv.conteo_real ?? ''));
   const { confirmDialog, ConfirmDialogNode } = useConfirm();
@@ -418,6 +423,19 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
             <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Estado FACT" /></SelectTrigger>
             <SelectContent>{ESTADO_FACT.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent>
           </Select>
+          {estadoContradictorio(inv.resultado, factData.fact_estado) && (
+            <p className="text-xs text-[#BA7517] bg-[#BA7517]/10 px-3 py-2 rounded-md">
+              El conteo dio un <strong>{inv.resultado}</strong> de {Math.abs(inv.diferencia ?? 0)} y
+              estás aplicando «{factData.fact_estado}», que va en sentido contrario. Puedes
+              continuar, pero comprueba que es lo que quieres.
+            </p>
+          )}
+          {factData.fact_estado === 'Procesamiento' && (
+            <p className="text-xs text-muted-foreground bg-secondary/60 px-3 py-2 rounded-md">
+              Anota en las notas <strong>con qué producto se intercambió y su precio</strong>: el
+              registro guarda un solo producto, así que esa información solo queda aquí.
+            </p>
+          )}
           <Textarea placeholder="Notas FACT" value={factData.fact_notas} onChange={(e) => setFactData({ ...factData, fact_notas: e.target.value })} style={{ borderRadius: '8px' }} />
           <div className="flex gap-2">
             <Button size="sm" disabled={isUpdating} onClick={() => onUpdate({ ...factData, fact_especialista_id: user?.email, fact_especialista_nombre: user?.full_name, fact_fecha: new Date().toISOString().slice(0, 10), estado_tarea: 'en_auditoria' })} style={{ borderRadius: '8px' }}>

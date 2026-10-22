@@ -187,6 +187,12 @@ export const ESTADO_FACT = [
   'Solicitud de retiro duplicado',
   'Proveedor Incorrecto',
   'Ajuste de aumento',
+  // El contrario de 'Ajuste de aumento'. Faltaba: un sobrante tenía cómo
+  // resolverse y un faltante no, así que acababa en estados del retiro
+  // ('Pendiente a retiro') que describen otra cosa.
+  'Ajuste de disminución',
+  // Intercambio entre productos similares. Con qué producto se intercambió y
+  // a qué precio va en las notas de FACT: el registro guarda un solo producto.
   'Procesamiento',
   'Recontar',
 ]

@@ -70,19 +70,36 @@ Es el pendiente más barato de la lista.
 |---|---|
 | Comparar conteo real contra existencia física | Hecho — `diferencia = conteo_real − exist_fisica` |
 | Decir faltante o sobrante | Hecho — `inventarios.resultado` |
-| Ajuste de aumento / disminución | Parcial — se clasifica, pero no hay un «ajuste» como operación |
-| Procesamiento de intercambios similares | Falta |
+| Ajuste de aumento / disminución | Hecho — `src/lib/ajusteFact.js` |
+| Procesamiento de intercambios similares | Hecho, como nota de texto |
 
-### No existe el rol «cardista»
+### Cardista es facturación
 
-Los roles del sistema son inventarista, facturación, auditor, comercial,
-intervención, supervisor, jefe de departamento, administrador y superadmin
-(`src/lib/constants.js`). Hoy quien revisa la diferencia es **facturación**
-(`fact`): diferencia → `pend_fact` → factura o nota de ajuste → auditoría.
+No son dos puestos: el cardista usa el usuario de facturación. No hace falta
+crear ningún rol.
 
-Si cardista es un puesto distinto y no otro nombre para el mismo trabajo, hay
-que crear el rol en el Identity Server y darle su sitio en
-`src/server/permisos.js`.
+El flujo es: diferencia → `pend_fact` → factura o nota de ajuste → auditoría.
+
+### El ajuste se propone a partir del conteo
+
+`ESTADO_FACT` ya tenía «Ajuste de aumento» y «Procesamiento». Faltaba **«Ajuste
+de disminución»**: un sobrante tenía cómo resolverse y un faltante no, así que
+acababa en estados del retiro, que describen otra cosa.
+
+Ahora el formulario abre con el ajuste que corresponde al conteo —sobrante
+hacia arriba, faltante hacia abajo— y avisa si se elige el contrario. Es un
+aviso, no un bloqueo: «Procesamiento» vale para ambos casos y los estados del
+retiro son legítimos.
+
+### El intercambio no se puede validar
+
+Con qué producto se intercambió y a qué precio va **en las notas de FACT**: el
+registro de inventario guarda un solo producto. Por eso no hay comprobación
+automática de «precio similar» — no hay con qué comparar. El formulario lo
+recuerda cuando se elige «Procesamiento».
+
+Si algún día hace falta esa validación, antes hay que registrar el producto
+contrario: un campo en el mismo conteo, o enlazar los dos conteos entre sí.
 
 ---
 
