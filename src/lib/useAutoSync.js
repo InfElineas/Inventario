@@ -3,9 +3,19 @@ import { base44 } from '@/api/base44Client'
 
 const ONE_HOUR_MS = 15 * 60 * 1000
 
-export async function getLastSync(email, almacen) {
+/**
+ * Cuándo se sincronizó por última vez un almacén, lo haya lanzado quien lo
+ * haya lanzado.
+ *
+ * Antes se preguntaba por (usuario, almacén), que tenía sentido cuando el
+ * sync corría en el navegador de cada uno. Ya no: lo ejecuta el servidor y el
+ * catálogo es compartido, así que «cuándo se sincronizó el 789» es una
+ * pregunta del almacén. Con la clave antigua, un sync programado no aparecía
+ * para nadie y cada navegador volvía a lanzar el suyo cada hora.
+ */
+export async function getLastSync(almacen) {
   const filas = await base44.entities.SyncAutoLog.filter(
-    { user_email: email, almacen }, undefined, 1,
+    { almacen }, '-synced_at', 1,
   )
   return filas[0]?.synced_at ?? null
 }
@@ -43,7 +53,7 @@ export function useAutoSync({ user, onSync, enabled }) {
 
     const check = async () => {
       for (const alm of almacenes) {
-        const lastSyncISO = await getLastSync(user.email, alm)
+        const lastSyncISO = await getLastSync(alm)
         if (isHourDue(lastSyncISO)) {
           onSyncRef.current(alm)
         }

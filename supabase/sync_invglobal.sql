@@ -113,6 +113,22 @@ BEGIN
      );
   GET DIAGNOSTICS v_desactivados = ROW_COUNT;
 
+  -- Deja constancia de la ejecución, un registro por almacén. Antes solo lo
+  -- escribía /api/sync/productos bajo el email de quien pulsaba el botón, de
+  -- modo que un sync programado —que no tiene usuario— no aparecía en ninguna
+  -- parte y la pantalla seguía diciendo «sin sync registrado».
+  INSERT INTO inventario.sync_auto_log (user_email, almacen, synced_at, synced, errors)
+  SELECT 'sistema', p.almacen_num, now(), count(*)::int, 0
+    FROM inventario.productos p
+   WHERE p.activo
+     AND p.almacen_num <> ''
+     AND (p_almacen IS NULL OR p.almacen_num = p_almacen)
+   GROUP BY p.almacen_num
+      ON CONFLICT (user_email, almacen) DO UPDATE
+         SET synced_at = excluded.synced_at,
+             synced    = excluded.synced,
+             errors    = 0;
+
   RETURN jsonb_build_object(
     'almacen',       COALESCE(p_almacen, 'todos'),
     'sincronizados', v_sincronizados,

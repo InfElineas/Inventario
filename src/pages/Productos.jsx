@@ -478,7 +478,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   // ── Last sync time (partial key so SyncContext invalidation propagates) ──
   const { data: lastSyncAt } = useQuery({
     queryKey: ['last_sync_tkc', user?.email, almacen],
-    queryFn: () => getLastSync(user.email, almacen),
+    queryFn: () => getLastSync(almacen),
     enabled: !!user?.email && !!almacen,
     refetchOnWindowFocus: true,
     staleTime: 0,

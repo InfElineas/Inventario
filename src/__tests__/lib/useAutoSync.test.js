@@ -21,21 +21,21 @@ beforeEach(() => {
 describe('getLastSync', () => {
   it('getLastSync devuelve el synced_at que retorna la consulta', async () => {
     mockSyncedAt.current = '2026-07-17T10:00:00.000Z';
-    const result = await getLastSync('a@mercadoelineas.com', '1');
-    expect(result).toBe('2026-07-17T10:00:00.000Z');
+    expect(await getLastSync('1')).toBe('2026-07-17T10:00:00.000Z');
   });
 
   it('getLastSync devuelve null si no hay registro previo', async () => {
     mockSyncedAt.current = null;
-    expect(await getLastSync('a@mercadoelineas.com', '1')).toBeNull();
+    expect(await getLastSync('1')).toBeNull();
   });
 
-  it('getLastSync consulta por usuario y almacén', async () => {
+  it('consulta por almacén y se queda con el más reciente, sea de quien sea', async () => {
+    // El catálogo es compartido y lo sincroniza el servidor. Preguntar por
+    // (usuario, almacén) dejaba invisible cualquier sync programado, y cada
+    // navegador volvía a lanzar el suyo cada hora.
     mockSyncedAt.current = '2026-07-17T10:00:00.000Z';
-    await getLastSync('a@mercadoelineas.com', '1');
-    expect(filter).toHaveBeenCalledWith(
-      { user_email: 'a@mercadoelineas.com', almacen: '1' }, undefined, 1,
-    );
+    await getLastSync('1');
+    expect(filter).toHaveBeenCalledWith({ almacen: '1' }, '-synced_at', 1);
   });
 });
 
