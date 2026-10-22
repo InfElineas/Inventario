@@ -361,3 +361,46 @@ describe('orden por defecto en tablas sin created_date', () => {
     expect(ultimoSql()).toContain('ORDER BY "created_date" ASC');
   });
 });
+
+describe('resumen del catálogo', () => {
+  it('cuenta en la base y agrupa por almacén y estado', async () => {
+    query.mockImplementation(async (sql, valores) => {
+      if (sql.includes('information_schema.columns')) {
+        return { rows: (COLUMNAS[valores[0]] ?? []).map((c) => ({ column_name: c })) };
+      }
+      return { rows: [{ almacen_num: '480', estado: 'AGOTADO', total: 3, con_stock: 0 }] };
+    });
+
+    const res = await llamar('/api/datos/Producto/resumen', {});
+
+    expect(res.statusCode).toBe(200);
+    expect(res.cuerpo.data[0].estado).toBe('AGOTADO');
+    // Lo que importa: ni SELECT de filas ni paginación. Una sola agregación.
+    expect(ultimoSql()).toContain('GROUP BY almacen_num, estado');
+    expect(ultimoSql()).not.toContain('OFFSET');
+  });
+
+  it('acota a los activos aunque no se pida', async () => {
+    await llamar('/api/datos/Producto/resumen', {});
+    expect(ultimoSql()).toContain('WHERE "activo" = $1');
+    expect(ultimosValores()).toEqual([true]);
+  });
+
+  it('filtra por almacén cuando se indica', async () => {
+    await llamar('/api/datos/Producto/resumen', { conditions: { almacen_num: '480' } });
+    expect(ultimosValores()).toEqual([true, '480']);
+  });
+
+  it('solo existe para Producto', async () => {
+    const res = await llamar('/api/datos/Merma/resumen', {});
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('sin permiso de lectura, 403', async () => {
+    resolverSesion.mockResolvedValue({
+      email: 'x@mercadoelineas.com', usuario: { role: null, email: 'x@mercadoelineas.com' },
+    });
+    const res = await llamar('/api/datos/Producto/resumen', {});
+    expect(res.statusCode).toBe(403);
+  });
+});

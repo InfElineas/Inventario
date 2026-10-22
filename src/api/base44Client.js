@@ -75,6 +75,13 @@ function entidad(nombre) {
       (await pedir(nombre, 'distinct', { campo, conditions })).data ?? [],
 
     /**
+     * Recuento del catálogo por almacén y estado, hecho en la base. Solo
+     * Producto. Devuelve unas 140 filas en lugar de las 55.000 del catálogo.
+     */
+    resumen: async (conditions = {}) =>
+      (await pedir(nombre, 'resumen', { conditions })).data ?? [],
+
+    /**
      * Busca texto en varias columnas a la vez (ILIKE con OR), combinado con
      * las condiciones. Lo usa el buscador de productos.
      */

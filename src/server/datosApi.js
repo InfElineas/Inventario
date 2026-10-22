@@ -232,6 +232,62 @@ export function createDatosApiMiddleware() {
         return responder(res, 200, { borradas: rowCount })
       }
 
+      // ── Resumen del catálogo, contado en la base ─────────────
+      //
+      // El panel de control no muestra productos: muestra ocho cifras y un
+      // desglose por almacén. Antes se descargaba las 55.000 filas para
+      // contarlas en el navegador, y en modo global eso son 28 peticiones
+      // seguidas, cada una ordenando la tabla entera por `nombre` sin índice
+      // que la cubra. De ahí la lentitud.
+      //
+      // Ahora vuelve una fila por (almacén, estado) —unas 140— y el navegador
+      // solo suma.
+      //
+      // El CASE reproduce `calcEst` de Dashboard.jsx, que a su vez es
+      // `calcEstadoTienda` de Productos.jsx. Son tres copias de la misma
+      // regla: si cambia una, hay que cambiar las tres.
+      if (accion === 'resumen' && tabla === 'productos') {
+        if (!puedeLeer(ctx, tablaPerm)) return responder(res, 403, { error: 'Sin permiso' })
+
+        const valores = []
+        const clausula = await where(tabla, { activo: true, ...(cuerpo.conditions ?? {}) }, valores)
+
+        // Las columnas admiten NULL; el navegador las leía con `?? 0`.
+        const ef = 'COALESCE(exist_fisica, 0)'
+        const alm = 'COALESCE(almacen, 0)'
+        const tnd = 'COALESCE(tienda, 0)'
+        // `calcEst` descarta el id con trim; los contadores sueltos de abajo
+        // solo miran que la cadena no esté vacía, igual que el `&&` de JS.
+        const conIdTrim = `id_tienda IS NOT NULL AND btrim(id_tienda) <> ''`
+        const conId = `id_tienda IS NOT NULL AND id_tienda <> ''`
+
+        const { rows } = await query(
+          `SELECT almacen_num,
+                  CASE
+                    WHEN NOT (${conIdTrim}) AND ${ef} = 0 THEN 'SIN ID'
+                    WHEN (${conIdTrim}) AND ${ef} = 0      THEN 'AGOTADO'
+                    WHEN ${alm} = 0 AND ${tnd} > 6         THEN 'SIN RESERVA'
+                    WHEN ${tnd} = 0                        THEN 'NO TIENDA'
+                    WHEN ${tnd} > 1 AND ${tnd} < ${alm} AND ${alm} <= 10 THEN 'ULTIMAS PIEZAS'
+                    WHEN ${alm} < ${tnd} AND ${tnd} <= 10  THEN 'ULTIMAS PIEZAS'
+                    WHEN ${tnd} <= 10                      THEN 'PROXIMO'
+                    ELSE 'DISPONIBLE'
+                  END AS estado,
+                  count(*)::int AS total,
+                  count(*) FILTER (WHERE ${ef} > 0)::int AS con_stock,
+                  count(*) FILTER (WHERE ${tnd} > 0)::int AS en_tienda,
+                  count(*) FILTER (WHERE ${ef} > 0 AND ${tnd} = 0)::int AS sin_tienda,
+                  count(*) FILTER (WHERE ${ef} > 0 AND ${alm} = 0 AND ${tnd} > 6)::int AS sin_reserva,
+                  count(*) FILTER (WHERE NOT (${conId}) AND ${ef} > 0)::int AS sin_id,
+                  count(*) FILTER (WHERE NOT (${conId}) AND ${ef} = 0)::int AS sin_id_ef0,
+                  count(*) FILTER (WHERE (${conId}) AND ${ef} = 0)::int AS agotados
+             FROM ${tabla} ${clausula}
+            GROUP BY almacen_num, estado`,
+          valores,
+        )
+        return responder(res, 200, { data: rows })
+      }
+
       // ── Valores distintos de una columna ─────────────────────
       // Para los desplegables de filtro. Antes la pantalla se descargaba los
       // 55.000 productos solo para quedarse con los suministradores únicos.

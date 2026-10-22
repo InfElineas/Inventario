@@ -2,7 +2,6 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen'
-import { fetchAllProductos } from '@/lib/paginacion'
 import { isExternaConfigured, fetchAlmacenes } from '@/services/syncService'
 import { ChevronDown, Clock, CalendarDays, X } from 'lucide-react'
 import { base44 } from '@/api/base44Client';
@@ -14,18 +13,10 @@ const PERIODS = [
   { key: '6M',  label: '6M',  days: 180 },
 ]
 
-function calcEst(idTienda, ef, a, t) {
-  const hasId = idTienda && String(idTienda).trim() !== ''
-  if (!hasId && ef === 0)          return 'SIN ID'
-  if (hasId  && ef === 0)          return 'AGOTADO'
-  if (a === 0 && t > 6)            return 'SIN RESERVA'
-  if (t === 0 && ef > 10)          return 'NO TIENDA'
-  if (t === 0 && ef <= 10)         return 'NO TIENDA'
-  if (t > 1 && t < a && a <= 10)  return 'ULTIMAS PIEZAS'
-  if (a >= 0 && a < t && t <= 10) return 'ULTIMAS PIEZAS'
-  if (t <= 10)                     return 'PROXIMO'
-  return 'DISPONIBLE'
-}
+// El estado de cada producto lo decide ahora la base, en el CASE de la acción
+// `resumen` de src/server/datosApi.js: aquí ya no llegan productos, solo
+// recuentos por estado. La regla sigue viva en `calcEstadoTienda`
+// (src/pages/Productos.jsx), que es la que se aplica fila a fila.
 
 const EST_ORDER = ['SIN RESERVA','NO TIENDA','ULTIMAS PIEZAS','PROXIMO','DISPONIBLE','AGOTADO','SIN ID']
 const EST_COLOR = {
@@ -422,39 +413,38 @@ export default function Dashboard() {
   const isGlobalMode = !almacen
 
   // ── Productos ────────────────────────────────────────────
-  const { data: prodRowsRaw, isLoading: loadingProds } = useQuery({
-    queryKey: ['dash_prods', almacen],
-    // Solo estas cinco columnas: el panel cuenta y suma, no muestra fichas.
-    // La lista iba como cadena y `fetchAllProductos` la ignoraba, así que hasta
-    // ahora el panel se descargaba las 31 columnas, `fotos` incluida.
-    queryFn:  () => fetchAllProductos(almacen, ['almacen_num', 'id_tienda', 'exist_fisica', 'almacen', 'tienda']),
+  // El panel no muestra productos: muestra cifras. Las cuenta la base y aquí
+  // solo se suman. Antes se descargaba el catálogo entero —55.000 filas, 28
+  // peticiones en modo global— para contarlo en el navegador.
+  const { data: resumenRaw, isLoading: loadingProds } = useQuery({
+    queryKey: ['dash_resumen', almacen],
+    queryFn:  () => base44.entities.Producto.resumen(almacen ? { almacen_num: almacen } : {}),
     select:   d => Array.isArray(d) ? d : [],
   })
-  const prodRows = prodRowsRaw ?? []
+  const resumen = resumenRaw ?? []
 
   // ── Breakdown por almacén (modo global) ──────────────────
+  // El resumen trae una fila por (almacén, estado); aquí se colapsan los
+  // estados y queda una por almacén.
   const almacenBreakdown = useMemo(() => {
-    if (!isGlobalMode || !prodRows.length) return []
+    if (!isGlobalMode || !resumen.length) return []
     const map = {}
-    for (const p of prodRows) {
-      const key = p.almacen_num || 'Sin asignar'
+    for (const r of resumen) {
+      const key = r.almacen_num || 'Sin asignar'
       if (!map[key]) map[key] = { almacen: key, total: 0, conStock: 0, enTienda: 0, sinTienda: 0, sinId: 0, sinReserva: 0, agotados: 0 }
-      map[key].total++
-      const ef = Number(p.exist_fisica ?? 0)
-      const a  = Number(p.almacen ?? 0)
-      const t  = Number(p.tienda  ?? 0)
-      if (ef > 0) map[key].conStock++
-      if (t > 0)  map[key].enTienda++
-      if (ef > 0 && t === 0)  map[key].sinTienda++
-      if (!p.id_tienda && ef > 0) map[key].sinId++
-      if (ef > 0 && a === 0 && t > 6) map[key].sinReserva++
-      if (p.id_tienda && ef === 0)    map[key].agotados++
+      map[key].total      += r.total
+      map[key].conStock   += r.con_stock
+      map[key].enTienda   += r.en_tienda
+      map[key].sinTienda  += r.sin_tienda
+      map[key].sinId      += r.sin_id
+      map[key].sinReserva += r.sin_reserva
+      map[key].agotados   += r.agotados
     }
     return Object.values(map).sort((a, b) => {
       const na = parseInt(a.almacen, 10), nb = parseInt(b.almacen, 10)
       return (!isNaN(na) && !isNaN(nb)) ? na - nb : a.almacen.localeCompare(b.almacen)
     })
-  }, [prodRows, isGlobalMode])
+  }, [resumen, isGlobalMode])
 
   // ── Mermas ───────────────────────────────────────────────
   const { data: mermasRaw } = useQuery({
@@ -502,23 +492,22 @@ export default function Dashboard() {
   // ── Stats del almacén / globales ─────────────────────────
   const stats = useMemo(() => {
     const breakdown = {}
-    let conStock = 0, agotados = 0, sinReserva = 0, noTienda = 0, sinId = 0, enTienda = 0, sinIdEf0 = 0
-    for (const p of prodRows) {
-      const ef  = Number(p.exist_fisica ?? 0)
-      const a   = Number(p.almacen ?? 0)
-      const t   = Number(p.tienda  ?? 0)
-      const est = calcEst(p.id_tienda, ef, a, t)
-      breakdown[est] = (breakdown[est] ?? 0) + 1
-      if (ef > 0) conStock++
-      if (t > 0)  enTienda++
-      if (p.id_tienda && ef === 0) agotados++
-      if (!p.id_tienda && ef === 0) sinIdEf0++
-      if (est === 'SIN RESERVA') sinReserva++
-      if (est === 'NO TIENDA')   noTienda++
-      if (!p.id_tienda && ef > 0) sinId++
+    let total = 0, conStock = 0, agotados = 0, sinReserva = 0, noTienda = 0, sinId = 0, enTienda = 0, sinIdEf0 = 0
+    for (const r of resumen) {
+      breakdown[r.estado] = (breakdown[r.estado] ?? 0) + r.total
+      total     += r.total
+      conStock  += r.con_stock
+      enTienda  += r.en_tienda
+      agotados  += r.agotados
+      sinIdEf0  += r.sin_id_ef0
+      sinId     += r.sin_id
+      // Estos dos cuentan por estado, no por condición suelta: un producto sin
+      // existencia cae en SIN ID o AGOTADO antes de llegar a estas ramas.
+      if (r.estado === 'SIN RESERVA') sinReserva += r.total
+      if (r.estado === 'NO TIENDA')   noTienda   += r.total
     }
-    return { total: prodRows.length, conStock, agotados, sinReserva, noTienda, sinId, enTienda, sinIdEf0, breakdown }
-  }, [prodRows])
+    return { total, conStock, agotados, sinReserva, noTienda, sinId, enTienda, sinIdEf0, breakdown }
+  }, [resumen])
 
   const mermaStats = useMemo(() => ({
     total:    mermas.length,
