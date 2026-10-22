@@ -408,3 +408,26 @@ describe('resumen del catálogo', () => {
     expect(res.statusCode).toBe(403);
   });
 });
+
+describe('count con búsqueda', () => {
+  it('cuenta solo lo que coincide con el texto', async () => {
+    // Antes `count` ignoraba `search`: una pantalla que busca y pagina recibía
+    // el total sin filtrar, con más páginas de las que existen y las últimas
+    // vacías.
+    await llamar('/api/datos/Producto/count', {
+      conditions: { activo: true },
+      search: { texto: 'aceite', campos: ['nombre', 'suministrador'] },
+    });
+
+    expect(ultimoSql()).toContain('count(*)');
+    expect(ultimoSql()).toContain('"nombre" ILIKE');
+    expect(ultimoSql()).toContain('"suministrador" ILIKE');
+    expect(ultimosValores()).toEqual([true, '%aceite%']);
+  });
+
+  it('sin búsqueda cuenta igual que antes', async () => {
+    await llamar('/api/datos/Producto/count', { conditions: { activo: true } });
+    expect(ultimoSql()).not.toContain('ILIKE');
+    expect(ultimosValores()).toEqual([true]);
+  });
+});

@@ -85,14 +85,19 @@ function entidad(nombre) {
      * Busca texto en varias columnas a la vez (ILIKE con OR), combinado con
      * las condiciones. Lo usa el buscador de productos.
      */
-    buscar: async (texto, campos, conditions = {}, orderBy, limit) =>
+    buscar: async (texto, campos, conditions = {}, orderBy, limit, offset, proyeccion) =>
       (await pedir(nombre, 'filter', {
-        conditions, orderBy, limit, search: { texto, campos },
+        conditions, orderBy, limit, offset, campos: proyeccion,
+        search: { texto, campos },
       })).data ?? [],
 
-    /** Cuenta sin traerse las filas. Un array se traduce a IN; un escalar, a =. */
-    count: async (conditions = {}) =>
-      (await pedir(nombre, 'count', { conditions })).count ?? 0,
+    /**
+     * Cuenta sin traerse las filas. Un array se traduce a IN; un escalar, a =.
+     * `search` acota igual que en `buscar`: hace falta para paginar una
+     * búsqueda, donde el total tiene que ser el de lo encontrado.
+     */
+    count: async (conditions = {}, search) =>
+      (await pedir(nombre, 'count', { conditions, search })).count ?? 0,
 
     create: async (data) => (await pedir(nombre, 'create', { data })).data,
 

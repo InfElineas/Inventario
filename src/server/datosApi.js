@@ -155,15 +155,14 @@ export function createDatosApiMiddleware() {
         const valores = []
         let clausula = await where(tabla, condiciones, valores)
 
-        if (accion === 'count') {
-          const { rows } = await query(`SELECT count(*)::int AS total FROM ${tabla} ${clausula}`, valores)
-          return responder(res, 200, { count: rows[0]?.total ?? 0 })
-        }
-
         // Búsqueda de texto: { campos: ['nombre','codigo'], texto: 'x' }.
         // Va aparte de las condiciones porque es un OR entre columnas, no un
         // AND de igualdades. Los campos se validan como cualquier otro
         // identificador y el texto va parametrizado.
+        //
+        // Se aplica ANTES del recuento. Antes `count` la ignoraba, de modo que
+        // una pantalla que busca y pagina recibía el total sin filtrar: más
+        // páginas de las que existen, y las últimas vacías.
         if (cuerpo.search?.texto && Array.isArray(cuerpo.search.campos)) {
           const patron = `%${String(cuerpo.search.texto)}%`
           const marcador = `$${valores.push(patron)}`
@@ -172,6 +171,11 @@ export function createDatosApiMiddleware() {
           )
           const or = cols.map((c) => `${c} ILIKE ${marcador}`).join(' OR ')
           clausula = clausula ? `${clausula} AND (${or})` : `WHERE (${or})`
+        }
+
+        if (accion === 'count') {
+          const { rows } = await query(`SELECT count(*)::int AS total FROM ${tabla} ${clausula}`, valores)
+          return responder(res, 200, { count: rows[0]?.total ?? 0 })
         }
 
         // Solo las columnas pedidas. `fotos` es jsonb y pesa; traerla cuando
