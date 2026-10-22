@@ -108,9 +108,9 @@ function aFila(p) {
 function condiciones({ almacen, filtros }) {
   const c = { activo: true, almacen_num: almacen }
 
-  if (filtros.existencia === 'con_ef')  c.exist_fisica = { gt: 0 }
-  if (filtros.existencia === 'sin_ef')  c.exist_fisica = 0
-  if (filtros.existencia === 'critico') c.exist_fisica = { gt: 0, lt: 5 }
+  // Mismo vocabulario que el control de la pantalla, heredado de TKC.
+  if (filtros.existencia === 'existencia')    c.exist_fisica = { gt: 0 }
+  if (filtros.existencia === 'no-existencia') c.exist_fisica = 0
 
   if (filtros.estadoTienda  && filtros.estadoTienda  !== 'all') c.estado_tienda = filtros.estadoTienda
   if (filtros.estadoAnuncio && filtros.estadoAnuncio !== 'all') c.estado_anuncio_tkc = filtros.estadoAnuncio

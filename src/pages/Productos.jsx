@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { isExternaConfigured, syncFromExternal } from '@/services/syncService';
-import { fetchInventarioTkc, fetchExistenciaTkc, fetchExistenciasTkc, TKC_ALMACENES } from '@/services/tkcService';
+import { fetchExistenciaTkc, TKC_ALMACENES } from '@/services/tkcService';
+import { fetchCatalogo } from '@/services/catalogoService';
 import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL, isStockCol } from '@/services/tkc/columns';
 import { EXISTENCIA_FILTERS } from '@/services/tkc/body';
 import { warehouseName } from '@/services/tkc/warehouses';
@@ -352,15 +353,25 @@ export default function Productos({ initialSource: initialSourceRaw }) {
     isFetching: fetchingTKC,
     error: tkcError,
   } = useQuery({
-    queryKey: ['tkc_inv', almacen, page, tkcLimit, debouncedSearch.trim(), tkcSort.key, tkcSort.dir, tkcExistencia],
-    queryFn: () => fetchInventarioTkc({
+    // El catálogo se sirve de nuestra base, no del listado de TKC en vivo.
+    // TKC no sabe filtrar por lo que hace falta —su filtro de anuncio es un
+    // sí/no sin «Muerto», y su `tienda` un binario almacén/tienda, no los
+    // siete estados— y filtrar en el navegador sobre páginas suyas daría
+    // resultados falsos. Ver src/services/catalogoService.js.
+    queryKey: ['catalogo', almacen, page, tkcLimit, debouncedSearch.trim(), tkcSort.key, tkcSort.dir, tkcExistencia, advFilters.estadoTienda, advFilters.estadoAnuncio, advFilters.suministrador],
+    queryFn: () => fetchCatalogo({
       almacen,
       page,
       limit: tkcLimit,
       search: debouncedSearch.trim(),
       sortBy: tkcSort.key,
       sortDir: tkcSort.dir,
-      existencia: tkcExistencia,
+      filtros: {
+        existencia:    tkcExistencia,
+        estadoTienda:  advFilters.estadoTienda,
+        estadoAnuncio: advFilters.estadoAnuncio,
+        suministrador: advFilters.suministrador,
+      },
     }),
     enabled: source === 'tkc' && Boolean(almacen),
     placeholderData: (prev) => prev,
@@ -378,50 +389,17 @@ export default function Productos({ initialSource: initialSourceRaw }) {
     [tkcColOrder, tkcCols]
   );
 
-  // ── Existencias (EF / A / T) de las filas visibles ─────────────
-  // El listado solo trae el total (`cantidad`); el desglose lo publica el
-  // submayor. El servidor cachea un mapa del almacén completo, así que se piden
-  // solo los ids en pantalla y las demás páginas ya salen de ese mapa. Mientras
-  // se completa en segundo plano, `progreso.listo` es false y se vuelve a
-  // preguntar cada 2 s en vez de dejar las columnas vacías.
-  const tkcIds = useMemo(
-    () => tkcRows.map(r => r.idOnline).filter(Boolean),
-    [tkcRows]
-  );
-
-  // Calentar el mapa en cuanto se sabe el almacén, sin esperar a la pestaña
-  // TKC. Recorrerlo entero lleva ~37 s en un almacén de 9 000 productos, y
-  // antes ese tiempo empezaba a contar cuando el usuario ya estaba mirando la
-  // tabla. `ids: []` solo dispara la construcción: no transfiere el mapa.
-  useQuery({
-    queryKey: ['tkc_existencias_warm', almacen],
-    queryFn: () => fetchExistenciasTkc({ almacen, ids: [] }),
-    enabled: Boolean(almacen),
-    refetchInterval: (query) => (query.state.data?.progreso?.listo ? false : 5000),
-    staleTime: 60 * 1000,
-    retry: false,
-  });
-
-  const { data: existenciasData, error: existenciasError } = useQuery({
-    queryKey: ['tkc_existencias', almacen, tkcIds],
-    queryFn: () => fetchExistenciasTkc({ almacen, ids: tkcIds }),
-    enabled: source === 'tkc' && Boolean(almacen) && tkcIds.length > 0,
-    placeholderData: (prev) => prev,
-    refetchInterval: (query) => (query.state.data?.progreso?.listo ? false : 2000),
-    staleTime: 60 * 1000,
-    retry: false,
-  });
-
-  const existencias = existenciasData?.existencias ?? {};
-  const existenciasProgreso = existenciasData?.progreso;
-  // Sin datos todavía para un id: "…" si el mapa sigue construyéndose, "—" si ya
-  // terminó (ese producto no está en el submayor de este almacén).
-  const stockPendiente = Boolean(tkcIds.length) && !existenciasProgreso?.listo && !existenciasError;
+  // El desglose EF/A/T ya no se pide al submayor: viene en cada fila, porque
+  // el catálogo se sirve de `productos`. Antes había que recorrer el almacén
+  // entero —9.000 productos, unos 19 s— y las celdas giraban mientras tanto.
+  //
+  // El popover al pasar el ratón sí sigue preguntando en vivo, producto a
+  // producto: ahí el número importa y nuestra copia puede ir hasta 18 h por
+  // detrás (ver docs/migracion-supabase.md).
 
   // ── Existencia de la fila bajo el ratón ────────────────────────
-  // Normalmente ya está en el mapa de arriba y el popover es instantáneo. La
-  // consulta individual (~1 s) solo entra si el mapa aún no cubre esa fila.
-  const hoveredEnMapa = hoveredTkc?.idTienda ? existencias[hoveredTkc.idTienda] : null;
+  // Consulta individual al submayor, ~1 s. Es el dato en vivo de TKC, frente
+  // al de la fila, que es nuestra copia.
 
   const {
     data: existenciaTkc,
@@ -430,23 +408,16 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   } = useQuery({
     queryKey: ['tkc_existencia', almacen, hoveredTkc?.idTienda],
     queryFn: () => fetchExistenciaTkc({ almacen, idTienda: hoveredTkc.idTienda }),
-    enabled: source === 'tkc' && Boolean(almacen) && Boolean(hoveredTkc?.idTienda) && !hoveredEnMapa,
+    enabled: source === 'tkc' && Boolean(almacen) && Boolean(hoveredTkc?.idTienda),
     staleTime: 5 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
     retry: false,
   });
 
-  /**
-   * "Actualizar vista": además de releer el listado, tira el mapa de existencias
-   * cacheado en el servidor (`refrescar`) para que las columnas EF/A/T no se
-   * queden en la foto de hace 10 minutos.
-   */
+  /** "Actualizar vista": relee el catálogo desde nuestra base. */
   const refrescarVistaTkc = () => {
-    queryClient.invalidateQueries({ queryKey: ['tkc_inv', almacen] });
+    queryClient.invalidateQueries({ queryKey: ['catalogo', almacen] });
     queryClient.invalidateQueries({ queryKey: ['productos', almacen] });
-    fetchExistenciasTkc({ almacen, ids: tkcIds, refrescar: true })
-      .catch(() => {})   // el error ya lo reporta la query de la tabla
-      .finally(() => queryClient.invalidateQueries({ queryKey: ['tkc_existencias', almacen] }));
   };
 
   /** Abre el popover tras el debounce; el rect se captura ya (luego el <tr> puede irse). */
@@ -506,10 +477,12 @@ export default function Productos({ initialSource: initialSourceRaw }) {
 
   // ── Suministradores y categorías ──────────────────────────
   const { data: suministradoresRaw } = useQuery({
-    queryKey: ['filter-suministradores'],
+    queryKey: ['filter-suministradores', almacen],
     // Lo resuelve la base con un DISTINCT. Antes esto se descargaba los 55.000
     // productos —con sus 31 columnas— para quedarse con una lista de nombres.
-    queryFn: () => base44.entities.Producto.distinct('suministrador', { activo: true }),
+    // Acotado al almacén: ofrecer suministradores que no tienen nada aquí
+    // deja al usuario con una tabla vacía y sin saber por qué.
+    queryFn: () => base44.entities.Producto.distinct('suministrador', { activo: true, ...(almacen ? { almacen_num: almacen } : {}) }),
     staleTime: 15 * 60 * 1000,
     select: d => Array.isArray(d) ? d : [],
   });
@@ -629,6 +602,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
 
   const hayFiltrosEL  = search || Object.values(advFilters).some(v => v && v !== 'all');
   const hayFiltrosTKC = search || tkcSort.key !== 'nombre' || tkcSort.dir !== 'asc'
+    || advFilters.estadoTienda !== 'all' || advFilters.estadoAnuncio !== 'all' || advFilters.suministrador
     || tkcExistencia !== TKC_EXISTENCIA_DEFAULT;
 
   const resetFiltros = () => {
@@ -1014,29 +988,58 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                     ))}
                   </div>
 
+                  {/* Estado de tienda: los siete que calcula la columna
+                      generada `estado_tienda`. TKC no sabe filtrar por esto —su
+                      filtro es un binario almacén/tienda—, por eso el catálogo
+                      se sirve de nuestra base. */}
+                  <div className="relative">
+                    <select value={advFilters.estadoTienda} onChange={SET_FILTER('estadoTienda')} className={FILTER_CLS}>
+                      <option value="all">Estado tienda: todos</option>
+                      <option value="SIN RESERVA">Sin Reserva</option>
+                      <option value="NO TIENDA">No Tienda</option>
+                      <option value="ULTIMAS PIEZAS">Últimas Piezas</option>
+                      <option value="PROXIMO">Próximo</option>
+                      <option value="DISPONIBLE">Disponible</option>
+                      <option value="AGOTADO">Agotado</option>
+                      <option value="SIN ID">Sin ID</option>
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                  </div>
+
+                  {/* Estado de anuncio: el de TKC (is_dead / status_provider),
+                      no el que deducíamos del stock. Son cosas distintas. */}
+                  <div className="relative">
+                    <select value={advFilters.estadoAnuncio} onChange={SET_FILTER('estadoAnuncio')} className={FILTER_CLS}>
+                      <option value="all">Anuncio: todos</option>
+                      <option value="Activado">Activado</option>
+                      <option value="Desactivado">Desactivado</option>
+                      <option value="Muerto">Muerto</option>
+                      <option value="Sin Id">Sin ID</option>
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                  </div>
+
+                  <SearchableSelect
+                    value={advFilters.suministrador}
+                    onChange={v => { setAdvFilters(f => ({ ...f, suministrador: v })); resetPage(); }}
+                    placeholder="Suministrador"
+                    maxWidth="max-w-[200px]"
+                    options={[
+                      { value: '', label: 'Suministrador: todos' },
+                      ...suministradores.map(sx => ({ value: sx, label: sx })),
+                    ]}
+                  />
+
                   <ColPicker cols={TKC_COLUMN_DEFS} visible={tkcCols}
                     onChange={(next) => { setTkcCols(next); saveColsWithOrder(TKC_COLS_KEY, next, tkcColOrder); }}
                     storageKey={TKC_COLS_KEY} order={tkcColOrder}
                     onOrderChange={(next) => { setTkcColOrder(next); saveColsWithOrder(TKC_COLS_KEY, tkcCols, next); }} />
 
                   <div className="flex items-center gap-2 ml-auto">
-                    {/* El mapa del submayor se completa en segundo plano: sin esto,
-                        las columnas EF/A/T en "…" parecerían rotas. */}
-                    {existenciasProgreso && !existenciasProgreso.listo && (
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground" title="Descargando el submayor del almacén">
-                        <RefreshCw className="w-3 h-3 animate-spin" />
-                        Existencias {existenciasProgreso.cargadas}/{existenciasProgreso.total || '?'}
-                      </span>
-                    )}
-                    {existenciasError && (
-                      <span className="text-xs text-[#e24b4a]" title={existenciasError.message}>
-                        Existencias no disponibles
-                      </span>
-                    )}
                     {fetchingTKC && <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />}
                     {tkcPagination && (
                       <span className="text-xs text-muted-foreground">
-                        {tkcPagination.total} resultados · pág. {tkcPagination.page}/{tkcPagination.totalPages}
+                        {tkcPagination.total} resultados · pág. {tkcPagination.page}/{tkcPagination.pages}
                       </span>
                     )}
                     {hayFiltrosTKC && (
@@ -1082,10 +1085,12 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                             if (!def) return null;
                             // Ni la imagen ni EF/A/T son columnas del DataTables de TKC,
                             // así que no se pueden ordenar en el servidor.
-                            if (TKC_SORT_COLUMNS[key] === undefined) {
+                            // EF/A/T pasan a ser ordenables: ya no salen del
+                            // submayor sino de columnas nuestras, y Postgres
+                            // ordena sobre el conjunto filtrado entero.
+                            if (TKC_SORT_COLUMNS[key] === undefined && !isStockCol(key)) {
                               return (
                                 <th key={key}
-                                  title={isStockCol(key) ? 'Del submayor de TKC — no ordenable' : undefined}
                                   className={`px-3 py-2.5 text-xs font-medium text-muted-foreground whitespace-nowrap ${
                                     def.numeric ? 'text-right' : 'w-14 text-left'
                                   }`}>
@@ -1126,20 +1131,17 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                                 );
                               }
                               // EF / A / T salen del mapa del submayor, no de la fila.
+                              // EF / A / T vienen en la propia fila: el catálogo
+                              // se sirve de nuestra base, que ya las guarda.
+                              // Antes había que esperar al recorrido completo
+                              // del submayor para llenarlas.
                               if (isStockCol(key)) {
-                                const ex = existencias[p.idOnline];
-                                const value = ex && {
-                                  ef: ex.fisica, enAlmacen: ex.enAlmacen, enTienda: ex.enTienda,
-                                }[key];
+                                const value = p[key] ?? 0;
                                 return (
                                   <td key={key} className="px-3 py-2 text-right tabular-nums font-mono whitespace-nowrap">
-                                    {ex
-                                      ? <span className={key === 'ef' && value === 0 ? 'text-[#e24b4a]' : ''}>
-                                          {numberFmt.format(value)}
-                                        </span>
-                                      : stockPendiente
-                                        ? <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground/50 inline-block" />
-                                        : <span className="text-muted-foreground/50">—</span>}
+                                    <span className={key === 'ef' && value === 0 ? 'text-[#e24b4a]' : ''}>
+                                      {numberFmt.format(value)}
+                                    </span>
                                   </td>
                                 );
                               }
