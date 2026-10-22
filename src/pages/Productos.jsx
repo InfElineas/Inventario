@@ -389,6 +389,19 @@ export default function Productos({ initialSource: initialSourceRaw }) {
     [tkcRows]
   );
 
+  // Calentar el mapa en cuanto se sabe el almacén, sin esperar a la pestaña
+  // TKC. Recorrerlo entero lleva ~37 s en un almacén de 9 000 productos, y
+  // antes ese tiempo empezaba a contar cuando el usuario ya estaba mirando la
+  // tabla. `ids: []` solo dispara la construcción: no transfiere el mapa.
+  useQuery({
+    queryKey: ['tkc_existencias_warm', almacen],
+    queryFn: () => fetchExistenciasTkc({ almacen, ids: [] }),
+    enabled: Boolean(almacen),
+    refetchInterval: (query) => (query.state.data?.progreso?.listo ? false : 5000),
+    staleTime: 60 * 1000,
+    retry: false,
+  });
+
   const { data: existenciasData, error: existenciasError } = useQuery({
     queryKey: ['tkc_existencias', almacen, tkcIds],
     queryFn: () => fetchExistenciasTkc({ almacen, ids: tkcIds }),

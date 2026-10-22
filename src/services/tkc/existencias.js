@@ -137,8 +137,10 @@ async function ensureEntry(config, almacen, { refrescar = false } = {}) {
  *
  * @param {{ tkcBase: string, tkcUser: string, tkcPass: string }} config
  * @param {{ almacen: string, ids?: string[], refrescar?: boolean }} params
- *        `ids` son `idTienda` (el `idOnline` del listado). Sin `ids` devuelve el
- *        mapa entero, que en un almacén grande son ~9 000 entradas.
+ *        `ids` son `idTienda` (el `idOnline` del listado). Un array vacío pide
+ *        solo el progreso: sirve para ir construyendo el mapa en segundo plano
+ *        sin transferir nada. Omitir `ids` devuelve el mapa entero, que en un
+ *        almacén grande son ~9 000 entradas (~175 KB).
  * @returns {Promise<{ existencias: Record<string, {fisica: number, enAlmacen: number, enTienda: number}>,
  *   progreso: { cargadas: number, total: number, listo: boolean, error: string|null } }>}
  */
@@ -146,7 +148,7 @@ export async function getExistencias(config, { almacen, ids, refrescar = false }
   const entry = await ensureEntry(config, almacen, { refrescar })
 
   const existencias = {}
-  if (Array.isArray(ids) && ids.length > 0) {
+  if (Array.isArray(ids)) {
     for (const raw of ids) {
       const id = String(raw ?? '').trim()
       const hit = id && entry.map.get(id)
