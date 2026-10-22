@@ -1,5 +1,13 @@
 --
--- Sincronización de productos: public."invGlobal" -> inventario.productos
+-- Sincronización de productos: inventario.catalogo_origen -> inventario.productos
+--
+-- El origen era public."invGlobal", que expone trece de las treinta y siete
+-- columnas de ap_rows. Desde que el catálogo se sirve de nuestra base y no de
+-- TKC en vivo, hacen falta las demás: Proveedor, Marca y Vence se ven por
+-- defecto en la pantalla y ninguna estaba en esa vista. Ver catalogo_origen.sql.
+--
+-- El nombre de la función se queda como está: lo usan el cron del host y
+-- src/server/syncApi.js.
 --
 -- Reemplaza la cadena anterior (REST contra el segundo Supabase + RPC
 -- sync_productos_bulk con jsonb paginado + Edge Function sync-auto). Ahora el
@@ -38,48 +46,57 @@ BEGIN
   -- "cannot affect row a second time" ante filas repetidas del origen.
   WITH origen AS (
     SELECT DISTINCT ON (
-      btrim(g."No. Almacén"),
-      COALESCE(NULLIF(btrim(COALESCE(g."IdTienda", '')), ''), 'cod:' || btrim(g."Cód. Prod."))
+      btrim(g.almacen_num),
+      COALESCE(NULLIF(btrim(COALESCE(g.id_tienda, '')), ''), 'cod:' || btrim(g.codigo_producto))
     )
-      btrim(g."No. Almacén")                                   AS almacen_num,
-      btrim(g."Cód. Prod.")                                    AS codigo_producto,
-      NULLIF(btrim(COALESCE(g."IdTienda", '')), '')            AS id_tienda,
-      btrim(COALESCE(g."Nombre", ''))                          AS nombre,
-      btrim(COALESCE(g."Suministrador", ''))                   AS suministrador,
-      g."Categoría Online"                                     AS categoria_elineas,
-      COALESCE(NULLIF(btrim(COALESCE(g."Unid/Alt.", '')), ''), 'u') AS unidad_medida,
-      COALESCE(g."Exist. física", 0)                           AS exist_fisica,
-      COALESCE(g."Reserva", 0)                                 AS almacen,
-      COALESCE(g."Tienda", 0)                                  AS tienda,
-      COALESCE(g."Precio", 0)                                  AS precio_costo,
-      COALESCE(g."Fotos", '[]'::jsonb)                         AS fotos,
-      -- El estado que TKC publica: 'Activado', 'Desactivado', 'Muerto' o
-      -- 'Sin Id'. La vista lo calcula de `is_dead` y `status_provider`, que
-      -- son campos suyos. NO va a `estado_anuncio`: esa columna la editan los
-      -- usuarios a mano en la ficha y sobrescribirla borraría su trabajo.
-      NULLIF(btrim(COALESCE(g."Estado Anuncio", '')), '')      AS estado_anuncio_tkc
-    FROM public."invGlobal" g
-    WHERE btrim(COALESCE(g."Cód. Prod.", '')) <> ''
-      AND btrim(COALESCE(g."No. Almacén", '')) <> ''
-      AND (p_almacen IS NULL OR btrim(g."No. Almacén") = p_almacen)
+      btrim(g.almacen_num)                                     AS almacen_num,
+      btrim(g.codigo_producto)                                 AS codigo_producto,
+      NULLIF(btrim(COALESCE(g.id_tienda, '')), '')             AS id_tienda,
+      btrim(COALESCE(g.nombre, ''))                            AS nombre,
+      btrim(COALESCE(g.suministrador, ''))                     AS suministrador,
+      g.proveedor, g.marca, g.clasificacion, g.codigo_pyme,
+      g.categoria_almacen, g.locaciones, g.canal, g.gtin, g.catalogo_nombre,
+      g.peso, g.volumen, g.cantidad_um, g.tasa,
+      g.fecha_vencimiento::date                                AS fecha_vencimiento_tkc,
+      g.categoria_elineas,
+      COALESCE(NULLIF(btrim(COALESCE(g.unidad_compra, '')), ''), 'u') AS unidad_compra,
+      COALESCE(NULLIF(btrim(COALESCE(g.unidad_medida, '')), ''), 'u') AS unidad_medida,
+      COALESCE(g.exist_fisica, 0)                              AS exist_fisica,
+      COALESCE(g.almacen, 0)                                   AS almacen,
+      COALESCE(g.tienda, 0)                                    AS tienda,
+      COALESCE(g.precio_costo, 0)                              AS precio_costo,
+      COALESCE(g.fotos, '[]'::jsonb)                           AS fotos,
+      g.estado_anuncio_tkc
+    FROM inventario.catalogo_origen g
+    WHERE btrim(COALESCE(g.codigo_producto, '')) <> ''
+      AND btrim(COALESCE(g.almacen_num, '')) <> ''
+      AND (p_almacen IS NULL OR btrim(g.almacen_num) = p_almacen)
     ORDER BY
-      btrim(g."No. Almacén"),
-      COALESCE(NULLIF(btrim(COALESCE(g."IdTienda", '')), ''), 'cod:' || btrim(g."Cód. Prod.")),
+      btrim(g.almacen_num),
+      COALESCE(NULLIF(btrim(COALESCE(g.id_tienda, '')), ''), 'cod:' || btrim(g.codigo_producto)),
       -- Desempate determinista entre filas que comparten clave: gana la de
       -- mayor existencia. Sin este orden, cuál gana sería arbitrario y el
       -- stock podría cambiar entre ejecuciones sin que nadie tocara nada.
-      COALESCE(g."Exist. física", 0) DESC
+      COALESCE(g.exist_fisica, 0) DESC
   ),
   upsert AS (
     INSERT INTO inventario.productos (
       almacen_num, codigo_producto, id_tienda, nombre, suministrador,
       categoria_elineas, unidad_medida, exist_fisica, almacen, tienda,
-      precio_costo, fotos, estado_anuncio_tkc, activo, updated_date
+      precio_costo, fotos, estado_anuncio_tkc,
+      proveedor, marca, clasificacion, codigo_pyme, categoria_almacen,
+      locaciones, canal, gtin, catalogo_nombre, peso, volumen, cantidad_um,
+      tasa, fecha_vencimiento_tkc, unidad_compra,
+      activo, updated_date
     )
     SELECT
       almacen_num, codigo_producto, id_tienda, nombre, suministrador,
       categoria_elineas, unidad_medida, exist_fisica, almacen, tienda,
-      precio_costo, fotos, estado_anuncio_tkc, true, now()
+      precio_costo, fotos, estado_anuncio_tkc,
+      proveedor, marca, clasificacion, codigo_pyme, categoria_almacen,
+      locaciones, canal, gtin, catalogo_nombre, peso, volumen, cantidad_um,
+      tasa, fecha_vencimiento_tkc, unidad_compra,
+      true, now()
     FROM origen
     ON CONFLICT (almacen_num, clave_sync) DO UPDATE SET
       id_tienda         = EXCLUDED.id_tienda,
@@ -94,6 +111,21 @@ BEGIN
       precio_costo      = EXCLUDED.precio_costo,
       fotos             = EXCLUDED.fotos,
       estado_anuncio_tkc = EXCLUDED.estado_anuncio_tkc,
+      proveedor         = EXCLUDED.proveedor,
+      marca             = EXCLUDED.marca,
+      clasificacion     = EXCLUDED.clasificacion,
+      codigo_pyme       = EXCLUDED.codigo_pyme,
+      categoria_almacen = EXCLUDED.categoria_almacen,
+      locaciones        = EXCLUDED.locaciones,
+      canal             = EXCLUDED.canal,
+      gtin              = EXCLUDED.gtin,
+      catalogo_nombre   = EXCLUDED.catalogo_nombre,
+      peso              = EXCLUDED.peso,
+      volumen           = EXCLUDED.volumen,
+      cantidad_um       = EXCLUDED.cantidad_um,
+      tasa              = EXCLUDED.tasa,
+      fecha_vencimiento_tkc = EXCLUDED.fecha_vencimiento_tkc,
+      unidad_compra     = EXCLUDED.unidad_compra,
       -- Si el producto había desaparecido del origen y vuelve, se reactiva.
       activo            = true,
       updated_date      = now()
@@ -110,7 +142,7 @@ BEGIN
      AND (p_almacen IS NULL OR p.almacen_num = p_almacen)
      AND NOT EXISTS (
        SELECT 1
-       FROM public."invGlobal" g
+       FROM inventario.catalogo_origen g
        WHERE btrim(COALESCE(g."No. Almacén", '')) = p.almacen_num
          AND COALESCE(
                NULLIF(btrim(COALESCE(g."IdTienda", '')), ''),
