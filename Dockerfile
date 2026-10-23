@@ -55,9 +55,11 @@ COPY server ./server
 COPY src/server ./src/server
 COPY src/services/tkc ./src/services/tkc
 # session.js importa ../lib/roles.js para resolver el rol que devuelve el IS.
-# Es el único archivo de src/lib que necesita el servidor; sin él el contenedor
-# muere al arrancar buscando el módulo.
+# ajustes.js lo importa transferenciasApi.js (los roles que pueden facturar
+# ajustes). Son los únicos archivos de src/lib que necesita el servidor; sin
+# ellos el contenedor muere al arrancar buscando el módulo.
 COPY src/lib/roles.js ./src/lib/roles.js
+COPY src/lib/ajustes.js ./src/lib/ajustes.js
 
 # Usuario sin privilegios que ya trae la imagen oficial.
 USER bun

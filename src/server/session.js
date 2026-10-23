@@ -64,7 +64,10 @@ export async function cargarUsuario(email) {
  * Si el JWT caducó (~15 min) lo renueva con el session token y refresca la
  * cookie, de modo que el usuario no nota el vencimiento.
  *
- * @returns {Promise<null | { email: string, usuario: object, sessionToken: string }>}
+ * @returns {Promise<null | { email: string, usuario: object, sessionToken: string, jwt: string, sub: string }>}
+ *          `jwt` es el vigente (el renovado, si hizo falta) y `sub` el id de la
+ *          persona en el IS: lo que necesita quien llama a otro sistema en su
+ *          nombre.
  *          null = no autenticado, o autenticado pero sin acceso a esta app.
  */
 export async function resolverSesion(req, res) {
@@ -72,13 +75,15 @@ export async function resolverSesion(req, res) {
   const sessionToken = cookies[COOKIE_SESSION]
   if (!sessionToken) return null
 
-  let payload = await verifyJwt(cookies[COOKIE_JWT])
+  let jwt = cookies[COOKIE_JWT]
+  let payload = await verifyJwt(jwt)
 
   if (!payload) {
     const nuevo = await refreshJwt(sessionToken)
     if (!nuevo) return null // el session token también murió: hay que entrar de nuevo
     payload = await verifyJwt(nuevo)
     if (!payload) return null
+    jwt = nuevo
     if (res) fijarCookiesSesion(res, { jwt: nuevo })
   }
 
@@ -90,7 +95,7 @@ export async function resolverSesion(req, res) {
   // aplicación sin tocar su cuenta del IS.
   if (!usuario || !usuario.activo) return null
 
-  return { email, usuario, sessionToken }
+  return { email, usuario, sessionToken, jwt, sub: payload.sub }
 }
 
 /** Refresca el rol desde el IS. Se usa en el login. */

@@ -197,7 +197,7 @@ export default function Configuracion() {
     onError: (err) => {
       const msg = err?.message || ''
       if (msg.includes('sync_config') || msg.includes('almacenes_config')) {
-        setSaveError('Ejecuta migration_v8.sql y migration_v9.sql en Supabase SQL Editor primero.')
+        setSaveError('Faltan las columnas de configuración en la base: aplica migration_v8.sql y migration_v9.sql en ELINEAS_BD (como elineasadmin).')
       } else {
         setSaveError(msg || 'Error al guardar. Intenta de nuevo.')
       }
@@ -373,10 +373,10 @@ export default function Configuracion() {
             <div className="flex items-start gap-2.5 px-4 py-3 rounded-lg bg-[#BA7517]/10 border border-[#BA7517]/30">
               <AlertTriangle className="w-4 h-4 text-[#BA7517] shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <p className="text-xs font-medium text-[#BA7517]">Migraciones pendientes en Supabase</p>
+                <p className="text-xs font-medium text-[#BA7517]">Migraciones pendientes en la base</p>
                 <p className="text-xs text-muted-foreground">
                   Ejecuta <code className="bg-muted px-1 rounded text-[10px]">migration_v8.sql</code> y{' '}
-                  <code className="bg-muted px-1 rounded text-[10px]">migration_v9.sql</code> en el <strong>SQL Editor</strong>.
+                  <code className="bg-muted px-1 rounded text-[10px]">migration_v9.sql</code> en <strong>ELINEAS_BD</strong>, como <code className="bg-muted px-1 rounded text-[10px]">elineasadmin</code>.
                 </p>
               </div>
             </div>

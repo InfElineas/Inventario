@@ -1,69 +1,80 @@
-**Welcome to your Base44 project** 
+# Inventario · Almacenes ELíneas
 
-**About**
+SPA de React (Vite) servida por un servidor Node propio (`server/index.js`) que
+hace de API: datos sobre **ELINEAS_BD** (PostgreSQL), catálogo y existencias de
+**TKC**, y autenticación contra el **Identity Server (IS)** de Elineas.
 
-View and Edit  your app on [Base44.com](http://Base44.com) 
+El navegador no habla con ninguna base ni con el IS: llama a `/api/*` del mismo
+origen y la sesión viaja en cookies httpOnly.
 
-This project contains everything you need to run your app locally.
+## Autenticación
 
-**Edit the code in your local development environment**
+Quién entra lo decide el IS: cuenta + al menos un rol en el sistema `inventario`
+(sin rol, el login responde 403). Las cuentas y contraseñas se gestionan en la
+consola del IS; aquí no hay registro ni restablecimiento.
 
-Any change pushed to the repo will also be reflected in the Base44 Builder.
+- `POST /api/auth/login` → `sign-in` del IS. Guarda el `session` token (larga
+  duración) y el `jwt` (~15 min) en cookies httpOnly, y reenvía la IP real del
+  cliente al IS (que limita intentos por IP y por cuenta).
+- Cada petición verifica el JWT contra el JWKS del IS y lo renueva con el
+  `session` token cuando caduca.
+- El rol se consulta en `/api/user-roles/me` y se copia a `usuarios.role` **en
+  cada login**: un cambio de rol en el IS surte efecto en el siguiente login
+  (o revocando la sesión desde el IS).
+- La autorización vive en `src/server/permisos.js`.
+- Login con Google (opcional): flujo por redirect con PKCE a través del IS. El
+  usuario debe existir ya en el IS con ese correo.
 
-**Prerequisites:** 
+Más contexto y decisiones: [`docs/migracion-supabase.md`](docs/migracion-supabase.md).
 
-1. Clone the repository using the project's Git URL 
-2. Navigate to the project directory
-3. Install dependencies: `npm install`
-4. Create an `.env.local` file and set the right environment variables
+## Variables de entorno
 
+Copia `.env.example` a `.env` y rellénalo. Todo lo lee el servidor en runtime;
+el bundle del navegador no incrusta ninguna variable.
+
+| Variable | Para qué |
+|---|---|
+| `AUTH_API_URL` | URL base del IS, alcanzable desde el servidor |
+| `SYSTEM_SLUG` | Slug del sistema en el IS (`inventario`) |
+| `AUTH_PUBLIC_URL` | URL del IS vista desde el navegador (login con Google); por defecto `AUTH_API_URL` |
+| `APP_URL` | Origen público de esta app; debe estar en `GOOGLE_REDIRECT_ORIGINS` del IS |
+| `DATABASE_URL` | ELINEAS_BD como `elineas_backend_app` (solo DML) |
+| `TKC_BASE`, `TKC_USER`, `TKC_PASS` | Credenciales de servicio de TKC |
+| `TRANSFERENCIAS_API_URL` | Base de la API de elineas-transferencia (ajustes de aumento y disminución) |
+| `TKC_SECRET_KEY` | Sella la cookie `tkc` con las credenciales de TKC de cada persona (`openssl rand -base64 32`) |
+| `TKC_HANDOFF_KEY` | Clave compartida con elineas-transferencia para mandarle esas credenciales; distinta de `TKC_SECRET_KEY` |
+
+## Desarrollo
+
+```bash
+bun install
+bun run dev        # http://localhost:5173
+bun run test
 ```
-VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=your_backend_url
 
-e.g.
-VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6
-VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
-```
+`vite-plugin-tkc.js` monta las APIs (`/api/auth`, `/api/datos`, `/api/sync`,
+`/api/tkc`) dentro del propio proceso de Vite.
 
-Run the app: `npm run dev`
-
-## Docker
-
-Copia `.env.example` a `.env` y rellena las variables antes de construir: las
-`VITE_*` se incrustan en el bundle al construir la imagen de producción, y las
-`TKC_*` las lee el servidor en runtime.
-
-**Desarrollo** — Vite dev server con HMR, `http://localhost:5173`:
+Con Docker:
 
 ```bash
 docker compose -f docker-compose.dev.yml up --build
 ```
 
 El código se monta desde el host, así que los cambios recargan en caliente sin
-reconstruir. La API de TKC (`/api/tkc/*`) la sirve `vite-plugin-tkc.js` dentro
-del propio proceso de Vite.
+reconstruir.
 
-**Producción** — build estático + `server/index.js` en el puerto **3003**:
+## Producción
+
+Build estático + `server/index.js` en el puerto **3003**:
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-Imagen en dos etapas: Vite construye `dist/`, y la etapa final solo lleva Node,
-el build y el servidor (sin `node_modules`: ese código usa únicamente módulos
-nativos de Node). Tras cambiar una `VITE_*` en el `.env` hay que **reconstruir**
-—no basta reiniciar—, porque su valor viaja dentro del bundle.
+Imagen en tres etapas con Bun: Vite construye `dist/`, y la etapa final lleva el
+build, el servidor y un `node_modules` mínimo (`pg` y `jose`). El contenedor
+entra a la red externa `elineas_default` para llegar a `ELINEAS_BD` por nombre.
 
 Cada compose usa su propio nombre de proyecto (`inventario-dev` /
 `inventario-prod`), así que ambos pueden correr a la vez sin pisarse.
-
-**Publish your changes**
-
-Open [Base44.com](http://Base44.com) and click on Publish.
-
-**Docs & Support**
-
-Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
-
-Support: [https://app.base44.com/support](https://app.base44.com/support)

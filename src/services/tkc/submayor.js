@@ -6,7 +6,7 @@
  * de `src/services/inventory.service.ts`), que es lo que hay detrás de
  * `GET /api/inventory/{idTienda}?almacen=`. Aquí se replica su contrato en vez
  * de llamarla por HTTP porque esa API exige un JWT del Identity Server y esta
- * app se autentica con Supabase.
+ * app se autentica con su propia sesión (cookies httpOnly) y no tiene ese JWT.
  *
  * Diferencias con `/provider/invetario/productos` (el listado de `body.js`),
  * todas verificadas contra el backend real:

@@ -1,5 +1,5 @@
 /**
- * Núcleo HTTP-agnóstico de la API de TKC: valida el bearer de Supabase,
+ * Núcleo HTTP-agnóstico de la API de TKC: valida la sesión del Identity Server,
  * resuelve el almacén y despacha a `listInventory` / `fetchExistencia` /
  * `getExistencias`.
  *
@@ -56,7 +56,7 @@ function readBody(req) {
 /**
  * @param {object} deps
  * @param {{tkcBase: string, tkcUser: string, tkcPass: string}} deps.tkc
- *        `null` cuando no hay Supabase configurado: el middleware responde 503
+ *        `null` cuando faltan las credenciales de TKC: el middleware responde 503
  *        en vez de dejar pasar peticiones sin validar.
  * @returns {(req: object, res: object, next: () => any) => Promise<void>}
  */

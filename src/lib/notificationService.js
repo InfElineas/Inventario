@@ -49,7 +49,7 @@ export function markFired(key) {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(map)); } catch {}
 }
 
-// ── Crear una notificación en Supabase ─────────────────────
+// ── Crear una notificación ─────────────────────────────────
 async function push(email, tipo, titulo, mensaje, dedupKey) {
   if (wasFired(dedupKey)) return;
   const { error } = await base44.entities.Notificacion.create({

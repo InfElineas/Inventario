@@ -8,11 +8,18 @@
  * Middleware al estilo de `tkcApi.js`: (req, res, next).
  */
 
-import { signIn, signOut, isIdentityConfigured } from './identity.js'
+import { createHash, randomBytes } from 'node:crypto'
+import {
+  signIn, signOut, isIdentityConfigured, ipCliente, urlInicioGoogle, canjearGoogle,
+} from './identity.js'
 import { queryOne } from './db.js'
 import { CAMPOS_PROPIOS_USUARIO } from './permisos.js'
 import { resolverSesion, sincronizarDesdeIS } from './session.js'
-import { fijarCookiesSesion, limpiarCookiesSesion, leerCookies, COOKIE_SESSION } from './cookies.js'
+import { recordarCredenciales, leerCredenciales } from './credencialesTkc.js'
+import {
+  fijarCookiesSesion, limpiarCookiesSesion, leerCookies, COOKIE_SESSION,
+  COOKIE_GOOGLE, fijarCookieGoogle, limpiarCookieGoogle,
+} from './cookies.js'
 
 const LIMITE_CUERPO = 16 * 1024 // un login no ocupa más; corta cuerpos absurdos
 
@@ -49,7 +56,7 @@ async function leerJson(req) {
  * Lo que se le devuelve al cliente. Deliberadamente NO incluye tokens: viven
  * en cookies httpOnly y el frontend no los necesita.
  */
-function perfilPublico(usuario) {
+function perfilPublico(usuario, tieneTkc = false) {
   return {
     id: usuario.id,
     email: usuario.email,
@@ -62,7 +69,48 @@ function perfilPublico(usuario) {
     nickname: usuario.nickname ?? '',
     avatar_url: usuario.avatar_url ?? '',
     departamento: usuario.departamento ?? null,
+    // Solo el booleano: la contraseña de TKC no sale nunca del servidor.
+    tiene_tkc: tieneTkc,
   }
+}
+
+function redirigir(res, destino) {
+  res.statusCode = 302
+  res.setHeader('Location', destino)
+  res.setHeader('Cache-Control', 'no-store')
+  res.end()
+}
+
+/** Origen público de esta app, sin barra final. Vacío si no está configurado. */
+const appUrl = () => (process.env.APP_URL ?? '').replace(/\/+$/, '')
+
+/** Vuelve al login con el código de error que mostrará la pantalla. */
+const falloGoogle = (res, codigo) =>
+  redirigir(res, `/login?error=${encodeURIComponent(codigo)}`)
+
+/**
+ * Valida y crea la sesión a partir de lo que devolvió el IS (contraseña o
+ * Google). Devuelve `{ usuario }` o `{ status, codigo, error }` si no hay acceso.
+ */
+async function abrirSesion(res, entrada, emailDeRespaldo = '') {
+  const usuario = await sincronizarDesdeIS({
+    email: entrada.user?.email ?? emailDeRespaldo,
+    nombre: entrada.user?.name ?? '',
+    sessionToken: entrada.sessionToken,
+  })
+
+  if (!usuario) {
+    return { status: 403, codigo: 'NO_ROLES_IN_SYSTEM', error: 'Tu cuenta no tiene un rol válido en Inventario. Pide que te asignen uno.' }
+  }
+  if (!usuario.activo) {
+    return { status: 403, codigo: 'ACCESO_DESACTIVADO', error: 'Tu acceso a Inventario está desactivado.' }
+  }
+
+  fijarCookiesSesion(res, { sessionToken: entrada.sessionToken, jwt: entrada.jwt })
+  // Las credenciales de TKC solo llegan en esta respuesta: o se guardan ahora o
+  // no se vuelven a ver hasta el próximo login.
+  const tieneTkc = recordarCredenciales(res, entrada.tkc)
+  return { usuario, tieneTkc }
 }
 
 export function createAuthApiMiddleware() {
@@ -82,29 +130,66 @@ export function createAuthApiMiddleware() {
           return responder(res, 400, { error: 'Email y contraseña son obligatorios.' })
         }
 
-        const entrada = await signIn(email, password)
+        const entrada = await signIn(email, password, { ip: ipCliente(req) })
         if (!entrada.ok) {
           return responder(res, entrada.status === 403 ? 403 : 401, { error: entrada.error })
         }
 
         // El rol se consulta al IS y se espeja en usuarios.role.
-        const usuario = await sincronizarDesdeIS({
-          email: entrada.user?.email ?? email,
-          nombre: entrada.user?.name ?? '',
-          sessionToken: entrada.sessionToken,
-        })
+        const sesion = await abrirSesion(res, entrada, email)
+        if (!sesion.usuario) return responder(res, sesion.status, { error: sesion.error })
+        return responder(res, 200, { user: perfilPublico(sesion.usuario, sesion.tieneTkc) })
+      }
 
-        if (!usuario) {
-          return responder(res, 403, {
-            error: 'Tu cuenta no tiene un rol válido en Inventario. Pide que te asignen uno.',
-          })
+      // ── Login con Google: inicio ─────────────────────────────
+      // Es una navegación del navegador (un <a href>), no un fetch: el IS
+      // responde con redirects hacia Google.
+      if (ruta === '/api/auth/google/start' && req.method === 'GET') {
+        if (!appUrl()) return falloGoogle(res, 'APP_URL_NO_CONFIGURADA')
+
+        const verifier = randomBytes(32).toString('base64url') // PKCE
+        const state = randomBytes(16).toString('hex')          // anti-CSRF
+        fijarCookieGoogle(res, { verifier, state })
+
+        return redirigir(res, urlInicioGoogle({
+          redirectTo: `${appUrl()}/api/auth/google/callback`,
+          challenge: createHash('sha256').update(verifier).digest('base64url'),
+          state,
+        }))
+      }
+
+      // ── Login con Google: vuelta ─────────────────────────────
+      if (ruta === '/api/auth/google/callback' && req.method === 'GET') {
+        let flujo = null
+        try {
+          const crudo = leerCookies(req)[COOKIE_GOOGLE]
+          flujo = crudo ? JSON.parse(crudo) : null
+        } catch {
+          flujo = null
         }
-        if (!usuario.activo) {
-          return responder(res, 403, { error: 'Tu acceso a Inventario está desactivado.' })
+        limpiarCookieGoogle(res) // de un solo uso, pase lo que pase
+
+        const params = new URL(req.url, 'http://local').searchParams
+        const error = params.get('error')
+        const codigo = params.get('code')
+
+        // El IS devuelve ?error=ACCOUNT_NOT_FOUND | NO_ROLES_IN_SYSTEM | ...
+        if (error) return falloGoogle(res, error)
+        if (!flujo?.verifier || !codigo || params.get('state') !== flujo.state) {
+          return falloGoogle(res, 'STATE_INVALID')
         }
 
-        fijarCookiesSesion(res, { sessionToken: entrada.sessionToken, jwt: entrada.jwt })
-        return responder(res, 200, { user: perfilPublico(usuario) })
+        // Servidor a servidor: aquí viaja el code_verifier, que solo conoce
+        // este backend.
+        const entrada = await canjearGoogle(codigo, flujo.verifier, { ip: ipCliente(req) })
+        if (!entrada.ok) return falloGoogle(res, entrada.code)
+
+        const sesion = await abrirSesion(res, entrada)
+        if (!sesion.usuario) {
+          // Sin cookies de sesión: no se llegaron a fijar.
+          return falloGoogle(res, sesion.codigo)
+        }
+        return redirigir(res, '/')
       }
 
       // ── Sesión actual ────────────────────────────────────────
@@ -113,7 +198,7 @@ export function createAuthApiMiddleware() {
       if (ruta === '/api/auth/me' && req.method === 'GET') {
         const sesion = await resolverSesion(req, res)
         if (!sesion) return responder(res, 401, { error: 'Sin sesión' })
-        return responder(res, 200, { user: perfilPublico(sesion.usuario) })
+        return responder(res, 200, { user: perfilPublico(sesion.usuario, Boolean(leerCredenciales(req))) })
       }
 
       // ── Preferencias del propio usuario ──────────────────────
@@ -140,7 +225,7 @@ export function createAuthApiMiddleware() {
           `UPDATE usuarios SET ${asignaciones.join(', ')} WHERE email = $1 RETURNING *`,
           [sesion.email, ...claves.map((c) => cambios[c])],
         )
-        return responder(res, 200, { user: perfilPublico(usuario) })
+        return responder(res, 200, { user: perfilPublico(usuario, Boolean(leerCredenciales(req))) })
       }
 
       // ── Logout ───────────────────────────────────────────────

@@ -8,6 +8,11 @@
 
 export const COOKIE_SESSION = 'session'
 export const COOKIE_JWT = 'jwt'
+// Credenciales de TKC de la persona, selladas (ver credencialesTkc.js).
+export const COOKIE_TKC = 'tkc'
+// Estado del login con Google entre el inicio y la vuelta: lleva el
+// code_verifier de PKCE, que nunca debe llegar al JS del navegador.
+export const COOKIE_GOOGLE = 'google_flow'
 
 // `secure` solo en producción: en desarrollo se sirve por http://localhost y
 // el navegador descartaría una cookie Secure.
@@ -66,12 +71,31 @@ export function fijarCookiesSesion(res, { sessionToken, jwt, diasSesion = 30 }) 
   anexarSetCookie(res, cabeceras)
 }
 
-/** Borra ambas cookies. */
+/** Borra las cookies de sesión, y con ellas las credenciales de TKC. */
 export function limpiarCookiesSesion(res) {
   anexarSetCookie(res, [
     serializar(COOKIE_SESSION, '', 0),
     serializar(COOKIE_JWT, '', 0),
+    serializar(COOKIE_TKC, '', 0),
   ])
+}
+
+/** Credenciales de TKC selladas: viven lo que el session token. */
+export function fijarCookieTkc(res, sellado, diasSesion = 30) {
+  anexarSetCookie(res, [serializar(COOKIE_TKC, sellado, diasSesion * 24 * 60 * 60)])
+}
+
+export function limpiarCookieTkc(res) {
+  anexarSetCookie(res, [serializar(COOKIE_TKC, '', 0)])
+}
+
+/** Estado del flujo de Google: vida corta, la vuelta tarda segundos. */
+export function fijarCookieGoogle(res, estado) {
+  anexarSetCookie(res, [serializar(COOKIE_GOOGLE, JSON.stringify(estado), 10 * 60)])
+}
+
+export function limpiarCookieGoogle(res) {
+  anexarSetCookie(res, [serializar(COOKIE_GOOGLE, '', 0)])
 }
 
 /** Acumula Set-Cookie sin pisar las que ya hubiera en la respuesta. */

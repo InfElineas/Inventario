@@ -27,19 +27,22 @@ import { createTkcApiMiddleware } from './src/server/tkcApi.js'
 import { createAuthApiMiddleware } from './src/server/authApi.js'
 import { createDatosApiMiddleware } from './src/server/datosApi.js'
 import { createSyncApiMiddleware } from './src/server/syncApi.js'
+import { createTransferenciasApiMiddleware } from './src/server/transferenciasApi.js'
 
 export function tkcApiPlugin() {
   let middleware = null
   let authMiddleware = null
   let datosMiddleware = null
   let syncMiddleware = null
+  let transferenciasMiddleware = null
 
   // /api/auth/* primero, luego /api/tkc/*, y lo que no sea de ninguno sigue
   // su camino hacia Vite.
   const dispatch = (req, res, next) =>
     authMiddleware(req, res, () =>
       datosMiddleware(req, res, () =>
-        syncMiddleware(req, res, () => middleware(req, res, next))))
+        syncMiddleware(req, res, () =>
+          transferenciasMiddleware(req, res, () => middleware(req, res, next)))))
 
   return {
     name: 'tkc-api',
@@ -66,13 +69,15 @@ export function tkcApiPlugin() {
       // Los módulos compartidos con producción (identity.js, db.js) leen de
       // process.env, pero loadEnv solo devuelve un objeto: hay que volcarlas.
       // Sin pisar lo que ya venga del shell, que tiene precedencia.
-      for (const clave of ['AUTH_API_URL', 'SYSTEM_SLUG', 'DATABASE_URL']) {
+      for (const clave of ['AUTH_API_URL', 'AUTH_PUBLIC_URL', 'APP_URL', 'SYSTEM_SLUG', 'DATABASE_URL',
+        'TRANSFERENCIAS_API_URL', 'TKC_SECRET_KEY', 'TKC_HANDOFF_KEY']) {
         if (!process.env[clave] && env[clave]) process.env[clave] = env[clave]
       }
 
       authMiddleware = createAuthApiMiddleware()
       datosMiddleware = createDatosApiMiddleware()
       syncMiddleware = createSyncApiMiddleware()
+      transferenciasMiddleware = createTransferenciasApiMiddleware()
     },
 
     configureServer(server) {

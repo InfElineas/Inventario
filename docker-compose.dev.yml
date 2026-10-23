@@ -12,6 +12,28 @@
 name: inventario-dev
 
 services:
+  # Postgres de desarrollo con el esquema de ELINEAS_BD (ver docker/dev-db/init.sh).
+  # Publicado en 5434 por si quieres entrar con psql desde el host.
+  db:
+    image: postgres:17-alpine
+    container_name: inventario-dev-db
+    environment:
+      POSTGRES_USER: elineasadmin
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: ELINEAS_BD
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      - ./docker/dev-db/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+      - ./docker/dev-db/origen-dev.sql:/dev-db/origen-dev.sql:ro
+      - ./supabase:/sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U elineasadmin -d ELINEAS_BD"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   app:
     build:
       context: .
@@ -27,8 +49,31 @@ services:
       # Los eventos inotify no siempre cruzan el bind mount (Docker Desktop,
       # WSL sobre /mnt/c): con polling el HMR funciona igual en todos los casos.
       CHOKIDAR_USEPOLLING: "true"
+      # Lo de este bloque pisa al .env: dentro de Docker los hosts son nombres
+      # de contenedor, no localhost.
+      DATABASE_URL: postgres://elineas_backend_app:dev@db:5432/ELINEAS_BD
+      # IS de desarrollo: el stack de ~/dev/elineas-auth (docker compose up),
+      # al que se llega por su red.
+      AUTH_API_URL: http://elineas-auth-backend:8081
+      APP_URL: http://localhost:5173
+      SYSTEM_SLUG: inventario
     ports:
       - "5173:5173"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - default
+      - elineas-auth
     volumes:
       - .:/app
       - /app/node_modules
+
+volumes:
+  dbdata:
+
+networks:
+  # Red del stack del IS de desarrollo (~/dev/elineas-auth).
+  elineas-auth:
+    name: elineas-auth_default
+    external: true

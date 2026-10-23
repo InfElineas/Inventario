@@ -14,7 +14,7 @@
  *   npm start          # = node server/index.js
  *
  * Variables de entorno: las mismas que en dev (ver `.env.example` / README) —
- * TKC_BASE, TKC_USER, TKC_PASS, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, y
+ * TKC_BASE, TKC_USER, TKC_PASS, AUTH_API_URL, SYSTEM_SLUG, DATABASE_URL, y
  * opcionalmente PORT (por defecto 3000). Si hay un `.env` junto al proyecto se
  * carga, pero las variables ya presentes en el entorno del proceso ganan.
  */
@@ -29,7 +29,9 @@ import { createTkcApiMiddleware } from '../src/server/tkcApi.js'
 import { createAuthApiMiddleware } from '../src/server/authApi.js'
 import { createDatosApiMiddleware } from '../src/server/datosApi.js'
 import { createSyncApiMiddleware } from '../src/server/syncApi.js'
+import { createTransferenciasApiMiddleware } from '../src/server/transferenciasApi.js'
 import { isIdentityConfigured } from '../src/server/identity.js'
+import { aplicarCabecerasSeguridad } from '../src/server/securityHeaders.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT_DIR = path.join(__dirname, '..')
@@ -60,6 +62,7 @@ const tkcMiddleware = createTkcApiMiddleware({ tkc })
 const authMiddleware = createAuthApiMiddleware()
 const datosMiddleware = createDatosApiMiddleware()
 const syncMiddleware = createSyncApiMiddleware()
+const transferenciasMiddleware = createTransferenciasApiMiddleware()
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -116,11 +119,14 @@ async function serveStatic(req, res) {
 }
 
 const server = createServer((req, res) => {
-  // Cadena: /api/auth/* → /api/tkc/* → estáticos de dist/.
+  aplicarCabecerasSeguridad(res)
+  // Cadena: /api/auth/* → datos → sync → /api/ajustes/* → /api/tkc/* → estáticos de dist/.
   authMiddleware(req, res, () =>
     datosMiddleware(req, res, () =>
       syncMiddleware(req, res, () =>
-        tkcMiddleware(req, res, () => serveStatic(req, res)),
+        transferenciasMiddleware(req, res, () =>
+          tkcMiddleware(req, res, () => serveStatic(req, res)),
+        ),
       ),
     ),
   ).catch((error) => {

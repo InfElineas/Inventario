@@ -28,6 +28,18 @@ services:
     image: inventario-prod
     container_name: inventario-prod
     restart: unless-stopped
+    # Endurecimiento: sin root/capabilities/escalada, FS de solo lectura y
+    # límites de recursos (ajustar mem_limit si el servicio sufre OOM).
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 512m
+    cpus: 1
     env_file:
       - .env
     # PORT se fija aquí y no se toma del .env: la imagen expone 3003 y el

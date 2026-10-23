@@ -5,6 +5,7 @@ import { defineConfig } from 'vite'
 import { fileURLToPath } from 'url'
 import path from 'path'
 import { tkcApiPlugin } from './vite-plugin-tkc.js'
+import { SECURITY_HEADERS } from './src/server/securityHeaders.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -36,12 +37,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  server: {
-    headers: {
-      'X-Content-Type-Options': 'nosniff',
-      'Referrer-Policy':        'strict-origin-when-cross-origin',
-    },
-  },
+  // Mismas cabeceras que en producción (server/index.js), en dev y en preview.
+  server: { headers: SECURITY_HEADERS },
+  preview: { headers: SECURITY_HEADERS },
   test: {
     globals:      true,
     environment:  'jsdom',

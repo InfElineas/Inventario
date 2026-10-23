@@ -1,7 +1,24 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { Eye, EyeOff } from 'lucide-react';
+
+// Códigos con los que vuelve el login con Google (?error=...): los del IS más
+// los propios de este servidor.
+const ERRORES_GOOGLE = {
+  ACCOUNT_NOT_FOUND:    'Tu correo de Google no tiene cuenta. Pide a un administrador que la cree.',
+  NO_ROLES_IN_SYSTEM:   'Tu cuenta no tiene acceso a Inventario. Pide que te asignen un rol.',
+  ACCESO_DESACTIVADO:   'Tu acceso a Inventario está desactivado.',
+  SYSTEM_NOT_FOUND:     'El sistema Inventario no está disponible en el servidor de identidad.',
+  GOOGLE_ACCESS_DENIED: 'Cancelaste el acceso con Google.',
+  STATE_INVALID:        'La sesión de Google expiró o no es válida. Inténtalo de nuevo.',
+  INVALID_CODE:         'El acceso con Google expiró. Inténtalo de nuevo.',
+  INVALID_REDIRECT:     'Este sitio no está autorizado para iniciar sesión con Google.',
+  GOOGLE_NOT_CONFIGURED:'El acceso con Google no está disponible.',
+  APP_URL_NO_CONFIGURADA:'El acceso con Google no está configurado en el servidor.',
+};
+const mensajeGoogle = (codigo) =>
+  ERRORES_GOOGLE[codigo] ?? 'No se pudo iniciar sesión con Google.';
 
 /**
  * Entrada al sistema.
@@ -12,7 +29,8 @@ import { Eye, EyeOff } from 'lucide-react';
  *
  * Ya no hay registro ni restablecimiento de contraseña: las cuentas las crea un
  * administrador en el Identity Server, que es también donde se gestionan las
- * contraseñas. Y no se filtra por dominio: quien entra lo decide el IS, según
+ * contraseñas. Google funciona por redirect a través del IS: el usuario debe
+ * existir ya allí con ese correo. Y no se filtra por dominio: quien entra lo decide el IS, según
  * tenga cuenta y un rol asignado en el sistema.
  */
 export default function Login() {
@@ -24,7 +42,10 @@ export default function Login() {
   }, [isAuthenticated, isLoadingAuth, navigate]);
 
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState(null);
+  // Si se vuelve de Google con un fallo, el código viaja en ?error=.
+  const [params] = useSearchParams();
+  const errorGoogle = params.get('error');
+  const [error, setError]     = useState(errorGoogle ? mensajeGoogle(errorGoogle) : null);
   const [email, setEmail]     = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
@@ -104,6 +125,20 @@ export default function Login() {
               {loading ? 'Ingresando…' : 'Ingresar'}
             </button>
           </form>
+
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-[11px] text-[#7c7c7c]">o</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          {/* Navegación completa, no fetch: el IS responde con redirects a Google. */}
+          <a
+            href="/api/auth/google/start"
+            className="flex items-center justify-center w-full py-2.5 text-[13px] font-medium bg-secondary hover:bg-secondary/80 border border-border text-foreground rounded-lg transition-colors"
+          >
+            Continuar con Google
+          </a>
 
           <p className="text-[11px] text-[#7c7c7c]">
             ¿Olvidaste tu contraseña o necesitas una cuenta? Contacta con el administrador:

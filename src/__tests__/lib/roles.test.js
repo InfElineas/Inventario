@@ -62,4 +62,15 @@ describe('resolveRole', () => {
   it('tolera entradas malformadas dentro del array', () => {
     expect(resolveRole([null, {}, { name: null }, { name: 'fact' }])).toBe('fact');
   });
+
+  it('resuelve el payload real de /api/user-roles/me, con el sistema anidado', () => {
+    // Forma verificada contra MyUserRoleSchema del IS (elineas-auth).
+    const roles = [{
+      id: '8c1f0a52-0000-4000-8000-000000000001',
+      name: 'supervisor',
+      description: null,
+      system: { id: '8c1f0a52-0000-4000-8000-000000000002', slug: 'inventario', name: 'Inventario' },
+    }];
+    expect(resolveRole(roles)).toBe('supervisor');
+  });
 });

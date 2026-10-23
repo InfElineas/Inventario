@@ -302,8 +302,14 @@ unos días en producción con el sistema nuevo.
 - Las reglas de autorización se indexan por **rol**, no por permisos: el único
   endpoint que expone el IS es `/api/user-roles/me`, que devuelve roles. La
   pestaña Permisos de su consola no tiene endpoint documentado.
-- La forma exacta del payload de `/api/user-roles/me`: `resolveRole()` acepta
-  hoy objetos y cadenas, y se ajusta cuando veamos una respuesta real.
+- ~~La forma del payload de `/api/user-roles/me`~~ ✅ verificada contra el
+  código del IS (`MyUserRoleSchema`): `{ roles: [{ id, name, description,
+  system: { id, slug, name } }] }`. `resolveRole()` la acepta y hay una prueba
+  con ese formato.
+- **IP del cliente hacia el IS.** El login reenvía la IP real en
+  `X-Forwarded-For` (último valor: cloudflared añade al final). Requiere
+  `TRUST_PROXY_HOPS=1` en el IS; sin él, el IS ignora la cabecera y todos los
+  logins comparten un único bucket de rate limit.
 - Qué hacer con la **BD externa** (`VITE_SUPABASE_EXTERNA_*`), que es el origen
   del sync de productos y es un segundo proyecto de Supabase. Esta migración no
   la cubre.
