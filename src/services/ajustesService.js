@@ -1,5 +1,6 @@
 /**
- * Acceso del navegador a los ajustes de aumento y de disminución.
+ * Acceso del navegador a los ajustes de aumento y de disminución (y, vía `pedir`,
+ * a los procesamientos: ver `procesamientosService.js`).
  *
  * Llama a `/api/ajustes/*` (ver `src/server/transferenciasApi.js`), que habla con
  * la API de elineas-transferencia como la persona: la sesión y sus credenciales
@@ -29,7 +30,7 @@ export class ErrorDeRed extends Error {
 const ruta = (tipo) => `/api/ajustes/${TIPOS_AJUSTE[tipo].segmento}`
 
 /** @param {string} url @param {{ method?: string, body?: object }} [opciones] */
-async function pedir(url, { method = 'GET', body } = {}) {
+export async function pedir(url, { method = 'GET', body } = {}) {
   const escritura = method !== 'GET'
   const intentar = async () => {
     let res

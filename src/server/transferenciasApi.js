@@ -7,6 +7,13 @@
  *   POST /api/ajustes/{tipo}                                 monta el documento («editada»)
  *   POST /api/ajustes/{tipo}/:id/confirm                     lo confirma: MUEVE EXISTENCIA
  *
+ * y los procesamientos (`/api/v1/process`: pasar un `NoMT…` a su código normal):
+ *
+ *   GET  /api/procesamientos/candidatos                      NoMT con existencia y si se pueden procesar
+ *   GET  /api/procesamientos/documentos                      los TKCP más recientes
+ *   POST /api/procesamientos/analizar                        solo lectura: lo que haría procesar
+ *   POST /api/procesamientos                                 procesa: MUEVE EXISTENCIA
+ *
  * Middleware Connect `(req, res, next)`, como `tkcApi.js`: lo comparten dev
  * (`vite-plugin-tkc.js`) y producción (`server/index.js`).
  *
@@ -40,11 +47,23 @@ const TIPOS = {
   disminuciones: { ruta: 'decreases', etiqueta: 'disminución', clasificacionObligatoria: true },
 }
 
+const PROCESOS = {
+  candidatos: { metodo: 'GET', ruta: 'process/candidates' },
+  documentos: { metodo: 'GET', ruta: 'process/documents' },
+  analizar: { metodo: 'POST', ruta: 'process/analyze' },
+}
+
 const MAX_BODY = 512 * 1024
 const MAX_LINEAS = 500
 /** Montar analiza cada código en TKC: puede tardar. */
 const TIMEOUT_ESCRITURA_MS = 180_000
 const TIMEOUT_LECTURA_MS = 60_000
+/**
+ * Procesar relee y escribe línea por línea en TKC (un documento por cada 50) y
+ * analizar lee cada código: con cientos de líneas pasa del minuto.
+ */
+const TIMEOUT_PROCESO_MS = 600_000
+const TIMEOUT_ANALISIS_MS = 180_000
 const VIDA_TRASPASO_MS = 5 * 60 * 1000
 const CLAVE_IDEMPOTENCIA = /^[A-Za-z0-9._:-]{8,128}$/
 const FECHA_ISO = /^\d{4}-\d{2}-\d{2}$/
@@ -138,7 +157,7 @@ export function traspasoCredenciales(credenciales, sub, ahora = Date.now()) {
   )
 }
 
-const CABECERAS_RELEVANTES = ['x-total-count', 'x-next-offset', 'idempotent-replay', 'retry-after']
+const CABECERAS_RELEVANTES = ['x-total-count', 'x-truncated-warehouses', 'x-next-offset', 'idempotent-replay', 'retry-after']
 
 /**
  * Mapea un error de la API a lo que el navegador debe ver. Un 401 de la API
@@ -149,7 +168,7 @@ function estadoPublico(status) {
   return status === 401 ? 502 : status
 }
 
-async function llamarApi(ctx, { metodo, ruta, consulta, cuerpo, idempotencia }) {
+async function llamarApi(ctx, { metodo, ruta, consulta, cuerpo, idempotencia, timeoutMs }) {
   const url = new URL(`${baseApi()}/api/v1/${ruta}`)
   for (const [k, v] of Object.entries(consulta ?? {})) {
     if (v !== undefined && v !== '') url.searchParams.set(k, v)
@@ -166,7 +185,7 @@ async function llamarApi(ctx, { metodo, ruta, consulta, cuerpo, idempotencia }) 
     method: metodo,
     headers: cabeceras,
     body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
-    signal: AbortSignal.timeout(escritura ? TIMEOUT_ESCRITURA_MS : TIMEOUT_LECTURA_MS),
+    signal: AbortSignal.timeout(timeoutMs ?? (escritura ? TIMEOUT_ESCRITURA_MS : TIMEOUT_LECTURA_MS)),
   })
   const datos = await respuesta.json().catch(() => null)
   const extra = {}
@@ -188,26 +207,73 @@ function reenviar(res, { status, datos, extra }) {
   return json(res, estadoPublico(status), datos, extra)
 }
 
+/** Los procesamientos: mismas garantías que los ajustes (rol, credenciales, cuerpo reconstruido). */
+async function atenderProceso(res, req, ctx, operacion, consulta) {
+  if (operacion === 'candidatos' || operacion === 'documentos') {
+    const resultado = await llamarApi(ctx, {
+      metodo: 'GET',
+      ruta: PROCESOS[operacion].ruta,
+      consulta: {
+        warehouse: consulta.get('almacen') ? almacenId(consulta.get('almacen')) : undefined,
+        refresh: consulta.get('refresh') === 'true' ? 'true' : undefined,
+        status: consulta.get('status') ?? undefined,
+        q: consulta.get('q') ?? undefined,
+        limit: consulta.get('limit') ?? undefined,
+        offset: consulta.get('offset') ?? undefined,
+      },
+      // Sin filtro de almacén TKC tarda ~10 s: el margen de lectura alcanza.
+    })
+    return reenviar(res, resultado)
+  }
+
+  const cuerpo = await leerCuerpo(req)
+  // Se reconstruye campo a campo: lo que no está aquí no llega a la API.
+  const aPeticion = { warehouse: almacenId(cuerpo.almacen), lines: lineas(cuerpo.lines) }
+
+  if (operacion === 'analizar') {
+    return reenviar(res, await llamarApi(ctx, {
+      metodo: 'POST', ruta: PROCESOS.analizar.ruta, cuerpo: aPeticion, timeoutMs: TIMEOUT_ANALISIS_MS,
+    }))
+  }
+
+  const idempotencia = texto(cuerpo.idempotencyKey, 'idempotencyKey', 128) ?? randomUUID()
+  if (!CLAVE_IDEMPOTENCIA.test(idempotencia)) {
+    throw new ErrorPeticion(400, '`idempotencyKey`: 8 a 128 caracteres (letras, números y . _ : -).')
+  }
+  return reenviar(res, await llamarApi(ctx, {
+    metodo: 'POST', ruta: 'process', cuerpo: aPeticion, idempotencia, timeoutMs: TIMEOUT_PROCESO_MS,
+  }))
+}
+
 /**
  * @returns {(req: object, res: object, next: () => any) => Promise<void>}
  */
 export function createTransferenciasApiMiddleware() {
   return async function transferenciasApiMiddleware(req, res, next) {
     const ruta = (req.url ?? '/').split('?')[0]
-    if (!ruta.startsWith('/api/ajustes/')) return next()
+    const esProceso = ruta === '/api/procesamientos' || ruta.startsWith('/api/procesamientos/')
+    if (!esProceso && !ruta.startsWith('/api/ajustes/')) return next()
 
-    const partes = ruta.split('/').slice(3).filter(Boolean) // [tipo, id?, accion?]
-    const tipo = TIPOS[partes[0]]
-    const id = partes[1]
-    const accion = partes[2]
-
+    let tipo
+    let id
     let operacion
-    if (partes.length === 1) operacion = req.method === 'GET' ? 'listar' : req.method === 'POST' ? 'crear' : null
-    else if (partes.length === 3 && /^\d+$/.test(id ?? '')) {
-      if (accion === 'confirm' && req.method === 'POST') operacion = 'confirmar'
-      if (accion === 'lines' && req.method === 'GET') operacion = 'lineas'
+    if (esProceso) {
+      const partes = ruta.split('/').slice(3).filter(Boolean) // [accion?]
+      if (partes.length === 0 && req.method === 'POST') operacion = 'procesar'
+      else if (partes.length === 1 && PROCESOS[partes[0]]?.metodo === req.method) operacion = partes[0]
+    } else {
+      const partes = ruta.split('/').slice(3).filter(Boolean) // [tipo, id?, accion?]
+      tipo = TIPOS[partes[0]]
+      id = partes[1]
+      const accion = partes[2]
+      if (partes.length === 1) operacion = req.method === 'GET' ? 'listar' : req.method === 'POST' ? 'crear' : null
+      else if (partes.length === 3 && /^\d+$/.test(id ?? '')) {
+        if (accion === 'confirm' && req.method === 'POST') operacion = 'confirmar'
+        if (accion === 'lines' && req.method === 'GET') operacion = 'lineas'
+      }
+      if (!tipo) operacion = null
     }
-    if (!tipo || !operacion) return fallo(res, 404, 'not_found', 'No encontrado')
+    if (!operacion) return fallo(res, 404, 'not_found', 'No encontrado')
 
     if (!baseApi()) {
       return fallo(res, 503, 'not_configured', 'Falta TRANSFERENCIAS_API_URL: la API de transferencias no está configurada.')
@@ -217,10 +283,10 @@ export function createTransferenciasApiMiddleware() {
       const sesion = await resolverSesion(req, res)
       if (!sesion) return fallo(res, 401, 'unauthorized', 'Sesión no válida')
       if (!ROLES_AJUSTES.includes(sesion.usuario.role)) {
-        return fallo(res, 403, 'forbidden', 'Tu rol no puede gestionar ajustes de facturación.')
+        return fallo(res, 403, 'forbidden', 'Tu rol no puede gestionar ajustes ni procesamientos de facturación.')
       }
 
-      const escritura = operacion === 'crear' || operacion === 'confirmar'
+      const escritura = operacion === 'crear' || operacion === 'confirmar' || operacion === 'procesar'
       const credenciales = leerCredenciales(req, sesion.email)
       if (escritura && !credenciales) {
         return fallo(
@@ -234,6 +300,9 @@ export function createTransferenciasApiMiddleware() {
 
       const ctx = { jwt: sesion.jwt, sub: sesion.sub, credenciales }
       const consulta = new URL(req.url, 'http://local').searchParams
+
+      if (esProceso) return await atenderProceso(res, req, ctx, operacion, consulta)
+
       const prefijo = tipo.ruta
 
       if (operacion === 'listar') {
@@ -296,7 +365,8 @@ export function createTransferenciasApiMiddleware() {
       console.error('[ajustes-api] error:', msg)
       // Una escritura que se cortó a medias puede haber llegado: se avisa
       // distinto de un fallo limpio, para que no se reintente a ciegas.
-      const escritura = req.method === 'POST'
+      // Analizar es un POST pero solo lee: nada que verificar en TKC.
+      const escritura = req.method === 'POST' && operacion !== 'analizar'
       // Conexión que ni llegó a abrirse: seguro que no se escribió nada.
       // Node lo deja en `cause.code`; Bun, en `code` y en el mensaje.
       const sinLlegar = /ECONNREFUSED|ENOTFOUND|EAI_AGAIN/.test(

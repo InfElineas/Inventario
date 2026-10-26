@@ -15,24 +15,13 @@ import { useAccesoTkc } from '@/lib/useAccesoTkc';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import { WAREHOUSES } from '@/services/tkc/warehouses';
 import {
-  TIPOS_AJUSTE, parseLineas, nuevaClave, interpretar, puedeConfirmar,
+  TIPOS_AJUSTE, parseLineas, nuevaClave, interpretar, puedeConfirmar, mensajeDeError,
 } from '@/lib/ajustes';
 import {
   listarAjustes, lineasAjuste, crearAjuste, confirmarAjuste, ErrorDeRed,
 } from '@/services/ajustesService';
 
 const hoy = () => format(new Date(), 'yyyy-MM-dd');
-
-/** Lo que muestra el banner de un resultado que no es un éxito. */
-function mensajeDeError(r) {
-  if (r.codigo === 'no_tkc_credentials') return r.mensaje;
-  if (r.codigo === 'forbidden' || r.codigo === 'no_access') {
-    // Es un permiso de la API de transferencias, no tus credenciales de TKC.
-    return `${r.mensaje} Esto no tiene que ver con tus credenciales de TKC: es un permiso de la ` +
-      'API de transferencias. Pide que te asignen el rol en el Identity Server.';
-  }
-  return r.mensaje || 'No se pudo completar la operación.';
-}
 
 /**
  * Montar y confirmar ajustes de un tipo (`aumento` | `disminucion`).

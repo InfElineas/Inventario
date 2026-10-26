@@ -167,3 +167,14 @@ export function interpretar(status, body) {
 
 /** ¿Se puede confirmar? Solo un documento «editada» (aún sin aplicar). */
 export const puedeConfirmar = (estado) => String(estado ?? '').trim().toLowerCase() === 'editada'
+
+/** Lo que muestra el banner de un resultado que no es un éxito. */
+export function mensajeDeError(r) {
+  if (r.codigo === 'no_tkc_credentials') return r.mensaje;
+  if (r.codigo === 'forbidden' || r.codigo === 'no_access') {
+    // Es un permiso de la API de transferencias, no tus credenciales de TKC.
+    return `${r.mensaje} Esto no tiene que ver con tus credenciales de TKC: es un permiso de la ` +
+      'API de transferencias. Pide que te asignen el rol en el Identity Server.';
+  }
+  return r.mensaje || 'No se pudo completar la operación.';
+}

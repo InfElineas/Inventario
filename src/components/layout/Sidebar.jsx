@@ -4,14 +4,15 @@ import {
   LayoutDashboard, ClipboardList, TrendingDown, Clock, PackageOpen,
   Megaphone, BarChart3, Package, ShieldCheck, Users, Warehouse,
   ChevronsLeft, ChevronsRight, Settings2, Eye, Crown, ChevronDown,
-  PackagePlus, PackageMinus,
+  PackagePlus, PackageMinus, Repeat,
 } from 'lucide-react';
 import { ROLES_AJUSTES } from '@/lib/ajustes';
+import { ROLES_PROCESAMIENTOS } from '@/lib/procesamientos';
 
 const ICONS = {
   LayoutDashboard, ClipboardList, TrendingDown, Clock, PackageOpen,
   Megaphone, BarChart3, Package, ShieldCheck, Users, Settings2, Eye, Crown,
-  PackagePlus, PackageMinus,
+  PackagePlus, PackageMinus, Repeat,
 };
 
 const ALL = ['inv', 'fact', 'auditor', 'ca', 'jefe_depto', 'administrador', 'superadmin'];
@@ -44,6 +45,7 @@ const NAV_GROUPS = [
       { path: '/anuncios', label: 'Anuncios', icon: 'Megaphone', roles: ['inv','ca','auditor','jefe_depto','administrador','superadmin'] },
       { path: '/ajustes/aumento',     label: 'Ajuste de aumento',     icon: 'PackagePlus',  roles: ROLES_AJUSTES },
       { path: '/ajustes/disminucion', label: 'Ajuste de disminución', icon: 'PackageMinus', roles: ROLES_AJUSTES },
+      { path: '/procesamientos',      label: 'Procesamientos',        icon: 'Repeat',       roles: ROLES_PROCESAMIENTOS },
     ],
   },
   {

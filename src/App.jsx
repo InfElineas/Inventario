@@ -9,6 +9,7 @@ import AccessDenied from '@/components/shared/AccessDenied';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import AppLayout from '@/components/layout/AppLayout';
 import Login from '@/pages/Login';
+import { ROLES_PROCESAMIENTOS } from '@/lib/procesamientos';
 import { ROLES_AJUSTES } from '@/lib/ajustes';
 import TkcCredencialesDialog from '@/components/shared/TkcCredencialesDialog';
 
@@ -23,6 +24,7 @@ const Recepciones   = lazy(() => import('@/pages/Recepciones'));
 const Anuncios      = lazy(() => import('@/pages/Anuncios'));
 const AjusteAumento     = lazy(() => import('@/pages/AjusteAumento'));
 const AjusteDisminucion = lazy(() => import('@/pages/AjusteDisminucion'));
+const Procesamientos    = lazy(() => import('@/pages/Procesamientos'));
 const Reportes      = lazy(() => import('@/pages/Reportes'));
 const Notificaciones= lazy(() => import('@/pages/Notificaciones'));
 const Productos     = lazy(() => import('@/pages/Productos'));
@@ -84,6 +86,7 @@ const AuthenticatedApp = () => {
           <Route path="/anuncios"       element={<RoleGuard element={<Anuncios />} roles={['inv','ca','auditor','jefe_depto','administrador','superadmin']} />} />
           <Route path="/ajustes/aumento"     element={<RoleGuard element={<AjusteAumento />} roles={ROLES_AJUSTES} />} />
           <Route path="/ajustes/disminucion" element={<RoleGuard element={<AjusteDisminucion />} roles={ROLES_AJUSTES} />} />
+          <Route path="/procesamientos"      element={<RoleGuard element={<Procesamientos />} roles={ROLES_PROCESAMIENTOS} />} />
           <Route path="/notificaciones" element={<Notificaciones />} />
           <Route path="/productos"      element={<Productos />} />
           <Route path="/bd-tkc"          element={<Productos initialSource="tkc" />} />
