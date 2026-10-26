@@ -4,6 +4,8 @@ import { useAuth } from '@/lib/AuthContext';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { isExternaConfigured, syncFromExternal } from '@/services/syncService';
 import { fetchExistenciaTkc, TKC_ALMACENES } from '@/services/tkcService';
+import { useAccesoTkc } from '@/lib/useAccesoTkc';
+import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import { fetchCatalogo } from '@/services/catalogoService';
 import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL, isStockCol } from '@/services/tkc/columns';
 import { EXISTENCIA_FILTERS } from '@/services/tkc/body';
@@ -278,6 +280,7 @@ function SearchableSelect({ value, onChange, options, placeholder, maxWidth: max
 export default function Productos({ initialSource: initialSourceRaw }) {
   const initialSource = initialSourceRaw ?? 'tkc';
   const { user } = useAuth();
+  const { tiene: conTkc, cargando: cargandoUsuario } = useAccesoTkc();
   const { almacen, setAlmacen, almacenesConfig } = useAlmacen();
   const queryClient = useQueryClient();
   const role = user?.role || 'inv';
@@ -408,7 +411,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   } = useQuery({
     queryKey: ['tkc_existencia', almacen, hoveredTkc?.idTienda],
     queryFn: () => fetchExistenciaTkc({ almacen, idTienda: hoveredTkc.idTienda }),
-    enabled: source === 'tkc' && Boolean(almacen) && Boolean(hoveredTkc?.idTienda),
+    enabled: conTkc && source === 'tkc' && Boolean(almacen) && Boolean(hoveredTkc?.idTienda),
     staleTime: 5 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
     retry: false,
@@ -688,6 +691,10 @@ export default function Productos({ initialSource: initialSourceRaw }) {
           )}
         </div>
       </div>
+
+      {source === 'tkc' && !cargandoUsuario && !conTkc && (
+        <TkcBloqueoAviso funcion="ver la existencia en vivo de TKC" />
+      )}
 
       {/* ── Last sync row (TKC view) ── */}
       {source === 'tkc' && almacen && (

@@ -9,9 +9,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AlertBanner from '@/components/shared/AlertBanner';
-import { useAuth } from '@/lib/AuthContext';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { useConfirm } from '@/lib/useConfirm';
+import { useAccesoTkc } from '@/lib/useAccesoTkc';
+import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import { WAREHOUSES } from '@/services/tkc/warehouses';
 import {
   TIPOS_AJUSTE, parseLineas, nuevaClave, interpretar, puedeConfirmar,
@@ -26,7 +27,9 @@ const hoy = () => format(new Date(), 'yyyy-MM-dd');
 function mensajeDeError(r) {
   if (r.codigo === 'no_tkc_credentials') return r.mensaje;
   if (r.codigo === 'forbidden' || r.codigo === 'no_access') {
-    return `${r.mensaje} Pide que te den ese permiso en el Identity Server.`;
+    // Es un permiso de la API de transferencias, no tus credenciales de TKC.
+    return `${r.mensaje} Esto no tiene que ver con tus credenciales de TKC: es un permiso de la ` +
+      'API de transferencias. Pide que te asignen el rol en el Identity Server.';
   }
   return r.mensaje || 'No se pudo completar la operación.';
 }
@@ -42,7 +45,8 @@ function mensajeDeError(r) {
  */
 export default function AjusteForm({ tipo }) {
   const cfg = TIPOS_AJUSTE[tipo];
-  const { user } = useAuth();
+  const { tiene: conTkc, cargando: cargandoUsuario } = useAccesoTkc();
+  const sinTkc = !cargandoUsuario && !conTkc;
   const queryClient = useQueryClient();
   const { confirmDialog, ConfirmDialogNode } = useConfirm();
   const { almacen, setAlmacen, almacenesConfig } = useAlmacen();
@@ -60,7 +64,6 @@ export default function AjusteForm({ tipo }) {
   const claveCrear = useRef({ firma: '', clave: '' });
   const clavesConfirmar = useRef(new Map());
 
-  const sinTkc = user && !user.tiene_tkc;
   const almacenes = useMemo(
     () => WAREHOUSES.filter((w) => filterAlmacenesByConfig([w.key], almacenesConfig).length > 0),
     [almacenesConfig],
@@ -150,12 +153,7 @@ export default function AjusteForm({ tipo }) {
         <p className="text-sm text-muted-foreground mt-0.5">{cfg.descripcion}</p>
       </div>
 
-      {sinTkc && (
-        <AlertBanner
-          variant="danger"
-          message="Tu sesión no tiene credenciales de TKC, y los ajustes se hacen con tu usuario de TKC. Cierra sesión y vuelve a entrar; si sigue igual, pide que enlacen tu cuenta de TKC en el Identity Server."
-        />
-      )}
+      {sinTkc && <TkcBloqueoAviso funcion="montar o confirmar ajustes" />}
 
       {bloqueo && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-[#BA7517]/30 bg-[#BA751710]" style={{ borderRadius: '8px' }}>

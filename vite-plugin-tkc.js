@@ -74,7 +74,7 @@ export function tkcApiPlugin() {
         if (!process.env[clave] && env[clave]) process.env[clave] = env[clave]
       }
 
-      authMiddleware = createAuthApiMiddleware()
+      authMiddleware = createAuthApiMiddleware({ tkcBase: tkc.tkcBase })
       datosMiddleware = createDatosApiMiddleware()
       syncMiddleware = createSyncApiMiddleware()
       transferenciasMiddleware = createTransferenciasApiMiddleware()

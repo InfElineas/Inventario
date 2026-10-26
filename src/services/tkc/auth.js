@@ -74,7 +74,24 @@ export function mergeCookies(c1, c2) {
  * @param {{ tkcBase: string, tkcUser: string, tkcPass: string }} config
  * @returns {Promise<string>}
  */
-export async function login({ tkcBase, tkcUser, tkcPass }) {
+export async function login(config) {
+  return (await iniciarSesion(config)).cookie
+}
+
+/**
+ * Comprueba que TKC acepta ese usuario y contraseña. Lanza si TKC no responde;
+ * devuelve `false` si responde y las rechaza.
+ *
+ * TKC no usa códigos de estado para el rechazo: un login fallido vuelve a la
+ * página de login (302 a /login, o 200 con el formulario otra vez).
+ */
+export async function credencialesAceptadas(config) {
+  const { status, location, html } = await iniciarSesion(config)
+  if (status === 302) return !/\/login(\b|\?|$)/.test(location ?? '')
+  return !/name="_username"/.test(html)
+}
+
+async function iniciarSesion({ tkcBase, tkcUser, tkcPass }) {
   // ── GET /login → token CSRF + primeras cookies ──
   const getResp = await fetch(`${tkcBase}/login`, {
     method: 'GET',
@@ -115,5 +132,11 @@ export async function login({ tkcBase, tkcUser, tkcPass }) {
     throw new Error(`POST login_check HTTP ${postResp.status}`)
   }
 
-  return mergeCookies(cookie1, parseCookies(getSetCookies(postResp.headers)))
+  return {
+    cookie: mergeCookies(cookie1, parseCookies(getSetCookies(postResp.headers))),
+    status: postResp.status,
+    location: postResp.headers.get('location'),
+    // Solo hace falta con 200 (¿volvió el formulario?); el 302 no trae cuerpo útil.
+    html: postResp.status === 200 ? await postResp.text() : '',
+  }
 }

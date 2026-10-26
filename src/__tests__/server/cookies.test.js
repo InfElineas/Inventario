@@ -100,12 +100,12 @@ describe('fijarCookiesSesion', () => {
 });
 
 describe('limpiarCookiesSesion', () => {
-  it('expira session, jwt y tkc con Max-Age=0', () => {
+  it('expira session y jwt con Max-Age=0, y deja las credenciales de TKC', () => {
     const res = resFalsa();
     limpiarCookiesSesion(res);
     const cookies = setCookies(res);
-    expect(cookies).toHaveLength(3);
-    expect(cookies.some((c) => c.startsWith('tkc='))).toBe(true);
+    expect(cookies).toHaveLength(2);
+    expect(cookies.some((c) => c.startsWith('tkc='))).toBe(false);
     for (const c of cookies) expect(c).toContain('Max-Age=0');
   });
 });

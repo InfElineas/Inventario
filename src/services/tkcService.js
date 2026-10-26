@@ -8,6 +8,7 @@
  */
 
 import { WAREHOUSES } from '@/services/tkc/warehouses'
+import { conCredencialesTkc } from '@/lib/tkcCredenciales'
 
 const ENDPOINT = '/api/tkc/inventario'
 const ENDPOINT_EXISTENCIA = '/api/tkc/existencia'
@@ -18,16 +19,19 @@ export const TKC_ALMACENES = WAREHOUSES.map((w) => w.key)
 
 /** POST autenticado a uno de los endpoints locales de TKC. */
 async function postTkc(endpoint, payload) {
-  // La sesión viaja en la cookie httpOnly, no en una cabecera: el JavaScript
-  // de la página no tiene acceso al token y no puede ponerlo él.
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+  // Si la persona aún no puso su cuenta de TKC, `conCredencialesTkc` se la pide
+  // y repite la llamada.
+  const { res, body: data } = await conCredencialesTkc(async () => {
+    // La sesión viaja en la cookie httpOnly, no en una cabecera: el JavaScript
+    // de la página no tiene acceso al token y no puede ponerlo él.
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    return { status: res.status, res, body: await res.json().catch(() => null) }
   })
-
-  const data = await res.json().catch(() => null)
   return { res, data }
 }
 

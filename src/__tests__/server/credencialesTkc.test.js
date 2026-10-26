@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { recordarCredenciales, leerCredenciales } from '@/server/credencialesTkc';
+import { recordarCredenciales, leerCredenciales, estadoCredenciales } from '@/server/credencialesTkc';
 import { sellar, abrir } from '@/server/secretBox';
 
 const CLAVE = Buffer.alloc(32, 7).toString('base64');
@@ -55,43 +55,65 @@ describe('secretBox', () => {
 });
 
 describe('credencialesTkc', () => {
-  it('guarda sellado en cookie httpOnly y se vuelve a leer', () => {
+  const EMAIL = 'ana@x.com';
+
+  it('guarda sellado en cookie httpOnly de 7 días y se vuelve a leer', () => {
     const res = resFalsa();
-    expect(recordarCredenciales(res, CREDS)).toBe(true);
+    const exp = recordarCredenciales(res, CREDS, EMAIL);
     const c = cookies(res)[0];
     expect(c).toMatch(/^tkc=/);
     expect(c).toContain('HttpOnly');
+    expect(c).toContain(`Max-Age=${7 * 24 * 60 * 60}`);
     expect(decodeURIComponent(c)).not.toContain('s3cr3t');
-    expect(leerCredenciales(reqCon(res))).toEqual(CREDS);
+    expect(exp).toBeGreaterThan(Date.now() + 6.9 * 24 * 3600 * 1000);
+    expect(leerCredenciales(reqCon(res), EMAIL)).toEqual(CREDS);
+    expect(estadoCredenciales(reqCon(res), EMAIL)).toMatchObject({ tiene: true, expira: exp });
+  });
+
+  it('caduca a los 7 días aunque el navegador siga mandando la cookie', () => {
+    vi.useFakeTimers();
+    const res = resFalsa();
+    recordarCredenciales(res, CREDS, EMAIL);
+    vi.advanceTimersByTime(7 * 24 * 3600 * 1000 + 1000);
+    expect(leerCredenciales(reqCon(res), EMAIL)).toBeNull();
+    expect(estadoCredenciales(reqCon(res), EMAIL).tiene).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it('otra persona en el mismo navegador no las hereda', () => {
+    const res = resFalsa();
+    recordarCredenciales(res, CREDS, EMAIL);
+    expect(leerCredenciales(reqCon(res), 'otra@x.com')).toBeNull();
+    expect(leerCredenciales(reqCon(res), 'ANA@x.com')).toEqual(CREDS);
   });
 
   it('sin credenciales (null) borra la cookie', () => {
     const res = resFalsa();
-    expect(recordarCredenciales(res, null)).toBe(false);
+    expect(recordarCredenciales(res, null, EMAIL)).toBeNull();
     expect(cookies(res)[0]).toMatch(/^tkc=;.*Max-Age=0/);
   });
 
   it('credenciales incompletas cuentan como ninguna', () => {
-    const res = resFalsa();
-    expect(recordarCredenciales(res, { username: 'a', password: '' })).toBe(false);
+    expect(recordarCredenciales(resFalsa(), { username: 'a', password: '' }, EMAIL)).toBeNull();
   });
 
   it('sin TKC_SECRET_KEY no lanza: registra y borra la cookie', () => {
     delete process.env.TKC_SECRET_KEY;
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = resFalsa();
-    expect(recordarCredenciales(res, CREDS)).toBe(false);
+    expect(recordarCredenciales(res, CREDS, EMAIL)).toBeNull();
     expect(cookies(res)[0]).toContain('Max-Age=0');
   });
 
   it('una cookie que no abre (clave rotada) es «sin credenciales», no un error', () => {
     const res = resFalsa();
-    recordarCredenciales(res, CREDS);
+    recordarCredenciales(res, CREDS, EMAIL);
     process.env.TKC_SECRET_KEY = OTRA;
-    expect(leerCredenciales(reqCon(res))).toBeNull();
+    expect(leerCredenciales(reqCon(res), EMAIL)).toBeNull();
   });
 
-  it('sin cookie, null', () => {
-    expect(leerCredenciales({ headers: {} })).toBeNull();
+  it('sin cookie, null; y la preferencia de olvidar se lee de su cookie', () => {
+    expect(leerCredenciales({ headers: {} }, EMAIL)).toBeNull();
+    expect(estadoCredenciales({ headers: { cookie: 'tkc_olvidar=1' } }, EMAIL).olvidarAlSalir).toBe(true);
   });
 });

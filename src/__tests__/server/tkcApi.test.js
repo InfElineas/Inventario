@@ -22,6 +22,9 @@ vi.mock('@/services/tkc/existencias', () => ({ getExistencias: (...a) => getExis
 const resolverSesion = vi.hoisted(() => vi.fn())
 vi.mock('@/server/session', () => ({ resolverSesion }))
 
+const leerCredenciales = vi.hoisted(() => vi.fn())
+vi.mock('@/server/credencialesTkc', () => ({ leerCredenciales }))
+
 const { createTkcApiMiddleware } = await import('@/server/tkcApi')
 
 const TKC = { tkcBase: 'https://tkc.test', tkcUser: 'u', tkcPass: 'p' }
@@ -58,11 +61,23 @@ beforeEach(() => {
   fetchExistencia.mockReset()
   getExistencias.mockReset()
   resolverSesion.mockReset()
+  leerCredenciales.mockReset()
+  leerCredenciales.mockReturnValue({ username: 'persona', password: 'clave' })
   // Por defecto hay sesión; las pruebas que necesiten lo contrario lo dicen.
   resolverSesion.mockResolvedValue({ email: 'a@mercadoelineas.com', usuario: { role: 'inv' } })
 })
 
 describe('createTkcApiMiddleware', () => {
+  it('sin credenciales de TKC de la persona responde 403 no_tkc_credentials y no llama a TKC', async () => {
+    leerCredenciales.mockReturnValue(null)
+    const middleware = createTkcApiMiddleware({ tkc: TKC })
+    const res = fakeRes()
+    await middleware(fakeReq({ body: { almacen: '789' } }), res, vi.fn())
+    expect(res.statusCode).toBe(403)
+    expect(res.body.codigo).toBe('no_tkc_credentials')
+    expect(listInventory).not.toHaveBeenCalled()
+  })
+
   it('deja pasar rutas que no son de TKC', async () => {
     const middleware = createTkcApiMiddleware({ tkc: TKC })
     const next = vi.fn()

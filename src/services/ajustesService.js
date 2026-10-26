@@ -12,6 +12,7 @@
  */
 
 import { TIPOS_AJUSTE } from '@/lib/ajustes'
+import { conCredencialesTkc } from '@/lib/tkcCredenciales'
 
 export class ErrorDeRed extends Error {
   constructor(escritura) {
@@ -30,20 +31,25 @@ const ruta = (tipo) => `/api/ajustes/${TIPOS_AJUSTE[tipo].segmento}`
 /** @param {string} url @param {{ method?: string, body?: object }} [opciones] */
 async function pedir(url, { method = 'GET', body } = {}) {
   const escritura = method !== 'GET'
-  let res
-  try {
-    res = await fetch(url, {
-      method,
-      credentials: 'include',
-      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
-  } catch {
-    throw new ErrorDeRed(escritura)
+  const intentar = async () => {
+    let res
+    try {
+      res = await fetch(url, {
+        method,
+        credentials: 'include',
+        headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      })
+    } catch {
+      throw new ErrorDeRed(escritura)
+    }
+    const datos = await res.json().catch(() => null)
+    const total = res.headers.get('X-Total-Count')
+    return { status: res.status, body: datos, total: total === null ? null : Number(total) }
   }
-  const datos = await res.json().catch(() => null)
-  const total = res.headers.get('X-Total-Count')
-  return { status: res.status, body: datos, total: total === null ? null : Number(total) }
+  // Sin credenciales de TKC el servidor corta antes de enviar nada (ni siquiera
+  // una escritura llegó a TKC), así que pedirlas y repetir es seguro.
+  return conCredencialesTkc(intentar)
 }
 
 /**

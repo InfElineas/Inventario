@@ -18,6 +18,12 @@ vi.mock('@/server/session', () => ({ resolverSesion, sincronizarDesdeIS }));
 const queryOne = vi.hoisted(() => vi.fn());
 vi.mock('@/server/db', () => ({ queryOne }));
 
+const verificarCredenciales = vi.hoisted(() => vi.fn());
+vi.mock('@/server/credencialesTkc', async (original) => ({
+  ...(await original()),
+  verificarCredenciales,
+}));
+
 const { createAuthApiMiddleware } = await import('@/server/authApi');
 
 const USUARIO = {
@@ -53,7 +59,7 @@ function respuesta() {
   return r;
 }
 
-const mw = createAuthApiMiddleware();
+const mw = createAuthApiMiddleware({ tkcBase: 'https://tkc.test' });
 
 async function llamar(url, cuerpo, metodo, cabeceras) {
   const res = respuesta();
@@ -64,7 +70,7 @@ async function llamar(url, cuerpo, metodo, cabeceras) {
 const setCookies = (res) => [].concat(res.getHeader('Set-Cookie') ?? []);
 
 beforeEach(() => {
-  for (const m of [signIn, signOut, canjearGoogle, urlInicioGoogle, resolverSesion, sincronizarDesdeIS, queryOne]) m.mockReset();
+  for (const m of [signIn, signOut, canjearGoogle, urlInicioGoogle, resolverSesion, sincronizarDesdeIS, queryOne, verificarCredenciales]) m.mockReset();
   process.env.APP_URL = 'https://inv.test';
 });
 
@@ -97,14 +103,14 @@ describe('POST /api/auth/login', () => {
     expect(setCookies(res).some((c) => c.startsWith('tkc=') && c.includes('HttpOnly') && !c.includes('Max-Age=0'))).toBe(true);
   });
 
-  it('sin credenciales de TKC en el IS: tiene_tkc=false y se borra la cookie vieja', async () => {
+  it('sin credenciales de TKC en el IS: no toca las que la persona puso a mano', async () => {
+    process.env.TKC_SECRET_KEY = Buffer.alloc(32, 7).toString('base64');
     signIn.mockResolvedValue({ ...entrada, tkc: null });
     sincronizarDesdeIS.mockResolvedValue(USUARIO);
 
-    const res = await llamar('/api/auth/login', { email: 'a@x.com', password: 'pw' });
-
-    expect(res.cuerpo.user.tiene_tkc).toBe(false);
-    expect(setCookies(res).some((c) => c.startsWith('tkc=;') && c.includes('Max-Age=0'))).toBe(true);
+    const previo = await llamar('/api/auth/login', { email: 'a@x.com', password: 'pw' }); // sin cookie
+    expect(previo.cuerpo.user.tiene_tkc).toBe(false);
+    expect(setCookies(previo).some((c) => c.startsWith('tkc='))).toBe(false);
   });
 
   it('pasa la IP del cliente al IS', async () => {
@@ -184,7 +190,7 @@ describe('POST /api/auth/perfil', () => {
 });
 
 describe('POST /api/auth/logout', () => {
-  it('revoca la sesión en el IS y borra las cookies de sesión y las de TKC', async () => {
+  it('revoca la sesión en el IS y borra solo las cookies de sesión: las de TKC duran sus 7 días', async () => {
     // El fallo del IS lo absorbe identity.signOut (ver identity.test.js).
     signOut.mockResolvedValue(undefined);
 
@@ -193,8 +199,14 @@ describe('POST /api/auth/logout', () => {
     expect(res.statusCode).toBe(200);
     expect(signOut).toHaveBeenCalledWith('sess1');
     const cookies = setCookies(res);
-    // session, jwt y las credenciales de TKC
-    expect(cookies.filter((c) => c.includes('Max-Age=0'))).toHaveLength(3);
+    expect(cookies.filter((c) => c.includes('Max-Age=0'))).toHaveLength(2);
+    expect(cookies.some((c) => c.startsWith('tkc='))).toBe(false);
+  });
+
+  it('con la preferencia «olvidar al cerrar sesión», borra también las de TKC', async () => {
+    signOut.mockResolvedValue(undefined);
+    const res = await llamar('/api/auth/logout', null, 'POST', { cookie: 'session=sess1; jwt=j; tkc_olvidar=1' });
+    expect(setCookies(res).some((c) => c.startsWith('tkc=;') && c.includes('Max-Age=0'))).toBe(true);
   });
 });
 
@@ -311,5 +323,80 @@ describe('enrutado', () => {
 
   it('ruta de auth desconocida → 404', async () => {
     expect((await llamar('/api/auth/nada', {})).statusCode).toBe(404);
+  });
+});
+
+describe('POST /api/auth/tkc', () => {
+  beforeEach(() => {
+    process.env.TKC_SECRET_KEY = Buffer.alloc(32, 7).toString('base64');
+    resolverSesion.mockResolvedValue({ email: 'a@x.com', usuario: USUARIO });
+  });
+
+  it('sin sesión: 401 y no prueba nada contra TKC', async () => {
+    resolverSesion.mockResolvedValue(null);
+    const res = await llamar('/api/auth/tkc', { username: 'ana', password: 'pw' });
+    expect(res.statusCode).toBe(401);
+    expect(verificarCredenciales).not.toHaveBeenCalled();
+  });
+
+  it('faltan campos: 400', async () => {
+    const res = await llamar('/api/auth/tkc', { username: 'ana' });
+    expect(res.statusCode).toBe(400);
+    expect(verificarCredenciales).not.toHaveBeenCalled();
+  });
+
+  it('TKC las rechaza: 401 y NO se guarda cookie', async () => {
+    verificarCredenciales.mockResolvedValue(false);
+    const res = await llamar('/api/auth/tkc', { username: 'ana', password: 'mala' });
+    expect(res.statusCode).toBe(401);
+    expect(setCookies(res)).toEqual([]);
+  });
+
+  it('TKC no responde: 502 y NO se guarda cookie', async () => {
+    verificarCredenciales.mockRejectedValue(new Error('timeout'));
+    const res = await llamar('/api/auth/tkc', { username: 'ana', password: 'pw' });
+    expect(res.statusCode).toBe(502);
+    expect(setCookies(res)).toEqual([]);
+  });
+
+  it('TKC las acepta: cookie sellada y el perfil solo trae el booleano', async () => {
+    verificarCredenciales.mockResolvedValue(true);
+    const res = await llamar('/api/auth/tkc', { username: ' ana ', password: 'pw-tkc' });
+
+    expect(res.statusCode).toBe(200);
+    expect(verificarCredenciales).toHaveBeenCalledWith('https://tkc.test', { username: 'ana', password: 'pw-tkc' });
+    expect(res.cuerpo.user.tiene_tkc).toBe(true);
+    expect(JSON.stringify(res.cuerpo)).not.toMatch(/pw-tkc/);
+    expect(setCookies(res).some((c) => c.startsWith('tkc=') && c.includes('HttpOnly') && !c.includes('Max-Age=0'))).toBe(true);
+  });
+});
+
+describe('credenciales de TKC: olvidar y preferencia', () => {
+  beforeEach(() => {
+    process.env.TKC_SECRET_KEY = Buffer.alloc(32, 7).toString('base64');
+    resolverSesion.mockResolvedValue({ email: 'a@x.com', usuario: USUARIO });
+  });
+
+  it('olvidar borra la cookie de TKC', async () => {
+    const res = await llamar('/api/auth/tkc/olvidar', {});
+    expect(res.statusCode).toBe(200);
+    expect(res.cuerpo.user.tiene_tkc).toBe(false);
+    expect(setCookies(res).some((c) => c.startsWith('tkc=;') && c.includes('Max-Age=0'))).toBe(true);
+  });
+
+  it('preferencia: fija o quita la cookie y lo refleja en el perfil', async () => {
+    const si = await llamar('/api/auth/tkc/preferencia', { olvidarAlSalir: true });
+    expect(si.cuerpo.user.tkc_olvidar_al_salir).toBe(true);
+    expect(setCookies(si).some((c) => c.startsWith('tkc_olvidar=1'))).toBe(true);
+
+    const no = await llamar('/api/auth/tkc/preferencia', { olvidarAlSalir: false });
+    expect(no.cuerpo.user.tkc_olvidar_al_salir).toBe(false);
+    expect(setCookies(no).some((c) => c.startsWith('tkc_olvidar=;') && c.includes('Max-Age=0'))).toBe(true);
+  });
+
+  it('sin sesión, 401', async () => {
+    resolverSesion.mockResolvedValue(null);
+    expect((await llamar('/api/auth/tkc/olvidar', {})).statusCode).toBe(401);
+    expect((await llamar('/api/auth/tkc/preferencia', {})).statusCode).toBe(401);
   });
 });

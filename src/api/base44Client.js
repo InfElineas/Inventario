@@ -123,6 +123,19 @@ function entidad(nombre) {
   }
 }
 
+/** POST a /api/auth/tkc*: devuelve el perfil actualizado o lanza con el mensaje del servidor. */
+async function postTkc(sufijo, cuerpo) {
+  const res = await fetch(`/api/auth/tkc${sufijo}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(cuerpo),
+  })
+  const datos = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(datos?.error ?? `Error ${res.status} con las credenciales de TKC`)
+  return datos.user
+}
+
 export const base44 = {
   entities: new Proxy({}, {
     get(_, nombre) {
@@ -144,6 +157,13 @@ export const base44 = {
       const datos = await res.json().catch(() => null)
       return datos?.user ?? null
     },
+
+    /** Guarda las credenciales de TKC (7 días); el servidor las prueba antes. */
+    guardarTkc: ({ username, password }) => postTkc('', { username, password }),
+    /** Borra las credenciales de TKC guardadas. */
+    olvidarTkc: () => postTkc('/olvidar', {}),
+    /** Preferencia: olvidarlas al cerrar sesión. */
+    olvidarTkcAlSalir: (olvidarAlSalir) => postTkc('/preferencia', { olvidarAlSalir }),
 
     logout: async () => {
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })

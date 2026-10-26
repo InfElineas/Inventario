@@ -186,16 +186,26 @@ describe('AjusteForm — aumento', () => {
     montar('aumento');
     await rellenar(user, { texto: 'A*1' });
     await user.click(boton(/montar ajuste/i));
-    await screen.findByText(/Falta increase:create\. Pide que te den ese permiso/);
+    await screen.findByText(/Falta increase:create\. Esto no tiene que ver con tus credenciales de TKC/);
   });
 
-  it('sin credenciales de TKC en la sesión: aviso y nada se puede enviar', async () => {
+  it('sin credenciales de TKC: explica por qué y bloquea el envío', async () => {
     const user = userEvent.setup();
     auth.user = { role: 'fact', tiene_tkc: false, almacenes_config: [] };
     montar('aumento');
-    expect(screen.getByText(/no tiene credenciales de TKC/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sin credenciales de TKC/i)).toBeInTheDocument();
+    expect(screen.getByText(/montar o confirmar ajustes/i)).toBeInTheDocument();
     await rellenar(user, { texto: 'A*1' });
     expect(boton(/montar ajuste/i)).toBeDisabled();
+  });
+
+  it('un 403 de rol aclara que no son las credenciales de TKC', async () => {
+    const user = userEvent.setup();
+    svc.crearAjuste.mockResolvedValue({ status: 403, body: { error: { code: 'no_access', message: 'El usuario del token no tiene ningún rol en este sistema.' } } });
+    montar('aumento');
+    await rellenar(user, { texto: 'A*1' });
+    await user.click(boton(/montar ajuste/i));
+    await screen.findByText(/no tiene que ver con tus credenciales de TKC/i);
   });
 
   it('un usuario con almacenes configurados solo ve los suyos', () => {

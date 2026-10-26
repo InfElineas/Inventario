@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { extractCsrfToken, parseCookies, mergeCookies, getSetCookies } from '@/services/tkc/auth'
+import { extractCsrfToken, parseCookies, mergeCookies, getSetCookies, credencialesAceptadas } from '@/services/tkc/auth'
 import { buildBody, COLS } from '@/services/tkc/body'
 import { normalizeRow } from '@/services/tkc/normalize'
 import {
@@ -14,6 +14,36 @@ import {
 } from '@/services/tkc/columns'
 import { keyToTkcValue, warehouseName } from '@/services/tkc/warehouses'
 import { buildSubmayorBody, pickRow, SUBMAYOR_COLS } from '@/services/tkc/submayor'
+
+describe('credencialesAceptadas', () => {
+  const CFG = { tkcBase: 'https://tkc.test', tkcUser: 'u', tkcPass: 'p' }
+  const loginHtml = '<form><input name="_csrf_token" value="tok"><input name="_username"></form>'
+
+  /** GET /login devuelve el formulario; POST /login_check devuelve `post`. */
+  const conPost = (post) => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(loginHtml, { status: 200 }))
+      .mockResolvedValueOnce(post))
+  }
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('302 hacia fuera del login: aceptadas', async () => {
+    conPost(new Response(null, { status: 302, headers: { location: '/dashboard' } }))
+    expect(await credencialesAceptadas(CFG)).toBe(true)
+  })
+  it('302 de vuelta a /login: rechazadas', async () => {
+    conPost(new Response(null, { status: 302, headers: { location: 'https://tkc.test/login' } }))
+    expect(await credencialesAceptadas(CFG)).toBe(false)
+  })
+  it('200 con el formulario otra vez: rechazadas', async () => {
+    conPost(new Response(loginHtml, { status: 200 }))
+    expect(await credencialesAceptadas(CFG)).toBe(false)
+  })
+  it('200 sin formulario: aceptadas', async () => {
+    conPost(new Response('<html>panel</html>', { status: 200 }))
+    expect(await credencialesAceptadas(CFG)).toBe(true)
+  })
+})
 
 describe('auth', () => {
   it('extrae el token CSRF del HTML de login', () => {

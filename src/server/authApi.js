@@ -15,10 +15,10 @@ import {
 import { queryOne } from './db.js'
 import { CAMPOS_PROPIOS_USUARIO } from './permisos.js'
 import { resolverSesion, sincronizarDesdeIS } from './session.js'
-import { recordarCredenciales, leerCredenciales } from './credencialesTkc.js'
+import { recordarCredenciales, estadoCredenciales, verificarCredenciales } from './credencialesTkc.js'
 import {
   fijarCookiesSesion, limpiarCookiesSesion, leerCookies, COOKIE_SESSION,
-  COOKIE_GOOGLE, fijarCookieGoogle, limpiarCookieGoogle,
+  COOKIE_GOOGLE, COOKIE_TKC_OLVIDAR, fijarCookieGoogle, limpiarCookieGoogle, limpiarCookieTkc, fijarOlvidarTkcAlSalir,
 } from './cookies.js'
 
 const LIMITE_CUERPO = 16 * 1024 // un login no ocupa más; corta cuerpos absurdos
@@ -56,7 +56,7 @@ async function leerJson(req) {
  * Lo que se le devuelve al cliente. Deliberadamente NO incluye tokens: viven
  * en cookies httpOnly y el frontend no los necesita.
  */
-function perfilPublico(usuario, tieneTkc = false) {
+function perfilPublico(usuario, tkc = {}) {
   return {
     id: usuario.id,
     email: usuario.email,
@@ -69,8 +69,10 @@ function perfilPublico(usuario, tieneTkc = false) {
     nickname: usuario.nickname ?? '',
     avatar_url: usuario.avatar_url ?? '',
     departamento: usuario.departamento ?? null,
-    // Solo el booleano: la contraseña de TKC no sale nunca del servidor.
-    tiene_tkc: tieneTkc,
+    // Solo el estado: la contraseña de TKC no sale nunca del servidor.
+    tiene_tkc: Boolean(tkc.tiene),
+    tkc_expira: tkc.expira ?? null,
+    tkc_olvidar_al_salir: Boolean(tkc.olvidarAlSalir),
   }
 }
 
@@ -92,7 +94,7 @@ const falloGoogle = (res, codigo) =>
  * Valida y crea la sesión a partir de lo que devolvió el IS (contraseña o
  * Google). Devuelve `{ usuario }` o `{ status, codigo, error }` si no hay acceso.
  */
-async function abrirSesion(res, entrada, emailDeRespaldo = '') {
+async function abrirSesion(req, res, entrada, emailDeRespaldo = '') {
   const usuario = await sincronizarDesdeIS({
     email: entrada.user?.email ?? emailDeRespaldo,
     nombre: entrada.user?.name ?? '',
@@ -107,13 +109,18 @@ async function abrirSesion(res, entrada, emailDeRespaldo = '') {
   }
 
   fijarCookiesSesion(res, { sessionToken: entrada.sessionToken, jwt: entrada.jwt })
-  // Las credenciales de TKC solo llegan en esta respuesta: o se guardan ahora o
-  // no se vuelven a ver hasta el próximo login.
-  const tieneTkc = recordarCredenciales(res, entrada.tkc)
-  return { usuario, tieneTkc }
+  // Las credenciales de TKC del IS solo llegan en esta respuesta: o se guardan
+  // ahora o no se vuelven a ver hasta el próximo login. Si el IS no trae
+  // ninguna, NO se tocan las que la persona puso a mano (siguen vigentes).
+  let tkc = estadoCredenciales(req, usuario.email)
+  if (entrada.tkc) {
+    const expira = recordarCredenciales(res, entrada.tkc, usuario.email)
+    tkc = { ...tkc, tiene: expira !== null, expira }
+  }
+  return { usuario, tkc }
 }
 
-export function createAuthApiMiddleware() {
+export function createAuthApiMiddleware({ tkcBase = '' } = {}) {
   return async function authApiMiddleware(req, res, next) {
     const ruta = (req.url ?? '/').split('?')[0]
     if (!ruta.startsWith('/api/auth/')) return next()
@@ -136,9 +143,9 @@ export function createAuthApiMiddleware() {
         }
 
         // El rol se consulta al IS y se espeja en usuarios.role.
-        const sesion = await abrirSesion(res, entrada, email)
+        const sesion = await abrirSesion(req, res, entrada, email)
         if (!sesion.usuario) return responder(res, sesion.status, { error: sesion.error })
-        return responder(res, 200, { user: perfilPublico(sesion.usuario, sesion.tieneTkc) })
+        return responder(res, 200, { user: perfilPublico(sesion.usuario, sesion.tkc) })
       }
 
       // ── Login con Google: inicio ─────────────────────────────
@@ -184,7 +191,7 @@ export function createAuthApiMiddleware() {
         const entrada = await canjearGoogle(codigo, flujo.verifier, { ip: ipCliente(req) })
         if (!entrada.ok) return falloGoogle(res, entrada.code)
 
-        const sesion = await abrirSesion(res, entrada)
+        const sesion = await abrirSesion(req, res, entrada)
         if (!sesion.usuario) {
           // Sin cookies de sesión: no se llegaron a fijar.
           return falloGoogle(res, sesion.codigo)
@@ -198,7 +205,67 @@ export function createAuthApiMiddleware() {
       if (ruta === '/api/auth/me' && req.method === 'GET') {
         const sesion = await resolverSesion(req, res)
         if (!sesion) return responder(res, 401, { error: 'Sin sesión' })
-        return responder(res, 200, { user: perfilPublico(sesion.usuario, Boolean(leerCredenciales(req))) })
+        return responder(res, 200, { user: perfilPublico(sesion.usuario, estadoCredenciales(req, sesion.email)) })
+      }
+
+      // ── Credenciales de TKC escritas por la persona ──────────
+      // Para quien entró sin ellas (el IS no las tiene enlazadas, o la cookie
+      // se perdió). Se prueban contra TKC ANTES de guardarlas: una contraseña
+      // mala no debe quedar sellada para fallar luego a mitad de una acción.
+      if (ruta === '/api/auth/tkc' && req.method === 'POST') {
+        const sesion = await resolverSesion(req, res)
+        if (!sesion) return responder(res, 401, { error: 'Sin sesión' })
+        if (!tkcBase) return responder(res, 503, { error: 'Falta TKC_BASE: no se pueden comprobar credenciales de TKC.' })
+
+        const { username, password } = await leerJson(req)
+        if (typeof username !== 'string' || typeof password !== 'string' || !username.trim() || !password) {
+          return responder(res, 400, { error: 'Usuario y contraseña de TKC son obligatorios.' })
+        }
+
+        const credenciales = { username: username.trim(), password }
+        let aceptadas
+        try {
+          aceptadas = await verificarCredenciales(tkcBase, credenciales)
+        } catch (error) {
+          console.error('[auth-api] TKC no respondió al verificar credenciales:', error?.message ?? error)
+          return responder(res, 502, { error: 'No se pudo comprobar con TKC. Inténtalo de nuevo.' })
+        }
+        if (!aceptadas) return responder(res, 401, { error: 'TKC rechazó ese usuario o contraseña.' })
+
+        const expira = recordarCredenciales(res, credenciales, sesion.email)
+        if (expira === null) {
+          return responder(res, 503, { error: 'No se pudieron guardar las credenciales (falta TKC_SECRET_KEY).' })
+        }
+        return responder(res, 200, {
+          user: perfilPublico(sesion.usuario, {
+            tiene: true, expira, olvidarAlSalir: estadoCredenciales(req, sesion.email).olvidarAlSalir,
+          }),
+        })
+      }
+
+      // Olvidar las credenciales guardadas, a petición de la persona.
+      if (ruta === '/api/auth/tkc/olvidar' && req.method === 'POST') {
+        const sesion = await resolverSesion(req, res)
+        if (!sesion) return responder(res, 401, { error: 'Sin sesión' })
+        limpiarCookieTkc(res)
+        return responder(res, 200, {
+          user: perfilPublico(sesion.usuario, {
+            olvidarAlSalir: estadoCredenciales(req, sesion.email).olvidarAlSalir,
+          }),
+        })
+      }
+
+      // Preferencia: borrarlas al cerrar sesión (por defecto duran sus 7 días).
+      if (ruta === '/api/auth/tkc/preferencia' && req.method === 'POST') {
+        const sesion = await resolverSesion(req, res)
+        if (!sesion) return responder(res, 401, { error: 'Sin sesión' })
+        const { olvidarAlSalir } = await leerJson(req)
+        fijarOlvidarTkcAlSalir(res, olvidarAlSalir === true)
+        return responder(res, 200, {
+          user: perfilPublico(sesion.usuario, {
+            ...estadoCredenciales(req, sesion.email), olvidarAlSalir: olvidarAlSalir === true,
+          }),
+        })
       }
 
       // ── Preferencias del propio usuario ──────────────────────
@@ -225,14 +292,16 @@ export function createAuthApiMiddleware() {
           `UPDATE usuarios SET ${asignaciones.join(', ')} WHERE email = $1 RETURNING *`,
           [sesion.email, ...claves.map((c) => cambios[c])],
         )
-        return responder(res, 200, { user: perfilPublico(usuario, Boolean(leerCredenciales(req))) })
+        return responder(res, 200, { user: perfilPublico(usuario, estadoCredenciales(req, sesion.email)) })
       }
 
       // ── Logout ───────────────────────────────────────────────
       if (ruta === '/api/auth/logout' && req.method === 'POST') {
-        const sessionToken = leerCookies(req)[COOKIE_SESSION]
-        await signOut(sessionToken)      // best-effort contra el IS
-        limpiarCookiesSesion(res)        // las cookies se borran siempre
+        const cookies = leerCookies(req)
+        await signOut(cookies[COOKIE_SESSION]) // best-effort contra el IS
+        limpiarCookiesSesion(res)              // las de sesión se borran siempre
+        // Las de TKC solo si la persona lo pidió; si no, duran sus 7 días.
+        if (cookies[COOKIE_TKC_OLVIDAR] === '1') limpiarCookieTkc(res)
         return responder(res, 200, { ok: true })
       }
 

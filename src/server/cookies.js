@@ -10,6 +10,8 @@ export const COOKIE_SESSION = 'session'
 export const COOKIE_JWT = 'jwt'
 // Credenciales de TKC de la persona, selladas (ver credencialesTkc.js).
 export const COOKIE_TKC = 'tkc'
+// Preferencia (no secreta) de borrar las credenciales de TKC al cerrar sesión.
+export const COOKIE_TKC_OLVIDAR = 'tkc_olvidar'
 // Estado del login con Google entre el inicio y la vuelta: lleva el
 // code_verifier de PKCE, que nunca debe llegar al JS del navegador.
 export const COOKIE_GOOGLE = 'google_flow'
@@ -71,18 +73,28 @@ export function fijarCookiesSesion(res, { sessionToken, jwt, diasSesion = 30 }) 
   anexarSetCookie(res, cabeceras)
 }
 
-/** Borra las cookies de sesión, y con ellas las credenciales de TKC. */
+/**
+ * Borra las cookies de sesión. Las credenciales de TKC NO: duran sus días aunque
+ * se cierre sesión, salvo que la persona haya pedido olvidarlas al salir (el
+ * logout lo decide con `COOKIE_TKC_OLVIDAR`).
+ */
 export function limpiarCookiesSesion(res) {
   anexarSetCookie(res, [
     serializar(COOKIE_SESSION, '', 0),
     serializar(COOKIE_JWT, '', 0),
-    serializar(COOKIE_TKC, '', 0),
   ])
 }
 
-/** Credenciales de TKC selladas: viven lo que el session token. */
-export function fijarCookieTkc(res, sellado, diasSesion = 30) {
-  anexarSetCookie(res, [serializar(COOKIE_TKC, sellado, diasSesion * 24 * 60 * 60)])
+/** Credenciales de TKC selladas: caducan solas a los `dias` días. */
+export function fijarCookieTkc(res, sellado, dias) {
+  anexarSetCookie(res, [serializar(COOKIE_TKC, sellado, dias * 24 * 60 * 60)])
+}
+
+/** Preferencia «olvidar mis credenciales de TKC al cerrar sesión»: dura un año. */
+export function fijarOlvidarTkcAlSalir(res, olvidar) {
+  anexarSetCookie(res, [
+    olvidar ? serializar(COOKIE_TKC_OLVIDAR, '1', 365 * 24 * 60 * 60) : serializar(COOKIE_TKC_OLVIDAR, '', 0),
+  ])
 }
 
 export function limpiarCookieTkc(res) {

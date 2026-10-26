@@ -221,7 +221,7 @@ export function createTransferenciasApiMiddleware() {
       }
 
       const escritura = operacion === 'crear' || operacion === 'confirmar'
-      const credenciales = leerCredenciales(req)
+      const credenciales = leerCredenciales(req, sesion.email)
       if (escritura && !credenciales) {
         return fallo(
           res, 403, 'no_tkc_credentials',

@@ -10,6 +10,7 @@ import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import AppLayout from '@/components/layout/AppLayout';
 import Login from '@/pages/Login';
 import { ROLES_AJUSTES } from '@/lib/ajustes';
+import TkcCredencialesDialog from '@/components/shared/TkcCredencialesDialog';
 
 // Páginas autenticadas cargadas bajo demanda — cada una queda en su propio
 // chunk, así el login inicial no descarga el código de Reportes, Productos,
@@ -72,6 +73,7 @@ const AuthenticatedApp = () => {
 
   return (
     <Suspense fallback={<RouteLoading />}>
+      <TkcCredencialesDialog />
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/"               element={<Dashboard />} />

@@ -4,7 +4,8 @@ import { base44 } from '@/api/base44Client'
 import { fetchAlmacenes, isExternaConfigured } from '@/services/syncService'
 import { useAuth } from '@/lib/AuthContext'
 import { useSyncManager } from '@/lib/SyncContext'
-import { Check, Warehouse, RefreshCw, Clock, Plus, Trash2, AlertTriangle, Zap } from 'lucide-react'
+import TkcCredencialesForm from '@/components/shared/TkcCredencialesForm'
+import { Check, KeyRound, Warehouse, RefreshCw, Clock, Plus, Trash2, AlertTriangle, Zap } from 'lucide-react'
 
 const SYNC_ROLES = ['administrador', 'inv', 'superadmin']
 
@@ -222,6 +223,15 @@ export default function Configuracion() {
 
         {/* ══ COLUMNA IZQUIERDA: configuración ══ */}
         <div className="space-y-5">
+
+          {/* Credenciales de TKC */}
+          <Section
+            icon={KeyRound}
+            title="Mi cuenta de TKC"
+            description="Las acciones que consultan TKC se hacen con tu usuario. Las pones una vez y duran 7 días."
+          >
+            <TkcCredencialesForm />
+          </Section>
 
           {/* Almacenes */}
           <Section

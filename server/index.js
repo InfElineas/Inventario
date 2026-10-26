@@ -59,7 +59,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 const tkcMiddleware = createTkcApiMiddleware({ tkc })
-const authMiddleware = createAuthApiMiddleware()
+const authMiddleware = createAuthApiMiddleware({ tkcBase: tkc.tkcBase })
 const datosMiddleware = createDatosApiMiddleware()
 const syncMiddleware = createSyncApiMiddleware()
 const transferenciasMiddleware = createTransferenciasApiMiddleware()

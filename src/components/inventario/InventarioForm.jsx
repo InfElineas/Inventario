@@ -14,6 +14,8 @@ import { buscarPorCodigo, avisoSinCoincidencia } from '@/lib/buscarPorCodigo';
 import { Plus, Trash2, Save, ScanLine } from 'lucide-react';
 import { format } from 'date-fns';
 import { fetchExistenciaTkc } from '@/services/tkcService';
+import { useAccesoTkc } from '@/lib/useAccesoTkc';
+import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 
 const CLASIF_AJUSTE = ['Faltante por deterioro', 'Faltante por robo', 'Faltante sin justificar', 'Sobrante por transferencia', 'Sobrante por devolución', 'Error de sistema', 'Ajuste administrativo'];
 
@@ -65,10 +67,11 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
   // en el momento. Nuestra `productos.exist_fisica` es una copia de invGlobal
   // que puede llevar días sin sincronizar, y contra ese número desfasado se
   // venía calculando la diferencia del inventario.
+  const { tiene: conTkc } = useAccesoTkc();
   const { data: submayor, isLoading: cargandoSubmayor, isError: errorSubmayor } = useQuery({
     queryKey: ['submayor-producto', almacen, producto?.id_tienda],
     queryFn: () => fetchExistenciaTkc({ almacen, idTienda: producto.id_tienda }),
-    enabled: Boolean(almacen && producto?.id_tienda),
+    enabled: conTkc && Boolean(almacen && producto?.id_tienda),
     staleTime: 60_000,
     retry: false,
   });
@@ -221,6 +224,10 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
 
       {avisoEscaneo && (
         <p className="text-xs text-[#BA7517] bg-[#BA7517]/10 px-3 py-2 rounded-md">{avisoEscaneo}</p>
+      )}
+
+      {producto && !conTkc && (
+        <TkcBloqueoAviso funcion="traer la existencia en vivo de TKC (mientras tanto se usa nuestra copia, que puede estar desfasada)" />
       )}
 
       {producto && (

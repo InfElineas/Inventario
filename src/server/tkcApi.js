@@ -15,6 +15,7 @@ import { fetchExistencia } from '../services/tkc/submayor.js'
 import { getExistencias } from '../services/tkc/existencias.js'
 import { keyToTkcValue } from '../services/tkc/warehouses.js'
 import { resolverSesion } from './session.js'
+import { leerCredenciales } from './credencialesTkc.js'
 
 const TKC_API_ENDPOINTS = {
   inventario: '/api/tkc/inventario',
@@ -76,8 +77,18 @@ export function createTkcApiMiddleware({ tkc }) {
     try {
       // La sesión llega en la cookie httpOnly que fija /api/auth/login, no en
       // una cabecera: el navegador no tiene acceso al token para ponerlo él.
-      if (!(await resolverSesion(req, res))) {
+      const sesion = await resolverSesion(req, res)
+      if (!sesion) {
         return json(res, 401, { error: 'Sesión no válida' })
+      }
+
+      // Nada va a TKC sin que la persona haya puesto su cuenta. El cliente
+      // reconoce `codigo` y le pide las credenciales antes de reintentar.
+      if (!leerCredenciales(req, sesion.email)) {
+        return json(res, 403, {
+          codigo: 'no_tkc_credentials',
+          error: 'Falta tu usuario de TKC. Ingrésalo para continuar.',
+        })
       }
 
       const body = await readBody(req)
