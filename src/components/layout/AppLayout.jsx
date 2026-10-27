@@ -10,6 +10,7 @@ import { ToastAction } from '@/components/ui/toast';
 import { useTheme } from '@/lib/useTheme';
 import ProfileModal from '@/components/shared/ProfileModal';
 import { useSyncManager } from '@/lib/SyncContext';
+import { useAlmacen } from '@/lib/useAlmacen';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import { ROLES } from '@/lib/constants';
 import Sidebar from './Sidebar';
@@ -94,6 +95,7 @@ const ROUTE_TITLES = {
 export default function AppLayout() {
   const navigate     = useNavigate();
   const location     = useLocation();
+  const { almacen }  = useAlmacen();
   const { logout, user: authUser } = useAuth();
   const queryClient  = useQueryClient();
 
@@ -207,7 +209,13 @@ export default function AppLayout() {
 
   const { data: mermasPending }   = useQuery(contador('mermas',      'Merma',         { estado_tarea: estadoPendiente.mermas }));
   const { data: invPending }      = useQuery(contador('inventarios', 'Inventario',    { estado_tarea: estadoPendiente.inventarios }));
-  const { data: anunciosPending } = useQuery(contador('anuncios',    'AnuncioDesact', { estado_tarea: estadoPendiente.anuncios }));
+  // Acotado al almacén activo, igual que la página de Anuncios. Antes el
+  // contador era global y la página no: el menú marcaba 1.185 y al entrar
+  // salían cuarenta, sin que nada explicara la diferencia.
+  const { data: anunciosPending } = useQuery(contador(
+    'anuncios', 'AnuncioDesact',
+    { estado_tarea: estadoPendiente.anuncios, ...(almacen ? { almacen_num: almacen } : {}) },
+  ));
   const { data: lotesCriticos }   = useQuery(contador('lotes',       'Lote',          { estado_fv: ['critico', 'vencido'] }));
 
   // Productos sólo para alertas de stock (no reemplaza el query de páginas)

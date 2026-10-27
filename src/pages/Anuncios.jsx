@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAlmacen } from '@/lib/useAlmacen';
+import Pagination from '@/components/shared/Pagination';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,9 @@ import { format } from 'date-fns';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 
+/** Casos por página. 1.185 no caben, y 50 es lo que usan las demás tablas. */
+const PAGE_SIZE = 50;
+
 export default function Anuncios() {
   const [filterTipo, setFilterTipo] = useState('all');
   const [filterEstado, setFilterEstado] = useState('all');
@@ -32,6 +36,7 @@ export default function Anuncios() {
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const role = user?.role || 'inv';
   const { almacen } = useAlmacen();
+  const [page, setPage] = useState(1);
 
   // Acotado al almacén activo, a diferencia de inventarios y mermas, que
   // cargan 200 sin filtrar. Esas tablas tienen unos cientos de filas; esta
@@ -68,6 +73,9 @@ export default function Anuncios() {
     activo_ef0: anuncios.filter(a => a.tipo_caso === 'activo_ef_cero' && a.estado_tarea !== 'completado').length,
   };
 
+  // Con 1.185 casos la tabla no cabe entera. Cualquier cambio de filtro vuelve
+  // a la primera página: quedarse en la 14 de una selección que ahora tiene 3
+  // páginas deja la tabla en blanco sin explicar por qué.
   const filtered = anuncios.filter(a => {
     if (filterTipo !== 'all' && a.tipo_caso !== filterTipo) return false;
     if (filterEstado !== 'all' && a.estado_tarea !== filterEstado) return false;
@@ -88,6 +96,8 @@ export default function Anuncios() {
     }
   })()
 
+  const pagina = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   const selected = anuncios.find(a => a.id === selectedId);
 
   return (
@@ -107,9 +117,9 @@ export default function Anuncios() {
       <div className="flex gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar producto..." className="pl-10" style={{ borderRadius: '8px' }} />
+          <Input value={searchQ} onChange={(e) => { setSearchQ(e.target.value); setPage(1); }} placeholder="Buscar producto..." className="pl-10" style={{ borderRadius: '8px' }} />
         </div>
-        <Select value={filterTipo} onValueChange={setFilterTipo}>
+        <Select value={filterTipo} onValueChange={(v) => { setFilterTipo(v); setPage(1); }}>
           <SelectTrigger className="w-40" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos tipos</SelectItem>
@@ -119,7 +129,7 @@ export default function Anuncios() {
             <SelectItem value="activo_ef_cero">{"Activo EF=0"}</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={filterEstado} onValueChange={setFilterEstado}>
+        <Select value={filterEstado} onValueChange={(v) => { setFilterEstado(v); setPage(1); }}>
           <SelectTrigger className="w-40" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos estados</SelectItem>
@@ -149,7 +159,7 @@ export default function Anuncios() {
                   <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
-                ) : sorted.map(a => {
+                ) : pagina.map(a => {
                   const tc = TIPO_CASO_LABELS[a.tipo_caso] || {};
                   return (
                     <tr key={a.id}
@@ -174,6 +184,8 @@ export default function Anuncios() {
             </table>
           </div>
         </Card>
+
+        <Pagination page={page} total={sorted.length} pageSize={PAGE_SIZE} onPage={setPage} />
       </div>
 
       <Dialog open={!!selectedId} onOpenChange={(o) => { if (!o) setSelectedId(null); }}>
