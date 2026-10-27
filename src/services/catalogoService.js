@@ -27,7 +27,7 @@ const CAMPOS = [
   'peso', 'volumen', 'cantidad_um', 'tasa', 'precio_costo',
   'fecha_vencimiento_tkc', 'catalogo_nombre', 'fotos',
   'exist_fisica', 'almacen', 'tienda',
-  'estado_tienda', 'estado_anuncio_tkc',
+  'estado_tienda', 'estado_anuncio_tkc', 'prioridad_tienda',
 ]
 
 /** Columnas en las que busca la caja de búsqueda. */
@@ -61,6 +61,10 @@ const ORDEN = {
   ef: 'exist_fisica',
   enAlmacen: 'almacen',
   enTienda: 'tienda',
+  estadoTienda: 'estado_tienda',
+  estadoAnuncio: 'estado_anuncio_tkc',
+  // 1 es lo más urgente, así que el orden natural es ascendente.
+  prioridad: 'prioridad_tienda',
 }
 
 /** Fila de `productos` → la forma que espera la tabla. */
@@ -97,7 +101,9 @@ function aFila(p) {
     enAlmacen: Number(p.almacen ?? 0),
     enTienda: Number(p.tienda ?? 0),
     estadoTienda: p.estado_tienda ?? '',
+    estadoAnuncio: p.estado_anuncio_tkc ?? '',
     estadoAnuncioTkc: p.estado_anuncio_tkc ?? '',
+    prioridad: p.prioridad_tienda ?? null,
   }
 }
 

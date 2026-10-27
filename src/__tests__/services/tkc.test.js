@@ -11,6 +11,7 @@ import { buildBody, COLS } from '@/services/tkc/body'
 import { normalizeRow } from '@/services/tkc/normalize'
 import {
   sortColumnIndex, TKC_COLUMN_DEFS, TKC_SORT_COLUMNS, IMAGE_COL, STOCK_COLS, isStockCol,
+  esOrdenablePropia,
 } from '@/services/tkc/columns'
 import { keyToTkcValue, warehouseName } from '@/services/tkc/warehouses'
 import { buildSubmayorBody, pickRow, SUBMAYOR_COLS } from '@/services/tkc/submayor'
@@ -223,10 +224,17 @@ describe('columns', () => {
     expect(sortColumnIndex(undefined)).toBe(TKC_SORT_COLUMNS.nombre)
   })
 
-  it('las columnas del listado son ordenables; imagen y EF/A/T no', () => {
-    // EF/A/T salen del submayor, no del DataTables del listado.
+  it('cada columna ordena por su lado, y solo la imagen no ordena', () => {
+    // Hay dos clases de columna en la misma tabla: las del listado de TKC, que
+    // ordena TKC por su índice de DataTables, y las nuestras —EF/A/T, los dos
+    // estados y la prioridad—, que salen de `productos` y ordena Postgres
+    // sobre el conjunto filtrado entero.
     for (const def of TKC_COLUMN_DEFS) {
-      if (def.key === IMAGE_COL || isStockCol(def.key)) {
+      if (def.key === IMAGE_COL) {
+        expect(TKC_SORT_COLUMNS[def.key]).toBeUndefined()
+        expect(esOrdenablePropia(def.key)).toBe(false)
+      } else if (esOrdenablePropia(def.key)) {
+        // Las nuestras no tienen índice en el DataTables de TKC, y es correcto.
         expect(TKC_SORT_COLUMNS[def.key]).toBeUndefined()
       } else {
         expect(TKC_SORT_COLUMNS[def.key]).toBeTypeOf('number')

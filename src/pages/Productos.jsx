@@ -7,7 +7,7 @@ import { fetchExistenciaTkc, TKC_ALMACENES } from '@/services/tkcService';
 import { useAccesoTkc } from '@/lib/useAccesoTkc';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import { fetchCatalogo } from '@/services/catalogoService';
-import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL, isStockCol } from '@/services/tkc/columns';
+import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL, isStockCol, esOrdenablePropia } from '@/services/tkc/columns';
 import { EXISTENCIA_FILTERS } from '@/services/tkc/body';
 import { warehouseName } from '@/services/tkc/warehouses';
 import { getLastSync } from '@/lib/useAutoSync';
@@ -1131,7 +1131,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                             // EF/A/T pasan a ser ordenables: ya no salen del
                             // submayor sino de columnas nuestras, y Postgres
                             // ordena sobre el conjunto filtrado entero.
-                            if (TKC_SORT_COLUMNS[key] === undefined && !isStockCol(key)) {
+                            if (TKC_SORT_COLUMNS[key] === undefined && !esOrdenablePropia(key)) {
                               return (
                                 <th key={key}
                                   className={`px-3 py-2.5 text-xs font-medium text-muted-foreground whitespace-nowrap ${

@@ -64,6 +64,14 @@ const STOCK_COL_SET = new Set(STOCK_COLS)
 export const isStockCol = (key) => STOCK_COL_SET.has(key)
 
 /**
+ * Columnas que no vienen del listado de TKC sino de `productos`, y que por
+ * eso SÍ se pueden ordenar: Postgres ordena sobre el conjunto filtrado
+ * entero, no sobre la página visible.
+ */
+const PROPIAS_ORDENABLES = new Set([...STOCK_COLS, 'prioridad', 'estadoTienda', 'estadoAnuncio'])
+export const esOrdenablePropia = (key) => PROPIAS_ORDENABLES.has(key)
+
+/**
  * Columnas mostrables, en el orden por defecto de elineas-vd.
  *
  * - `defaultOn` / `required`: los consume `ColPicker`.
@@ -91,6 +99,11 @@ export const TKC_COLUMN_DEFS = [
   { key: 'peso',            label: 'Peso',          defaultOn: false, required: false, numeric: true },
   { key: 'volumen',         label: 'Volumen',       defaultOn: false, required: false, numeric: true },
   { key: 'idOnline',        label: 'ID online',     defaultOn: false, required: false },
+  // Nuestras, no de TKC: salen de `productos`. La prioridad es el orden de
+  // trabajo de las hojas de inventario (1 urgente, 11 lo que puede esperar).
+  { key: 'estadoTienda',    label: 'Estado tienda', defaultOn: false, required: false },
+  { key: 'estadoAnuncio',   label: 'Estado anuncio',defaultOn: false, required: false },
+  { key: 'prioridad',       label: 'Prioridad',     defaultOn: false, required: false, numeric: true },
   { key: 'codigoPyme',      label: 'Código PYME',   defaultOn: false, required: false },
   { key: 'clasificacion',   label: 'Clasificación', defaultOn: false, required: false },
   { key: 'canal',           label: 'Canal',         defaultOn: false, required: false },

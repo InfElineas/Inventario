@@ -21,7 +21,7 @@ const fila = (extra = {}) => ({
   id: 'u1', id_tienda: 'T9', codigo_producto: '7501', nombre: 'Aceite',
   suministrador: 'SEL ITH', proveedor: 'ELíneas', marca: 'Bergen',
   precio_costo: '12.50', exist_fisica: '7', almacen: '2', tienda: '5',
-  estado_tienda: 'DISPONIBLE', estado_anuncio_tkc: 'ACTIVADO',
+  estado_tienda: 'DISPONIBLE', estado_anuncio_tkc: 'ACTIVADO', prioridad_tienda: 7,
   fotos: ['http://x/1.jpg'], ...extra,
 });
 
@@ -93,6 +93,19 @@ describe('fetchCatalogo', () => {
     expect(filter.mock.calls.at(-1)[1]).toBe('-exist_fisica');
   });
 
+  it('se puede ordenar por prioridad y por los dos estados', async () => {
+    // La prioridad es el orden de trabajo de las hojas de inventario, así que
+    // ordenar por ella es el caso de uso, no un extra.
+    await fetchCatalogo({ almacen: '789', sortBy: 'prioridad' });
+    expect(filter.mock.calls.at(-1)[1]).toBe('prioridad_tienda');
+
+    await fetchCatalogo({ almacen: '789', sortBy: 'estadoTienda' });
+    expect(filter.mock.calls.at(-1)[1]).toBe('estado_tienda');
+
+    await fetchCatalogo({ almacen: '789', sortBy: 'estadoAnuncio', sortDir: 'desc' });
+    expect(filter.mock.calls.at(-1)[1]).toBe('-estado_anuncio_tkc');
+  });
+
   it('calcula el desplazamiento a partir de la página', async () => {
     await fetchCatalogo({ almacen: '789', page: 3, limit: 50 });
     expect(filter.mock.calls.at(-1)[3]).toBe(100);
@@ -118,6 +131,7 @@ describe('fetchCatalogo', () => {
       proveedor: 'ELíneas', marca: 'Bergen',
       precio: 12.5, ef: 7, enAlmacen: 2, enTienda: 5,
       imagen: 'http://x/1.jpg',
+      estadoTienda: 'DISPONIBLE', estadoAnuncio: 'ACTIVADO', prioridad: 7,
     });
   });
 

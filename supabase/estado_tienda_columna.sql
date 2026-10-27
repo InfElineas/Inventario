@@ -53,3 +53,48 @@ COMMENT ON COLUMN inventario.productos.estado_tienda IS
 CREATE INDEX IF NOT EXISTS idx_productos_estado_tienda
     ON inventario.productos (almacen_num, estado_tienda)
  WHERE activo;
+
+
+-- ── La prioridad ────────────────────────────────────────────────────────
+--
+-- Las hojas de inventario ordenan el trabajo por este número, y el mismo
+-- estado puede tener dos: NO TIENDA es 2 si la existencia pasa de 10 y 3 si
+-- no; ULTIMAS PIEZAS es 4 o 6 según qué lado del almacén esté corto. La
+-- etiqueta sola pierde esa distinción, que es justo la que dice por dónde
+-- empezar.
+--
+-- Réplica exacta de `calcEstadoTienda` (src/pages/Productos.jsx), rama por
+-- rama y en el mismo orden: las ramas no son excluyentes entre sí y cambiar el
+-- orden cambia el resultado.
+
+ALTER TABLE inventario.productos
+  DROP COLUMN IF EXISTS prioridad_tienda;
+
+ALTER TABLE inventario.productos
+  ADD COLUMN prioridad_tienda smallint GENERATED ALWAYS AS (
+    CASE
+      WHEN id_tienda IS NULL OR btrim(id_tienda) = ''
+        THEN CASE WHEN COALESCE(exist_fisica, 0) = 0 THEN 10 ELSE 9 END
+      WHEN COALESCE(exist_fisica, 0) = 0                              THEN 11
+      WHEN COALESCE(almacen, 0) = 0 AND COALESCE(tienda, 0) > 6       THEN 1
+      WHEN COALESCE(tienda, 0) = 0 AND COALESCE(exist_fisica, 0) > 10 THEN 2
+      WHEN COALESCE(tienda, 0) = 0                                    THEN 3
+      WHEN COALESCE(tienda, 0) > 1
+       AND COALESCE(tienda, 0) < COALESCE(almacen, 0)
+       AND COALESCE(almacen, 0) <= 10                                 THEN 4
+      WHEN COALESCE(almacen, 0) >= 0
+       AND COALESCE(almacen, 0) < COALESCE(tienda, 0)
+       AND COALESCE(tienda, 0) <= 10                                  THEN 6
+      WHEN COALESCE(tienda, 0) <= 10                                  THEN 5
+      WHEN COALESCE(tienda, 0) <= COALESCE(almacen, 0)                THEN 7
+      ELSE 8
+    END
+  ) STORED;
+
+COMMENT ON COLUMN inventario.productos.prioridad_tienda IS
+  'Orden de trabajo de las hojas de inventario: 1 es lo más urgente, 11 lo '
+  'menos. Un mismo estado_tienda puede tener dos prioridades distintas.';
+
+CREATE INDEX IF NOT EXISTS idx_productos_prioridad
+    ON inventario.productos (almacen_num, prioridad_tienda)
+ WHERE activo;

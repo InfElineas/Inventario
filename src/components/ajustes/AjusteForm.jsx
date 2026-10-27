@@ -12,6 +12,7 @@ import AlertBanner from '@/components/shared/AlertBanner';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { useConfirm } from '@/lib/useConfirm';
 import { useAccesoTkc } from '@/lib/useAccesoTkc';
+import PendientesInventario from '@/components/ajustes/PendientesInventario';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import { WAREHOUSES } from '@/services/tkc/warehouses';
 import {
@@ -188,6 +189,15 @@ export default function AjusteForm({ tipo }) {
             <Input value={notas} maxLength={500} onChange={(e) => setNotas(e.target.value)} style={{ borderRadius: '8px' }} />
           </label>
         </div>
+
+        {/* Lo que inventario ya midió y dejó esperando. Sin esto, facturación
+            tenía que sacar los códigos de otro sitio y teclearlos aquí. */}
+        <PendientesInventario
+          tipo={tipo}
+          almacen={almacen}
+          onUsar={(lineas) => setTexto((t) => (t.trim() ? `${t.trimEnd()}
+${lineas}` : lineas))}
+        />
 
         <label className="block space-y-1.5 text-xs text-muted-foreground">
           Productos — una línea por producto: <code className="font-mono">CODIGO*CANTIDAD</code> (sin cantidad vale 1)
