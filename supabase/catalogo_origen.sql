@@ -1,19 +1,37 @@
 --
--- Origen del catálogo: todo lo que el listado de TKC muestra
+-- Origen del catálogo: las vistas del monorepo, no las nuestras
 --
--- Hasta ahora el sync leía `public."invGlobal"`, que expone trece columnas de
--- las treinta y siete que tiene `ap_rows`. Con esas trece no se puede servir el
--- catálogo desde nuestra base sin perder columnas que hoy se ven: Proveedor,
--- Marca y Vence salen por defecto, y ninguna está en la vista.
+-- Esta vista nació duplicando `public."invGlobal"` para exponer las columnas
+-- que esa dejaba fuera (proveedor, marca, vencimiento…). Era innecesario: el
+-- monorepo publica `ap_rows_latest` y `sub_rows_latest` EN ESTA MISMA BASE, con
+-- todas las columnas y con su propia lógica de «última corrida».
 --
--- `invGlobal` la comparten otros sistemas, así que no se toca. Esta es
--- equivalente —misma selección de la última ejecución de `ap_runs` y
--- `sub_runs`— pero expone el resto de campos y usa nombres en snake_case en
--- lugar de las cabeceras entrecomilladas del Excel.
+-- Lo que se gana al leer las suyas no es brevedad, es dejar de tener dos
+-- definiciones de «la última corrida». La nuestra era una copia, y el día que
+-- ellos cambiaran la suya la nuestra se habría quedado atrás sin que nada
+-- avisara: el catálogo mostrando una foto vieja y nadie mirando.
 --
--- Consecuencia a tener presente: la lógica de «última ejecución» queda
--- duplicada entre las dos vistas. Si quien mantiene `invGlobal` la cambia,
--- esta hay que cambiarla igual.
+-- No se consulta su API por HTTP para esto. Sus vistas están aquí al lado, así
+-- que es un SELECT local: sin red, sin cuenta de servicio y sin 115 peticiones
+-- por sincronización. La API queda para lo que de verdad no está en esta base.
+--
+-- QUÉ SE SIGUE DUPLICANDO, Y POR QUÉ
+--
+-- El CASE del estado de anuncio es copia literal de `public."apGlobalV2"`. No
+-- se puede unir a esa vista: solo expone cabeceras de hoja de cálculo («Cód.
+-- Prod.», «Almacén» con el nombre largo) y ninguna clave limpia con la que
+-- cruzarla. Unir por nombre de almacén sería más frágil que copiar siete
+-- ramas. Si cambian ese CASE, hay que cambiar este.
+--
+-- Para comprobar que no han divergido:
+--   SELECT estado_anuncio_tkc, count(*) FROM inventario.catalogo_origen GROUP BY 1;
+--   SELECT "Estado Anuncio", count(*) FROM public."apGlobalV2" GROUP BY 1;
+-- Las dos listas deben coincidir fila por fila.
+--
+-- OJO CON LA CANTIDAD: el estado se calcula con `ap_rows.cantidad` —la del
+-- listado— y NO con la existencia del submayor, que es lo que guardamos en
+-- `exist_fisica`. Son dos fuentes distintas y pueden discrepar. Se respeta el
+-- criterio de ellos para que los estados cuadren con sus reportes.
 --
 -- EJECUTAR como elineasadmin.
 --
@@ -45,36 +63,42 @@ SELECT
     a.fecha_vencimiento,
     a.precio                               AS precio_costo,
     a.imagenes                             AS fotos,
-    -- Mismo criterio que invGlobal."Estado Anuncio".
+
+    -- Copia literal de public."apGlobalV2". Ver la nota de arriba.
     CASE
-        WHEN a.id_online IS NULL   THEN 'Sin Id'
-        WHEN a.is_dead = 1         THEN 'Muerto'
-        WHEN a.status_provider = 1 THEN 'Activado'
-        ELSE 'Desactivado'
+        WHEN a.id_online IS NULL AND a.cantidad = 0::numeric THEN 'SIN ID EF=0'
+        WHEN a.id_online IS NULL AND a.cantidad > 0::numeric THEN 'SIN ID EF>0'
+        WHEN a.is_dead = 1 AND a.cantidad = 0::numeric       THEN 'DESACTIVADO MUERTO EF=0'
+        WHEN a.is_dead = 1 AND a.cantidad > 0::numeric       THEN 'DESACTIVADO MUERTO EF>0'
+        WHEN a.status_provider = 1                           THEN 'ACTIVADO'
+        WHEN a.cantidad = 0::numeric                         THEN 'DESACTIVADO EF=0'
+        WHEN a.cantidad > 0::numeric                         THEN 'DESACTIVADO EF>0'
+        ELSE NULL
     END                                    AS estado_anuncio_tkc,
+
+    -- Existencias del submayor. Unidas por almacén Y por id_tkc: `invGlobal`
+    -- une solo por id_tkc con un DISTINCT ON, lo que cruzaría almacenes si ese
+    -- id se repitiera entre ellos. Añadir el almacén no puede dar un resultado
+    -- peor y sí evita esa posibilidad.
     COALESCE(s.existencia_fisica, 0)       AS exist_fisica,
     COALESCE(s.almacen, 0)                 AS almacen,
     COALESCE(s.tienda, 0)                  AS tienda
-  FROM ap_rows a
-  LEFT JOIN (
-    SELECT DISTINCT ON (sr.id_tkc)
-           sr.id_tkc, sr.existencia_fisica, sr.almacen, sr.tienda
-      FROM sub_rows sr
-     WHERE sr.run_id = (SELECT id FROM sub_runs ORDER BY seq DESC LIMIT 1)
-     ORDER BY sr.id_tkc, sr.id
-  ) s ON s.id_tkc = a.id_tkc
- WHERE a.run_id = (SELECT id FROM ap_runs ORDER BY seq DESC LIMIT 1);
+  FROM ap_rows_latest a
+  LEFT JOIN sub_rows_latest s
+         ON s.id_tkc = a.id_tkc
+        AND s.warehouse_key = a.warehouse_key;
 
 COMMENT ON VIEW inventario.catalogo_origen IS
-  'Origen del sync de productos. Equivale a public."invGlobal" pero expone '
-  'todas las columnas del listado de TKC. La lógica de última ejecución está '
-  'duplicada entre ambas: si cambia una, cambiar la otra.';
+  'Origen del sync de productos. Lee ap_rows_latest y sub_rows_latest, las '
+  'vistas del monorepo, para no duplicar su lógica de última corrida. El CASE '
+  'del estado es copia de apGlobalV2 porque esa vista no expone clave con la '
+  'que unirla.';
 
 
 -- ── Columnas nuevas en productos ────────────────────────────────────────
 --
--- Son las que el catálogo muestra y hasta ahora no se guardaban, porque la
--- pantalla las leía de TKC en vivo.
+-- Son las que el catálogo muestra y antes no se guardaban, porque la pantalla
+-- las leía de TKC en vivo. Idempotente: ya están aplicadas en producción.
 
 ALTER TABLE inventario.productos
   ADD COLUMN IF NOT EXISTS proveedor         text,
@@ -97,7 +121,7 @@ COMMENT ON COLUMN inventario.productos.fecha_vencimiento_tkc IS
   'Vencimiento que publica TKC para el producto en este almacén. No confundir '
   'con lotes.fecha_vencimiento, que es por lote y la registra inventario.';
 
-COMMENT ON COLUMN inventario.productos.unidad_compra IS
-  'Unidad de compra ("Unid/Alt." en invGlobal). Hasta ahora este valor se '
-  'guardaba en unidad_medida por un arrastre de la vista; desde el sync nuevo, '
-  'unidad_medida guarda la unidad de medida real y esta la de compra.';
+COMMENT ON COLUMN inventario.productos.estado_anuncio_tkc IS
+  'Estado del anuncio con el vocabulario de public."apGlobalV2": ACTIVADO, '
+  'DESACTIVADO EF=0/EF>0, DESACTIVADO MUERTO EF=0/EF>0, SIN ID EF=0/EF>0. '
+  'Lo calcula con ap_rows.cantidad, no con la existencia del submayor.';

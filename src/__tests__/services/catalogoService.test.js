@@ -21,7 +21,7 @@ const fila = (extra = {}) => ({
   id: 'u1', id_tienda: 'T9', codigo_producto: '7501', nombre: 'Aceite',
   suministrador: 'SEL ITH', proveedor: 'ELíneas', marca: 'Bergen',
   precio_costo: '12.50', exist_fisica: '7', almacen: '2', tienda: '5',
-  estado_tienda: 'DISPONIBLE', estado_anuncio_tkc: 'Activado',
+  estado_tienda: 'DISPONIBLE', estado_anuncio_tkc: 'ACTIVADO',
   fotos: ['http://x/1.jpg'], ...extra,
 });
 
@@ -61,11 +61,11 @@ describe('fetchCatalogo', () => {
   it('filtra por estado de tienda y por el anuncio de TKC', async () => {
     await fetchCatalogo({
       almacen: '789',
-      filtros: { estadoTienda: 'SIN RESERVA', estadoAnuncio: 'Muerto', suministrador: 'SEL ITH' },
+      filtros: { estadoTienda: 'SIN RESERVA', estadoAnuncio: 'DESACTIVADO MUERTO EF>0', suministrador: 'SEL ITH' },
     });
     expect(cond()).toMatchObject({
       estado_tienda: 'SIN RESERVA',
-      estado_anuncio_tkc: 'Muerto',
+      estado_anuncio_tkc: 'DESACTIVADO MUERTO EF>0',
       suministrador: 'SEL ITH',
     });
   });

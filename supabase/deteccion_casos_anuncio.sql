@@ -19,9 +19,12 @@
 --
 -- Dos cosas que esos números zanjan:
 --
---  · «Desactivado sin estar muerto» NO EXISTE en los datos de TKC: `is_dead` y
---    `status_provider` son complementarios y no hay nada en medio. La regla está
---    en el CASE del monorepo, pero ninguna fila cae en ella.
+--  · «Desactivado sin estar muerto» da 0 HOY, pero EXISTE: las hojas de
+--    inventario lo ven (184 con existencia solo en el 480). `ap_rows` no está
+--    capturando el campo que lo distingue —guarda `is_dead` y
+--    `status_provider`, que son complementarios—, así que no llega ni a la API
+--    del monorepo ni aquí. El fallo está en `update-ap`; cuando se arregle,
+--    esta detección empieza a abrir esos casos sin tocar nada.
 --  · Lo que cuesta dinero es la EXISTENCIA, no el estado. Un anuncio muerto sin
 --    stock no le hace daño a nadie; uno muerto con mercancía encima es dinero
 --    parado que no se puede vender. Por eso solo se abre caso con EF > 0: de
@@ -81,13 +84,17 @@ BEGIN
            p.estado_anuncio_tkc,
            COALESCE(p.exist_fisica, 0) AS exist_fisica,
            CASE p.estado_anuncio_tkc
-             WHEN 'Muerto' THEN 'desact_ef_positivo'
-             WHEN 'Sin Id' THEN 'sin_id'
+             WHEN 'DESACTIVADO MUERTO EF>0' THEN 'desact_ef_positivo'
+             WHEN 'DESACTIVADO EF>0'        THEN 'desact_ef_positivo'
+             WHEN 'SIN ID EF>0'             THEN 'sin_id'
            END AS tipo_caso
       FROM inventario.productos p
      WHERE p.activo
-       AND COALESCE(p.exist_fisica, 0) > 0
-       AND p.estado_anuncio_tkc IN ('Muerto', 'Sin Id')
+       -- La existencia ya va dentro del estado (vocabulario de apGlobalV2),
+       -- así que no hace falta filtrar por `exist_fisica` aparte. Y es más
+       -- correcto: el estado se calcula con la cantidad del listado AP, no
+       -- con la del submayor, que es otra fuente.
+       AND p.estado_anuncio_tkc IN ('DESACTIVADO MUERTO EF>0', 'DESACTIVADO EF>0', 'SIN ID EF>0')
        AND (p_almacen IS NULL OR p.almacen_num = p_almacen)
   ),
   nuevos AS (

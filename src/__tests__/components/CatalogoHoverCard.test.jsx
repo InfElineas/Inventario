@@ -23,7 +23,7 @@ const producto = (extra = {}) => ({
   unidadMedida: 'u',
   fechaVencimiento: '',
   estadoTienda: 'NO TIENDA',
-  estadoAnuncioTkc: 'Activado',
+  estadoAnuncioTkc: 'ACTIVADO',
   imagenes: [],
   ef: 7, enAlmacen: 7, enTienda: 0, precio: 35.19,
   ...extra,
@@ -48,7 +48,7 @@ describe('CatalogoHoverCard', () => {
     expect(screen.getByText('Tous')).toBeInTheDocument();
     // El prefijo "SEL " del suministrador estorba y se recorta.
     expect(screen.getByText('TOUS COLGANTES')).toBeInTheDocument();
-    expect(screen.getByText('Activado')).toBeInTheDocument();
+    expect(screen.getByText('ACTIVADO')).toBeInTheDocument();
   });
 
   it('sin ID de tienda explica por qué no hay existencia en vivo', () => {

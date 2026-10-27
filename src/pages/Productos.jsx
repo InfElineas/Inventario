@@ -50,7 +50,7 @@ const PROD_COL_DEFS = [
 ];
 
 /**
- * Los cuatro estados que TKC define, siempre ofrecidos.
+ * Los siete estados de public."apGlobalV2", siempre ofrecidos.
  *
  * «Desactivado» hoy no devuelve nada, y no porque no existan: las hojas de
  * inventario sí los ven (en el almacén 480, 184 con existencia). Lo que pasa es
@@ -62,7 +62,15 @@ const PROD_COL_DEFS = [
  * la opción y, con ella, el problema. El día que se arregle aguas arriba, el
  * filtro empieza a devolver sin tocar nada aquí.
  */
-const ESTADOS_ANUNCIO_TKC = ['Activado', 'Desactivado', 'Muerto', 'Sin Id'];
+const ESTADOS_ANUNCIO_TKC = [
+  'ACTIVADO',
+  'DESACTIVADO EF>0',
+  'DESACTIVADO EF=0',
+  'DESACTIVADO MUERTO EF>0',
+  'DESACTIVADO MUERTO EF=0',
+  'SIN ID EF>0',
+  'SIN ID EF=0',
+];
 
 const DEFAULT_FILTERS = {
   existencia: 'all', suministrador: '', categoria: '',

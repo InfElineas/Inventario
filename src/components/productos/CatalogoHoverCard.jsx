@@ -121,11 +121,15 @@ function Dato({ label, children }) {
   )
 }
 
+/** Vocabulario de public."apGlobalV2". Con existencia pesa más que sin ella. */
 const COLOR_ANUNCIO = {
-  Activado: 'text-[#4ade80] bg-[#4ade80]/10',
-  Desactivado: 'text-[#facc15] bg-[#facc15]/10',
-  Muerto: 'text-[#e24b4a] bg-[#e24b4a]/10',
-  'Sin Id': 'text-[#888780] bg-[#88878014]',
+  'ACTIVADO':                'text-[#4ade80] bg-[#4ade80]/10',
+  'DESACTIVADO EF>0':        'text-[#fb923c] bg-[#fb923c]/10',
+  'DESACTIVADO EF=0':        'text-[#facc15] bg-[#facc15]/10',
+  'DESACTIVADO MUERTO EF>0': 'text-[#e24b4a] bg-[#e24b4a]/10',
+  'DESACTIVADO MUERTO EF=0': 'text-[#888780] bg-[#88878014]',
+  'SIN ID EF>0':             'text-[#BA7517] bg-[#BA751714]',
+  'SIN ID EF=0':             'text-[#888780] bg-[#88878014]',
 }
 
 /**
