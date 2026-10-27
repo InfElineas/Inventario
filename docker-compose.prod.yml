@@ -54,7 +54,14 @@ services:
     # DATABASE_URL, AUTH_API_URL y SYSTEM_SLUG llegan por el env_file de arriba.
     networks:
       - elineas_default
+      # Los ajustes y procesamientos hablan con elineas-transferencia, que no
+      # está en elineas_default sino en la red de su propio compose. Sin esto
+      # el contenedor ni siquiera resuelve su nombre («bad address») y la
+      # pantalla de ajustes responde «respuesta inesperada de la API».
+      - elineas-transferencia_default
 
 networks:
   elineas_default:
+    external: true
+  elineas-transferencia_default:
     external: true

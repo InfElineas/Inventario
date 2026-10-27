@@ -16,6 +16,25 @@ import { Button } from '@/components/ui/button';
  *
  * Tiene que ser una clase: los hooks no capturan errores de render.
  */
+const CLAVE_RECARGA = 'eb:recarga-por-modulo'
+
+/** ¿El fallo es un trozo de JavaScript que ya no existe en el servidor? */
+function esModuloCaducado(error) {
+  const m = String(error?.message ?? '')
+  return /dynamically imported module|Importing a module script failed|Failed to fetch dynamically/i.test(m)
+}
+
+// sessionStorage puede no estar (modo privado, cookies bloqueadas). Si no se
+// puede recordar que ya se recargó, es mejor no recargar: un bucle de recargas
+// es peor que una pantalla de error.
+function yaSeRecargo() {
+  try { return sessionStorage.getItem(CLAVE_RECARGA) === '1' } catch { return true }
+}
+
+function marcarRecarga() {
+  try { sessionStorage.setItem(CLAVE_RECARGA, '1') } catch { /* no se puede: no se recarga */ }
+}
+
 export default class ErrorBoundary extends Component {
   state = { error: null };
 
@@ -24,6 +43,17 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
+    // Tras un despliegue, el navegador conserva el índice viejo y pide trozos
+    // de JavaScript cuyo nombre ya cambió: el import falla y la pantalla no
+    // carga. No es un fallo del código, es una versión a medias, y se arregla
+    // recargando. Una sola vez por sesión: si tras recargar vuelve a fallar,
+    // es otra cosa y hay que enseñarla en vez de girar en bucle.
+    if (esModuloCaducado(error) && !yaSeRecargo()) {
+      marcarRecarga()
+      window.location.reload()
+      return
+    }
+
     // Con el mensaje a secas no se puede diagnosticar nada: hace falta saber
     // qué componente lo lanzó.
     console.error('[error-boundary]', error, info?.componentStack);
