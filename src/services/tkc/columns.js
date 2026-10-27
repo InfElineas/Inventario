@@ -50,6 +50,9 @@ export const TKC_SORT_COLUMNS = {
 /** Clave de la columna de imagen: no ordenable, no forma parte de TKC_SORT_COLUMNS. */
 export const IMAGE_COL = 'imagen'
 
+/** Columna de acciones: tampoco es un dato, así que tampoco ordena. */
+export const ACCIONES_COL = 'acciones'
+
 /**
  * Columnas del desglose de existencia (submayor), en el orden EF / A / T.
  *
@@ -104,6 +107,8 @@ export const TKC_COLUMN_DEFS = [
   { key: 'estadoTienda',    label: 'Estado tienda', defaultOn: false, required: false },
   { key: 'estadoAnuncio',   label: 'Estado anuncio',defaultOn: false, required: false },
   { key: 'prioridad',       label: 'Prioridad',     defaultOn: false, required: false, numeric: true },
+  // Subir y bajar de tienda, fila a fila. No es un dato, es una acción.
+  { key: ACCIONES_COL,      label: 'Acciones',      defaultOn: true,  required: false },
   { key: 'codigoPyme',      label: 'Código PYME',   defaultOn: false, required: false },
   { key: 'clasificacion',   label: 'Clasificación', defaultOn: false, required: false },
   { key: 'canal',           label: 'Canal',         defaultOn: false, required: false },

@@ -38,13 +38,23 @@ import { resolverSesion } from './session.js'
 import { leerCredenciales } from './credencialesTkc.js'
 import { sellar } from './secretBox.js'
 import { keyToTkcValue } from '../services/tkc/warehouses.js'
-import { ROLES_AJUSTES } from '../lib/ajustes.js'
+import { ROLES_AJUSTES, ROLES_TIENDA } from '../lib/ajustes.js'
 
-export { ROLES_AJUSTES }
+export { ROLES_AJUSTES, ROLES_TIENDA }
 
 const TIPOS = {
   aumentos: { ruta: 'adjustments', etiqueta: 'aumento', clasificacionObligatoria: false },
   disminuciones: { ruta: 'decreases', etiqueta: 'disminución', clasificacionObligatoria: true },
+}
+
+/**
+ * Subir y bajar de tienda. Dos pasos a propósito, como en su herramienta:
+ * `plan` analiza y NO escribe, `ejecutar` mueve la existencia. Los dos son
+ * trabajos asíncronos: devuelven 202 con un id y se consulta aparte.
+ */
+const TIENDA = {
+  subir: { ruta: 'up-shop', etiqueta: 'subir a tienda' },
+  bajar: { ruta: 'down-shop', etiqueta: 'bajar de tienda' },
 }
 
 const PROCESOS = {
@@ -207,6 +217,48 @@ function reenviar(res, { status, datos, extra }) {
   return json(res, estadoPublico(status), datos, extra)
 }
 
+/**
+ * Subir/bajar de tienda. El cuerpo se reconstruye campo a campo, igual que en
+ * los ajustes: nada de reenviar lo que mande el navegador.
+ *
+ * `mode` es suyo —«íntegro» o un porcentaje— y decide cuánto se mueve cuando
+ * no cabe todo lo pedido. Se pasa tal cual porque es su vocabulario.
+ */
+async function atenderTienda(res, req, ctx, modulo, paso, consulta) {
+  const cfg = TIENDA[modulo]
+
+  if (paso === 'trabajo') {
+    const id = consulta.get('id')
+    if (!id) return fallo(res, 400, 'bad_request', 'Falta el id del trabajo.')
+    // `wait` deja la petición colgando hasta que el trabajo avanza, que es
+    // mucho más barato que sondear cada segundo.
+    const espera = Math.min(30, Math.max(0, Number(consulta.get('wait')) || 0))
+    return reenviar(res, await llamarApi(ctx, {
+      metodo: 'GET',
+      ruta: `jobs/${encodeURIComponent(id)}`,
+      consulta: espera ? { wait: String(espera) } : undefined,
+      timeoutMs: (espera + 10) * 1000,
+    }))
+  }
+
+  const cuerpo = await leerCuerpo(req)
+  const peticion = {
+    warehouse: almacenId(cuerpo.almacen),
+    lines: lineas(cuerpo.lineas),
+  }
+  if (cuerpo.modo !== undefined) peticion.mode = texto(cuerpo.modo, 'modo', 32)
+
+  const esEjecutar = paso === 'ejecutar'
+  return reenviar(res, await llamarApi(ctx, {
+    metodo: 'POST',
+    ruta: `${cfg.ruta}/${esEjecutar ? 'runs' : 'plans'}`,
+    cuerpo: peticion,
+    // Solo las escrituras llevan clave: un análisis repetido no duplica nada.
+    idempotencia: esEjecutar ? (texto(cuerpo.idempotencyKey, 'idempotencyKey', 128) ?? randomUUID()) : undefined,
+    timeoutMs: TIMEOUT_ANALISIS_MS,
+  }))
+}
+
 /** Los procesamientos: mismas garantías que los ajustes (rol, credenciales, cuerpo reconstruido). */
 async function atenderProceso(res, req, ctx, operacion, consulta) {
   if (operacion === 'candidatos' || operacion === 'documentos') {
@@ -252,12 +304,22 @@ export function createTransferenciasApiMiddleware() {
   return async function transferenciasApiMiddleware(req, res, next) {
     const ruta = (req.url ?? '/').split('?')[0]
     const esProceso = ruta === '/api/procesamientos' || ruta.startsWith('/api/procesamientos/')
-    if (!esProceso && !ruta.startsWith('/api/ajustes/')) return next()
+    const esTienda = ruta.startsWith('/api/tienda/')
+    if (!esProceso && !esTienda && !ruta.startsWith('/api/ajustes/')) return next()
 
     let tipo
     let id
     let operacion
-    if (esProceso) {
+    let modulo
+    if (esTienda) {
+      // /api/tienda/{subir|bajar}/{plan|ejecutar}  ·  /api/tienda/trabajo
+      const [uno, dos] = ruta.split('/').slice(3).filter(Boolean)
+      if (uno === 'trabajo' && req.method === 'GET') { modulo = 'subir'; operacion = 'trabajo' }
+      else if (TIENDA[uno] && (dos === 'plan' || dos === 'ejecutar') && req.method === 'POST') {
+        modulo = uno
+        operacion = dos
+      }
+    } else if (esProceso) {
       const partes = ruta.split('/').slice(3).filter(Boolean) // [accion?]
       if (partes.length === 0 && req.method === 'POST') operacion = 'procesar'
       else if (partes.length === 1 && PROCESOS[partes[0]]?.metodo === req.method) operacion = partes[0]
@@ -282,11 +344,19 @@ export function createTransferenciasApiMiddleware() {
     try {
       const sesion = await resolverSesion(req, res)
       if (!sesion) return fallo(res, 401, 'unauthorized', 'Sesión no válida')
-      if (!ROLES_AJUSTES.includes(sesion.usuario.role)) {
-        return fallo(res, 403, 'forbidden', 'Tu rol no puede gestionar ajustes ni procesamientos de facturación.')
+
+      // Subir y bajar de tienda es de inventario; los ajustes y
+      // procesamientos, de facturación. Esto solo decide quién ve la pantalla:
+      // el permiso de verdad lo comprueba la API contra el Identity Server.
+      const rolesPermitidos = esTienda ? ROLES_TIENDA : ROLES_AJUSTES
+      if (!rolesPermitidos.includes(sesion.usuario.role)) {
+        return fallo(res, 403, 'forbidden', esTienda
+          ? 'Tu rol no puede subir ni bajar de tienda.'
+          : 'Tu rol no puede gestionar ajustes ni procesamientos de facturación.')
       }
 
-      const escritura = operacion === 'crear' || operacion === 'confirmar' || operacion === 'procesar'
+      const escritura = operacion === 'crear' || operacion === 'confirmar'
+        || operacion === 'procesar' || operacion === 'ejecutar'
       const credenciales = leerCredenciales(req, sesion.email)
       if (escritura && !credenciales) {
         return fallo(
@@ -301,6 +371,7 @@ export function createTransferenciasApiMiddleware() {
       const ctx = { jwt: sesion.jwt, sub: sesion.sub, credenciales }
       const consulta = new URL(req.url, 'http://local').searchParams
 
+      if (esTienda) return await atenderTienda(res, req, ctx, modulo, operacion, consulta)
       if (esProceso) return await atenderProceso(res, req, ctx, operacion, consulta)
 
       const prefijo = tipo.ruta

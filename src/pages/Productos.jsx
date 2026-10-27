@@ -7,11 +7,12 @@ import { fetchExistenciaTkc, TKC_ALMACENES } from '@/services/tkcService';
 import { useAccesoTkc } from '@/lib/useAccesoTkc';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import { fetchCatalogo } from '@/services/catalogoService';
-import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL, isStockCol, esOrdenablePropia } from '@/services/tkc/columns';
+import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL, ACCIONES_COL, isStockCol, esOrdenablePropia } from '@/services/tkc/columns';
 import { EXISTENCIA_FILTERS } from '@/services/tkc/body';
 import { warehouseName } from '@/services/tkc/warehouses';
 import { getLastSync } from '@/lib/useAutoSync';
-import { enlaceTransferencias } from '@/lib/transferenciasEnlace';
+import MoverTiendaDialog from '@/components/productos/MoverTiendaDialog';
+import { ROLES_TIENDA } from '@/lib/ajustes';
 import { fetchAllProductos } from '@/lib/paginacion';
 import { notifToast } from '@/lib/notifToast';
 import { Card } from '@/components/ui/card';
@@ -25,7 +26,7 @@ import ProductoModal from '@/components/productos/ProductoModal';
 const ImportarProductos = lazy(() => import('@/components/productos/ImportarProductos'));
 import {
   Search, Package, AlertTriangle, Hash, ToggleLeft, Upload, ChevronDown, X,
-  Database, RefreshCw, Clock, ExternalLink,
+  Database, RefreshCw, Clock, ArrowUpFromLine, ArrowDownToLine,
 } from 'lucide-react';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
@@ -346,6 +347,10 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   const [showFailureHistory, setShowFailureHistory] = useState(false);
   // Fila de TKC bajo el ratón, ya pasado el debounce → dispara la consulta de existencia.
   const [hoveredTkc, setHoveredTkc] = useState(null);
+  const [mover, setMover] = useState(null);   // { modulo, producto }
+  // Solo decide si se ven los botones. El permiso de verdad lo comprueba la
+  // API de transferencias contra el Identity Server (`up-shop:execute`).
+  const puedeMoverTienda = ROLES_TIENDA.includes(role);
   const hoverTimer = useRef(null);
 
   // Auto-select from scanner (?scan=id)
@@ -726,21 +731,6 @@ export default function Productos({ initialSource: initialSourceRaw }) {
             }
           </span>
           <div className="flex items-center gap-4">
-            {/* Subir y bajar de tienda los hace elineas-transferencia, que ya
-                tiene el módulo entero —analizar, ejecutar, reanudar— y escribe
-                en TKC. Su enlace SOLO carga la entrada: la persona revisa y
-                ejecuta allí, con los diálogos de siempre. */}
-            {['down-shop', 'up-shop'].map((modulo) => {
-              const url = enlaceTransferencias(modulo, almacen);
-              if (!url) return null;
-              return (
-                <a key={modulo} href={url} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1 hover:text-foreground transition-colors">
-                  <ExternalLink className="w-3 h-3" />
-                  {modulo === 'up-shop' ? 'Subir a tienda' : 'Bajar de tienda'}
-                </a>
-              );
-            })}
             <button
               onClick={refrescarVistaTkc}
               disabled={fetchingTKC}
@@ -1191,6 +1181,29 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                                   </td>
                                 );
                               }
+                              if (key === ACCIONES_COL) {
+                                return (
+                                  <td key={key} className="px-3 py-2 whitespace-nowrap">
+                                    {puedeMoverTienda ? (
+                                      <div className="flex items-center gap-1">
+                                        <button title="Subir a tienda" aria-label={`Subir a tienda: ${p.nombre}`}
+                                          onClick={() => setMover({ modulo: 'subir', producto: p })}
+                                          className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-[#4ade80] transition-colors">
+                                          <ArrowUpFromLine className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button title="Bajar de tienda" aria-label={`Bajar de tienda: ${p.nombre}`}
+                                          onClick={() => setMover({ modulo: 'bajar', producto: p })}
+                                          className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-[#BA7517] transition-colors">
+                                          <ArrowDownToLine className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <span className="text-muted-foreground/40 text-xs">—</span>
+                                    )}
+                                  </td>
+                                );
+                              }
+
                               // EF / A / T vienen en la propia fila: el catálogo
                               // se sirve de nuestra base, que ya las guarda.
                               // Antes había que esperar al recorrido completo
@@ -1225,6 +1238,16 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   {/* total viene de recordsFiltered de TKC, no de rows.length */}
                   <Pagination page={page} total={tkcPagination?.total ?? 0} pageSize={tkcLimit} onPage={setPage} />
                 </Card>
+              )}
+
+              {mover && (
+                <MoverTiendaDialog
+                  modulo={mover.modulo}
+                  producto={mover.producto}
+                  almacen={almacen}
+                  onHecho={refrescarVistaTkc}
+                  onClose={() => setMover(null)}
+                />
               )}
 
               {hoveredTkc && (

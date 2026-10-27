@@ -360,3 +360,96 @@ describe('errores de la API', () => {
     expect(res.cuerpo.error.code).toBe('upstream_error');
   });
 });
+
+describe('subir y bajar de tienda', () => {
+  const CUERPO = { almacen: '789', lineas: [{ code: '7501', quantity: 2 }] };
+
+  beforeEach(() => { resolverSesion.mockResolvedValue(SESION('inv')); });
+
+  it('analizar llama a plans y NO escribe', async () => {
+    apiResponde(202, { jobId: 'j1' });
+    const { res } = await llamar('/api/tienda/subir/plan', CUERPO, 'POST');
+
+    expect(res.statusCode).toBe(202);
+    const { url, opts, cuerpo } = ultimaLlamada();
+    expect(url.pathname).toBe('/api/v1/up-shop/plans');
+    expect(cuerpo).toMatchObject({ warehouse: '351', lines: [{ code: '7501', quantity: 2 }] });
+    // Analizar no mueve nada: una clave de idempotencia aquí no pinta nada.
+    expect(opts.headers['Idempotency-Key']).toBeUndefined();
+  });
+
+  it('ejecutar llama a runs y lleva clave de idempotencia', async () => {
+    apiResponde(202, { jobId: 'j2' });
+    await llamar('/api/tienda/bajar/ejecutar', CUERPO, 'POST');
+
+    const { url, opts } = ultimaLlamada();
+    expect(url.pathname).toBe('/api/v1/down-shop/runs');
+    // Es lo que impide que un reintento baje dos veces la misma mercancía.
+    expect(opts.headers['Idempotency-Key']).toBeTruthy();
+  });
+
+  it('traduce la clave de almacén al id de TKC', async () => {
+    apiResponde(202, { jobId: 'j3' });
+    await llamar('/api/tienda/subir/plan', { ...CUERPO, almacen: '480' }, 'POST');
+    // 480 es nuestra clave; 223 es como lo llama TKC.
+    expect(ultimaLlamada().cuerpo.warehouse).toBe('223');
+  });
+
+  it('manda las credenciales de la persona, no las de servicio', async () => {
+    apiResponde(202, { jobId: 'j4' });
+    await llamar('/api/tienda/subir/ejecutar', CUERPO, 'POST');
+
+    const sellado = ultimaLlamada().opts.headers['X-Tkc-Credentials'];
+    expect(JSON.parse(abrir(sellado, 'TKC_HANDOFF_KEY'))).toMatchObject({
+      username: 'ana.tkc', sub: 'is-user-1',
+    });
+  });
+
+  it('ejecutar sin credenciales de TKC se rechaza: firmaría a nombre de otro', async () => {
+    leerCredenciales.mockReturnValue(null);
+    const { res } = await llamar('/api/tienda/subir/ejecutar', CUERPO, 'POST');
+    expect(res.statusCode).toBe(403);
+    expect(res.cuerpo.error.code).toBe('no_tkc_credentials');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('un rol que no es de inventario no pasa', async () => {
+    resolverSesion.mockResolvedValue(SESION('fact'));
+    const { res } = await llamar('/api/tienda/subir/plan', CUERPO, 'POST');
+    expect(res.statusCode).toBe(403);
+    expect(res.cuerpo.error.message).toMatch(/subir ni bajar de tienda/i);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('el cuerpo se reconstruye: no es un proxy abierto', async () => {
+    apiResponde(202, { jobId: 'j5' });
+    await llamar('/api/tienda/subir/plan', { ...CUERPO, callback: 'http://malo', dryRun: false }, 'POST');
+    expect(ultimaLlamada().cuerpo).toEqual({ warehouse: '351', lines: [{ code: '7501', quantity: 2 }] });
+  });
+
+  it('el modo se pasa tal cual: es su vocabulario', async () => {
+    apiResponde(202, { jobId: 'j6' });
+    await llamar('/api/tienda/bajar/plan', { ...CUERPO, modo: 'percent:30' }, 'POST');
+    expect(ultimaLlamada().cuerpo.mode).toBe('percent:30');
+  });
+
+  it('consultar el trabajo usa la espera larga en vez de sondear', async () => {
+    apiResponde(200, { id: 'j1', status: 'running' });
+    await llamar('/api/tienda/trabajo?id=j1&wait=20');
+
+    const { url } = ultimaLlamada();
+    expect(url.pathname).toBe('/api/v1/jobs/j1');
+    expect(url.searchParams.get('wait')).toBe('20');
+  });
+
+  it('consultar un trabajo sin id es un 400, no una llamada a ciegas', async () => {
+    const { res } = await llamar('/api/tienda/trabajo');
+    expect(res.statusCode).toBe(400);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('una ruta de tienda que no existe no cae en los ajustes', async () => {
+    const { res } = await llamar('/api/tienda/subir/inventado', CUERPO, 'POST');
+    expect(res.statusCode).toBe(404);
+  });
+});

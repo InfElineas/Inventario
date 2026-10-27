@@ -10,7 +10,7 @@ import { extractCsrfToken, parseCookies, mergeCookies, getSetCookies, credencial
 import { buildBody, COLS } from '@/services/tkc/body'
 import { normalizeRow } from '@/services/tkc/normalize'
 import {
-  sortColumnIndex, TKC_COLUMN_DEFS, TKC_SORT_COLUMNS, IMAGE_COL, STOCK_COLS, isStockCol,
+  sortColumnIndex, TKC_COLUMN_DEFS, TKC_SORT_COLUMNS, IMAGE_COL, ACCIONES_COL, STOCK_COLS, isStockCol,
   esOrdenablePropia,
 } from '@/services/tkc/columns'
 import { keyToTkcValue, warehouseName } from '@/services/tkc/warehouses'
@@ -224,13 +224,15 @@ describe('columns', () => {
     expect(sortColumnIndex(undefined)).toBe(TKC_SORT_COLUMNS.nombre)
   })
 
-  it('cada columna ordena por su lado, y solo la imagen no ordena', () => {
+  it('cada columna ordena por su lado; imagen y acciones no son datos', () => {
     // Hay dos clases de columna en la misma tabla: las del listado de TKC, que
     // ordena TKC por su índice de DataTables, y las nuestras —EF/A/T, los dos
     // estados y la prioridad—, que salen de `productos` y ordena Postgres
     // sobre el conjunto filtrado entero.
     for (const def of TKC_COLUMN_DEFS) {
-      if (def.key === IMAGE_COL) {
+      // Ni la imagen ni los botones de subir/bajar son un dato por el que
+      // tenga sentido ordenar la tabla.
+      if (def.key === IMAGE_COL || def.key === ACCIONES_COL) {
         expect(TKC_SORT_COLUMNS[def.key]).toBeUndefined()
         expect(esOrdenablePropia(def.key)).toBe(false)
       } else if (esOrdenablePropia(def.key)) {
