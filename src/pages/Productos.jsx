@@ -17,7 +17,7 @@ import { Card } from '@/components/ui/card';
 import KPICard from '@/components/shared/KPICard';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import ProductHoverCard from '@/components/shared/ProductHoverCard';
-import ExistenciaHoverCard from '@/components/shared/ExistenciaHoverCard';
+import CatalogoHoverCard from '@/components/productos/CatalogoHoverCard';
 import Pagination from '@/components/shared/Pagination';
 import ProductoModal from '@/components/productos/ProductoModal';
 // Solo se necesita al abrir el modal de importación — se carga bajo demanda.
@@ -409,9 +409,9 @@ export default function Productos({ initialSource: initialSourceRaw }) {
     isLoading: loadingExistencia,
     error: existenciaError,
   } = useQuery({
-    queryKey: ['tkc_existencia', almacen, hoveredTkc?.idTienda],
-    queryFn: () => fetchExistenciaTkc({ almacen, idTienda: hoveredTkc.idTienda }),
-    enabled: conTkc && source === 'tkc' && Boolean(almacen) && Boolean(hoveredTkc?.idTienda),
+    queryKey: ['tkc_existencia', almacen, hoveredTkc?.fila?.idOnline],
+    queryFn: () => fetchExistenciaTkc({ almacen, idTienda: hoveredTkc.fila.idOnline }),
+    enabled: conTkc && source === 'tkc' && Boolean(almacen) && Boolean(hoveredTkc?.fila?.idOnline),
     staleTime: 5 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
     retry: false,
@@ -426,12 +426,11 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   /** Abre el popover tras el debounce; el rect se captura ya (luego el <tr> puede irse). */
   const onTkcRowEnter = (row, el) => {
     clearTimeout(hoverTimer.current);
-    if (!row.idOnline) return;   // sin id online el submayor no puede buscarlo
+    // La ficha se abre siempre, también sin ID de tienda. Antes se salía en
+    // silencio y el usuario veía que «no cargaba»; ahora la tarjeta explica
+    // que sin ID el submayor no puede buscarlo.
     const rect = el.getBoundingClientRect();
-    hoverTimer.current = setTimeout(
-      () => setHoveredTkc({ idTienda: row.idOnline, nombre: row.nombre, rect }),
-      TKC_HOVER_DELAY
-    );
+    hoverTimer.current = setTimeout(() => setHoveredTkc({ fila: row, rect }), TKC_HOVER_DELAY);
   };
 
   const onTkcRowLeave = () => {
@@ -1146,7 +1145,6 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                                   </td>
                                 );
                               }
-                              // EF / A / T salen del mapa del submayor, no de la fila.
                               // EF / A / T vienen en la propia fila: el catálogo
                               // se sirve de nuestra base, que ya las guarda.
                               // Antes había que esperar al recorrido completo
@@ -1184,12 +1182,13 @@ export default function Productos({ initialSource: initialSourceRaw }) {
               )}
 
               {hoveredTkc && (
-                <ExistenciaHoverCard
+                <CatalogoHoverCard
+                  producto={hoveredTkc.fila}
                   rect={hoveredTkc.rect}
-                  nombre={hoveredTkc.nombre}
-                  data={existenciaTkc}
-                  isLoading={loadingExistencia}
+                  enVivo={existenciaTkc}
+                  cargando={loadingExistencia}
                   error={existenciaError}
+                  sinAccesoTkc={!conTkc}
                 />
               )}
             </>
