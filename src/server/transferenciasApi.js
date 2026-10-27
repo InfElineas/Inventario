@@ -246,7 +246,17 @@ async function atenderTienda(res, req, ctx, modulo, paso, consulta) {
     warehouse: almacenId(cuerpo.almacen),
     lines: lineas(cuerpo.lineas),
   }
-  if (cuerpo.modo !== undefined) peticion.mode = texto(cuerpo.modo, 'modo', 32)
+  // `mode` es obligatorio para ellos: «integro» mueve lo pedido (y lo recorta
+  // si no llega, que sigue siendo éxito) y «porcentaje» pone un tope sobre lo
+  // que hay. Por defecto el primero, que es lo que se espera al pedir N.
+  peticion.mode = texto(cuerpo.modo, 'modo', 32) ?? 'integro'
+  if (cuerpo.porcentaje !== undefined) {
+    const p = Number(cuerpo.porcentaje)
+    if (!Number.isInteger(p) || p < 1 || p > 100) {
+      throw new ErrorPeticion(400, 'El porcentaje debe ser un entero entre 1 y 100.')
+    }
+    peticion.percent = p
+  }
 
   const esEjecutar = paso === 'ejecutar'
   return reenviar(res, await llamarApi(ctx, {

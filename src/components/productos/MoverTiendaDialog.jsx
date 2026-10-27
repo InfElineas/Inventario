@@ -8,6 +8,9 @@ import { planearTienda, ejecutarTienda, esperarTrabajo } from '@/services/tienda
 import { warehouseName } from '@/services/tkc/warehouses';
 import { Loader2, ArrowUpFromLine, ArrowDownToLine } from 'lucide-react';
 
+/** Mismo aspecto que los desplegables del catálogo. */
+const FILTER_CLS = 'w-full appearance-none bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground';
+
 /**
  * Mover un producto entre el almacén y el piso de tienda.
  *
@@ -52,12 +55,19 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState(null);   // 'analizar' | 'ejecutar'
   const [clave, setClave] = useState(nuevaClave);
+  // Sus dos modos: «integro» mueve lo pedido —y lo recorta si no llega, que
+  // sigue siendo éxito— y «porcentaje» pone un tope sobre lo que hay.
+  const [modo, setModo] = useState('integro');
+  const [porcentaje, setPorcentaje] = useState('30');
 
   if (!producto) return null;
 
   const n = Number(cantidad);
   const cantidadValida = Number.isInteger(n) && n > 0;
   const lineas = [{ code: producto.codigo, quantity: n }];
+  const pct = Number(porcentaje);
+  const porcentajeValido = modo !== 'porcentaje' || (Number.isInteger(pct) && pct >= 1 && pct <= 100);
+  const envio = { almacen, lineas, modo, ...(modo === 'porcentaje' ? { porcentaje: pct } : {}) };
 
   const correr = async (paso, fn) => {
     setOcupado(paso);
@@ -78,7 +88,7 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
 
   const analizar = async () => {
     setResultado(null);
-    const r = await correr('analizar', () => planearTienda(modulo, { almacen, lineas }));
+    const r = await correr('analizar', () => planearTienda(modulo, envio));
     if (r) setPlan(r);
   };
 
@@ -90,7 +100,7 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
     if (!ok) return;
 
     const r = await correr('ejecutar', () =>
-      ejecutarTienda(modulo, { almacen, lineas, idempotencyKey: clave }));
+      ejecutarTienda(modulo, { ...envio, idempotencyKey: clave }));
     if (r) {
       setResultado(r);
       // Clave nueva para el siguiente envío: reutilizarla devolvería lo ya
@@ -122,12 +132,31 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
               </p>
             </div>
 
-            <label className="block space-y-1.5 text-xs text-muted-foreground">
-              Cantidad a mover
-              <Input type="number" min="1" value={cantidad} inputMode="numeric"
-                onChange={(e) => { setCantidad(e.target.value); setPlan(null); setResultado(null); }}
-                style={{ borderRadius: '8px' }} />
-            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block space-y-1.5 text-xs text-muted-foreground">
+                Cantidad a mover
+                <Input type="number" min="1" value={cantidad} inputMode="numeric"
+                  onChange={(e) => { setCantidad(e.target.value); setPlan(null); setResultado(null); }}
+                  style={{ borderRadius: '8px' }} />
+              </label>
+              <label className="block space-y-1.5 text-xs text-muted-foreground">
+                Modo
+                <select value={modo} className={FILTER_CLS}
+                  onChange={(e) => { setModo(e.target.value); setPlan(null); setResultado(null); }}>
+                  <option value="integro">Íntegro — mueve lo pedido</option>
+                  <option value="porcentaje">Porcentaje — tope sobre lo que hay</option>
+                </select>
+              </label>
+            </div>
+
+            {modo === 'porcentaje' && (
+              <label className="block space-y-1.5 text-xs text-muted-foreground max-w-[12rem]">
+                Porcentaje (1–100)
+                <Input type="number" min="1" max="100" value={porcentaje} inputMode="numeric"
+                  onChange={(e) => { setPorcentaje(e.target.value); setPlan(null); setResultado(null); }}
+                  style={{ borderRadius: '8px' }} />
+              </label>
+            )}
 
             {disponible === 0 && (
               <AlertBanner variant="warning"
@@ -154,13 +183,13 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
               </Button>
               {!resultado && (
                 <>
-                  <Button variant="outline" disabled={!cantidadValida || ocupado} onClick={analizar}
+                  <Button variant="outline" disabled={!cantidadValida || !porcentajeValido || ocupado} onClick={analizar}
                     style={{ borderRadius: '8px' }}>
                     {ocupado === 'analizar' && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
                     Analizar
                   </Button>
                   {/* Solo tras ver el plan: ejecutar sin mirarlo es mover a ciegas. */}
-                  <Button disabled={!plan || !cantidadValida || ocupado} onClick={ejecutar}
+                  <Button disabled={!plan || !cantidadValida || !porcentajeValido || ocupado} onClick={ejecutar}
                     style={{ borderRadius: '8px' }}>
                     {ocupado === 'ejecutar' && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
                     Ejecutar

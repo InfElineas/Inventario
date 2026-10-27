@@ -424,13 +424,31 @@ describe('subir y bajar de tienda', () => {
   it('el cuerpo se reconstruye: no es un proxy abierto', async () => {
     apiResponde(202, { jobId: 'j5' });
     await llamar('/api/tienda/subir/plan', { ...CUERPO, callback: 'http://malo', dryRun: false }, 'POST');
-    expect(ultimaLlamada().cuerpo).toEqual({ warehouse: '351', lines: [{ code: '7501', quantity: 2 }] });
+    expect(ultimaLlamada().cuerpo).toEqual({
+      warehouse: '351', lines: [{ code: '7501', quantity: 2 }], mode: 'integro',
+    });
   });
 
-  it('el modo se pasa tal cual: es su vocabulario', async () => {
+  it('el modo es obligatorio para ellos: por defecto «integro»', async () => {
     apiResponde(202, { jobId: 'j6' });
-    await llamar('/api/tienda/bajar/plan', { ...CUERPO, modo: 'percent:30' }, 'POST');
-    expect(ultimaLlamada().cuerpo.mode).toBe('percent:30');
+    await llamar('/api/tienda/bajar/plan', CUERPO, 'POST');
+    // Sin él su API responde «`mode` es `integro` o `porcentaje`».
+    expect(ultimaLlamada().cuerpo.mode).toBe('integro');
+  });
+
+  it('el porcentaje viaja aparte y se valida antes de salir', async () => {
+    apiResponde(202, { jobId: 'j7' });
+    await llamar('/api/tienda/bajar/plan', { ...CUERPO, modo: 'porcentaje', porcentaje: 30 }, 'POST');
+    expect(ultimaLlamada().cuerpo).toMatchObject({ mode: 'porcentaje', percent: 30 });
+  });
+
+  it('un porcentaje imposible no llega a su API', async () => {
+    for (const malo of [0, 101, 12.5, 'mucho']) {
+      fetch.mockClear();
+      const { res } = await llamar('/api/tienda/bajar/plan', { ...CUERPO, modo: 'porcentaje', porcentaje: malo }, 'POST');
+      expect(res.statusCode).toBe(400);
+      expect(fetch).not.toHaveBeenCalled();
+    }
   });
 
   it('consultar el trabajo usa la espera larga en vez de sondear', async () => {
