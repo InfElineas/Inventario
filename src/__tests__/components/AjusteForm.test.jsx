@@ -44,10 +44,18 @@ function montar(tipo) {
 
 const boton = (nombre) => screen.getByRole('button', { name: nombre });
 
+/** El almacén se elige fuera de las pestañas; el resto vive en el modal. */
+async function abrirMontar(user) {
+  await user.selectOptions(screen.getAllByRole('combobox')[0], '789');
+  await user.click(boton(/Montar un ajuste a mano/i));
+}
+
 async function rellenar(user, { texto = '7622210833662*3\n7622210000017', clasif } = {}) {
-  const [almacen, , clasificacion] = screen.getAllByRole('combobox');
-  await user.selectOptions(almacen, '789');
-  if (clasif) await user.selectOptions(clasificacion, clasif);
+  await abrirMontar(user);
+  if (clasif) {
+    const combos = screen.getAllByRole('combobox');
+    await user.selectOptions(combos[combos.length - 1], clasif);
+  }
   await user.click(screen.getByPlaceholderText(/7622210833662\*3/));
   await user.paste(texto);
 }
@@ -69,9 +77,12 @@ describe('AjusteForm — aumento', () => {
   it('no deja montar sin almacén ni productos válidos', async () => {
     const user = userEvent.setup();
     montar('aumento');
+    // El formulario vive en un modal; sin abrirlo no hay botón que mirar.
+    await abrirMontar(user);
     expect(boton(/montar ajuste/i)).toBeDisabled();
 
-    await rellenar(user, { texto: 'A*0' });
+    await user.click(screen.getByPlaceholderText(/7622210833662\*3/));
+    await user.paste('A*0');
     expect(screen.getByText(/entero positivo/i)).toBeInTheDocument();
     expect(boton(/montar ajuste/i)).toBeDisabled();
   });
@@ -94,8 +105,9 @@ describe('AjusteForm — aumento', () => {
     expect(screen.getByText('No existe en TKC')).toBeInTheDocument();
     // Montar NO confirma.
     expect(svc.confirmarAjuste).not.toHaveBeenCalled();
-    // Ya está montado: el texto se vacía para no reenviarlo.
-    expect(screen.getByPlaceholderText(/7622210833662\*3/)).toHaveValue('');
+    // Ya está montado: el modal se cierra para que se vea el resultado y el
+    // botón de confirmar, que es el que mueve la existencia.
+    expect(screen.queryByPlaceholderText(/7622210833662\*3/)).not.toBeInTheDocument();
   });
 
   it('confirmar pide un diálogo aparte y solo entonces llama a la API', async () => {
@@ -133,6 +145,8 @@ describe('AjusteForm — aumento', () => {
     const user = userEvent.setup();
     montar('aumento');
     await user.selectOptions(screen.getAllByRole('combobox')[0], '789');
+    // El historial vive en su propia pestaña.
+    await user.click(screen.getByRole('tab', { name: /Historial/i }));
     const fila = (await screen.findByText('TKCE0000055')).closest('tr');
     await user.click(within(fila).getByRole('button', { name: /^confirmar$/i }));
     await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: /^confirmar$/i }));
@@ -146,10 +160,15 @@ describe('AjusteForm — aumento', () => {
     await rellenar(user);
     await user.click(boton(/montar ajuste/i));
 
+    // El modal se cierra: lo siguiente —revisar en TKC— está fuera de él.
     await screen.findByText(/no se pudo comprobar el resultado/i);
+    await user.click(boton(/Montar un ajuste a mano/i));
     expect(boton(/montar ajuste/i)).toBeDisabled();
+    await user.keyboard('{Escape}');
 
     await user.click(boton(/ya lo revisé en tkc/i));
+    // Reabrir conserva lo escrito: es lo que permite reenviar con la misma clave.
+    await user.click(boton(/Montar un ajuste a mano/i));
     expect(boton(/montar ajuste/i)).toBeEnabled();
     await user.click(boton(/montar ajuste/i));
     await waitFor(() => expect(svc.crearAjuste).toHaveBeenCalledTimes(2));
@@ -223,7 +242,10 @@ describe('AjusteForm — disminución', () => {
     await rellenar(user, { texto: 'A*2' });
     expect(boton(/montar ajuste/i)).toBeDisabled();
 
-    await user.selectOptions(screen.getAllByRole('combobox')[1], 'Merma');
+    // Con el modal abierto, Radix oculta el fondo del árbol de accesibilidad:
+    // el desplegable de clasificación es el único que queda visible.
+    const combos = screen.getAllByRole('combobox');
+    await user.selectOptions(combos[combos.length - 1], 'Merma');
     expect(boton(/montar ajuste/i)).toBeEnabled();
     await user.click(boton(/montar ajuste/i));
 
@@ -236,6 +258,7 @@ describe('AjusteForm — disminución', () => {
     const user = userEvent.setup();
     montar('disminucion');
     await user.selectOptions(screen.getAllByRole('combobox')[0], '789');
+    await user.click(screen.getByRole('tab', { name: /Historial/i }));
     const fila = (await screen.findByText('TKCE0000055')).closest('tr');
     await user.click(within(fila).getByRole('button', { name: /^confirmar$/i }));
     expect(await screen.findByRole('alertdialog')).toHaveTextContent(/RESTARÁ/);

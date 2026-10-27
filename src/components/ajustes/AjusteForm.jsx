@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { AlertTriangle, Check, CheckCircle2, Eye, Loader2, RefreshCw, ShieldAlert } from 'lucide-react';
@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AlertBanner from '@/components/shared/AlertBanner';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { useConfirm } from '@/lib/useConfirm';
 import { useAccesoTkc } from '@/lib/useAccesoTkc';
 import PendientesInventario from '@/components/ajustes/PendientesInventario';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import { WAREHOUSES } from '@/services/tkc/warehouses';
 import {
@@ -49,6 +50,9 @@ export default function AjusteForm({ tipo }) {
   const [confirmado, setConfirmado] = useState({});    // id → resultado de «Confirmar»
   const [bloqueo, setBloqueo] = useState(null);        // 'crear' | id de documento sin verificar
   const [verLineas, setVerLineas] = useState(null);    // { id, code }
+  // Montar el documento vive en un modal: ocupaba la pantalla entera para una
+  // tarea que no es la habitual. Lo habitual es mirar qué falta por ajustar.
+  const [montarAbierto, setMontarAbierto] = useState(false);
 
   // Un envío distinto, una clave distinta; repetir el mismo reutiliza la clave.
   const claveCrear = useRef({ firma: '', clave: '' });
@@ -133,6 +137,16 @@ export default function AjusteForm({ tipo }) {
     if (ok) confirmar.mutate({ id, code });
   }
 
+  // El modal se cierra cuando lo siguiente que hay que hacer está FUERA de
+  // él: confirmar el documento montado, o desbloquear el aviso de «se envió y
+  // no se pudo comprobar». Dejarlo abierto taparía justo el botón que toca.
+  //
+  // Con un rechazo o un fallo se queda abierto: ahí lo siguiente es corregir
+  // lo escrito y reintentar, y cerrarlo obligaría a teclearlo otra vez.
+  useEffect(() => {
+    if (resultado?.tipo === 'creado' || resultado?.tipo === 'sin_verificar') setMontarAbierto(false);
+  }, [resultado]);
+
   const documento = resultado?.documento;
   const estaOcupado = montar.isPending || confirmar.isPending;
 
@@ -144,6 +158,16 @@ export default function AjusteForm({ tipo }) {
       </div>
 
       {sinTkc && <TkcBloqueoAviso funcion="montar o confirmar ajustes" />}
+
+      <label className="block space-y-1.5 text-xs text-muted-foreground max-w-xs">
+        Almacén
+        <Select value={almacenValido ? almacen : ''} onValueChange={setAlmacen}>
+          <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Elige un almacén" /></SelectTrigger>
+          <SelectContent>
+            {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </label>
 
       {bloqueo && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-[#BA7517]/30 bg-[#BA751710]" style={{ borderRadius: '8px' }}>
@@ -158,19 +182,46 @@ export default function AjusteForm({ tipo }) {
         </div>
       )}
 
-      {/* ── Montar ─────────────────────────────────────────────── */}
-      <Card className="p-5 space-y-4">
-        <h2 className="text-sm font-medium">Montar documento</h2>
+      {/* Dos pestañas: lo que hay que ajustar, y lo que TKC ya tiene. Antes
+          la pantalla solo enseñaba lo segundo, que es lo que menos se mira. */}
+      <Tabs defaultValue="pendientes" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="pendientes">Por ajustar</TabsTrigger>
+          <TabsTrigger value="historial">Historial de TKC</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pendientes" className="space-y-4">
+          <PendientesInventario
+            tipo={tipo}
+            almacen={almacen}
+            onUsar={(lineas) => { setTexto(lineas); setMontarAbierto(true); }}
+          />
+          <div className="flex justify-end">
+            {/* No vacía el texto a propósito. Tras un «se envió y no se pudo
+                comprobar», hay que poder reabrir y reenviar LO MISMO: esa es
+                la condición para que la clave de idempotencia se reutilice y
+                TKC devuelva el documento ya hecho en vez de duplicarlo.
+                Montar con éxito sí lo vacía. */}
+            {/* Sin credenciales de TKC se puede abrir y preparar: lo que se
+                bloquea es el envío, y el aviso de dentro explica por qué.
+                Impedir abrirlo dejaría al usuario sin saber qué le falta. */}
+            <Button variant="outline" disabled={!almacenValido}
+              onClick={() => setMontarAbierto(true)}
+              style={{ borderRadius: '8px' }}>
+              Montar un ajuste a mano
+            </Button>
+          </div>
+        </TabsContent>
+
+      {/* ── Montar: en modal ───────────────────────────────────── */}
+      <Dialog open={montarAbierto} onOpenChange={setMontarAbierto}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogTitle className="text-sm font-medium">
+            {cfg.titulo} — {almacenValido ? almacen : 'sin almacén'}
+          </DialogTitle>
+          <DialogDescription className="text-xs">{cfg.descripcion}</DialogDescription>
+        <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="space-y-1.5 text-xs text-muted-foreground">
-            Almacén
-            <Select value={almacenValido ? almacen : ''} onValueChange={setAlmacen}>
-              <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Elige un almacén" /></SelectTrigger>
-              <SelectContent>
-                {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </label>
           <label className="space-y-1.5 text-xs text-muted-foreground">
             Fecha
             <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={{ borderRadius: '8px' }} />
@@ -189,15 +240,6 @@ export default function AjusteForm({ tipo }) {
             <Input value={notas} maxLength={500} onChange={(e) => setNotas(e.target.value)} style={{ borderRadius: '8px' }} />
           </label>
         </div>
-
-        {/* Lo que inventario ya midió y dejó esperando. Sin esto, facturación
-            tenía que sacar los códigos de otro sitio y teclearlos aquí. */}
-        <PendientesInventario
-          tipo={tipo}
-          almacen={almacen}
-          onUsar={(lineas) => setTexto((t) => (t.trim() ? `${t.trimEnd()}
-${lineas}` : lineas))}
-        />
 
         <label className="block space-y-1.5 text-xs text-muted-foreground">
           Productos — una línea por producto: <code className="font-mono">CODIGO*CANTIDAD</code> (sin cantidad vale 1)
@@ -230,7 +272,9 @@ ${lineas}` : lineas))}
             Montar ajuste
           </Button>
         </div>
-      </Card>
+        </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Resultado de montar ────────────────────────────────── */}
       {resultado && (
@@ -270,7 +314,7 @@ ${lineas}` : lineas))}
         </Card>
       )}
 
-      {/* ── Historial ──────────────────────────────────────────── */}
+        <TabsContent value="historial">
       <Card className="p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium">Recientes en {almacenValido ? almacen : '—'} <span className="text-muted-foreground font-normal">(últimos 7 días)</span></h2>
@@ -330,6 +374,8 @@ ${lineas}` : lineas))}
           </div>
         )}
       </Card>
+        </TabsContent>
+      </Tabs>
 
       <LineasDialog tipo={tipo} doc={verLineas} onClose={() => setVerLineas(null)} />
       {ConfirmDialogNode}
