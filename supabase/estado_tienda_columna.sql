@@ -15,9 +15,10 @@
 -- tienda) y de funciones inmutables, que es lo que Postgres exige para una
 -- columna generada.
 --
--- Nótese que un producto SIN id de tienda pero CON existencia no es 'SIN ID':
--- cae por las ramas de almacén/tienda igual que los demás. Es lo que hace el
--- original, y es fácil equivocarse al portarlo.
+-- Un producto sin id de tienda es 'SIN ID', tenga existencia o no. La primera
+-- versión de esta columna solo lo marcaba así con existencia cero —copiando un
+-- `calcEstadoTienda` que ya estaba mal—, y los 207 que tienen stock acababan
+-- como 'NO TIENDA'. En las hojas de inventario salen como SIN ID.
 --
 -- EJECUTAR como elineasadmin.
 --
@@ -28,10 +29,8 @@ ALTER TABLE inventario.productos
 ALTER TABLE inventario.productos
   ADD COLUMN estado_tienda text GENERATED ALWAYS AS (
     CASE
-      WHEN (id_tienda IS NULL OR btrim(id_tienda) = '')
-       AND COALESCE(exist_fisica, 0) = 0                              THEN 'SIN ID'
-      WHEN id_tienda IS NOT NULL AND btrim(id_tienda) <> ''
-       AND COALESCE(exist_fisica, 0) = 0                              THEN 'AGOTADO'
+      WHEN id_tienda IS NULL OR btrim(id_tienda) = ''                 THEN 'SIN ID'
+      WHEN COALESCE(exist_fisica, 0) = 0                              THEN 'AGOTADO'
       WHEN COALESCE(almacen, 0) = 0 AND COALESCE(tienda, 0) > 6       THEN 'SIN RESERVA'
       WHEN COALESCE(tienda, 0) = 0                                    THEN 'NO TIENDA'
       WHEN COALESCE(tienda, 0) > 1

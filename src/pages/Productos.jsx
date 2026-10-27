@@ -123,7 +123,11 @@ function calcEstadoAnuncio(idTienda, ef, a, t) {
 
 function calcEstadoTienda(idTienda, ef, a, t) {
   const hasId = idTienda && String(idTienda).trim() !== '';
-  if (!hasId && ef === 0)          return { estado: 'SIN ID',         prio: 10 };
+  // Sin ID de tienda el producto es SIN ID, tenga stock o no. Antes solo lo
+  // era con existencia cero, y los 207 que tienen stock caían por las ramas de
+  // almacén/tienda y acababan como «NO TIENDA» — en las hojas de inventario
+  // salen como SIN ID, con prioridad 9 en lugar de 10.
+  if (!hasId)                      return { estado: 'SIN ID',         prio: ef === 0 ? 10 : 9 };
   if (hasId  && ef === 0)          return { estado: 'AGOTADO',        prio: 11 };
   if (a === 0 && t > 6)           return { estado: 'SIN RESERVA',    prio: 1  };
   if (t === 0 && ef > 10)         return { estado: 'NO TIENDA',      prio: 2  };
@@ -654,7 +658,11 @@ export default function Productos({ initialSource: initialSourceRaw }) {
               <p className="text-sm text-muted-foreground">
                 {source === 'tkc' ? (
                   <>
-                    <span className="text-foreground font-medium">{tkcPagination?.total ?? '—'}</span> en TKC
+                    {/* Es el total de LO FILTRADO, no lo que hay en el
+                        almacén. Decía «en TKC», que se leía como «el almacén
+                        tiene esto» y hacía parecer vacío un almacén con 20.000
+                        productos en cuanto un filtro no dejaba pasar nada. */}
+                    <span className="text-foreground font-medium">{tkcPagination?.total ?? '—'}</span> resultados
                     {' · '}{warehouseName(almacen)}
                   </>
                 ) : (
@@ -1094,11 +1102,20 @@ export default function Productos({ initialSource: initialSourceRaw }) {
               ) : tkcRows.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
                   <Database className="w-8 h-8 opacity-40" />
-                  <p className="text-sm">
-                    {search.trim()
-                      ? 'Ningún producto coincide con la búsqueda'
-                      : `Sin datos en TKC para ${warehouseName(almacen)}`}
-                  </p>
+                  {/* Distinguir «el almacén no tiene nada» de «tus filtros no
+                      dejan pasar nada» importa: lo segundo tiene arreglo y lo
+                      primero no, y antes las dos cosas decían lo mismo. */}
+                  {hayFiltrosTKC ? (
+                    <>
+                      <p className="text-sm">Ningún producto cumple los filtros</p>
+                      <button onClick={resetFiltros}
+                        className="flex items-center gap-1 text-xs text-[#4ade80] hover:text-[#4ade80]/80 transition-colors">
+                        <X className="w-3 h-3" /> Quitar los filtros
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-sm">{warehouseName(almacen)} no tiene productos</p>
+                  )}
                 </div>
               ) : (
                 <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
