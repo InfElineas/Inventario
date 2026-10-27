@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { useAlmacen } from '@/lib/useAlmacen';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,10 +31,17 @@ export default function Anuncios() {
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const role = user?.role || 'inv';
+  const { almacen } = useAlmacen();
 
+  // Acotado al almacén activo, a diferencia de inventarios y mermas, que
+  // cargan 200 sin filtrar. Esas tablas tienen unos cientos de filas; esta
+  // arranca con 1.185 casos y crece, así que un tope de 200 truncaría en
+  // silencio justo lo que Facturación tiene que ver.
   const { data: anunciosRaw, isLoading } = useQuery({
-    queryKey: ['anuncios'],
-    queryFn: () => base44.entities.AnuncioDesact.list('-created_date', 200),
+    queryKey: ['anuncios', almacen],
+    queryFn: () => base44.entities.AnuncioDesact.filter(
+      almacen ? { almacen_num: almacen } : {}, '-created_date', 2000,
+    ),
     select: (d) => Array.isArray(d) ? d : [],
   });
   const anuncios = anunciosRaw ?? [];

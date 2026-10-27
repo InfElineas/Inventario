@@ -58,6 +58,14 @@ export function createSyncApiMiddleware() {
         )
         const resultado = fila.resultado
 
+        // Los problemas del catálogo se detectan justo después de refrescarlo,
+        // que es cuando pueden haber aparecido. Va aparte y no dentro de la
+        // función de sync: si la detección falla, el catálogo ya sincronizado
+        // no debe perderse por ello.
+        await queryOne('SELECT inventario.detectar_casos_anuncio($1) AS resultado', [almacen || null])
+          .then((f) => { resultado.casos_abiertos = f?.resultado?.abiertos ?? 0 })
+          .catch((e) => console.warn('[sync-api] no se pudieron detectar casos de anuncio:', e.message))
+
         // El registro lo lleva el servidor: antes lo escribía el navegador,
         // que era quien hacía el sync.
         await queryOne(

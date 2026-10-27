@@ -49,6 +49,21 @@ const PROD_COL_DEFS = [
   { key: 'categoria',     label: 'Categoría',      defaultOn: false, required: false },
 ];
 
+/**
+ * Los cuatro estados que TKC define, siempre ofrecidos.
+ *
+ * «Desactivado» hoy no devuelve nada, y no porque no existan: las hojas de
+ * inventario sí los ven (en el almacén 480, 184 con existencia). Lo que pasa es
+ * que `ap_rows` no está capturando el campo que los distingue —solo guarda
+ * `is_dead` y `status_provider`, que son complementarios—, así que el dato no
+ * llega ni a la API del monorepo ni a nosotros. El fallo está en `update-ap`.
+ *
+ * Por eso la lista es fija y no se deduce de lo que hay: deducirla escondería
+ * la opción y, con ella, el problema. El día que se arregle aguas arriba, el
+ * filtro empieza a devolver sin tocar nada aquí.
+ */
+const ESTADOS_ANUNCIO_TKC = ['Activado', 'Desactivado', 'Muerto', 'Sin Id'];
+
 const DEFAULT_FILTERS = {
   existencia: 'all', suministrador: '', categoria: '',
   estadoTienda: 'all', estadoAnuncio: 'all', precioMin: '', precioMax: '',
@@ -489,18 +504,6 @@ export default function Productos({ initialSource: initialSourceRaw }) {
     select: d => Array.isArray(d) ? d : [],
   });
   const suministradores = suministradoresRaw ?? [];
-
-  // Los estados que TKC produce de verdad. Codificarlos a mano engañaba:
-  // «Desactivado» es inalcanzable —en los datos reales `is_dead` y
-  // `status_provider` son complementarios, así que nunca se da el caso de
-  // «ni muerto ni activo»— y el filtro parecía roto en vez de vacío.
-  const { data: estadosAnuncioRaw } = useQuery({
-    queryKey: ['filter-estado-anuncio', almacen],
-    queryFn: () => base44.entities.Producto.distinct('estado_anuncio_tkc', { activo: true, ...(almacen ? { almacen_num: almacen } : {}) }),
-    staleTime: 15 * 60 * 1000,
-    select: d => Array.isArray(d) ? d : [],
-  });
-  const estadosAnuncio = estadosAnuncioRaw ?? [];
 
   const { data: categoriasRaw } = useQuery({
     queryKey: ['filter-categorias'],
@@ -1029,7 +1032,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   <div className="relative">
                     <select value={advFilters.estadoAnuncio} onChange={SET_FILTER('estadoAnuncio')} className={FILTER_CLS}>
                       <option value="all">Anuncio: todos</option>
-                      {estadosAnuncio.map(e => <option key={e} value={e}>{e}</option>)}
+                      {ESTADOS_ANUNCIO_TKC.map(e => <option key={e} value={e}>{e}</option>)}
                     </select>
                     <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
                   </div>
