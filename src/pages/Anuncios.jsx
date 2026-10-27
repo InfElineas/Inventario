@@ -62,6 +62,7 @@ export default function Anuncios() {
   });
 
   const counts = {
+    muerto_ef: anuncios.filter(a => a.tipo_caso === 'muerto_ef_positivo' && a.estado_tarea !== 'completado').length,
     desact_ef: anuncios.filter(a => a.tipo_caso === 'desact_ef_positivo' && a.estado_tarea !== 'completado').length,
     sin_id: anuncios.filter(a => a.tipo_caso === 'sin_id' && a.estado_tarea !== 'completado').length,
     activo_ef0: anuncios.filter(a => a.tipo_caso === 'activo_ef_cero' && a.estado_tarea !== 'completado').length,
@@ -96,8 +97,9 @@ export default function Anuncios() {
         <p className="text-sm text-muted-foreground mt-0.5">Gestión de anuncios desactivados y sin ID</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <KPICard title={"DESACT EF>0"} value={counts.desact_ef} icon={AlertTriangle} color="text-[#E24B4A]" bgColor="bg-[#E24B4A]/10" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPICard title={"MUERTO EF>0"} value={counts.muerto_ef} icon={AlertTriangle} color="text-[#E24B4A]" bgColor="bg-[#E24B4A]/10" />
+        <KPICard title={"DESACT EF>0"} value={counts.desact_ef} icon={AlertTriangle} color="text-[#fb923c]" bgColor="bg-[#fb923c]/10" />
         <KPICard title="Sin ID con stock" value={counts.sin_id} icon={Hash} color="text-[#BA7517]" bgColor="bg-[#BA7517]/10" />
         <KPICard title={"Activo EF=0"} value={counts.activo_ef0} icon={Eye} color="text-[#888780]" bgColor="bg-[#888780]/10" />
       </div>
@@ -111,6 +113,7 @@ export default function Anuncios() {
           <SelectTrigger className="w-40" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos tipos</SelectItem>
+            <SelectItem value="muerto_ef_positivo">{"MUERTO EF>0"}</SelectItem>
             <SelectItem value="desact_ef_positivo">{"DESACT EF>0"}</SelectItem>
             <SelectItem value="sin_id">Sin ID</SelectItem>
             <SelectItem value="activo_ef_cero">{"Activo EF=0"}</SelectItem>

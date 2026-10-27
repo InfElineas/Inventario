@@ -197,8 +197,19 @@ export const ESTADO_FACT = [
   'Recontar',
 ]
 
+/**
+ * Tipos de caso de anuncio, uno por estado de `apGlobalV2` que merece
+ * expediente.
+ *
+ * `muerto_ef_positivo` se separó de `desact_ef_positivo` porque meter los dos
+ * bajo la etiqueta «DESACT EF>0» confundía: en Anuncios salían tres casos y el
+ * filtro «DESACTIVADO EF>0» del catálogo devolvía cero, porque esos tres eran
+ * muertos, no desactivados. Son estados distintos en TKC y tienen que verse
+ * distintos aquí.
+ */
 export const TIPO_CASO_LABELS = {
-  desact_ef_positivo: { label: 'DESACT EF>0', bg: 'bg-[#E24B4A14]', text: 'text-[#E24B4A]' },
+  muerto_ef_positivo: { label: 'MUERTO EF>0', bg: 'bg-[#E24B4A14]', text: 'text-[#E24B4A]' },
+  desact_ef_positivo: { label: 'DESACT EF>0', bg: 'bg-[#fb923c14]', text: 'text-[#fb923c]' },
   sin_id: { label: 'Sin ID', bg: 'bg-[#BA751714]', text: 'text-[#BA7517]' },
   activo_ef_cero: { label: 'Activo EF=0', bg: 'bg-[#88878014]', text: 'text-[#888780]' },
 };

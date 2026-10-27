@@ -12,9 +12,10 @@
 --
 --   ACTIVADO                  26.933
 --   DESACTIVADO MUERTO EF=0   26.903
---   DESACTIVADO MUERTO EF>0      978   ← caso
+--   DESACTIVADO MUERTO EF>0      978   ← caso (muerto_ef_positivo)
 --   SIN ID EF=0                2.164
---   SIN ID EF>0                  207   ← caso
+--   SIN ID EF>0                  207   ← caso (sin_id)
+--   DESACTIVADO EF>0               0   ← caso (desact_ef_positivo), ver abajo
 --   DESACTIVADO EF=0 / EF>0        0
 --
 -- Dos cosas que esos números zanjan:
@@ -70,6 +71,25 @@ CREATE UNIQUE INDEX IF NOT EXISTS anuncios_desact_caso_abierto
  WHERE estado_tarea <> 'completado';
 
 
+-- ── Casos ya abiertos con la etiqueta vieja ─────────────────────────────
+--
+-- La primera versión de esta detección fundía muertos y desactivados bajo
+-- `desact_ef_positivo`, y guardaba el estado con el vocabulario de invGlobal
+-- ('Muerto', 'Sin Id') en vez del de apGlobalV2. Se normalizan: el producto no
+-- cambió, cambió cómo lo nombramos. Idempotente.
+
+UPDATE inventario.anuncios_desact
+   SET tipo_caso = 'muerto_ef_positivo',
+       estado_anuncio_tkc = 'DESACTIVADO MUERTO EF>0'
+ WHERE tipo_caso = 'desact_ef_positivo'
+   AND estado_anuncio_tkc = 'Muerto';
+
+UPDATE inventario.anuncios_desact
+   SET estado_anuncio_tkc = 'SIN ID EF>0'
+ WHERE tipo_caso = 'sin_id'
+   AND estado_anuncio_tkc = 'Sin Id';
+
+
 -- ── La detección ────────────────────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION inventario.detectar_casos_anuncio(p_almacen text DEFAULT NULL)
@@ -84,7 +104,10 @@ BEGIN
            p.estado_anuncio_tkc,
            COALESCE(p.exist_fisica, 0) AS exist_fisica,
            CASE p.estado_anuncio_tkc
-             WHEN 'DESACTIVADO MUERTO EF>0' THEN 'desact_ef_positivo'
+             -- Un tipo por estado. Fundir muertos y desactivados bajo
+             -- «DESACT EF>0» hacía que Anuncios mostrara casos que el filtro
+             -- del catálogo no encontraba: son estados distintos en TKC.
+             WHEN 'DESACTIVADO MUERTO EF>0' THEN 'muerto_ef_positivo'
              WHEN 'DESACTIVADO EF>0'        THEN 'desact_ef_positivo'
              WHEN 'SIN ID EF>0'             THEN 'sin_id'
            END AS tipo_caso
