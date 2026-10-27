@@ -11,6 +11,7 @@ import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL, isStoc
 import { EXISTENCIA_FILTERS } from '@/services/tkc/body';
 import { warehouseName } from '@/services/tkc/warehouses';
 import { getLastSync } from '@/lib/useAutoSync';
+import { enlaceTransferencias } from '@/lib/transferenciasEnlace';
 import { fetchAllProductos } from '@/lib/paginacion';
 import { notifToast } from '@/lib/notifToast';
 import { Card } from '@/components/ui/card';
@@ -24,7 +25,7 @@ import ProductoModal from '@/components/productos/ProductoModal';
 const ImportarProductos = lazy(() => import('@/components/productos/ImportarProductos'));
 import {
   Search, Package, AlertTriangle, Hash, ToggleLeft, Upload, ChevronDown, X,
-  Database, RefreshCw, Clock,
+  Database, RefreshCw, Clock, ExternalLink,
 } from 'lucide-react';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
@@ -724,13 +725,30 @@ export default function Productos({ initialSource: initialSourceRaw }) {
               : <span className="italic">Sin sync registrado para este almacén</span>
             }
           </span>
-          <button
-            onClick={refrescarVistaTkc}
-            disabled={fetchingTKC}
-            className="flex items-center gap-1 hover:text-foreground transition-colors disabled:opacity-50">
-            <RefreshCw className={`w-3 h-3 ${fetchingTKC ? 'animate-spin' : ''}`} />
-            Actualizar vista
-          </button>
+          <div className="flex items-center gap-4">
+            {/* Subir y bajar de tienda los hace elineas-transferencia, que ya
+                tiene el módulo entero —analizar, ejecutar, reanudar— y escribe
+                en TKC. Su enlace SOLO carga la entrada: la persona revisa y
+                ejecuta allí, con los diálogos de siempre. */}
+            {['down-shop', 'up-shop'].map((modulo) => {
+              const url = enlaceTransferencias(modulo, almacen);
+              if (!url) return null;
+              return (
+                <a key={modulo} href={url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1 hover:text-foreground transition-colors">
+                  <ExternalLink className="w-3 h-3" />
+                  {modulo === 'up-shop' ? 'Subir a tienda' : 'Bajar de tienda'}
+                </a>
+              );
+            })}
+            <button
+              onClick={refrescarVistaTkc}
+              disabled={fetchingTKC}
+              className="flex items-center gap-1 hover:text-foreground transition-colors disabled:opacity-50">
+              <RefreshCw className={`w-3 h-3 ${fetchingTKC ? 'animate-spin' : ''}`} />
+              Actualizar vista
+            </button>
+          </div>
         </div>
       )}
 
