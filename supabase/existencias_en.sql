@@ -16,9 +16,9 @@
 -- cuándo son los números que hay guardados, y la sincronización solo los
 -- reemplaza si su foto es posterior.
 --
--- No cubre `exist_fisica` a propósito: subir y bajar de tienda no cambia la
--- existencia física —la mercancía sigue en el mismo almacén, solo cambia de
--- lado—, así que ahí no hay nada que proteger.
+-- Cubre las tres existencias (física, almacén y tienda) porque hay dos cosas
+-- que las escriben fuera de la sincronización: el movimiento de subir o bajar
+-- de tienda, y la lectura del submayor en vivo al abrir el catálogo.
 --
 -- EJECUTAR como elineasadmin.
 --
@@ -119,10 +119,13 @@ BEGIN
       suministrador     = EXCLUDED.suministrador,
       categoria_elineas = EXCLUDED.categoria_elineas,
       unidad_medida     = EXCLUDED.unidad_medida,
-      exist_fisica      = EXCLUDED.exist_fisica,
-      -- Solo si la foto es posterior a lo que ya sabíamos. Un movimiento hecho
-      -- desde el inventario escribe `existencias_en = now()`, y la foto de la
-      -- mañana no puede deshacerlo.
+      -- Las tres existencias solo se reemplazan si la foto es posterior a lo
+      -- que ya sabíamos. Un movimiento hecho desde el inventario, o una lectura
+      -- del submayor en vivo, escriben `existencias_en = now()`, y la foto de
+      -- la mañana no puede deshacerlas.
+      exist_fisica = CASE
+        WHEN productos.existencias_en IS NULL OR productos.existencias_en <= v_corrida
+        THEN EXCLUDED.exist_fisica ELSE productos.exist_fisica END,
       almacen = CASE
         WHEN productos.existencias_en IS NULL OR productos.existencias_en <= v_corrida
         THEN EXCLUDED.almacen ELSE productos.almacen END,

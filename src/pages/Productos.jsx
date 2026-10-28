@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { isExternaConfigured, syncFromExternal } from '@/services/syncService';
-import { fetchExistenciaTkc, TKC_ALMACENES } from '@/services/tkcService';
+import { fetchExistenciaTkc, refrescarSubmayor, TKC_ALMACENES } from '@/services/tkcService';
 import { useAccesoTkc } from '@/lib/useAccesoTkc';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import { fetchCatalogo } from '@/services/catalogoService';
@@ -458,6 +458,36 @@ export default function Productos({ initialSource: initialSourceRaw }) {
     queryClient.invalidateQueries({ queryKey: ['productos', almacen] });
   };
 
+  // ── Existencias al día al abrir el catálogo ────────────────
+  //
+  // Las que trae la fila vienen de una foto del submayor que el cron de
+  // elineas-transferencia saca dos veces al día: podían ir hasta dieciocho
+  // horas por detrás, y de esos números salen el estado de tienda y la
+  // prioridad del trabajo. Al entrar se le pregunta al submayor de verdad.
+  //
+  // No bloquea nada: la tabla se pinta con lo que hay y se corrige cuando
+  // llega, que en un almacén de 9.000 productos son unos 19 s. Una vez por
+  // almacén y sesión; el servidor además comparte el recorrido diez minutos,
+  // así que varias personas en el mismo almacén cuestan uno.
+  const submayorPedido = useRef(new Set());
+  const ponerAlDiaSubmayor = useMutation({
+    mutationFn: (clave) => refrescarSubmayor({ almacen: clave }),
+    onSuccess: (r) => { if (r?.actualizados > 0) refrescarVistaTkc(); },
+    // Que falle no rompe la pantalla: se sigue viendo la copia, que es lo que
+    // se veía antes de esto.
+    onError: () => {},
+  });
+
+  useEffect(() => {
+    if (source !== 'tkc' || !almacen || !conTkc) return;
+    if (submayorPedido.current.has(almacen)) return;
+    submayorPedido.current.add(almacen);
+    ponerAlDiaSubmayor.mutate(almacen);
+    // `ponerAlDiaSubmayor` cambia en cada render; el guard del Set es lo que
+    // impide que se repita.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source, almacen, conTkc]);
+
   /** Abre el popover tras el debounce; el rect se captura ya (luego el <tr> puede irse). */
   const onTkcRowEnter = (row, el) => {
     clearTimeout(hoverTimer.current);
@@ -733,6 +763,12 @@ export default function Productos({ initialSource: initialSourceRaw }) {
             }
           </span>
           <div className="flex items-center gap-4">
+            {ponerAlDiaSubmayor.isPending && (
+              <span className="flex items-center gap-1.5">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                Poniendo al día las existencias con el submayor…
+              </span>
+            )}
             <button
               onClick={refrescarVistaTkc}
               disabled={fetchingTKC}

@@ -13,6 +13,7 @@ import { conCredencialesTkc } from '@/lib/tkcCredenciales'
 const ENDPOINT = '/api/tkc/inventario'
 const ENDPOINT_EXISTENCIA = '/api/tkc/existencia'
 const ENDPOINT_EXISTENCIAS = '/api/tkc/existencias'
+const ENDPOINT_SUBMAYOR = '/api/tkc/submayor'
 
 /** Almacenes disponibles (catálogo estático de TKC), como claves de la app. */
 export const TKC_ALMACENES = WAREHOUSES.map((w) => w.key)
@@ -89,6 +90,33 @@ export async function fetchExistenciasTkc({ almacen, ids, refrescar = false }) {
 
   if (!res.ok) {
     throw new Error(data?.error ?? `Error ${res.status} al consultar el submayor de TKC`)
+  }
+  return data
+}
+
+/**
+ * Pone al día las existencias de TODO un almacén en nuestra copia.
+ *
+ * El catálogo se sirve de `productos`, y ahí las existencias vienen de una foto
+ * del submayor que el cron de elineas-transferencia saca dos veces al día: podía
+ * ir hasta dieciocho horas por detrás. Esto le pregunta al submayor de verdad y
+ * guarda lo que diga.
+ *
+ * Tarda: un almacén de 9.000 productos son unos 19 s. Se llama al abrir el
+ * catálogo y se deja correr en segundo plano, sin hacer esperar a la tabla. El
+ * recorrido se comparte entre usuarios durante diez minutos.
+ *
+ * @param {{ almacen: string, refrescar?: boolean }} params
+ * @returns {Promise<{ actualizados: number, leidos: number,
+ *   progreso: { cargadas: number, total: number, listo: boolean, error: string|null } }>}
+ */
+export async function refrescarSubmayor({ almacen, refrescar = false }) {
+  if (!almacen) return { actualizados: 0, leidos: 0, progreso: { listo: true } }
+
+  const { res, data } = await postTkc(ENDPOINT_SUBMAYOR, { almacen, refrescar })
+
+  if (!res.ok) {
+    throw new Error(data?.error ?? `Error ${res.status} al leer el submayor de TKC`)
   }
   return data
 }

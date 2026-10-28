@@ -16,11 +16,13 @@ import { getExistencias } from '../services/tkc/existencias.js'
 import { keyToTkcValue } from '../services/tkc/warehouses.js'
 import { resolverSesion } from './session.js'
 import { leerCredenciales } from './credencialesTkc.js'
+import { query } from './db.js'
 
 const TKC_API_ENDPOINTS = {
   inventario: '/api/tkc/inventario',
   existencia: '/api/tkc/existencia',
   existencias: '/api/tkc/existencias',
+  submayor: '/api/tkc/submayor',
 }
 
 const MAX_BODY = 64 * 1024
@@ -53,6 +55,84 @@ function readBody(req) {
   })
 }
 
+
+// ── Volcar el submayor en nuestra copia ───────────────────────────
+//
+// `productos.almacen` y `.tienda` salen de una foto del submayor que el cron de
+// elineas-transferencia saca dos veces al día, así que el catálogo podía ir
+// hasta dieciocho horas por detrás: alguien movía mercancía y la pantalla
+// seguía enseñando los números de la mañana.
+//
+// Al abrir el catálogo de un almacén se le pregunta al submayor de verdad y lo
+// que diga se guarda. Tarda —un almacén de 9.000 productos son unos 19 s—, pero
+// se hace en segundo plano: la tabla se pinta enseguida con lo que hay y se
+// corrige al llegar. El caché del recorrido es compartido y dura diez minutos,
+// así que diez personas abriendo el mismo almacén cuestan un recorrido, no
+// diez.
+
+/** Cuánto se espera a que termine el recorrido antes de volcar lo que haya. */
+const ESPERA_SUBMAYOR_MS = 120 * 1000
+/** Filas por sentencia. Un almacén grande son ~9.000. */
+const LOTE = 1000
+
+/** Espera a que el recorrido del almacén acabe y devuelve el mapa completo. */
+async function submayorCompleto(tkc, almacen, refrescar) {
+  const limite = Date.now() + ESPERA_SUBMAYOR_MS
+  // Con `ids: []` solo se pide el progreso: no transfiere el mapa.
+  let estado = await getExistencias(tkc, { almacen, ids: [], refrescar })
+  while (!estado.progreso.listo && Date.now() < limite) {
+    await new Promise((seguir) => { setTimeout(seguir, 1000) })
+    estado = await getExistencias(tkc, { almacen, ids: [] })
+  }
+  const todo = await getExistencias(tkc, { almacen })
+  return { existencias: todo.existencias, progreso: todo.progreso }
+}
+
+/**
+ * Escribe las existencias en `productos`, por lotes.
+ *
+ * Se unen por `id_tienda`, que es como los identifica el submayor. Un producto
+ * sin id de tienda no está ahí y se queda como estaba.
+ */
+async function guardarExistencias(clave, existencias) {
+  const filas = Object.entries(existencias)
+  let actualizados = 0
+
+  for (let i = 0; i < filas.length; i += LOTE) {
+    const lote = filas.slice(i, i + LOTE)
+    const valores = []
+    const tuplas = lote.map(([id, e]) => {
+      const n = valores.push(id, e.fisica, e.enAlmacen, e.enTienda)
+      return `($${n - 3}::text, $${n - 2}::numeric, $${n - 1}::numeric, $${n}::numeric)`
+    })
+    valores.push(clave)
+
+    const { rowCount } = await query(
+      `UPDATE productos p
+          SET exist_fisica = v.ef,
+              almacen      = v.a,
+              tienda       = v.t,
+              -- De ahora: la sincronización no debe pisarlo con la foto de la
+              -- mañana (ver supabase/existencias_en.sql).
+              existencias_en = now(),
+              updated_date = now()
+         FROM (VALUES ${tuplas.join(', ')}) AS v(id, ef, a, t)
+        WHERE p.almacen_num = $${valores.length} AND p.id_tienda = v.id`,
+      valores,
+    )
+    actualizados += rowCount ?? 0
+  }
+
+  return actualizados
+}
+
+async function volcarSubmayor(tkc, { almacenTkc, clave, refrescar }) {
+  const { existencias, progreso } = await submayorCompleto(tkc, almacenTkc, refrescar)
+  const actualizados = await guardarExistencias(clave, existencias)
+  // `listo: false` significa que se volcó un mapa parcial: mejor que nada, y
+  // la siguiente apertura lo completa. Se dice para no aparentar exactitud.
+  return { actualizados, leidos: Object.keys(existencias).length, progreso }
+}
 
 /**
  * @param {object} deps
@@ -108,6 +188,15 @@ export function createTkcApiMiddleware({ tkc }) {
           refrescar: body.refrescar === true,
         })
         return json(res, 200, result)
+      }
+
+      if (route === 'submayor') {
+        const resumen = await volcarSubmayor(tkc, {
+          almacenTkc: tkcValue,
+          clave: String(body.almacen),
+          refrescar: body.refrescar === true,
+        })
+        return json(res, 200, resumen)
       }
 
       if (route === 'existencia') {

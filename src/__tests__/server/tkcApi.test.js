@@ -25,6 +25,9 @@ vi.mock('@/server/session', () => ({ resolverSesion }))
 const leerCredenciales = vi.hoisted(() => vi.fn())
 vi.mock('@/server/credencialesTkc', () => ({ leerCredenciales }))
 
+const query = vi.hoisted(() => vi.fn(async () => ({ rowCount: 0 })))
+vi.mock('@/server/db', () => ({ query }))
+
 const { createTkcApiMiddleware } = await import('@/server/tkcApi')
 
 const TKC = { tkcBase: 'https://tkc.test', tkcUser: 'u', tkcPass: 'p' }
@@ -165,6 +168,31 @@ describe('createTkcApiMiddleware', () => {
     )
     expect(res.statusCode).toBe(200)
     expect(getExistencias).toHaveBeenCalledWith(TKC, { almacen: '351', ids: ['1', '2', '3'], refrescar: true })
+  })
+
+  it('POST /api/tkc/submayor guarda en la copia lo que diga el submayor', async () => {
+    // El catálogo lee `productos`, y ahí las existencias vienen de una foto de
+    // dos veces al día. Esto es lo que las pone al día de verdad.
+    getExistencias.mockResolvedValue({
+      existencias: { 74298: { fisica: 15, enAlmacen: 13, enTienda: 2 } },
+      progreso: { cargadas: 1, total: 1, listo: true, error: null },
+    })
+    query.mockResolvedValue({ rowCount: 1 })
+
+    const middleware = createTkcApiMiddleware({ tkc: TKC })
+    const res = fakeRes()
+    await middleware(fakeReq({ url: '/api/tkc/submayor', body: { almacen: '789' } }), res, vi.fn())
+
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toMatchObject({ actualizados: 1, leidos: 1 })
+
+    const [sql, valores] = query.mock.calls.at(-1)
+    expect(sql).toMatch(/UPDATE productos/)
+    // Se unen por id de tienda, que es como los identifica el submayor.
+    expect(sql).toMatch(/p\.id_tienda = v\.id/)
+    // Marca de frescura: sin ella la sincronización lo pisa con la foto vieja.
+    expect(sql).toMatch(/existencias_en = now\(\)/)
+    expect(valores).toEqual(['74298', 15, 13, 2, '789'])
   })
 
   it('un error de TKC (listInventory rechaza) responde 502 con el mensaje', async () => {
