@@ -217,6 +217,18 @@ function reenviar(res, { status, datos, extra }) {
   if (status === 401) {
     return fallo(res, 502, 'upstream_rejected', 'La API de transferencias no aceptó tu sesión. Vuelve a entrar.')
   }
+  // Su API dice «el usuario del token no tiene ningún rol en este sistema»,
+  // que para quien lo lee no quiere decir nada: su rol en inventario existe y
+  // la pantalla le dejó llegar hasta aquí. El que falta es el del sistema de
+  // transferencias, y se da en el Identity Server, no aquí.
+  if (status === 403 && /ning[úu]n rol en este sistema/i.test(JSON.stringify(datos))) {
+    return fallo(
+      res, 403, 'sin_rol_transferencias',
+      'Tu usuario no tiene rol en el sistema de transferencias, que es el que mueve la existencia en TKC. ' +
+      'Pide que te lo asignen en el Identity Server, con permiso para subir y bajar de tienda. ' +
+      'No se puede dar desde inventario.',
+    )
+  }
   return json(res, estadoPublico(status), datos, extra)
 }
 
