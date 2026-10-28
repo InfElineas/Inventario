@@ -13,10 +13,10 @@ const PERIODS = [
   { key: '6M',  label: '6M',  days: 180 },
 ]
 
-// El estado de cada producto lo decide ahora la base, en el CASE de la acción
-// `resumen` de src/server/datosApi.js: aquí ya no llegan productos, solo
-// recuentos por estado. La regla sigue viva en `calcEstadoTienda`
-// (src/pages/Productos.jsx), que es la que se aplica fila a fila.
+// El estado de cada producto lo decide la base: es la columna generada
+// `productos.estado_tienda` (supabase/estado_tienda_columna.sql), y aquí solo
+// llegan recuentos por estado desde la acción `resumen` de
+// src/server/datosApi.js. Ya no se calcula en ningún sitio del navegador.
 
 const EST_ORDER = ['SIN RESERVA','NO TIENDA','ULTIMAS PIEZAS','PROXIMO','DISPONIBLE','AGOTADO','SIN ID']
 const EST_COLOR = {

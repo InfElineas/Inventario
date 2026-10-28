@@ -113,47 +113,23 @@ function formatTkcCell(value, def) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────
-function calcEstadoAnuncio(idTienda, ef, a, t) {
-  const hasId = idTienda && String(idTienda).trim() !== '';
-  if (!hasId && ef === 0)           return 'SIN ID EF=0';
-  if (!hasId && ef > 0)             return 'SIN ID EF>0';
-  if (hasId && a === 0 && t > 6)   return 'DESACTIVADO MUERTO EF=0';
-  if (hasId && t === 0 && ef > 10) return 'DESACTIVADO MUERTO EF>0';
-  if (hasId && ef === 0)           return 'DESACTIVADO EF=0';
-  if (hasId && ef > 0)             return 'ACTIVADO';
-  return 'DESACTIVADO EF=0';
-}
+//
+// Los dos estados y la prioridad se leen de la fila; aquí no se calcula nada.
+//
+// Antes había dos fórmulas en JavaScript que los deducían de EF/A/T. Ninguna
+// coincidía con la base: la del anuncio daba ACTIVADO a cualquier cosa con
+// existencia —no sabe si el anuncio está activado, eso lo dice TKC— y la de
+// tienda era una copia de la columna generada que podía quedarse atrás sin que
+// nadie lo notara. El mismo producto se veía distinto en esta pestaña y en la
+// de TKC.
+//
+// `estado_tienda` y `prioridad_tienda` son columnas GENERADAS (ver
+// supabase/estado_tienda_columna.sql) y `estado_anuncio_tkc` lo publica TKC.
+// Son el mismo dato por el que filtra y ordena la pestaña de TKC.
 
-function calcEstadoTienda(idTienda, ef, a, t) {
-  const hasId = idTienda && String(idTienda).trim() !== '';
-  // Sin ID de tienda el producto es SIN ID, tenga stock o no. Antes solo lo
-  // era con existencia cero, y los 207 que tienen stock caían por las ramas de
-  // almacén/tienda y acababan como «NO TIENDA» — en las hojas de inventario
-  // salen como SIN ID, con prioridad 9 en lugar de 10.
-  if (!hasId)                      return { estado: 'SIN ID',         prio: ef === 0 ? 10 : 9 };
-  if (hasId  && ef === 0)          return { estado: 'AGOTADO',        prio: 11 };
-  if (a === 0 && t > 6)           return { estado: 'SIN RESERVA',    prio: 1  };
-  if (t === 0 && ef > 10)         return { estado: 'NO TIENDA',      prio: 2  };
-  if (t === 0 && ef <= 10)        return { estado: 'NO TIENDA',      prio: 3  };
-  if (t > 1 && t < a && a <= 10)  return { estado: 'ULTIMAS PIEZAS', prio: 4  };
-  if (a >= 0 && a < t && t <= 10) return { estado: 'ULTIMAS PIEZAS', prio: 6  };
-  if (t <= 10)                    return { estado: 'PROXIMO',        prio: 5  };
-  if (t <= a)                     return { estado: 'DISPONIBLE',     prio: 7  };
-  if (a < t)                      return { estado: 'DISPONIBLE',     prio: 8  };
-  return { estado: 'SIN DATOS', prio: 99 };
-}
-
-function calcEtLabel(idTienda, ef, a, t) {
-  return calcEstadoTienda(idTienda, ef, a, t).estado;
-}
-
-function grupoAnuncio(idTienda, ef, a, t) {
-  const full = calcEstadoAnuncio(idTienda, ef, a, t);
-  if (full === 'ACTIVADO') return 'ACTIVADO';
-  if (full.includes('MUERTO')) return 'MUERTO';
-  if (full.startsWith('DESACTIVADO')) return 'DESACTIVADO';
-  return 'SIN ID';
-}
+const estadoAnuncioDe = (p) => p.estado_anuncio_tkc ?? '';
+const estadoTiendaDe  = (p) => p.estado_tienda ?? 'SIN DATOS';
+const prioridadDe     = (p) => p.prioridad_tienda ?? 99;
 
 const EA_STYLE = {
   'ACTIVADO':                { cls: 'text-[#4ade80] bg-[#4ade80]/10' },
@@ -583,8 +559,12 @@ export default function Productos({ initialSource: initialSourceRaw }) {
       if (advFilters.existencia === 'con_ef'  && ef <= 0) return false;
       if (advFilters.existencia === 'sin_ef'  && ef > 0)  return false;
       if (advFilters.existencia === 'critico' && ef >= 5) return false;
-      if (advFilters.estadoTienda !== 'all'   && calcEtLabel(p.id_tienda, ef, a, t) !== advFilters.estadoTienda) return false;
-      if (advFilters.estadoAnuncio !== 'all'  && grupoAnuncio(p.id_tienda, ef, a, t) !== advFilters.estadoAnuncio) return false;
+      // Mismo criterio que la pestaña de TKC: el valor completo, no un grupo.
+      // Antes esto comparaba contra 'ACTIVADO' | 'MUERTO' | 'DESACTIVADO' |
+      // 'SIN ID' mientras el desplegable ofrecía los siete valores enteros, así
+      // que elegir cualquiera de ellos no devolvía nunca nada.
+      if (advFilters.estadoTienda !== 'all'   && estadoTiendaDe(p) !== advFilters.estadoTienda) return false;
+      if (advFilters.estadoAnuncio !== 'all'  && estadoAnuncioDe(p) !== advFilters.estadoAnuncio) return false;
       if (advFilters.suministrador && p.suministrador !== advFilters.suministrador) return false;
       if (advFilters.categoria     && p.categoria_elineas !== advFilters.categoria)  return false;
       if (advFilters.precioMin     && (p.precio_costo ?? 0) < Number(advFilters.precioMin)) return false;
@@ -605,8 +585,9 @@ export default function Productos({ initialSource: initialSourceRaw }) {
       case 'a':             return arr.sort((a, b) => mul * ((a.almacen ?? 0) - (b.almacen ?? 0)));
       case 't':             return arr.sort((a, b) => mul * ((a.tienda ?? 0) - (b.tienda ?? 0)));
       case 'precio':        return arr.sort((a, b) => mul * ((a.precio_costo ?? 0) - (b.precio_costo ?? 0)));
-      case 'estado_anuncio':return arr.sort((a, b) => { const ea = (p) => calcEstadoAnuncio(p.id_tienda, p.exist_fisica??0, p.almacen??0, p.tienda??0); return mul * ea(a).localeCompare(ea(b)); });
-      case 'estado_tienda': return arr.sort((a, b) => { const et = (p) => calcEstadoTienda(p.id_tienda, p.exist_fisica??0, p.almacen??0, p.tienda??0).prio; return mul * (et(a) - et(b)); });
+      case 'estado_anuncio':return arr.sort((a, b) => mul * estadoAnuncioDe(a).localeCompare(estadoAnuncioDe(b)));
+      // Por prioridad, no por nombre: ese número es el orden en que se trabaja.
+      case 'estado_tienda': return arr.sort((a, b) => mul * (prioridadDe(a) - prioridadDe(b)));
       case 'categoria':     return arr.sort((a, b) => mul * (a.categoria_elineas ?? '').localeCompare(b.categoria_elineas ?? ''));
       default:              return arr;
     }
@@ -946,10 +927,10 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                         <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
                       ) : paginated.map(p => {
                         const ef = p.exist_fisica ?? 0, a = p.almacen ?? 0, t = p.tienda ?? 0;
-                        const eaFull  = calcEstadoAnuncio(p.id_tienda, ef, a, t);
+                        const eaFull  = estadoAnuncioDe(p);
                         const eaLabel = EA_LABEL[eaFull] ?? eaFull;
                         const eaCls   = (EA_STYLE[eaFull] ?? { cls: 'text-muted-foreground bg-muted' }).cls;
-                        const etLabel = calcEtLabel(p.id_tienda, ef, a, t);
+                        const etLabel = estadoTiendaDe(p);
                         const etColor = ET_LABEL_COLOR[etLabel] ?? '#888';
                         const firstImg = Array.isArray(p.fotos) && p.fotos.length > 0 ? p.fotos[0] : null;
 
