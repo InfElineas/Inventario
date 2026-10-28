@@ -40,6 +40,8 @@ function montar(props = {}) {
   );
 }
 const boton = (nombre) => screen.getByRole('button', { name: nombre });
+/** El análisis se lanza solo tras una pausa: hay que darle margen. */
+const esperar = (texto) => screen.findByText(texto, {}, { timeout: 3000 });
 
 beforeEach(() => {
   cleanup();
@@ -48,15 +50,17 @@ beforeEach(() => {
 });
 
 describe('MoverTiendaDialog', () => {
-  it('el plan se lee en castellano, no como JSON', async () => {
+  it('analiza solo al abrirse y lo cuenta en castellano, no como JSON', async () => {
     svc.planearTienda.mockResolvedValue(plan({
       line: 1, code: PRODUCTO.codigo, requested: 294, granted: 294, status: 'exito',
     }));
-    const user = userEvent.setup();
     montar();
 
-    await user.click(boton(/analizar/i));
-    expect(await screen.findByText(/se subirían 294 de las 294 unidades/i)).toBeInTheDocument();
+    // Nadie pulsa nada: preguntar qué pasaría no decide nada y se olvidaba.
+    expect(await esperar(/se subirían 294 de las 294 unidades/i)).toBeInTheDocument();
+    expect(svc.planearTienda).toHaveBeenCalledWith('subir', expect.objectContaining({
+      almacen: '789', modo: 'integro', lineas: [{ code: PRODUCTO.codigo, quantity: 294 }],
+    }));
     expect(screen.queryByText(/totalGranted/)).not.toBeInTheDocument();
     expect(boton(/ejecutar/i)).toBeEnabled();
   });
@@ -66,11 +70,9 @@ describe('MoverTiendaDialog', () => {
       line: 1, code: PRODUCTO.codigo, requested: 294, granted: 0, status: 'fallido',
       reason: 'Este código no tiene oferta en la tienda de este almacén.',
     }));
-    const user = userEvent.setup();
     montar();
 
-    await user.click(boton(/analizar/i));
-    expect(await screen.findByText(/no se movería nada/i)).toBeInTheDocument();
+    expect(await esperar(/no se movería nada/i)).toBeInTheDocument();
     expect(screen.getByText(/no tiene oferta en la tienda/i)).toBeInTheDocument();
     // Ejecutarlo mandaría a TKC algo que ya dijo que rechaza.
     expect(boton(/ejecutar/i)).toBeDisabled();
@@ -81,17 +83,35 @@ describe('MoverTiendaDialog', () => {
     svc.planearTienda.mockResolvedValue(plan({
       line: 1, code: PRODUCTO.codigo, requested: 294, granted: 100, status: 'exito', trimmed: true,
     }));
-    const user = userEvent.setup();
     montar();
 
-    await user.click(boton(/analizar/i));
-    expect(await screen.findByText(/se subirían 100 de las 294/i)).toBeInTheDocument();
+    expect(await esperar(/se subirían 100 de las 294/i)).toBeInTheDocument();
     expect(screen.getByText(/se recorta a lo que hay/i)).toBeInTheDocument();
   });
 
-  it('no se puede ejecutar sin analizar antes', () => {
+  it('ejecutar está bloqueado mientras no haya plan', () => {
+    svc.planearTienda.mockResolvedValue(plan({
+      line: 1, code: PRODUCTO.codigo, requested: 294, granted: 294, status: 'exito',
+    }));
     montar();
     expect(boton(/ejecutar/i)).toBeDisabled();
+  });
+
+  it('antes de mover avisa de lo que pasa si no se miró el plan', async () => {
+    svc.planearTienda.mockResolvedValue(plan({
+      line: 1, code: PRODUCTO.codigo, requested: 294, granted: 100, status: 'exito',
+    }));
+    const user = userEvent.setup();
+    montar();
+    await esperar(/se subirían 100/i);
+
+    await user.click(boton(/ejecutar/i));
+    const aviso = await screen.findByRole('alertdialog');
+    // La cifra es la concedida, no la pedida: decir 294 sería mentir.
+    expect(aviso).toHaveTextContent(/100 unidades/);
+    expect(aviso).toHaveTextContent(/no se puede deshacer/i);
+    expect(aviso).toHaveTextContent(/dejará de cuadrar/i);
+    expect(svc.ejecutarTienda).not.toHaveBeenCalled();
   });
 
   it('cada sentido ofrece solo sus modos', () => {

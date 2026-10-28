@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +6,7 @@ import AlertBanner from '@/components/shared/AlertBanner';
 import { useConfirm } from '@/lib/useConfirm';
 import { planearTienda, ejecutarTienda, esperarTrabajo } from '@/services/tiendaService';
 import { warehouseName } from '@/services/tkc/warehouses';
-import { Loader2, ArrowUpFromLine, ArrowDownToLine, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, RefreshCw, ArrowUpFromLine, ArrowDownToLine, CheckCircle2, XCircle } from 'lucide-react';
 
 /** Mismo aspecto que los desplegables del catálogo. */
 const FILTER_CLS = 'w-full appearance-none bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground';
@@ -29,6 +29,7 @@ const MODULOS = {
     titulo: 'Subir a tienda',
     descripcion: 'Mueve existencia del almacén al piso de tienda en TKC.',
     icono: ArrowUpFromLine,
+    verboEjecutar: 'subirán a tienda',
     disponible: (p) => Number(p.enAlmacen ?? 0),
     etiquetaDisponible: 'en almacén',
     modos: [
@@ -40,6 +41,7 @@ const MODULOS = {
     titulo: 'Bajar de tienda',
     descripcion: 'Devuelve existencia del piso de tienda al almacén en TKC.',
     icono: ArrowDownToLine,
+    verboEjecutar: 'bajarán al almacén',
     disponible: (p) => Number(p.enTienda ?? 0),
     etiquetaDisponible: 'en tienda',
     modos: [
@@ -137,15 +139,45 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
   // sigue siendo éxito— y «porcentaje» pone un tope sobre lo que hay.
   const [modo, setModo] = useState('integro');   // válido en los dos sentidos
   const [porcentaje, setPorcentaje] = useState('30');
-
-  if (!producto) return null;
+  // Sube de uno para pedir otro análisis de lo mismo (los datos del catálogo
+  // pueden tener horas y la tienda haber cambiado mientras).
+  const [intento, setIntento] = useState(0);
 
   const n = Number(cantidad);
   const cantidadValida = Number.isInteger(n) && n > 0;
-  const lineas = [{ code: producto.codigo, quantity: n }];
+  const lineas = [{ code: producto?.codigo, quantity: n }];
   const pct = Number(porcentaje);
   const porcentajeValido = modo !== 'porcentaje' || (Number.isInteger(pct) && pct >= 1 && pct <= 100);
   const envio = { almacen, lineas, modo, ...(modo === 'porcentaje' ? { porcentaje: pct } : {}) };
+  const entradaValida = Boolean(producto) && cantidadValida && porcentajeValido;
+
+  // El análisis se pide solo. Darle a un botón para saber qué pasaría era un
+  // paso que no decidía nada —nadie ejecuta sin analizar— y que se olvidaba.
+  // Con una pausa antes de preguntar, para no llamar a TKC en cada tecla; y
+  // con `vivo`, para que una respuesta vieja no pise el plan de lo que ahora
+  // hay escrito: ejecutar con un plan que no corresponde mueve otra cosa.
+  const firma = JSON.stringify(envio);
+  useEffect(() => {
+    if (!entradaValida || resultado) return undefined;
+    let vivo = true;
+    const temporizador = setTimeout(async () => {
+      setOcupado('analizar');
+      setError('');
+      try {
+        const inicio = await planearTienda(modulo, JSON.parse(firma));
+        const id = inicio?.jobId ?? inicio?.id;
+        const fin = id ? await esperarTrabajo(id) : inicio;
+        if (vivo) setPlan(fin);
+      } catch (e) {
+        if (vivo) setError(e.message);
+      } finally {
+        if (vivo) setOcupado(null);
+      }
+    }, 500);
+    return () => { vivo = false; clearTimeout(temporizador); };
+  }, [firma, entradaValida, resultado, modulo, intento]);
+
+  if (!producto) return null;
 
   const correr = async (paso, fn) => {
     setOcupado(paso);
@@ -164,17 +196,20 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
     }
   };
 
-  const analizar = async () => {
-    setResultado(null);
-    const r = await correr('analizar', () => planearTienda(modulo, envio));
-    if (r) setPlan(r);
-  };
-
   const ejecutar = async () => {
     // La cantidad que se anuncia es la que el análisis concede, no la pedida:
     // si TKC recorta, decir lo pedido sería mentirle a quien confirma.
+    //
+    // Y se dice qué pasa si no se miró el plan, porque es el error que de
+    // verdad ocurre: dar a ejecutar por costumbre. Lo que se mueve aquí deja
+    // de cuadrar con lo que hay en el piso de tienda, y la diferencia no
+    // aparece hasta el conteo, cuando ya nadie recuerda este movimiento.
     const ok = await confirmDialog(
-      `Se moverán ${leerPlan(plan).concedido} unidades de «${producto.nombre}» en TKC. Esto no se puede deshacer desde aquí.`,
+      `Se ${cfg.verboEjecutar} ${leerPlan(plan).concedido} unidades de «${producto.nombre}» ` +
+      `en el almacén ${warehouseName(almacen)}. Esto escribe en TKC y no se puede deshacer desde aquí. ` +
+      'Comprueba antes el análisis de arriba: si ejecutas sin leerlo puedes mover una cantidad ' +
+      'distinta de la que creías, y la existencia dejará de cuadrar con lo que hay en tienda hasta ' +
+      'el próximo conteo.',
       { title: `¿${cfg.titulo}?`, destructive: modulo === 'bajar' },
     );
     if (!ok) return;
@@ -250,7 +285,13 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
 
             {error && <AlertBanner variant="danger" message={error} />}
 
-            {plan && !resultado && <Plan {...analisis} modulo={modulo} />}
+            {ocupado === 'analizar' && (
+              <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Preguntando a TKC qué pasaría…
+              </p>
+            )}
+
+            {plan && !resultado && ocupado !== 'analizar' && <Plan {...analisis} modulo={modulo} />}
 
             {resultado && (
               <AlertBanner variant="success"
@@ -263,15 +304,18 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
               </Button>
               {!resultado && (
                 <>
-                  <Button variant="outline" disabled={!cantidadValida || !porcentajeValido || ocupado} onClick={analizar}
-                    style={{ borderRadius: '8px' }}>
-                    {ocupado === 'analizar' && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
-                    Analizar
+                  {/* El análisis se hace solo; esto es para repetirlo cuando
+                      ha pasado un rato con el diálogo abierto, o tras un fallo
+                      de red. */}
+                  <Button variant="outline" disabled={!entradaValida || ocupado}
+                    onClick={() => setIntento((i) => i + 1)} style={{ borderRadius: '8px' }}>
+                    <RefreshCw className={`w-4 h-4 mr-1.5 ${ocupado === 'analizar' ? 'animate-spin' : ''}`} />
+                    Volver a analizar
                   </Button>
                   {/* Solo tras ver el plan, y solo si el plan mueve algo:
                       ejecutar uno que no concede nada manda un envío que TKC
                       ya dijo que va a rechazar. */}
-                  <Button disabled={!plan || analisis.concedido === 0 || !cantidadValida || !porcentajeValido || ocupado} onClick={ejecutar}
+                  <Button disabled={!plan || analisis.concedido === 0 || !entradaValida || ocupado} onClick={ejecutar}
                     style={{ borderRadius: '8px' }}>
                     {ocupado === 'ejecutar' && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
                     Ejecutar
