@@ -6,7 +6,7 @@ import AlertBanner from '@/components/shared/AlertBanner';
 import { useConfirm } from '@/lib/useConfirm';
 import { planearTienda, ejecutarTienda, esperarTrabajo } from '@/services/tiendaService';
 import { warehouseName } from '@/services/tkc/warehouses';
-import { Loader2, ArrowUpFromLine, ArrowDownToLine } from 'lucide-react';
+import { Loader2, ArrowUpFromLine, ArrowDownToLine, CheckCircle2, XCircle } from 'lucide-react';
 
 /** Mismo aspecto que los desplegables del catálogo. */
 const FILTER_CLS = 'w-full appearance-none bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground';
@@ -51,6 +51,76 @@ const MODULOS = {
 
 /** Una por envío distinto; repetir el mismo la reutiliza y TKC no duplica. */
 const nuevaClave = () => `tienda-${crypto.randomUUID()}`;
+
+/**
+ * Lo que el análisis dice que pasaría, en números sueltos.
+ *
+ * Su API parte las líneas en `exito` y `fallido` y pone en `totalGranted` lo
+ * que de verdad se movería, que puede ser menos de lo pedido.
+ */
+function leerPlan(plan) {
+  const r = plan?.result ?? plan ?? {};
+  const lineas = [...(r.exito ?? []), ...(r.fallido ?? [])]
+    .sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
+  return {
+    lineas,
+    concedido: Number(r.totalGranted ?? 0),
+    pedido: lineas.reduce((s, l) => s + (Number(l.requested) || 0), 0),
+  };
+}
+
+/**
+ * El plan, en lo que le importa a quien lo mira: cuánto se mueve y, si no se
+ * mueve, por qué.
+ *
+ * Antes salía el JSON de su API tal cual. Tenía todo, pero no lo entendía
+ * nadie, y un plan que no se entiende no sirve para decidir si ejecutar.
+ */
+function Plan({ lineas, concedido, pedido, modulo }) {
+  if (lineas.length === 0) {
+    return <AlertBanner variant="warning" message="El análisis no devolvió ninguna línea. Vuelve a intentarlo." />;
+  }
+  const verbo = modulo === 'bajar' ? 'bajarían' : 'subirían';
+
+  return (
+    <div className="rounded-lg border border-border overflow-hidden" style={{ borderRadius: '8px' }}>
+      <div className="px-3 py-2 border-b border-border flex items-center gap-2">
+        {concedido > 0
+          ? <CheckCircle2 className="w-3.5 h-3.5 text-[#1D9E75] shrink-0" />
+          : <XCircle className="w-3.5 h-3.5 text-[#E24B4A] shrink-0" />}
+        <p className="text-xs font-medium">
+          {concedido > 0
+            ? `Se ${verbo} ${concedido} de las ${pedido} unidades pedidas.`
+            : 'No se movería nada.'}
+        </p>
+      </div>
+      <ul className="divide-y divide-border">
+        {lineas.map((l) => {
+          const concede = Number(l.granted) || 0;
+          return (
+            <li key={`${l.line}-${l.code}`} className="px-3 py-2 space-y-1">
+              <div className="flex items-baseline justify-between gap-3 text-xs">
+                <span className="font-mono text-muted-foreground">{l.code}</span>
+                <span className={concede > 0 ? 'text-[#1D9E75]' : 'text-[#E24B4A]'}>
+                  {concede} de {l.requested}
+                </span>
+              </div>
+              {/* Recortar es un resultado válido, no un fallo: TKC mueve lo
+                  que hay. Pero hay que decirlo, porque quien pidió 294 y ve
+                  «ejecutado» da por hecho que se movieron 294. */}
+              {concede > 0 && concede < Number(l.requested) && (
+                <p className="text-xs text-[#BA7517]">
+                  Se recorta a lo que hay disponible.
+                </p>
+              )}
+              {l.reason && <p className="text-xs text-muted-foreground leading-snug">{l.reason}</p>}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
 
 export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, onClose }) {
   const cfg = MODULOS[modulo] ?? MODULOS.subir;
@@ -101,8 +171,10 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
   };
 
   const ejecutar = async () => {
+    // La cantidad que se anuncia es la que el análisis concede, no la pedida:
+    // si TKC recorta, decir lo pedido sería mentirle a quien confirma.
     const ok = await confirmDialog(
-      `Se moverán ${n} unidades de «${producto.nombre}» en TKC. Esto no se puede deshacer desde aquí.`,
+      `Se moverán ${leerPlan(plan).concedido} unidades de «${producto.nombre}» en TKC. Esto no se puede deshacer desde aquí.`,
       { title: `¿${cfg.titulo}?`, destructive: modulo === 'bajar' },
     );
     if (!ok) return;
@@ -119,12 +191,13 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
   };
 
   const Icono = cfg.icono;
+  const analisis = leerPlan(plan);
 
   return (
     <>
       {ConfirmDialogNode}
       <Dialog open onOpenChange={(abierto) => { if (!abierto) onClose(); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogTitle className="text-sm font-medium flex items-center gap-2">
             <Icono className="w-4 h-4" /> {cfg.titulo} — {warehouseName(almacen)}
           </DialogTitle>
@@ -177,12 +250,7 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
 
             {error && <AlertBanner variant="danger" message={error} />}
 
-            {plan && !resultado && (
-              <div className="rounded-lg border border-border p-3 text-xs space-y-1" style={{ borderRadius: '8px' }}>
-                <p className="font-medium text-foreground">Lo que haría</p>
-                <pre className="whitespace-pre-wrap text-muted-foreground">{JSON.stringify(plan.result ?? plan, null, 2)}</pre>
-              </div>
-            )}
+            {plan && !resultado && <Plan {...analisis} modulo={modulo} />}
 
             {resultado && (
               <AlertBanner variant="success"
@@ -200,8 +268,10 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
                     {ocupado === 'analizar' && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
                     Analizar
                   </Button>
-                  {/* Solo tras ver el plan: ejecutar sin mirarlo es mover a ciegas. */}
-                  <Button disabled={!plan || !cantidadValida || !porcentajeValido || ocupado} onClick={ejecutar}
+                  {/* Solo tras ver el plan, y solo si el plan mueve algo:
+                      ejecutar uno que no concede nada manda un envío que TKC
+                      ya dijo que va a rechazar. */}
+                  <Button disabled={!plan || analisis.concedido === 0 || !cantidadValida || !porcentajeValido || ocupado} onClick={ejecutar}
                     style={{ borderRadius: '8px' }}>
                     {ocupado === 'ejecutar' && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
                     Ejecutar
