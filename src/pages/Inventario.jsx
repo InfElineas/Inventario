@@ -9,7 +9,7 @@ import StatusBadge from '@/components/shared/StatusBadge';
 import InventarioForm from '@/components/inventario/InventarioForm';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
 import Timeline from '@/components/shared/Timeline';
-import { Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
+import { ClipboardList, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
 import OrdenReabastecimiento from '@/components/inventario/OrdenReabastecimiento';
 import { Textarea } from '@/components/ui/textarea';
 import ColPicker, { loadCols } from '@/components/shared/ColPicker';
@@ -184,6 +184,12 @@ export default function Inventario() {
         <OrdenReabastecimiento onClose={() => setShowOrden(false)} />
       )}
 
+      <MisPendientes
+        inventarios={inventarios}
+        email={user?.email}
+        onAbrir={(id) => { setSelectedId(id); setShowForm(false); setShowOrden(false); }}
+      />
+
       <div className="flex gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -281,6 +287,53 @@ export default function Inventario() {
   );
 }
 
+/**
+ * Los conteos propios sin enviar, arriba del todo.
+ *
+ * Un conteo en curso no está en la bandeja de nadie más: si quien lo contó no
+ * lo recuerda, se queda ahí para siempre y la diferencia nunca llega a
+ * facturación. Por eso sale primero y solo a quien lo tiene que terminar.
+ */
+function MisPendientes({ inventarios, email, onAbrir }) {
+  const mios = email
+    ? inventarios.filter((i) => i.estado_tarea === 'en_curso' && i.especialista_id === email)
+    : [];
+  if (mios.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-[#BA7517]/30 bg-[#BA7517]/5 overflow-hidden" style={{ borderRadius: '12px' }}>
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-[#BA7517]/20">
+        <ClipboardList className="w-4 h-4 text-[#BA7517]" />
+        <p className="text-sm font-medium">
+          Tienes {mios.length} {mios.length === 1 ? 'conteo sin enviar' : 'conteos sin enviar'}
+        </p>
+        <span className="text-xs text-muted-foreground">
+          — nadie más los ve hasta que los mandes a facturación
+        </span>
+      </div>
+      <div className="max-h-56 overflow-y-auto divide-y divide-[#BA7517]/15">
+        {mios.map((i) => (
+          <button
+            key={i.id} type="button" onClick={() => onAbrir(i.id)}
+            className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-[#BA7517]/10 transition-colors"
+          >
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm line-clamp-1">{i.producto_nombre || '—'}</span>
+              <span className="block text-[11px] text-muted-foreground font-mono">{i.producto_codigo || '—'}</span>
+            </span>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">{i.fecha_inv || '—'}</span>
+            <span className={`text-sm font-medium tabular-nums whitespace-nowrap ${
+              (i.diferencia ?? 0) === 0 ? 'text-[#1D9E75]' : (i.diferencia ?? 0) > 0 ? 'text-[#BA7517]' : 'text-[#E24B4A]'
+            }`}>
+              {(i.diferencia ?? 0) > 0 ? '+' : ''}{i.diferencia ?? 0}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpdating: isUpdatingRaw }) {
   const isUpdating = isUpdatingRaw ?? false;
   const [factData, setFactData] = useState({
@@ -299,6 +352,10 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
   const canProcessFact = (role === 'fact'    || role === 'administrador') && inv.estado_tarea === 'pend_fact';
   const canAudit       = (role === 'auditor' || role === 'administrador') && inv.estado_tarea === 'en_auditoria';
   const canDevuelto    = (role === 'inv'     || role === 'administrador') && inv.estado_tarea === 'devuelto';
+  // Un conteo propio sin enviar se puede seguir tocando: es el caso de contar,
+  // dudar y volver a contar antes de pasárselo a facturación.
+  const canEditarBorrador = inv.estado_tarea === 'en_curso'
+    && (role === 'administrador' || (role === 'inv' && inv.especialista_id === user?.email));
   const canDelete = role === 'superadmin'
     || (role === 'administrador' && inv.estado_tarea !== 'completado')
     || (role === 'inv' && inv.estado_tarea === 'en_curso' && inv.especialista_id === user?.email);
@@ -372,6 +429,59 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
           {inv.nota_auditor    && <ReadOnlyField label="Nota"    value={inv.nota_auditor} />}
         </ReadOnlyBlock>
       )}
+
+      {/* Borrador propio — recontar o enviar */}
+      {canEditarBorrador && (() => {
+        const conteoNum = Number(nuevoConteo)
+        const conteoValido = !isNaN(conteoNum) && conteoNum >= 0
+        const diff = conteoNum - (inv.exist_fisica_tkc || 0)
+        const resultado = diff === 0 ? 'ok' : diff > 0 ? 'sobrante' : 'faltante'
+        const cambios = { conteo_real: conteoNum, diferencia: diff, resultado }
+        return (
+          <div className="space-y-3 p-4 border border-border rounded-lg bg-secondary/40" style={{ borderRadius: '8px' }}>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Sin enviar — puedes recontar</p>
+            <p className="text-xs text-muted-foreground">
+              Mientras no lo envíes, este conteo es tuyo y nadie más lo ve en su bandeja.
+            </p>
+            <Input
+              type="number"
+              placeholder="Conteo real"
+              value={nuevoConteo}
+              onChange={(e) => setNuevoConteo(e.target.value)}
+              style={{ borderRadius: '8px' }}
+            />
+            {conteoValido && (
+              <p className="text-xs text-muted-foreground">
+                Diferencia: <span className="text-foreground font-medium">{diff > 0 ? '+' : ''}{diff}</span>
+                {diff === 0 && ' — sin diferencia, al enviarlo queda completado.'}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm" variant="outline" disabled={!conteoValido || isUpdating}
+                onClick={() => onUpdate(cambios)}
+                style={{ borderRadius: '8px' }}
+              >
+                {isUpdating ? 'Guardando…' : 'Guardar el nuevo conteo'}
+              </Button>
+              <Button
+                size="sm" disabled={!conteoValido || isUpdating}
+                onClick={async () => {
+                  const destino = diff === 0 ? 'completado' : 'pend_fact'
+                  const aviso = diff === 0
+                    ? 'No hay diferencia, así que el conteo se cierra aquí mismo.'
+                    : 'Facturación lo verá en su bandeja y dejarás de poder editarlo.'
+                  if (!await confirmDialog(aviso, { title: '¿Enviar este conteo?' })) return
+                  onUpdate({ ...cambios, estado_tarea: destino })
+                }}
+                style={{ borderRadius: '8px' }}
+              >
+                Enviar a facturación
+              </Button>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Devuelto — acción INV */}
       {canDevuelto && (() => {

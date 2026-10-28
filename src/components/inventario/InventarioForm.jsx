@@ -180,9 +180,19 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
           <p className="text-xs text-muted-foreground pt-1">Puedes seguir el avance desde la tabla de inventarios.</p>
         </div>
 
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <Button variant="outline" onClick={() => setPendingData(null)} style={{ borderRadius: '8px' }}>
             Editar conteo
+          </Button>
+          {/* Guardar sin enviar: una diferencia suele querer recontarse antes
+              de molestar a facturación, y hasta ahora la única salida era
+              enviarla o perder lo contado. Queda en «en curso», editable, y
+              sale en la lista de pendientes de quien lo contó. */}
+          <Button variant="outline" disabled={isPending}
+            onClick={() => onSubmit({ ...pendingData, estado_tarea: 'en_curso' })}
+            style={{ borderRadius: '8px' }}>
+            <Save className="w-4 h-4 mr-1.5" />
+            Guardar para recontar
           </Button>
           <Button onClick={() => onSubmit(pendingData)} disabled={isPending} style={{ borderRadius: '8px' }}>
             <Save className="w-4 h-4 mr-1.5" />

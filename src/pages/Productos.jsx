@@ -26,12 +26,13 @@ import ProductoModal from '@/components/productos/ProductoModal';
 const ImportarProductos = lazy(() => import('@/components/productos/ImportarProductos'));
 import {
   Search, Package, AlertTriangle, Hash, ToggleLeft, Upload, ChevronDown, X,
-  Database, RefreshCw, Clock, ArrowUpFromLine, ArrowDownToLine,
+  Database, RefreshCw, Clock, ArrowUpFromLine, ArrowDownToLine, MoreHorizontal,
 } from 'lucide-react';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import { base44 } from '@/api/base44Client';
 import { SIN_SONDEO } from '@/lib/query-client';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 // ── Constants ─────────────────────────────────────────────────
 const PAGE_SIZE = 50;
@@ -155,6 +156,55 @@ const ET_LABEL_COLOR = {
 };
 
 // ── Sub-components ────────────────────────────────────────────
+/**
+ * Las acciones de una fila del catálogo.
+ *
+ * Un menú y no botones sueltos: empezó con subir y bajar de tienda, y la lista
+ * va a seguir creciendo. Dos iconos caben en la columna; seis no, y acabarían
+ * compitiendo por el sitio con los datos.
+ *
+ * Lo que una persona no puede hacer no se le enseña apagado: se le quita.
+ */
+function MenuAcciones({ producto, puedeMoverTienda, onMover }) {
+  const [abierto, setAbierto] = useState(false);
+
+  const acciones = [];
+  if (puedeMoverTienda) {
+    acciones.push(
+      { clave: 'subir', etiqueta: 'Subir a tienda', Icono: ArrowUpFromLine, color: 'text-[#4ade80]', al: () => onMover('subir') },
+      { clave: 'bajar', etiqueta: 'Bajar de tienda', Icono: ArrowDownToLine, color: 'text-[#BA7517]', al: () => onMover('bajar') },
+    );
+  }
+
+  if (acciones.length === 0) return <span className="text-muted-foreground/40 text-xs">—</span>;
+
+  return (
+    <Popover open={abierto} onOpenChange={setAbierto}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Acciones: ${producto.nombre}`}
+          className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <MoreHorizontal className="w-4 h-4" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-52 p-1">
+        {acciones.map(({ clave, etiqueta, Icono, color, al }) => (
+          <button
+            key={clave} type="button"
+            onClick={() => { setAbierto(false); al(); }}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-left hover:bg-secondary transition-colors"
+          >
+            <Icono className={`w-3.5 h-3.5 ${color}`} />
+            {etiqueta}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function ProductImg({ fotos, nombre }) {
   const [err, setErr] = useState(false);
   const src = Array.isArray(fotos) && fotos.length > 0 ? fotos[0] : null;
@@ -1203,22 +1253,11 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                               if (key === ACCIONES_COL) {
                                 return (
                                   <td key={key} className="px-3 py-2 whitespace-nowrap">
-                                    {puedeMoverTienda ? (
-                                      <div className="flex items-center gap-1">
-                                        <button title="Subir a tienda" aria-label={`Subir a tienda: ${p.nombre}`}
-                                          onClick={() => setMover({ modulo: 'subir', producto: p })}
-                                          className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-[#4ade80] transition-colors">
-                                          <ArrowUpFromLine className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button title="Bajar de tienda" aria-label={`Bajar de tienda: ${p.nombre}`}
-                                          onClick={() => setMover({ modulo: 'bajar', producto: p })}
-                                          className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-[#BA7517] transition-colors">
-                                          <ArrowDownToLine className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <span className="text-muted-foreground/40 text-xs">—</span>
-                                    )}
+                                    <MenuAcciones
+                                      producto={p}
+                                      puedeMoverTienda={puedeMoverTienda}
+                                      onMover={(modulo) => setMover({ modulo, producto: p })}
+                                    />
                                   </td>
                                 );
                               }
