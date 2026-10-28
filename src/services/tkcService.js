@@ -14,6 +14,7 @@ const ENDPOINT = '/api/tkc/inventario'
 const ENDPOINT_EXISTENCIA = '/api/tkc/existencia'
 const ENDPOINT_EXISTENCIAS = '/api/tkc/existencias'
 const ENDPOINT_SUBMAYOR = '/api/tkc/submayor'
+const ENDPOINT_HISTORIAL = '/api/tkc/historial'
 
 /** Almacenes disponibles (catálogo estático de TKC), como claves de la app. */
 export const TKC_ALMACENES = WAREHOUSES.map((w) => w.key)
@@ -117,6 +118,32 @@ export async function refrescarSubmayor({ almacen, refrescar = false }) {
 
   if (!res.ok) {
     throw new Error(data?.error ?? `Error ${res.status} al leer el submayor de TKC`)
+  }
+  return data
+}
+
+/**
+ * Movimientos de un producto en el submayor: entradas, salidas y saldos.
+ *
+ * Es lo que contesta «¿y esto por qué bajó?» cuando una existencia no cuadra.
+ * Ni el listado ni nuestra copia lo saben: solo TKC guarda el documento de
+ * cada movimiento y quién lo hizo.
+ *
+ * @param {{ almacen: string, idTienda: string, desde?: string, hasta?: string }} params
+ *        Sin fechas, el último mes.
+ * @returns {Promise<null | { titulo: string, desde: string, hasta: string,
+ *   movimientos: Array<{fecha: string, documento: string, saldoInicial: number|null,
+ *     entrada: number|null, salida: number|null, saldoFinal: number|null, usuario: string}> }>}
+ *   null si el submayor no tiene ese producto en ese almacén.
+ */
+export async function fetchHistorialTkc({ almacen, idTienda, desde, hasta }) {
+  if (!almacen || !idTienda) return null
+
+  const { res, data } = await postTkc(ENDPOINT_HISTORIAL, { almacen, idTienda, desde, hasta })
+
+  if (res.status === 404) return null
+  if (!res.ok) {
+    throw new Error(data?.error ?? `Error ${res.status} al consultar el historial de TKC`)
   }
   return data
 }

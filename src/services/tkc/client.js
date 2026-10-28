@@ -94,6 +94,47 @@ export async function tkcPost(config, { path, referer, body, label = 'TKC' }) {
   }
 }
 
+function getOnce(config, cookie, { path, referer }) {
+  return fetch(`${config.tkcBase}${path}`, {
+    headers: {
+      Cookie: cookie,
+      Referer: `${config.tkcBase}${referer}`,
+      'X-Requested-With': 'XMLHttpRequest',
+      Accept: 'text/html, */*; q=0.01',
+    },
+    redirect: 'manual',
+  })
+}
+
+/**
+ * GET autenticado que devuelve HTML, con el mismo reintento que `tkcPost`.
+ *
+ * No todo en TKC es un DataTables: el historial de un producto es un trozo de
+ * HTML pensado para meterse en un modal. Se pide igual —misma cookie, mismo
+ * reintento— y quien lo llama se encarga de sacarle los datos.
+ *
+ * @returns {Promise<string>} El HTML tal cual.
+ */
+export async function tkcGetHtml(config, { path, referer, label = 'TKC' }) {
+  let cookie = await ensureCookie(config, false)
+  let response = await getOnce(config, cookie, { path, referer })
+
+  // Aquí no vale mirar el content-type —la respuesta buena YA es HTML—, así
+  // que la sesión caducada se reconoce por el estado o por el formulario de
+  // login que TKC devuelve en su lugar.
+  let html = await response.text()
+  if (response.status === 401 || response.status === 403 || /name="password"/i.test(html)) {
+    cookie = await ensureCookie(config, true)
+    response = await getOnce(config, cookie, { path, referer })
+    html = await response.text()
+  }
+
+  if (!response.ok && response.status !== 200) {
+    throw new Error(`TKC ${label} HTTP ${response.status}`)
+  }
+  return html
+}
+
 /**
  * Pide una página del DataTables de inventario.
  *

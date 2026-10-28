@@ -12,6 +12,7 @@ import { EXISTENCIA_FILTERS } from '@/services/tkc/body';
 import { warehouseName } from '@/services/tkc/warehouses';
 import { getLastSync } from '@/lib/useAutoSync';
 import MoverTiendaDialog from '@/components/productos/MoverTiendaDialog';
+import HistorialSubmayorDialog from '@/components/productos/HistorialSubmayorDialog';
 import { ROLES_TIENDA } from '@/lib/ajustes';
 import { fetchAllProductos } from '@/lib/paginacion';
 import { notifToast } from '@/lib/notifToast';
@@ -26,7 +27,7 @@ import ProductoModal from '@/components/productos/ProductoModal';
 const ImportarProductos = lazy(() => import('@/components/productos/ImportarProductos'));
 import {
   Search, Package, AlertTriangle, Hash, ToggleLeft, Upload, ChevronDown, X,
-  Database, RefreshCw, Clock, ArrowUpFromLine, ArrowDownToLine, MoreHorizontal,
+  Database, RefreshCw, Clock, ArrowUpFromLine, ArrowDownToLine, MoreHorizontal, History,
 } from 'lucide-react';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
@@ -165,7 +166,7 @@ const ET_LABEL_COLOR = {
  *
  * Lo que una persona no puede hacer no se le enseña apagado: se le quita.
  */
-function MenuAcciones({ producto, puedeMoverTienda, onMover }) {
+function MenuAcciones({ producto, puedeMoverTienda, onMover, onHistorial }) {
   const [abierto, setAbierto] = useState(false);
 
   const acciones = [];
@@ -175,6 +176,12 @@ function MenuAcciones({ producto, puedeMoverTienda, onMover }) {
       { clave: 'bajar', etiqueta: 'Bajar de tienda', Icono: ArrowDownToLine, color: 'text-[#BA7517]', al: () => onMover('bajar') },
     );
   }
+
+  // El historial lo puede mirar cualquiera: es leer, no mover nada.
+  acciones.push({
+    clave: 'historial', etiqueta: 'Historial del submayor', Icono: History,
+    color: 'text-[#60a5fa]', al: onHistorial,
+  });
 
   if (acciones.length === 0) return <span className="text-muted-foreground/40 text-xs">—</span>;
 
@@ -375,6 +382,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   // Fila de TKC bajo el ratón, ya pasado el debounce → dispara la consulta de existencia.
   const [hoveredTkc, setHoveredTkc] = useState(null);
   const [mover, setMover] = useState(null);   // { modulo, producto }
+  const [historial, setHistorial] = useState(null);  // producto del catálogo
   // Solo decide si se ven los botones. El permiso de verdad lo comprueba la
   // API de transferencias contra el Identity Server (`up-shop:execute`).
   const puedeMoverTienda = ROLES_TIENDA.includes(role);
@@ -1257,6 +1265,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                                       producto={p}
                                       puedeMoverTienda={puedeMoverTienda}
                                       onMover={(modulo) => setMover({ modulo, producto: p })}
+                                      onHistorial={() => setHistorial(p)}
                                     />
                                   </td>
                                 );
@@ -1305,6 +1314,14 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   almacen={almacen}
                   onHecho={refrescarVistaTkc}
                   onClose={() => setMover(null)}
+                />
+              )}
+
+              {historial && (
+                <HistorialSubmayorDialog
+                  producto={historial}
+                  almacen={almacen}
+                  onClose={() => setHistorial(null)}
                 />
               )}
 

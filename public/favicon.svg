@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="ELíneas Inventario">
+  <!--
+    La misma marca que el menú lateral: cuadrado verde y una nave dentro.
+    Dibujada aparte y no reutilizando el icono del menú porque a 16 píxeles
+    aquello no se lee: aquí el techo es más ancho, el trazo más grueso y las
+    puertas son dos bloques macizos en vez de líneas.
+  -->
+  <rect width="32" height="32" rx="8" fill="#4ade80"/>
+  <!-- Nave: techo a dos aguas y cuerpo. -->
+  <path d="M5 14.2 16 8l11 6.2V25a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"
+        fill="none" stroke="#0b0b0b" stroke-width="2.4" stroke-linejoin="round"/>
+  <!-- Portones. A 16 px esto es lo único que distingue una nave de una casa. -->
+  <rect x="10.5" y="17.5" width="4.2" height="8.5" fill="#0b0b0b"/>
+  <rect x="17.3" y="17.5" width="4.2" height="8.5" fill="#0b0b0b"/>
+</svg>

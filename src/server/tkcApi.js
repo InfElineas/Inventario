@@ -12,6 +12,7 @@
 
 import { listInventory } from '../services/tkc/normalize.js'
 import { fetchExistencia } from '../services/tkc/submayor.js'
+import { fetchHistorial } from '../services/tkc/historial.js'
 import { getExistencias } from '../services/tkc/existencias.js'
 import { keyToTkcValue } from '../services/tkc/warehouses.js'
 import { resolverSesion } from './session.js'
@@ -23,7 +24,12 @@ const TKC_API_ENDPOINTS = {
   existencia: '/api/tkc/existencia',
   existencias: '/api/tkc/existencias',
   submayor: '/api/tkc/submayor',
+  historial: '/api/tkc/historial',
 }
+
+/** Rango por defecto del historial: el último mes. */
+const DIAS_HISTORIAL = 30
+const fecha = (d) => d.toISOString().slice(0, 10)
 
 const MAX_BODY = 64 * 1024
 /** Tope de ids por petición: una página de la tabla son 250 como mucho. */
@@ -188,6 +194,26 @@ export function createTkcApiMiddleware({ tkc }) {
           refrescar: body.refrescar === true,
         })
         return json(res, 200, result)
+      }
+
+      if (route === 'historial') {
+        const idTienda = String(body.idTienda ?? '').trim()
+        if (!idTienda) {
+          return json(res, 400, { error: 'Falta idTienda (el campo id_online del listado).' })
+        }
+        // Sin rango, el último mes: pedir «todo» en un producto que se mueve a
+        // diario devuelve cientos de líneas que nadie va a leer.
+        const hoy = new Date()
+        const hasta = String(body.hasta ?? fecha(hoy))
+        const desde = String(body.desde ?? fecha(new Date(hoy.getTime() - DIAS_HISTORIAL * 86400000)))
+
+        const historial = await fetchHistorial(tkc, { idTienda, almacen: tkcValue, desde, hasta })
+        if (!historial.encontrado) {
+          return json(res, 404, {
+            error: `El submayor no tiene el producto ${idTienda} en este almacén.`,
+          })
+        }
+        return json(res, 200, { ...historial, desde, hasta })
       }
 
       if (route === 'submayor') {

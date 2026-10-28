@@ -60,7 +60,7 @@ const nuevaClave = () => `tienda-${crypto.randomUUID()}`;
  * Su API parte las líneas en `exito` y `fallido` y pone en `totalGranted` lo
  * que de verdad se movería, que puede ser menos de lo pedido.
  */
-function leerPlan(plan) {
+export function leerPlan(plan) {
   const r = plan?.result ?? plan ?? {};
   const lineas = [...(r.exito ?? []), ...(r.fallido ?? [])]
     .sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
@@ -78,7 +78,7 @@ function leerPlan(plan) {
  * Antes salía el JSON de su API tal cual. Tenía todo, pero no lo entendía
  * nadie, y un plan que no se entiende no sirve para decidir si ejecutar.
  */
-function Plan({ lineas, concedido, pedido, modulo }) {
+export function Plan({ lineas, concedido, pedido, modulo }) {
   if (lineas.length === 0) {
     return <AlertBanner variant="warning" message="El análisis no devolvió ninguna línea. Vuelve a intentarlo." />;
   }
