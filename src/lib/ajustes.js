@@ -12,15 +12,18 @@ export const ROLES_AJUSTES = ['fact', 'administrador', 'superadmin']
 /**
  * Quién puede subir y bajar de tienda.
  *
- * Es trabajo de inventario, no de facturación: mueve mercancía entre el
- * almacén y el piso de tienda, no monta documentos contables. Por eso la lista
- * no es la misma que la de los ajustes.
+ * Inventario y facturación: las dos áreas lo hacen como parte de su trabajo.
+ *
+ * Hace falta nombrar a los dos porque la aplicación guarda UN rol por usuario,
+ * y cuando alguien tiene varios en el Identity Server gana el de más autoridad
+ * (ver `ROLE_PRECEDENCE`): quien es inventarista y además factura queda como
+ * `fact`, y sin esto perdía los botones de tienda.
  *
  * Esto solo decide quién ve la pantalla. El permiso de verdad lo vuelve a
  * comprobar la API de transferencias contra el Identity Server
  * (`up-shop:execute`, `down-shop:execute`), y un 403 suyo llega tal cual.
  */
-export const ROLES_TIENDA = ['inv', 'jefe_depto', 'administrador', 'superadmin']
+export const ROLES_TIENDA = ['inv', 'fact', 'jefe_depto', 'administrador', 'superadmin']
 
 /** Las 8 etiquetas de TKC del ajuste de aumento. */
 export const CLASIFICACIONES_AUMENTO = [

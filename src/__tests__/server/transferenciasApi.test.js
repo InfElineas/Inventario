@@ -421,8 +421,17 @@ describe('subir y bajar de tienda', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('un rol que no es de inventario no pasa', async () => {
+  it('facturación también sube y baja de tienda', async () => {
+    // Forma parte de su trabajo, y además la aplicación guarda un solo rol:
+    // quien es inventarista y factura queda como `fact`.
+    apiResponde(202, { jobId: 'j9' });
     resolverSesion.mockResolvedValue(SESION('fact'));
+    const { res } = await llamar('/api/tienda/subir/plan', CUERPO, 'POST');
+    expect(res.statusCode).toBe(202);
+  });
+
+  it('un rol que no mueve mercancía no pasa', async () => {
+    resolverSesion.mockResolvedValue(SESION('auditor'));
     const { res } = await llamar('/api/tienda/subir/plan', CUERPO, 'POST');
     expect(res.statusCode).toBe(403);
     expect(res.cuerpo.error.message).toMatch(/subir ni bajar de tienda/i);
