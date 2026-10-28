@@ -62,6 +62,11 @@ function perfilPublico(usuario, tkc = {}) {
     email: usuario.email,
     full_name: usuario.full_name,
     role: usuario.role,
+    // La lista completa: los permisos son la suma de lo que permite cada rol.
+    // `role` se queda para lo que tiene que elegir uno (ver src/lib/roles.js).
+    roles: Array.isArray(usuario.roles) && usuario.roles.length > 0
+      ? usuario.roles
+      : (usuario.role ? [usuario.role] : []),
     almacen_num: usuario.almacen_num ?? '',
     almacenes_config: Array.isArray(usuario.almacenes_config) ? usuario.almacenes_config : [],
     sync_config: usuario.sync_config ?? {},

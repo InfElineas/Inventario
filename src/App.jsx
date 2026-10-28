@@ -48,8 +48,10 @@ const RoleGuard = ({ element, roles }) => {
   const { user, isLoadingAuth } = useAuth();
   if (isLoadingAuth) return null;
   if (!user) return <AccessDenied />;
-  if (user.role === 'superadmin') return element; // superadmin bypasses all role restrictions
-  if (!roles.includes(user.role)) return <AccessDenied />;
+  // Con CUALQUIERA de sus roles basta: quien es inventarista y además factura
+  // perdía lo que solo puede `inv` porque `fact` manda en `user.role`.
+  if (tieneRol(user, ['superadmin'])) return element;
+  if (!tieneRol(user, roles)) return <AccessDenied />;
   return element;
 };
 

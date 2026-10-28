@@ -10,6 +10,7 @@ import { ROLES, DEPARTAMENTOS } from '@/lib/constants';
 import { format } from 'date-fns';
 import { useConfirm } from '@/lib/useConfirm';
 import { base44 } from '@/api/base44Client';
+import { tieneRol } from '@/lib/roles';
 
 // superadmin solo puede asignarse desde el panel SA, no desde aquí
 const ROLE_OPTIONS = ['inv', 'fact', 'auditor', 'ca', 'supervisor', 'jefe_depto', 'administrador'];
@@ -33,8 +34,8 @@ export default function AdminUsuarios() {
   // El guard se evalúa aquí pero no corta hasta después de los hooks: React
   // exige que se llamen todos en el mismo orden en cada render, y un `return`
   // antes los dejaba fuera.
-  const esAdmin = user?.role === 'administrador' || user?.role === 'superadmin';
-  const isSuperAdmin = user?.role === 'superadmin';
+  const esAdmin = tieneRol(user, ['administrador', 'superadmin']);
+  const isSuperAdmin = tieneRol(user, ['superadmin']);
 
   const { confirmDialog, ConfirmDialogNode } = useConfirm();
 

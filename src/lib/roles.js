@@ -39,7 +39,25 @@ export const ROLE_PRECEDENCE = [
  *          el llamador decide si eso es un 403 o un acceso sin permisos.
  */
 export function resolveRole(isRoles) {
-  if (!Array.isArray(isRoles)) return null;
+  // El primero de la lista ya viene por precedencia: es el de más autoridad.
+  return resolveRoles(isRoles)[0] ?? null;
+}
+
+/**
+ * TODOS los roles conocidos de la persona, de más a menos autoridad.
+ *
+ * Quedarse solo con el primero quitaba permisos: quien es inventarista y
+ * además factura resolvía a `fact`, y perdía Recepciones y Vencimientos, que
+ * solo puede `inv`. Lo que puede hacer alguien es la suma de lo que permiten
+ * sus roles, no lo que permite el más alto.
+ *
+ * @param {Array<{name?: string} | string>} isRoles Lo que devuelve
+ *        GET /api/user-roles/me. Se aceptan objetos ({ id, name, description })
+ *        y cadenas sueltas.
+ * @returns {string[]} Puede venir vacío: el llamador decide si eso es un 403.
+ */
+export function resolveRoles(isRoles) {
+  if (!Array.isArray(isRoles)) return [];
 
   const nombres = new Set(
     isRoles
@@ -48,7 +66,25 @@ export function resolveRole(isRoles) {
       .map((n) => n.trim().toLowerCase())
   );
 
-  // Recorre por precedencia, no por el orden en que vinieron: el primero que
-  // aparezca en la lista es el de mayor autoridad.
-  return ROLE_PRECEDENCE.find((rol) => nombres.has(rol)) ?? null;
+  return ROLE_PRECEDENCE.filter((rol) => nombres.has(rol));
+}
+
+/**
+ * Los roles de un usuario ya guardado, para decidir permisos.
+ *
+ * `roles` es la lista completa y `role` el principal, que se sigue usando para
+ * lo que tiene que elegir UNO: el saludo, el filtro por defecto de una
+ * pantalla, el color de una insignia. Un usuario guardado antes de que
+ * existiera la columna solo tiene `role`, y entonces esa es su lista.
+ */
+export function rolesDe(usuario) {
+  const lista = usuario?.roles;
+  if (Array.isArray(lista) && lista.length > 0) return lista;
+  return usuario?.role ? [usuario.role] : [];
+}
+
+/** ¿Alguno de sus roles está en la lista? */
+export function tieneRol(usuario, permitidos) {
+  const suyos = rolesDe(usuario);
+  return (permitidos ?? []).some((r) => suyos.includes(r));
 }

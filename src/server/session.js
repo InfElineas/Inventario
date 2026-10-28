@@ -11,7 +11,7 @@
  * Para que sea inmediato, se revoca la sesión desde el propio IS.
  */
 
-import { resolveRole } from '../lib/roles.js'
+import { resolveRole, resolveRoles } from '../lib/roles.js'
 import { verifyJwt, refreshJwt, getRoles } from './identity.js'
 import { leerCookies, fijarCookiesSesion, COOKIE_SESSION, COOKIE_JWT } from './cookies.js'
 import { queryOne } from './db.js'
@@ -27,6 +27,10 @@ import { queryOne } from './db.js'
  * que diga el IS, y nunca desde una petición del usuario.
  */
 export async function sincronizarUsuario({ email, nombre, roles }) {
+  // La lista entera, no solo el de más autoridad: los permisos son la suma de
+  // lo que permite cada uno. `role` es el primero y sirve para lo que tiene
+  // que elegir UNO (ver src/lib/roles.js).
+  const lista = resolveRoles(roles)
   const rol = resolveRole(roles)
 
   // Sin rol conocido en este sistema no se crea ni actualiza nada: que el IS
@@ -34,22 +38,23 @@ export async function sincronizarUsuario({ email, nombre, roles }) {
   if (!rol) return null
 
   return queryOne(
-    `INSERT INTO usuarios (email, full_name, role, activo)
-          VALUES ($1, $2, $3, true)
+    `INSERT INTO usuarios (email, full_name, role, roles, activo)
+          VALUES ($1, $2, $3, $4, true)
      ON CONFLICT (email) DO UPDATE
             SET role = EXCLUDED.role,
+                roles = EXCLUDED.roles,
                 full_name = COALESCE(NULLIF(usuarios.full_name, ''), EXCLUDED.full_name)
-      RETURNING id, email, full_name, role, activo, almacen_num,
+      RETURNING id, email, full_name, role, roles, activo, almacen_num,
                 almacenes_config, sync_config, anuncio_config, nickname,
                 avatar_url, departamento`,
-    [email, nombre ?? '', rol],
+    [email, nombre ?? '', rol, lista],
   )
 }
 
 /** Perfil local por email, sin tocar el IS. */
 export async function cargarUsuario(email) {
   return queryOne(
-    `SELECT id, email, full_name, role, activo, almacen_num,
+    `SELECT id, email, full_name, role, roles, activo, almacen_num,
             almacenes_config, sync_config, anuncio_config, nickname,
             avatar_url, departamento
        FROM usuarios

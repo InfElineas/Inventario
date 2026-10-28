@@ -21,6 +21,7 @@ import { useConfirm } from '@/lib/useConfirm';
 import { format } from 'date-fns';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
+import { tieneRol } from '@/lib/roles';
 
 /** Casos por página. 1.185 no caben, y 50 es lo que usan las demás tablas. */
 const PAGE_SIZE = 50;
@@ -251,9 +252,9 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
     : { pendiente: 0, en_auditoria: 1, completado: 2 };
   const currentStep = stepMap[anuncio.estado_tarea] ?? 0;
 
-  const canInv = (role === 'inv' || role === 'administrador') && anuncio.estado_tarea === 'pendiente';
-  const canCa = (role === 'ca' || role === 'administrador') && anuncio.estado_tarea === 'pend_ca';
-  const canAudit = (role === 'auditor' || role === 'administrador') && anuncio.estado_tarea === 'en_auditoria';
+  const canInv = tieneRol(user, ['inv', 'administrador']) && anuncio.estado_tarea === 'pendiente';
+  const canCa = tieneRol(user, ['ca', 'administrador']) && anuncio.estado_tarea === 'pend_ca';
+  const canAudit = tieneRol(user, ['auditor', 'administrador']) && anuncio.estado_tarea === 'en_auditoria';
 
   return (
     <>

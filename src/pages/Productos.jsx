@@ -34,6 +34,7 @@ import { useSortable } from '@/lib/useSortable';
 import { base44 } from '@/api/base44Client';
 import { SIN_SONDEO } from '@/lib/query-client';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { tieneRol } from '@/lib/roles';
 
 // ── Constants ─────────────────────────────────────────────────
 const PAGE_SIZE = 50;
@@ -385,7 +386,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   const [historial, setHistorial] = useState(null);  // producto del catálogo
   // Solo decide si se ven los botones. El permiso de verdad lo comprueba la
   // API de transferencias contra el Identity Server (`up-shop:execute`).
-  const puedeMoverTienda = ROLES_TIENDA.includes(role);
+  const puedeMoverTienda = tieneRol(user, ROLES_TIENDA);
   const hoverTimer = useRef(null);
 
   // Auto-select from scanner (?scan=id)
@@ -777,7 +778,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
           />
 
           {/* Import (ELíneas view) */}
-          {source === 'elineas' && (role === 'administrador' || role === 'inv') && (
+          {source === 'elineas' && tieneRol(user, ['administrador', 'inv']) && (
             <button onClick={() => setShowImport(v => !v)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-muted-foreground hover:text-foreground text-sm transition-colors">
               <Upload className="w-4 h-4" />

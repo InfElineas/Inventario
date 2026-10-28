@@ -23,6 +23,7 @@ import { CLASIF_FACT, ESTADO_FACT } from '@/lib/constants'
 import { ESTADO_POR_RESULTADO, estadoContradictorio } from '@/lib/ajusteFact'
 import SortTh from '@/components/shared/SortTh'
 import { useSortable } from '@/lib/useSortable';
+import { tieneRol } from '@/lib/roles';
 
 const PAGE_SIZE = 50
 
@@ -169,7 +170,7 @@ export default function Inventario({ ambito = 'inventario' }) {
               </span>
             )}
           </Button>
-          {(role === 'inv' || role === 'administrador' || role === 'superadmin') && (
+          {tieneRol(user, ['inv', 'administrador', 'superadmin']) && (
             <Button onClick={() => { setShowForm(true); setSelectedId(null); setShowOrden(false); }} style={{ borderRadius: '8px' }}>
               <Plus className="w-4 h-4 lg:mr-1.5" /><span className="hidden lg:inline"> Nuevo conteo</span>
             </Button>
@@ -356,26 +357,26 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
   const stepMap = { en_curso: 0, pend_fact: 1, en_auditoria: 2, completado: 3, devuelto: 0 };
   const currentStep = stepMap[inv.estado_tarea] ?? 0;
 
-  const canProcessFact = (role === 'fact'    || role === 'administrador') && inv.estado_tarea === 'pend_fact';
-  const canAudit       = (role === 'auditor' || role === 'administrador') && inv.estado_tarea === 'en_auditoria';
-  const canDevuelto    = (role === 'inv'     || role === 'administrador') && inv.estado_tarea === 'devuelto';
+  const canProcessFact = tieneRol(user, ['fact', 'administrador']) && inv.estado_tarea === 'pend_fact';
+  const canAudit       = tieneRol(user, ['auditor', 'administrador']) && inv.estado_tarea === 'en_auditoria';
+  const canDevuelto    = tieneRol(user, ['inv', 'administrador']) && inv.estado_tarea === 'devuelto';
   // Un conteo propio sin enviar se puede seguir tocando: es el caso de contar,
   // dudar y volver a contar antes de pasárselo a facturación.
   const canEditarBorrador = inv.estado_tarea === 'en_curso'
-    && (role === 'administrador' || (role === 'inv' && inv.especialista_id === user?.email));
-  const canDelete = role === 'superadmin'
-    || (role === 'administrador' && inv.estado_tarea !== 'completado')
-    || (role === 'inv' && inv.estado_tarea === 'en_curso' && inv.especialista_id === user?.email);
+    && (tieneRol(user, ['administrador']) || (tieneRol(user, ['inv']) && inv.especialista_id === user?.email));
+  const canDelete = tieneRol(user, ['superadmin'])
+    || (tieneRol(user, ['administrador']) && inv.estado_tarea !== 'completado')
+    || (tieneRol(user, ['inv']) && inv.estado_tarea === 'en_curso' && inv.especialista_id === user?.email);
 
   // Mensaje contextual según estado + rol
   const statusHint = (() => {
     const e = inv.estado_tarea;
     if (e === 'completado') return { msg: 'Proceso completado y cerrado.', color: 'text-[#4ade80]' };
-    if (e === 'pend_fact'  && !['fact','administrador','superadmin'].includes(role))
+    if (e === 'pend_fact'  && !tieneRol(user, ['fact','administrador','superadmin']))
       return { msg: 'Esperando revisión de FACTURACIÓN.', color: 'text-[#60a5fa]' };
-    if (e === 'en_auditoria' && !['auditor','administrador','superadmin'].includes(role))
+    if (e === 'en_auditoria' && !tieneRol(user, ['auditor','administrador','superadmin']))
       return { msg: 'En revisión por AUDITORÍA.', color: 'text-[#a78bfa]' };
-    if (e === 'devuelto' && !['inv','administrador','superadmin'].includes(role))
+    if (e === 'devuelto' && !tieneRol(user, ['inv','administrador','superadmin']))
       return { msg: 'Devuelto a INV para corrección.', color: 'text-[#E24B4A]' };
     return null;
   })();

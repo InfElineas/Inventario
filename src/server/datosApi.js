@@ -162,7 +162,9 @@ export function createDatosApiMiddleware() {
       const sesion = await resolverSesion(req, res)
       if (!sesion) return responder(res, 401, { error: 'Sin sesión' })
 
-      const ctx = { rol: sesion.usuario.role, email: sesion.email }
+      // `roles` es la lista completa; `rol` queda por si el usuario se guardó
+      // antes de que existiera la columna.
+      const ctx = { rol: sesion.usuario.role, roles: sesion.usuario.roles, email: sesion.email }
       const tablaPerm = TABLA_PERMISOS[tabla] ?? tabla
       const cuerpo = req.method === 'POST' ? await leerJson(req) : {}
 

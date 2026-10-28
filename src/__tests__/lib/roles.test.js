@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveRole, ROLE_PRECEDENCE } from '@/lib/roles';
+import { resolveRole, resolveRoles, tieneRol, ROLE_PRECEDENCE } from '@/lib/roles';
 import { ROLES } from '@/lib/constants';
 
 describe('ROLE_PRECEDENCE', () => {
@@ -72,5 +72,33 @@ describe('resolveRole', () => {
       system: { id: '8c1f0a52-0000-4000-8000-000000000002', slug: 'inventario', name: 'Inventario' },
     }];
     expect(resolveRole(roles)).toBe('supervisor');
+  });
+});
+
+describe('resolveRoles y tieneRol', () => {
+  it('devuelve todos los conocidos, de más a menos autoridad', () => {
+    expect(resolveRoles([{ name: 'inv' }, { name: 'fact' }])).toEqual(['fact', 'inv']);
+  });
+
+  it('descarta los que este sistema no conoce', () => {
+    expect(resolveRoles([{ name: 'vendedor' }, { name: 'inv' }])).toEqual(['inv']);
+  });
+
+  it('sin roles, lista vacía', () => {
+    expect(resolveRoles([])).toEqual([]);
+    expect(resolveRoles(null)).toEqual([]);
+  });
+
+  it('tieneRol mira la lista entera, no solo el principal', () => {
+    // Es el caso que rompía: `role` dice 'fact' y Recepciones pide 'inv'.
+    const usuario = { role: 'fact', roles: ['fact', 'inv'] };
+    expect(tieneRol(usuario, ['inv'])).toBe(true);
+    expect(tieneRol(usuario, ['auditor'])).toBe(false);
+  });
+
+  it('un usuario sin la lista cae en su rol suelto', () => {
+    expect(tieneRol({ role: 'inv' }, ['inv'])).toBe(true);
+    expect(tieneRol({ role: 'inv' }, ['fact'])).toBe(false);
+    expect(tieneRol({}, ['inv'])).toBe(false);
   });
 });

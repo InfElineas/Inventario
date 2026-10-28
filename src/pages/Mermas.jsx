@@ -17,6 +17,7 @@ import { notifyJefeDepto } from '@/lib/notificationService';
 import { logTransicion, notificarTransicion } from '@/lib/workflowService';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
+import { tieneRol } from '@/lib/roles';
 
 export default function Mermas({ ambito = 'inventario' }) {
   const [showForm, setShowForm] = useState(false);
@@ -31,7 +32,7 @@ export default function Mermas({ ambito = 'inventario' }) {
   const role = user?.role || 'inv';
   // Una merma sigue contada en el piso de tienda hasta que se baja. Quien
   // puede mover mercancía puede hacerlo desde aquí.
-  const puedeBajar = ROLES_TIENDA.includes(role);
+  const puedeBajar = tieneRol(user, ROLES_TIENDA);
   const [seleccion, setSeleccion] = useState(() => new Set());
   const [bajando, setBajando] = useState(null);   // { mermas, almacen }
 
@@ -135,7 +136,7 @@ export default function Mermas({ ambito = 'inventario' }) {
               : 'Registro y seguimiento de mermas'}
           </p>
         </div>
-        {['inv', 'administrador', 'superadmin'].includes(role) && (
+        {tieneRol(user, ['inv', 'administrador', 'superadmin']) && (
           <Button onClick={() => { setShowForm(true); setSelectedId(null); }} style={{ borderRadius: '8px' }}>
             <Plus className="w-4 h-4 mr-1.5" /> Registrar merma
           </Button>

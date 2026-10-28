@@ -246,3 +246,40 @@ describe('borrado', () => {
     expect(puedeBorrar({ rol: null }, 'mermas', mermaBorrable)).toBe(false);
   });
 });
+
+describe('varios roles: los permisos se suman', () => {
+  // Quien es inventarista y además factura resolvía a `fact` —el de más
+  // autoridad— y perdía todo lo que solo puede `inv`: recepciones,
+  // vencimientos, registrar un conteo. Lo que puede hacer alguien es la suma
+  // de lo que permiten sus roles.
+  const dosRoles = { roles: ['fact', 'inv'], email: 'yo@mercadoelineas.com' };
+
+  it('puede crear lo que permite su rol secundario', () => {
+    expect(puedeCrear(dosRoles, 'recepciones', { especialista_id: 'yo@mercadoelineas.com' })).toBe(true);
+    // Con `fact` solo, no podría.
+    expect(puedeCrear(ctx('fact'), 'recepciones', { especialista_id: 'yo@mercadoelineas.com' })).toBe(false);
+  });
+
+  it('avanza el flujo por cualquiera de sus dos lados', () => {
+    const enCurso = { estado_tarea: 'en_curso' };
+    const pendFact = { estado_tarea: 'pend_fact' };
+    // Como inventarista, de en_curso a pend_fact.
+    expect(puedeActualizar(dosRoles, 'mermas', enCurso, { estado_tarea: 'pend_fact' })).toBe(true);
+    // Como facturación, de pend_fact a auditoría.
+    expect(puedeActualizar(dosRoles, 'mermas', pendFact, { estado_tarea: 'en_auditoria' })).toBe(true);
+  });
+
+  it('lo que no permite ninguno de sus roles sigue prohibido', () => {
+    const enAuditoria = { estado_tarea: 'en_auditoria' };
+    expect(puedeActualizar(dosRoles, 'mermas', enAuditoria, { estado_tarea: 'completado' })).toBe(false);
+  });
+
+  it('un usuario guardado antes de la columna sigue funcionando con su rol suelto', () => {
+    expect(puedeCrear(ctx('inv'), 'recepciones', { especialista_id: 'yo@mercadoelineas.com' })).toBe(true);
+  });
+
+  it('sin ningún rol no puede nada', () => {
+    expect(puedeCrear({ roles: [], email: 'x' }, 'recepciones', {})).toBe(false);
+    expect(puedeLeer({ roles: [] }, 'mermas')).toBe(false);
+  });
+});

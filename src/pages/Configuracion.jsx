@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/AuthContext'
 import { useSyncManager } from '@/lib/SyncContext'
 import TkcCredencialesForm from '@/components/shared/TkcCredencialesForm'
 import { Check, KeyRound, Warehouse, RefreshCw, Clock, Plus, Trash2, AlertTriangle, Zap } from 'lucide-react'
+import { tieneRol } from '@/lib/roles'
 
 const SYNC_ROLES = ['administrador', 'inv', 'superadmin']
 
@@ -85,7 +86,7 @@ export default function Configuracion() {
   const { user }    = useAuth()
   const queryClient = useQueryClient()
   const role        = user?.role || 'inv'
-  const canSync     = isExternaConfigured && SYNC_ROLES.includes(role)
+  const canSync     = isExternaConfigured && tieneRol(user, SYNC_ROLES)
   const { syncOne, syncAll, isRunning, syncState, lastResults } = useSyncManager()
 
   const [almacenesConfig, setAlmacenesConfig] = useState([])

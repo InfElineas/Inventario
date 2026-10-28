@@ -28,17 +28,29 @@ describe('sincronizarUsuario — espejado del rol', () => {
     await sincronizarUsuario({ email: USUARIO.email, nombre: 'A', roles: [{ name: 'inv' }] });
 
     const [, valores] = queryOne.mock.calls[0];
-    expect(valores).toEqual([USUARIO.email, 'A', 'inv']);
+    expect(valores).toEqual([USUARIO.email, 'A', 'inv', ['inv']]);
   });
 
-  it('con varios roles guarda el de mayor precedencia', async () => {
+  it('con varios roles guarda TODOS, y como principal el de mayor precedencia', async () => {
+    // Guardar solo el principal quitaba permisos: quien es inventarista y
+    // además factura perdía lo que solo puede `inv`.
     queryOne.mockResolvedValue({ ...USUARIO, role: 'administrador' });
     await sincronizarUsuario({
       email: USUARIO.email, nombre: 'A',
       roles: [{ name: 'inv' }, { name: 'administrador' }],
     });
 
-    expect(queryOne.mock.calls[0][1][2]).toBe('administrador');
+    const [, valores] = queryOne.mock.calls[0];
+    expect(valores[2]).toBe('administrador');
+    expect(valores[3]).toEqual(['administrador', 'inv']);
+  });
+
+  it('un rol que el sistema no conoce no se guarda', async () => {
+    queryOne.mockResolvedValue(USUARIO);
+    await sincronizarUsuario({
+      email: USUARIO.email, nombre: 'A', roles: [{ name: 'inv' }, { name: 'vendedor' }],
+    });
+    expect(queryOne.mock.calls[0][1][3]).toEqual(['inv']);
   });
 
   it('sin rol en el sistema no toca la base en absoluto', async () => {

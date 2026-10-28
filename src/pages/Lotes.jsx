@@ -14,6 +14,7 @@ import { useSortable } from '@/lib/useSortable';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
 import { Search, AlertTriangle, Clock, CheckCircle, HelpCircle, Send } from 'lucide-react';
 import { format } from 'date-fns';
+import { tieneRol } from '@/lib/roles';
 
 export default function Lotes() {
   const [filterEstado, setFilterEstado] = useState('all');
@@ -143,7 +144,7 @@ export default function Lotes() {
                     <td className="p-3 text-right font-medium">{l.cantidad}</td>
                     <td className="p-3 text-center"><LotBadge estado={l.estado_fv} dias={l.vigencia_dias} /></td>
                     <td className="p-3 text-center">
-                      {['critico', 'por_vencer'].includes(l.estado_fv) && (role === 'inv' || role === 'administrador') && (
+                      {['critico', 'por_vencer'].includes(l.estado_fv) && tieneRol(user, ['inv', 'administrador']) && (
                         <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setSelectedId(l.id); }}
                           style={{ borderRadius: '8px' }} className="text-xs">
                           IC

@@ -163,9 +163,28 @@ export const CAMPOS_PROPIOS_USUARIO = [
 ]
 
 // ── Evaluación ─────────────────────────────────────────────────
+//
+// Cada comprobación se escribe para UN rol y se aplica a TODOS los de la
+// persona: lo que puede hacer es la suma de lo que permiten sus roles, no lo
+// que permite el de más autoridad. Quien es inventarista y además factura
+// resolvía a `fact` y perdía lo que solo puede `inv`.
+
+/**
+ * Los roles del contexto: la lista si viene, y si no el único que haya. Lo
+ * segundo es el caso de un usuario guardado antes de que existiera `roles`.
+ */
+const rolesDel = (ctx) => (
+  Array.isArray(ctx?.roles) && ctx.roles.length > 0
+    ? ctx.roles
+    : (ctx?.rol ? [ctx.rol] : [])
+)
+
+/** Envuelve una comprobación de un rol para que valga con cualquiera. */
+const conCadaRol = (comprobar) => (ctx, ...resto) =>
+  rolesDel(ctx).some((rol) => comprobar({ ...ctx, rol }, ...resto))
 
 /** Lectura. Todo autenticado ve las tablas del negocio; las propias, filtradas. */
-export function puedeLeer({ rol }, tabla) {
+function puedeLeerConRol({ rol }, tabla) {
   if (!rol) return false
   if (SOLO_LECTURA.includes(tabla)) return true
   return true
@@ -175,15 +194,16 @@ export function puedeLeer({ rol }, tabla) {
  * Filtro obligatorio para las tablas de filas propias. El llamador DEBE
  * aplicarlo a la consulta: devolver null significa "sin filtro".
  */
-export function filtroPropias({ rol, email }, tabla) {
+export function filtroPropias(ctx, tabla) {
   const campo = PROPIAS[tabla]
   if (!campo) return null
-  if (esAdmin(rol)) return null
-  return { campo, valor: email }
+  // Basta que uno de sus roles sea de administración para verlo todo.
+  if (rolesDel(ctx).some(esAdmin)) return null
+  return { campo, valor: ctx.email }
 }
 
 /** Creación. */
-export function puedeCrear({ rol, email }, tabla, datos = {}) {
+function puedeCrearConRol({ rol, email }, tabla, datos = {}) {
   if (!rol) return false
   if (esAdmin(rol)) return true
 
@@ -208,7 +228,7 @@ export function puedeCrear({ rol, email }, tabla, datos = {}) {
  * @param fila    la fila tal como está en la base
  * @param cambios las columnas que se quieren escribir
  */
-export function puedeActualizar({ rol, email }, tabla, fila, cambios = {}) {
+function puedeActualizarConRol({ rol, email }, tabla, fila, cambios = {}) {
   if (!rol) return false
 
   // usuarios: la propia fila, pero solo ciertas columnas.
@@ -245,7 +265,7 @@ export function puedeActualizar({ rol, email }, tabla, fila, cambios = {}) {
 }
 
 /** Borrado. */
-export function puedeBorrar({ rol, email }, tabla, fila) {
+function puedeBorrarConRol({ rol, email }, tabla, fila) {
   if (!rol) return false
 
   const reglas = BORRADO[tabla]
@@ -260,6 +280,11 @@ export function puedeBorrar({ rol, email }, tabla, fila) {
     return true
   })
 }
+
+export const puedeLeer = conCadaRol(puedeLeerConRol)
+export const puedeCrear = conCadaRol(puedeCrearConRol)
+export const puedeActualizar = conCadaRol(puedeActualizarConRol)
+export const puedeBorrar = conCadaRol(puedeBorrarConRol)
 
 // Se exportan para que las pruebas comparen contra las policies originales.
 export const _reglas = { FLUJOS, CREACION, BORRADO, PROPIAS }

@@ -7,6 +7,7 @@ import {
   PackagePlus, PackageMinus, Repeat,
 } from 'lucide-react';
 import { ROLES_AJUSTES } from '@/lib/ajustes';
+import { tieneRol } from '@/lib/roles';
 import { ROLES_PROCESAMIENTOS } from '@/lib/procesamientos';
 
 const ICONS = {
@@ -95,7 +96,7 @@ export default function Sidebar({ user, pendingCounts: pendingCountsRaw, isColla
   const hoverMode = hoverModeRaw ?? false;
   const location = useLocation();
   const role     = user?.role || 'inv';
-  const isSA     = role === 'superadmin';
+  const isSA     = tieneRol(user, ['superadmin']);
 
   // Para superadmin: acordeón (grupos expandibles, sidebar siempre visible a 220px)
   // Para otros roles: comportamiento normal (collapsed toggle)
@@ -162,7 +163,7 @@ export default function Sidebar({ user, pendingCounts: pendingCountsRaw, isColla
       {/* Nav */}
       <nav className="flex-1 py-2 overflow-y-auto overflow-x-hidden">
         {NAV_GROUPS.map((group, gi) => {
-          const visibleItems = isSA ? group.items : group.items.filter(item => item.roles.includes(role));
+          const visibleItems = isSA ? group.items : group.items.filter(item => tieneRol(user, item.roles));
           if (visibleItems.length === 0) return null;
 
           // Grupo sin label (PC General): siempre visible
