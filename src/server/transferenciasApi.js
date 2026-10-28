@@ -351,7 +351,11 @@ async function aplicarMovimiento(id, datos) {
       await query(
         `UPDATE productos
             SET almacen = GREATEST(COALESCE(almacen, 0) - $1, 0),
-                tienda  = GREATEST(COALESCE(tienda, 0)  + $1, 0)
+                tienda  = GREATEST(COALESCE(tienda, 0)  + $1, 0),
+                -- Sin esto la sincronización de la hora siguiente vuelve a
+                -- poner la foto del submayor, que es de la mañana: el
+                -- movimiento desaparecería de la pantalla estando hecho.
+                existencias_en = now()
           WHERE codigo_producto = $2 AND almacen_num = $3`,
         [signo * l.granted, l.code, String(anotado.almacen)],
       )

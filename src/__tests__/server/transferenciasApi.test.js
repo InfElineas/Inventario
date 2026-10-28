@@ -423,6 +423,9 @@ describe('subir y bajar de tienda', () => {
       // Subir: salen del almacén y entran en la tienda.
       expect(valores).toEqual([2, '7501', '789']);
       expect(sql).toMatch(/almacen = GREATEST\(COALESCE\(almacen, 0\) - \$1/);
+      // Marca de cuándo es el dato: sin ella la sincronización vuelve a poner
+      // la foto del submayor, que es de la mañana.
+      expect(sql).toMatch(/existencias_en = now\(\)/);
     });
 
     it('bajar mueve al revés', async () => {
