@@ -1,10 +1,14 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Loader2, Plus, RefreshCw, Search, ShieldAlert } from 'lucide-react';
+import {
+  ArrowDownToLine, CheckCircle2, ClipboardList, Loader2, Plus, RefreshCw, Search, ShieldAlert,
+} from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AlertBanner from '@/components/shared/AlertBanner';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { useConfirm } from '@/lib/useConfirm';
@@ -45,6 +49,10 @@ export default function ProcesamientoForm() {
   const [analisis, setAnalisis] = useState(null);   // { firma, ...interpretarAnalisis }
   const [resultado, setResultado] = useState(null); // de «Procesar»
   const [bloqueo, setBloqueo] = useState(false);    // se envió y no se pudo comprobar
+  // Escribir los códigos vive en un modal, igual que montar un ajuste: ocupaba
+  // la pantalla entera para lo que menos se hace. Lo habitual es mirar qué
+  // queda por procesar.
+  const [entradaAbierta, setEntradaAbierta] = useState(false);
 
   // Un envío distinto, una clave distinta; repetir el mismo reutiliza la clave.
   const claveProcesar = useRef({ firma: '', clave: '' });
@@ -160,9 +168,25 @@ export default function ProcesamientoForm() {
 
   /** Añade `CODIGO*CANTIDAD` al texto (si el código no está ya). */
   function agregar(c) {
+    setEntradaAbierta(true);
     if (lines.some((l) => codigoBase(l.code) === codigoBase(c.code))) return;
     setTexto((t) => `${t.trimEnd()}${t.trim() ? '\n' : ''}${c.code}*${c.quantity}`);
   }
+
+  /** Todo lo que TKC dice que se puede procesar, sin teclear nada. */
+  const listos = useMemo(() => filasCandidatos.filter((c) => c.status === 'ready'), [filasCandidatos]);
+  function cargarTodos() {
+    setTexto(listos.map((c) => `${c.code}*${c.quantity}`).join('\n'));
+    setEntradaAbierta(true);
+  }
+
+  // El modal se cierra cuando lo siguiente que hay que hacer está fuera: ver
+  // el resultado, o desbloquear el aviso de «se envió y no se pudo comprobar».
+  // Con un rechazo o un fallo se queda abierto, porque ahí lo que toca es
+  // corregir lo escrito y reintentar.
+  useEffect(() => {
+    if (['procesado', 'parcial', 'sin_verificar'].includes(resultado?.tipo)) setEntradaAbierta(false);
+  }, [resultado]);
 
   const ocupado = analizar.isPending || ejecutar.isPending;
   const puedeAnalizar = !sinTkc && entradaValida && repetidos.length === 0 && !ocupado;
@@ -193,19 +217,156 @@ export default function ProcesamientoForm() {
         </div>
       )}
 
-      {/* ── Entrada ────────────────────────────────────────────── */}
-      <Card className="p-5 space-y-4">
-        <h2 className="text-sm font-medium">Productos a procesar</h2>
-        <label className="block space-y-1.5 text-xs text-muted-foreground sm:max-w-xs">
-          Almacén
-          <Select value={almacenValido ? almacen : ''} onValueChange={setAlmacen}>
-            <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Elige un almacén" /></SelectTrigger>
-            <SelectContent>
-              {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </label>
+      {/* El almacén manda en las dos pestañas y en el formulario: va fuera. */}
+      <label className="block space-y-1.5 text-xs text-muted-foreground max-w-xs">
+        Almacén
+        <Select value={almacenValido ? almacen : ''} onValueChange={setAlmacen}>
+          <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Elige un almacén" /></SelectTrigger>
+          <SelectContent>
+            {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </label>
 
+      {/* ── Resultado ──────────────────────────────────────────── */}
+      {resultado && <ResultadoProceso r={resultado} />}
+
+      {/* Dos pestañas, como en los ajustes: lo que falta por procesar y lo que
+          TKC ya tiene. Lo primero es lo que se mira a diario. */}
+      <Tabs defaultValue="pendientes" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="pendientes">Por procesar</TabsTrigger>
+          <TabsTrigger value="historial">Historial de TKC</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pendientes" className="space-y-4">
+          <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <ClipboardList className="w-4 h-4 text-muted-foreground" />
+                Productos NoMT con existencia
+                {filasCandidatos.length > 0 && (
+                  <span className="text-xs text-muted-foreground">({filasCandidatos.length})</span>
+                )}
+              </p>
+              <div className="flex items-center gap-1">
+                {listos.length > 0 && (
+                  <Button type="button" variant="outline" size="sm" style={{ borderRadius: '8px' }} onClick={cargarTodos}>
+                    <ArrowDownToLine className="w-3.5 h-3.5 mr-1.5" />
+                    Pasarlos al formulario
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={refrescar} title="Actualizar"
+                  disabled={!almacenValido || sinTkc || candidatos.isFetching || procesados.isFetching}>
+                  <RefreshCw className={`w-3.5 h-3.5 ${candidatos.isFetching ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </div>
+
+            {!almacenValido ? (
+              <p className="px-4 py-6 text-xs text-muted-foreground text-center">Elige un almacén para ver sus productos NoMT.</p>
+            ) : errorCandidatos ? (
+              <div className="p-4"><AlertBanner variant="danger" message={mensajeDeError(errorCandidatos)} /></div>
+            ) : candidatos.isLoading ? (
+              <p className="px-4 py-6 text-xs text-muted-foreground text-center">Cargando…</p>
+            ) : filasCandidatos.length === 0 ? (
+              <p className="px-4 py-6 text-xs text-muted-foreground text-center">No hay productos NoMT con existencia.</p>
+            ) : (
+              <div className="max-h-80 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-card">
+                    <tr className="text-xs text-muted-foreground border-b border-border">
+                      <th className="px-4 py-2 text-left font-medium">Producto</th>
+                      <th className="px-3 py-2 text-left font-medium hidden sm:table-cell">Código NoMT</th>
+                      <th className="px-3 py-2 text-right font-medium">Existencia</th>
+                      <th className="px-3 py-2 text-left font-medium hidden md:table-cell">Destino</th>
+                      <th className="px-3 py-2 text-left font-medium">Estado</th>
+                      <th className="px-4 py-2" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filasCandidatos.map((c) => (
+                      <tr key={`${c.warehouse}-${c.code}`} className="hover:bg-secondary/40 transition-colors">
+                        <td className="px-4 py-2 max-w-[18rem]"><p className="line-clamp-1" title={c.name}>{c.name}</p></td>
+                        <td className="px-3 py-2 font-mono text-xs hidden sm:table-cell">{c.code}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{c.quantity}</td>
+                        <td className="px-3 py-2 font-mono text-xs hidden md:table-cell">{c.targetCode ?? '—'}</td>
+                        <td className={`px-3 py-2 text-xs ${c.status === 'ready' ? 'text-[#1D9E75]' : 'text-muted-foreground'}`}>{c.reason}</td>
+                        <td className="px-4 py-2 text-right">
+                          {c.status === 'ready' && (
+                            <Button size="sm" variant="ghost" title="Agregar al formulario" aria-label={`Agregar ${c.code}`} onClick={() => agregar(c)}>
+                              <Plus className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {candidatos.data?.total > filasCandidatos.length && (
+                  <p className="px-4 py-2 text-xs text-muted-foreground">Mostrando {filasCandidatos.length} de {candidatos.data.total}.</p>
+                )}
+              </div>
+            )}
+          </Card>
+
+          <div className="flex justify-end">
+            {/* No vacía el texto a propósito: tras un «se envió y no se pudo
+                comprobar» hay que poder reabrir y reenviar LO MISMO, que es la
+                condición para que la clave de idempotencia se reutilice en vez
+                de procesar dos veces. Procesar con éxito sí lo vacía. */}
+            <Button variant="outline" disabled={!almacenValido} onClick={() => setEntradaAbierta(true)}
+              style={{ borderRadius: '8px' }}>
+              Procesar a mano
+            </Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="historial">
+          <Card className="p-5 space-y-3">
+            <h2 className="text-sm font-medium">Procesados recientes en {almacenValido ? almacen : '—'}</h2>
+            {errorProcesados && <AlertBanner variant="danger" message={mensajeDeError(errorProcesados)} />}
+            {almacenValido && !sinTkc && !errorProcesados && !procesados.isLoading && filasProcesados.length === 0 && (
+              <p className="text-sm text-muted-foreground">Sin procesamientos recientes.</p>
+            )}
+            {filasProcesados.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-muted-foreground border-b">
+                      <th className="py-2 pr-3 font-medium">Documento</th>
+                      <th className="py-2 pr-3 font-medium">Fecha</th>
+                      <th className="py-2 pr-3 font-medium">Estado</th>
+                      <th className="py-2 font-medium text-right">Procesados</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filasProcesados.map((d) => (
+                      <tr key={d.id} className="border-b last:border-0">
+                        <td className="py-2 pr-3 font-mono text-xs">{d.code}</td>
+                        <td className="py-2 pr-3">{d.date}</td>
+                        <td className="py-2 pr-3 capitalize">{d.status}</td>
+                        <td className="py-2 text-right">{d.totalProcessed} de {d.totalProducts}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* ── Entrada y análisis: en modal ───────────────────────── */}
+      <Dialog open={entradaAbierta} onOpenChange={setEntradaAbierta}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogTitle className="text-sm font-medium">
+            Procesar NoMT — {almacenValido ? almacen : 'sin almacén'}
+          </DialogTitle>
+          <DialogDescription className="text-xs">
+            Analizar solo lee y dice qué haría; procesar es lo que mueve la existencia.
+          </DialogDescription>
+          <div className="space-y-4">
         <label className="block space-y-1.5 text-xs text-muted-foreground">
           Productos — una línea por producto: <code className="font-mono">CODIGO*CANTIDAD</code> (con o sin <code className="font-mono">NoMT</code>; sin cantidad vale 1)
           <Textarea
@@ -242,12 +403,11 @@ export default function ProcesamientoForm() {
             Analizar
           </Button>
         </div>
-      </Card>
 
-      {/* ── Análisis ───────────────────────────────────────────── */}
-      {analisis?.tipo === 'error' && <AlertBanner variant="danger" message={mensajeDeError(analisis)} />}
-      {analisis?.tipo === 'analizado' && (
-        <Card className="p-5 space-y-4">
+        {/* ── Análisis ─────────────────────────────────────────── */}
+        {analisis?.tipo === 'error' && <AlertBanner variant="danger" message={mensajeDeError(analisis)} />}
+        {analisis?.tipo === 'analizado' && (
+          <div className="rounded-lg border border-border p-4 space-y-4" style={{ borderRadius: '8px' }}>
           <h2 className="text-sm font-medium">
             {analisis.procesables} de {analisis.lineas.length} se pueden procesar
             {!analisisVigente && <span className="text-muted-foreground font-normal"> (cambiaste la entrada: vuelve a analizar)</span>}
@@ -269,96 +429,11 @@ export default function ProcesamientoForm() {
               Procesar
             </Button>
           </div>
-        </Card>
-      )}
-
-      {/* ── Resultado ──────────────────────────────────────────── */}
-      {resultado && <ResultadoProceso r={resultado} />}
-
-      {/* ── Por procesar ───────────────────────────────────────── */}
-      <Card className="p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium">Por procesar en {almacenValido ? almacen : '—'}</h2>
-          <Button variant="ghost" size="sm" onClick={refrescar} disabled={!almacenValido || sinTkc || candidatos.isFetching || procesados.isFetching} title="Actualizar">
-            <RefreshCw className={`w-3.5 h-3.5 ${candidatos.isFetching ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
-        {!almacenValido && <p className="text-sm text-muted-foreground">Elige un almacén para ver sus productos NoMT.</p>}
-        {errorCandidatos && <AlertBanner variant="danger" message={mensajeDeError(errorCandidatos)} />}
-        {almacenValido && !sinTkc && !errorCandidatos && !candidatos.isLoading && filasCandidatos.length === 0 && (
-          <p className="text-sm text-muted-foreground">No hay productos NoMT con existencia.</p>
-        )}
-        {filasCandidatos.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-muted-foreground border-b">
-                  <th className="py-2 pr-3 font-medium">Código NoMT</th>
-                  <th className="py-2 pr-3 font-medium">Producto</th>
-                  <th className="py-2 pr-3 font-medium text-right">Existencia</th>
-                  <th className="py-2 pr-3 font-medium">Destino</th>
-                  <th className="py-2 pr-3 font-medium">Estado</th>
-                  <th className="py-2 font-medium text-right" />
-                </tr>
-              </thead>
-              <tbody>
-                {filasCandidatos.map((c) => (
-                  <tr key={`${c.warehouse}-${c.code}`} className="border-b last:border-0">
-                    <td className="py-2 pr-3 font-mono text-xs">{c.code}</td>
-                    <td className="py-2 pr-3 max-w-[18rem] truncate" title={c.name}>{c.name}</td>
-                    <td className="py-2 pr-3 text-right">{c.quantity}</td>
-                    <td className="py-2 pr-3 font-mono text-xs">{c.targetCode ?? '—'}</td>
-                    <td className={`py-2 pr-3 text-xs ${c.status === 'ready' ? 'text-[#1D9E75]' : 'text-muted-foreground'}`}>{c.reason}</td>
-                    <td className="py-2 text-right">
-                      {c.status === 'ready' && (
-                        <Button size="sm" variant="ghost" title="Agregar a la entrada" aria-label={`Agregar ${c.code}`} onClick={() => agregar(c)}>
-                          <Plus className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {candidatos.data?.total > filasCandidatos.length && (
-              <p className="text-xs text-muted-foreground mt-2">Mostrando {filasCandidatos.length} de {candidatos.data.total}.</p>
-            )}
           </div>
         )}
-      </Card>
-
-      {/* ── Procesados ─────────────────────────────────────────── */}
-      <Card className="p-5 space-y-3">
-        <h2 className="text-sm font-medium">Procesados recientes en {almacenValido ? almacen : '—'}</h2>
-        {errorProcesados && <AlertBanner variant="danger" message={mensajeDeError(errorProcesados)} />}
-        {almacenValido && !sinTkc && !errorProcesados && !procesados.isLoading && filasProcesados.length === 0 && (
-          <p className="text-sm text-muted-foreground">Sin procesamientos recientes.</p>
-        )}
-        {filasProcesados.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-muted-foreground border-b">
-                  <th className="py-2 pr-3 font-medium">Documento</th>
-                  <th className="py-2 pr-3 font-medium">Fecha</th>
-                  <th className="py-2 pr-3 font-medium">Estado</th>
-                  <th className="py-2 font-medium text-right">Procesados</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filasProcesados.map((d) => (
-                  <tr key={d.id} className="border-b last:border-0">
-                    <td className="py-2 pr-3 font-mono text-xs">{d.code}</td>
-                    <td className="py-2 pr-3">{d.date}</td>
-                    <td className="py-2 pr-3 capitalize">{d.status}</td>
-                    <td className="py-2 text-right">{d.totalProcessed} de {d.totalProducts}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
-        )}
-      </Card>
+        </DialogContent>
+      </Dialog>
 
       {ConfirmDialogNode}
     </div>

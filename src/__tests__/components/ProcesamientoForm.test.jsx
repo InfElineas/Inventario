@@ -52,9 +52,15 @@ function montar() {
 const boton = (nombre) => screen.getByRole('button', { name: nombre });
 const PLACEHOLDER = /NoMT10157977\*1/;
 
+/** El formulario vive en un modal: hay que abrirlo antes de escribir. */
+async function abrir(user) {
+  await user.click(boton(/procesar a mano/i));
+  return screen.findByPlaceholderText(PLACEHOLDER);
+}
+
 async function rellenar(user, texto = 'NoMT10157977*1\nNoMT021321020*2') {
   await user.selectOptions(screen.getAllByRole('combobox')[0], '676');
-  await user.click(screen.getByPlaceholderText(PLACEHOLDER));
+  await user.click(await abrir(user));
   await user.paste(texto);
 }
 
@@ -73,7 +79,8 @@ describe('ProcesamientoForm', () => {
   it('no deja analizar sin almacén ni líneas válidas', async () => {
     const user = userEvent.setup();
     montar();
-    expect(boton(/analizar/i)).toBeDisabled();
+    // Sin almacén no hay nada que abrir: el formulario depende de él.
+    expect(boton(/procesar a mano/i)).toBeDisabled();
     await rellenar(user, 'A*0');
     expect(screen.getByText(/entero positivo/i)).toBeInTheDocument();
     expect(boton(/analizar/i)).toBeDisabled();
@@ -121,8 +128,10 @@ describe('ProcesamientoForm', () => {
     expect(datos.idempotencyKey).toMatch(/^proc-/);
     await screen.findByText(/Procesado: 1 producto/);
     expect(screen.getByText(/— documento 56357/)).toBeInTheDocument();
+    // El modal se cierra: lo siguiente que hay que mirar es el resultado.
+    expect(screen.queryByPlaceholderText(PLACEHOLDER)).not.toBeInTheDocument();
     // Lo procesado ya no está en la entrada ni queda un análisis que reenviar.
-    expect(screen.getByPlaceholderText(PLACEHOLDER)).toHaveValue('');
+    expect(await abrir(user)).toHaveValue('');
     expect(screen.queryByRole('button', { name: /^procesar$/i })).not.toBeInTheDocument();
   });
 
@@ -148,13 +157,17 @@ describe('ProcesamientoForm', () => {
     await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: /^confirmar$/i }));
 
     await screen.findByText(/no se pudo comprobar el resultado/i);
-    await user.click(screen.getByPlaceholderText(PLACEHOLDER));
+    await user.click(await abrir(user));
     await user.paste('NoMT10157977*1');
     await user.click(boton(/analizar/i));
     await screen.findByText(/se pueden procesar/);
     expect(boton(/^procesar$/i)).toBeDisabled();
 
-    await user.click(boton(/ya lo revisé en tkc/i));
+    // El aviso vive fuera del modal, que es donde queda la persona al cerrarse
+    // solo tras el envío sin confirmar.
+    await user.keyboard('{Escape}');
+    await user.click(await screen.findByRole('button', { name: /ya lo revisé en tkc/i }));
+    await abrir(user);
     expect(boton(/^procesar$/i)).toBeEnabled();
   });
 
@@ -176,6 +189,22 @@ describe('ProcesamientoForm', () => {
     montar();
     await user.selectOptions(screen.getAllByRole('combobox')[0], '676');
     await user.click(await screen.findByRole('button', { name: /agregar NoMT10157977/i }));
-    expect(screen.getByPlaceholderText(PLACEHOLDER)).toHaveValue('NoMT10157977*3');
+    expect(await screen.findByPlaceholderText(PLACEHOLDER)).toHaveValue('NoMT10157977*3');
+  });
+
+  it('pasa al formulario todos los procesables de una vez, y solo esos', async () => {
+    svc.listarCandidatos.mockResolvedValue({
+      status: 200, total: 2,
+      body: [
+        { warehouse: '188', code: 'NoMT10157977', name: 'Labial', quantity: 3, targetCode: '10157977', status: 'ready', reason: 'Procesable' },
+        { warehouse: '188', code: 'NoMT021321020', name: 'Rímel', quantity: 5, targetCode: null, status: 'blocked', reason: 'Sin producto destino' },
+      ],
+    });
+    const user = userEvent.setup();
+    montar();
+    await user.selectOptions(screen.getAllByRole('combobox')[0], '676');
+    await user.click(await screen.findByRole('button', { name: /pasarlos al formulario/i }));
+    // El bloqueado no entra: enviarlo solo produciría un rechazo de TKC.
+    expect(await screen.findByPlaceholderText(PLACEHOLDER)).toHaveValue('NoMT10157977*3');
   });
 });
