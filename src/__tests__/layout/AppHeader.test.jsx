@@ -245,8 +245,11 @@ describe('AppLayout — contadores del menú', () => {
     Object.assign(contadores, { Merma: 3, Inventario: 1, AnuncioDesact: 7, Lote: 2 });
     render(<AppLayout />, { wrapper });
     await vi.waitFor(async () => {
+      // Las entradas de facturación cuentan lo mismo pero por su estado; el
+      // mock devuelve una cifra por entidad, así que repiten la suya.
       expect(await leerCounts()).toEqual({
         '/mermas': 3, '/inventario': 1, '/anuncios': 7, '/lotes': 2,
+        '/facturacion/mermas': 3, '/facturacion/inventario': 1,
       });
     });
   });
@@ -255,7 +258,7 @@ describe('AppLayout — contadores del menú', () => {
     Object.assign(contadores, { Merma: 5 });
     render(<AppLayout />, { wrapper });
     await vi.waitFor(async () => {
-      expect(await leerCounts()).toEqual({ '/mermas': 5 });
+      expect(await leerCounts()).toEqual({ '/mermas': 5, '/facturacion/mermas': 5 });
     });
   });
 

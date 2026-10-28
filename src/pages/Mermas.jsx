@@ -10,6 +10,7 @@ import MermaForm from '@/components/mermas/MermaForm';
 import MermaDetail from '@/components/mermas/MermaDetail';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowDownToLine, Check, Plus, Search } from 'lucide-react';
+import { ETIQUETA_AMBITO, pasaFiltro } from '@/lib/ambito';
 import BajarMermasDialog from '@/components/mermas/BajarMermasDialog';
 import { ROLES_TIENDA } from '@/lib/ajustes';
 import { notifyJefeDepto } from '@/lib/notificationService';
@@ -17,10 +18,11 @@ import { logTransicion, notificarTransicion } from '@/lib/workflowService';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 
-export default function Mermas() {
+export default function Mermas({ ambito = 'inventario' }) {
   const [showForm, setShowForm] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
-  const [filterEstado, setFilterEstado] = useState('all');
+  // Por defecto, lo que le toca a esta sección. Ver src/lib/ambito.js.
+  const [filterEstado, setFilterEstado] = useState('ambito');
   const [searchQ, setSearchQ] = useState('');
   const queryClient = useQueryClient();
   const { sort, onSort } = useSortable('fecha_inv', 'desc');
@@ -80,7 +82,7 @@ export default function Mermas() {
   const selected = mermas.find(m => m.id === selectedId);
 
   const filtered = mermas.filter(m => {
-    if (filterEstado !== 'all' && m.estado_tarea !== filterEstado) return false;
+    if (!pasaFiltro(m, filterEstado, ambito)) return false;
     if (searchQ && !m.producto_nombre?.toLowerCase().includes(searchQ.toLowerCase())) return false;
     return true;
   });
@@ -127,7 +129,11 @@ export default function Mermas() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-medium">Mermas</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Registro y seguimiento de mermas</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {ambito === 'facturacion'
+              ? 'Mermas ya bajadas de tienda, a la espera de facturación'
+              : 'Registro y seguimiento de mermas'}
+          </p>
         </div>
         {['inv', 'administrador', 'superadmin'].includes(role) && (
           <Button onClick={() => { setShowForm(true); setSelectedId(null); }} style={{ borderRadius: '8px' }}>
@@ -153,6 +159,7 @@ export default function Mermas() {
         <Select value={filterEstado} onValueChange={setFilterEstado}>
           <SelectTrigger className="w-48" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="ambito">{ETIQUETA_AMBITO[ambito]}</SelectItem>
             <SelectItem value="all">Todos los estados</SelectItem>
             <SelectItem value="en_curso">En curso</SelectItem>
             <SelectItem value="pend_fact">Pend. FACT</SelectItem>

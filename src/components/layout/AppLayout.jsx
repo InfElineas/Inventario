@@ -82,6 +82,8 @@ const ROUTE_TITLES = {
   '/bd-tkc':         'Catálogo — BD TKC',
   '/inventario':     'Inventario',
   '/mermas':         'Mermas',
+  '/facturacion/inventario': 'Conteos por facturar',
+  '/facturacion/mermas':     'Mermas por facturar',
   '/lotes':          'Vencimientos',
   '/recepciones':    'Recepciones',
   '/anuncios':       'Anuncios',
@@ -209,6 +211,10 @@ export default function AppLayout() {
 
   const { data: mermasPending }   = useQuery(contador('mermas',      'Merma',         { estado_tarea: estadoPendiente.mermas }));
   const { data: invPending }      = useQuery(contador('inventarios', 'Inventario',    { estado_tarea: estadoPendiente.inventarios }));
+  // Los de facturación son suyos pase lo que pase el rol de quien mira: esas
+  // dos entradas del menú existen para eso.
+  const { data: mermasFact }      = useQuery(contador('mermas-fact', 'Merma',      { estado_tarea: 'pend_fact' }));
+  const { data: invFact }         = useQuery(contador('inv-fact',    'Inventario', { estado_tarea: 'pend_fact' }));
   // Acotado al almacén activo, igual que la página de Anuncios. Antes el
   // contador era global y la página no: el menú marcaba 1.185 y al entrar
   // salían cuarenta, sin que nada explicara la diferencia.
@@ -272,6 +278,8 @@ export default function AppLayout() {
   if (invPending      > 0) pendingCounts['/inventario'] = invPending;
   if (anunciosPending > 0) pendingCounts['/anuncios']   = anunciosPending;
   if (lotesCriticos   > 0) pendingCounts['/lotes']      = lotesCriticos;
+  if (mermasFact      > 0) pendingCounts['/facturacion/mermas']     = mermasFact;
+  if (invFact         > 0) pendingCounts['/facturacion/inventario'] = invFact;
 
   return (
     <div className="min-h-screen bg-background">

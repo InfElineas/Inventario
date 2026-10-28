@@ -87,7 +87,10 @@ export default function MermaForm({ user, onSubmit, onCancel, isPending: isPendi
       notas,
       precio_unitario: precioUnit,
       total_perdida: totalPerdida,
-      estado_tarea: requiereFact ? 'pend_fact' : 'en_auditoria',
+      // Nace en curso, en manos de inventario. Pasa al siguiente —facturación
+      // o directamente auditoría— cuando la mercancía se baja de tienda: hasta
+      // entonces sigue contada en el piso y no hay nada que facturar.
+      estado_tarea: 'en_curso',
       fecha_vencimiento_lote: fvLote || null,
       destinos: [],
       reconteos: [],
@@ -155,7 +158,9 @@ export default function MermaForm({ user, onSubmit, onCancel, isPending: isPendi
           {clasif && (
             <AlertBanner
               variant={sinFact ? 'info' : 'warning'}
-              message={sinFact ? 'Ruta: INV → Auditor (sin FACT)' : 'Ruta: INV → FACT → Auditor'}
+              message={sinFact
+                ? 'Ruta: INV → Auditor (sin FACT). Avanza al bajarla de tienda.'
+                : 'Ruta: INV → FACT → Auditor. Pasa a FACT al bajarla de tienda.'}
             />
           )}
 

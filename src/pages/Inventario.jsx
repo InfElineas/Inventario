@@ -10,6 +10,7 @@ import InventarioForm from '@/components/inventario/InventarioForm';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
 import Timeline from '@/components/shared/Timeline';
 import { ClipboardList, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
+import { ETIQUETA_AMBITO, pasaFiltro } from '@/lib/ambito';
 import OrdenReabastecimiento from '@/components/inventario/OrdenReabastecimiento';
 import { Textarea } from '@/components/ui/textarea';
 import ColPicker, { loadCols } from '@/components/shared/ColPicker';
@@ -37,11 +38,12 @@ const INV_COL_DEFS = [
 ]
 const INV_COLS_KEY = 'inv_cols'
 
-export default function Inventario() {
+export default function Inventario({ ambito = 'inventario' }) {
   const [showForm, setShowForm] = useState(false);
   const [showOrden, setShowOrden] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
-  const [filterEstado, setFilterEstado] = useState('all');
+  // Por defecto, lo que le toca a esta sección. Ver src/lib/ambito.js.
+  const [filterEstado, setFilterEstado] = useState('ambito');
   const [searchQ, setSearchQ] = useState('');
   const [cols, setCols] = useState(() => loadCols(INV_COLS_KEY, INV_COL_DEFS));
   const [page, setPage] = useState(1);
@@ -115,7 +117,7 @@ export default function Inventario() {
   const selected = inventarios.find(i => i.id === selectedId);
 
   const filtered = inventarios.filter(i => {
-    if (filterEstado !== 'all' && i.estado_tarea !== filterEstado) return false;
+    if (!pasaFiltro(i, filterEstado, ambito)) return false;
     if (searchQ && !i.producto_nombre?.toLowerCase().includes(searchQ.toLowerCase()) && !i.producto_codigo?.toLowerCase().includes(searchQ.toLowerCase())) return false;
     return true;
   });
@@ -145,7 +147,11 @@ export default function Inventario() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-medium">Inventario</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Conteos y ajustes de inventario</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {ambito === 'facturacion'
+              ? 'Conteos con diferencia, a la espera de facturación'
+              : 'Conteos y ajustes de inventario'}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <ColPicker cols={INV_COL_DEFS} visible={cols} onChange={setCols} storageKey={INV_COLS_KEY} />
@@ -198,6 +204,7 @@ export default function Inventario() {
         <Select value={filterEstado} onValueChange={setFilterEstado}>
           <SelectTrigger className="w-44" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="ambito">{ETIQUETA_AMBITO[ambito]}</SelectItem>
             <SelectItem value="all">Todos los estados</SelectItem>
             <SelectItem value="en_curso">En curso</SelectItem>
             <SelectItem value="pend_fact">Pend. FACT</SelectItem>

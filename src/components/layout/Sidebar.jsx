@@ -42,6 +42,8 @@ const NAV_GROUPS = [
     label: 'FACTURACIÓN',
     groupIcon: 'Megaphone',
     items: [
+      { path: '/facturacion/inventario', label: 'Conteos por facturar', icon: 'ClipboardList', roles: ROLES_AJUSTES },
+      { path: '/facturacion/mermas',     label: 'Mermas por facturar',  icon: 'TrendingDown',  roles: ROLES_AJUSTES },
       { path: '/anuncios', label: 'Anuncios', icon: 'Megaphone', roles: ['inv','ca','auditor','jefe_depto','administrador','superadmin'] },
       { path: '/ajustes/aumento',     label: 'Ajuste de aumento',     icon: 'PackagePlus',  roles: ROLES_AJUSTES },
       { path: '/ajustes/disminucion', label: 'Ajuste de disminución', icon: 'PackageMinus', roles: ROLES_AJUSTES },

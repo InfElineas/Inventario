@@ -84,6 +84,10 @@ const AuthenticatedApp = () => {
           <Route path="/lotes"          element={<Lotes />} />
           <Route path="/recepciones"    element={<Recepciones />} />
           <Route path="/anuncios"       element={<RoleGuard element={<Anuncios />} roles={['inv','ca','auditor','jefe_depto','administrador','superadmin']} />} />
+          {/* Las mismas pantallas, abiertas desde facturación y con su filtro
+              puesto: lo que le toca a esa área. Ver src/lib/ambito.js. */}
+          <Route path="/facturacion/inventario" element={<RoleGuard element={<Inventario ambito="facturacion" />} roles={ROLES_AJUSTES} />} />
+          <Route path="/facturacion/mermas"     element={<RoleGuard element={<Mermas ambito="facturacion" />} roles={ROLES_AJUSTES} />} />
           <Route path="/ajustes/aumento"     element={<RoleGuard element={<AjusteAumento />} roles={ROLES_AJUSTES} />} />
           <Route path="/ajustes/disminucion" element={<RoleGuard element={<AjusteDisminucion />} roles={ROLES_AJUSTES} />} />
           <Route path="/procesamientos"      element={<RoleGuard element={<Procesamientos />} roles={ROLES_PROCESAMIENTOS} />} />

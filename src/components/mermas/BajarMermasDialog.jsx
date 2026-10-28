@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import AlertBanner from '@/components/shared/AlertBanner';
 import { useConfirm } from '@/lib/useConfirm';
 import { base44 } from '@/api/base44Client';
+import { CLASIF_MERMA_SIN_FACT } from '@/lib/constants';
 import { planearTienda, ejecutarTienda, esperarTrabajo } from '@/services/tiendaService';
 import { leerPlan, Plan } from '@/components/productos/MoverTiendaDialog';
 import { warehouseName } from '@/services/tkc/warehouses';
@@ -26,6 +27,18 @@ import { Loader2, ArrowDownToLine, RefreshCw } from 'lucide-react';
  */
 
 const nuevaClave = () => `merma-${crypto.randomUUID()}`;
+
+/**
+ * A quién le toca la merma una vez bajada de tienda.
+ *
+ * Algunas clasificaciones no pasan por facturación —no hay nada que facturar—
+ * y van directas a auditoría. Es la misma regla que enseña el formulario al
+ * registrarla, leída de la clasificación guardada.
+ */
+function siguienteEstado(merma) {
+  const sinFact = CLASIF_MERMA_SIN_FACT.includes(merma.clasif_merma);
+  return sinFact ? 'en_auditoria' : 'pend_fact';
+}
 
 /** `CODIGO` + cantidad, una línea por merma. Dos mermas del mismo producto se suman. */
 export function aLineas(mermas) {
@@ -105,7 +118,14 @@ export default function BajarMermasDialog({ mermas, almacen, onHecho, onClose })
       for (const m of mermas) {
         try {
           await base44.entities.Merma.update(m.id, {
-            rebaja_confirmada: true, fecha_rebaja_tienda: fecha,
+            rebaja_confirmada: true,
+            fecha_rebaja_tienda: fecha,
+            // Y aquí deja de ser asunto de inventario. Antes la merma nacía en
+            // «pendiente FACT» con la mercancía todavía en el piso de tienda:
+            // facturación recibía algo que aún no estaba hecho.
+            ...(m.estado_tarea === 'en_curso'
+              ? { estado_tarea: siguienteEstado(m) }
+              : {}),
           });
         } catch {
           fallos.push(m.producto_nombre || m.producto_codigo || m.id);
