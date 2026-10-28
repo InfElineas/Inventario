@@ -24,6 +24,7 @@ import {
   listarCandidatos, listarProcesados, analizarProceso, procesar,
 } from '@/services/procesamientosService';
 import { ErrorDeRed } from '@/services/ajustesService';
+import { SIN_SONDEO } from '@/lib/query-client';
 
 const COLOR_LINEA = { done: 'text-[#1D9E75]', failed: 'text-[#E24B4A]', unverified: 'text-[#BA7517]' };
 
@@ -92,12 +93,14 @@ export default function ProcesamientoForm() {
     queryFn: () => listarCandidatos({ almacen, refresh: saltarCache.current }),
     enabled: almacenValido && !sinTkc,
     staleTime: 60_000,
+    ...SIN_SONDEO,
   });
   const procesados = useQuery({
     queryKey: ['procesamientos', 'documentos', almacen],
     queryFn: () => listarProcesados({ almacen, refresh: saltarCache.current }),
     enabled: almacenValido && !sinTkc,
     staleTime: 60_000,
+    ...SIN_SONDEO,
   });
   const filasCandidatos = Array.isArray(candidatos.data?.body) ? candidatos.data.body : [];
   const filasProcesados = Array.isArray(procesados.data?.body) ? procesados.data.body : [];

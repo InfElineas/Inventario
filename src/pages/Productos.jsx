@@ -31,6 +31,7 @@ import {
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import { base44 } from '@/api/base44Client';
+import { SIN_SONDEO } from '@/lib/query-client';
 
 // ── Constants ─────────────────────────────────────────────────
 const PAGE_SIZE = 50;
@@ -446,6 +447,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
     queryFn: () => fetchExistenciaTkc({ almacen, idTienda: hoveredTkc.fila.idOnline }),
     enabled: conTkc && source === 'tkc' && Boolean(almacen) && Boolean(hoveredTkc?.fila?.idOnline),
     staleTime: 5 * 60 * 1000,
+    ...SIN_SONDEO,
     gcTime: 5 * 60 * 1000,
     retry: false,
   });

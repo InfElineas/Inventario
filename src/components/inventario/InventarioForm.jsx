@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { fetchExistenciaTkc } from '@/services/tkcService';
 import { useAccesoTkc } from '@/lib/useAccesoTkc';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
+import { SIN_SONDEO } from '@/lib/query-client';
 
 const CLASIF_AJUSTE = ['Faltante por deterioro', 'Faltante por robo', 'Faltante sin justificar', 'Sobrante por transferencia', 'Sobrante por devolución', 'Error de sistema', 'Ajuste administrativo'];
 
@@ -73,6 +74,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
     queryFn: () => fetchExistenciaTkc({ almacen, idTienda: producto.id_tienda }),
     enabled: conTkc && Boolean(almacen && producto?.id_tienda),
     staleTime: 60_000,
+    ...SIN_SONDEO,
     retry: false,
   });
 

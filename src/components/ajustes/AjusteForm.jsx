@@ -19,6 +19,7 @@ import { WAREHOUSES } from '@/services/tkc/warehouses';
 import {
   TIPOS_AJUSTE, parseLineas, nuevaClave, interpretar, puedeConfirmar, mensajeDeError,
 } from '@/lib/ajustes';
+import { SIN_SONDEO } from '@/lib/query-client';
 import {
   listarAjustes, lineasAjuste, crearAjuste, confirmarAjuste, ErrorDeRed,
 } from '@/services/ajustesService';
@@ -76,6 +77,7 @@ export default function AjusteForm({ tipo }) {
     queryFn: () => listarAjustes(tipo, { almacen, limit: 50 }),
     enabled: almacenValido,
     staleTime: 15_000,
+    ...SIN_SONDEO,
   });
   const filas = Array.isArray(historial.data?.body) ? historial.data.body : [];
   const errorHistorial = historial.data && !Array.isArray(historial.data.body)
@@ -439,6 +441,7 @@ function LineasDialog({ tipo, doc, onClose }) {
     queryKey: ['ajustes-lineas', tipo, doc?.id],
     queryFn: () => lineasAjuste(tipo, doc.id),
     enabled: Boolean(doc),
+    ...SIN_SONDEO,
   });
   const tabla = data?.body;
   const error = data && !tabla?.rows ? interpretar(data.status, data.body) : null;
