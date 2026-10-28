@@ -45,6 +45,12 @@ export default defineConfig({
     environment:  'jsdom',
     setupFiles:   './src/test/setup.js',
     css:          false,
+    // Las pruebas de formularios teclean con `userEvent`, que mete esperas
+    // reales entre pulsaciones, y además montan diálogos de Radix. Con la
+    // suite en paralelo eso pasa de los 5 s por defecto en una máquina
+    // cargada: fallaban al azar y siempre pasaban al repetirlas solas. Un
+    // rojo intermitente es peor que uno lento, porque enseña a ignorarlos.
+    testTimeout: 20_000,
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
