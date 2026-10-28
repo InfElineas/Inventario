@@ -13,22 +13,38 @@ import { query } from './db.js'
 
 const cache = new Map()
 
-/** Nombres de columna de una tabla del esquema `inventario`. */
-export async function columnasDe(tabla) {
+/** Lee la tabla del catálogo una vez y guarda nombres y tipos. */
+async function leer(tabla) {
   if (cache.has(tabla)) return cache.get(tabla)
 
   const { rows } = await query(
-    `SELECT column_name
+    `SELECT column_name, data_type
        FROM information_schema.columns
       WHERE table_schema = 'inventario' AND table_name = $1`,
     [tabla],
   )
+  if (rows.length === 0) throw new Error(`Tabla desconocida: ${tabla}`)
 
-  const set = new Set(rows.map((r) => r.column_name))
-  if (set.size === 0) throw new Error(`Tabla desconocida: ${tabla}`)
+  const entrada = {
+    nombres: new Set(rows.map((r) => r.column_name)),
+    tipos: new Map(rows.map((r) => [r.column_name, r.data_type])),
+  }
+  cache.set(tabla, entrada)
+  return entrada
+}
 
-  cache.set(tabla, set)
-  return set
+/** Nombres de columna de una tabla del esquema `inventario`. */
+export async function columnasDe(tabla) {
+  return (await leer(tabla)).nombres
+}
+
+/**
+ * Columna → tipo declarado, como lo nombra information_schema ('jsonb',
+ * 'text', 'ARRAY'…). Hace falta para saber qué valores hay que serializar
+ * antes de pasárselos al driver.
+ */
+export async function tiposDe(tabla) {
+  return (await leer(tabla)).tipos
 }
 
 /**

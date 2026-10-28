@@ -20,6 +20,13 @@ const COLUMNAS = {
   productos: ['id', 'nombre', 'activo', 'suministrador', 'categoria_elineas', 'almacen_num',
               'exist_fisica', 'almacen', 'tienda', 'id_tienda', 'fotos', 'created_date',
               'estado_tienda', 'estado_anuncio_tkc'],
+  inventarios: ['id', 'producto_id', 'especialista_id', 'diferencia', 'estado_tarea', 'detalles', 'created_date'],
+};
+
+/** Lo que no está aquí se da por `text`: solo importan las columnas JSON. */
+const TIPOS = {
+  productos:   { fotos: 'jsonb' },
+  inventarios: { detalles: 'jsonb' },
 };
 
 const { createDatosApiMiddleware } = await import('@/server/datosApi');
@@ -80,7 +87,7 @@ beforeEach(() => {
   query.mockImplementation(async (sql, valores) => {
     if (sql.includes('information_schema.columns')) {
       const tabla = valores[0];
-      return { rows: (COLUMNAS[tabla] ?? []).map((c) => ({ column_name: c })) };
+      return { rows: (COLUMNAS[tabla] ?? []).map((c) => ({ column_name: c, data_type: TIPOS[tabla]?.[c] ?? 'text' })) };
     }
     if (sql.includes('count(*)')) return { rows: [{ total: 7 }] };
     return { rows: [] };
@@ -271,6 +278,40 @@ describe('permisos en la escritura', () => {
   });
 });
 
+describe('columnas JSON', () => {
+  // El driver convierte un array de JavaScript a la sintaxis de array de
+  // Postgres: `[]` se vuelve `{}`, que no es JSON válido. Guardar un conteo de
+  // inventario sin detalles de lote daba 500 e «invalid input syntax for type
+  // json: Expected ":", but found "}"», y no se registraba nada.
+  it('un array a una columna jsonb va como JSON, no como array de Postgres', async () => {
+    queryOne.mockResolvedValue({ id: 'i1' });
+    const res = await llamar('/api/datos/Inventario/create', {
+      data: { producto_id: 'p1', especialista_id: 'yo@mercadoelineas.com', diferencia: 2, detalles: [] },
+    });
+
+    expect(res.statusCode).toBe(201);
+    const valores = queryOne.mock.calls.at(-1)[1];
+    expect(valores).toContain('[]');
+  });
+
+  it('con detalles dentro, también', async () => {
+    queryOne.mockResolvedValue({ id: 'i2' });
+    await llamar('/api/datos/Inventario/create', {
+      data: { producto_id: 'p1', especialista_id: 'yo@mercadoelineas.com', detalles: [{ no_lote: 'L1', cantidad: 3 }] },
+    });
+    expect(queryOne.mock.calls.at(-1)[1]).toContain('[{"no_lote":"L1","cantidad":3}]');
+  });
+
+  it('lo que no es JSON se deja tal cual', async () => {
+    queryOne.mockResolvedValue({ id: 'i3' });
+    await llamar('/api/datos/Inventario/create', {
+      data: { producto_id: 'p1', especialista_id: 'yo@mercadoelineas.com', diferencia: 2 },
+    });
+    // El número sigue siendo número: serializarlo lo rompería.
+    expect(queryOne.mock.calls.at(-1)[1]).toEqual(['p1', 'yo@mercadoelineas.com', 2]);
+  });
+});
+
 describe('solo lectura', () => {
   it('no se puede escribir en una vista', async () => {
     const res = await llamar('/api/datos/Lote/create', { data: { estado_fv: 'critico' } });
@@ -311,7 +352,7 @@ describe('distinct', () => {
   it('resuelve los valores únicos en la base, sin traerse las filas', async () => {
     query.mockImplementation(async (sql, valores) => {
       if (sql.includes('information_schema.columns')) {
-        return { rows: (COLUMNAS[valores[0]] ?? []).map((c) => ({ column_name: c })) };
+        return { rows: (COLUMNAS[valores[0]] ?? []).map((c) => ({ column_name: c, data_type: TIPOS[valores[0]]?.[c] ?? 'text' })) };
       }
       return { rows: [{ valor: 'ACME' }, { valor: 'Beta' }] };
     });
@@ -368,7 +409,7 @@ describe('resumen del catálogo', () => {
   it('cuenta en la base y agrupa por almacén y estado', async () => {
     query.mockImplementation(async (sql, valores) => {
       if (sql.includes('information_schema.columns')) {
-        return { rows: (COLUMNAS[valores[0]] ?? []).map((c) => ({ column_name: c })) };
+        return { rows: (COLUMNAS[valores[0]] ?? []).map((c) => ({ column_name: c, data_type: TIPOS[valores[0]]?.[c] ?? 'text' })) };
       }
       return { rows: [{ almacen_num: '480', estado: 'AGOTADO', total: 3, con_stock: 0 }] };
     });

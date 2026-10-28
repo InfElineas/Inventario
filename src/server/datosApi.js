@@ -10,7 +10,7 @@
  */
 
 import { query, queryOne, transaction } from './db.js'
-import { columnaSegura, columnasDe, soloColumnas } from './columnas.js'
+import { columnaSegura, columnasDe, soloColumnas, tiposDe } from './columnas.js'
 import { resolverSesion } from './session.js'
 import {
   puedeLeer, puedeCrear, puedeActualizar, puedeBorrar, filtroPropias, esAdmin,
@@ -65,6 +65,31 @@ async function leerJson(req) {
       try { resolve(datos ? JSON.parse(datos) : {}) } catch { reject(new Error('JSON inválido')) }
     })
     req.on('error', reject)
+  })
+}
+
+/**
+ * Valores de una fila listos para el driver, en el orden de `claves`.
+ *
+ * Lo que va a una columna `json`/`jsonb` se serializa aquí. El driver convierte
+ * un array de JavaScript a la sintaxis de array de Postgres —`[]` se vuelve
+ * `{}`—, que no es JSON válido: Postgres respondía «invalid input syntax for
+ * type json: Expected ":", but found "}"» y la petición entera fallaba con un
+ * 500. Pasó al guardar un conteo de inventario sin detalles de lote.
+ *
+ * Solo se tocan esas columnas: un `text[]` de verdad tiene que seguir yendo
+ * como array para que el driver lo convierta.
+ */
+async function valoresDe(tabla, claves, fila) {
+  const tipos = await tiposDe(tabla)
+  return claves.map((clave) => {
+    const valor = fila[clave]
+    if (valor === undefined) return null
+    const tipo = tipos.get(clave)
+    if ((tipo === 'json' || tipo === 'jsonb') && valor !== null && typeof valor === 'object') {
+      return JSON.stringify(valor)
+    }
+    return valor
   })
 }
 
@@ -320,7 +345,7 @@ export function createDatosApiMiddleware() {
         if (claves.length === 0) return responder(res, 400, { error: 'Sin datos' })
 
         const cols = await Promise.all(claves.map((c) => columnaSegura(tabla, c)))
-        const valores = claves.map((c) => datos[c])
+        const valores = await valoresDe(tabla, claves, datos)
         const marcadores = claves.map((_, i) => `$${i + 1}`)
 
         const fila = await queryOne(
@@ -351,9 +376,11 @@ export function createDatosApiMiddleware() {
         const cols = await Promise.all(claves.map((c) => columnaSegura(tabla, c)))
 
         const valores = []
-        const grupos = limpias.map((fila) =>
-          `(${claves.map((c) => `$${valores.push(fila[c] ?? null)}`).join(', ')})`,
-        )
+        const grupos = []
+        for (const fila of limpias) {
+          const listos = await valoresDe(tabla, claves, fila)
+          grupos.push(`(${listos.map((v) => `$${valores.push(v)}`).join(', ')})`)
+        }
 
         const { rowCount } = await query(
           `INSERT INTO ${tabla} (${cols.join(', ')}) VALUES ${grupos.join(', ')}`,
@@ -387,7 +414,7 @@ export function createDatosApiMiddleware() {
           const asignaciones = cols.map((c, i) => `${c} = $${i + 2}`)
           const { rows: actualizadas } = await cliente.query(
             `UPDATE ${tabla} SET ${asignaciones.join(', ')} WHERE id = $1 RETURNING *`,
-            [id, ...claves.map((c) => cambios[c])],
+            [id, ...(await valoresDe(tabla, claves, cambios))],
           )
           return { status: 200, cuerpo: { data: actualizadas[0] } }
         })
