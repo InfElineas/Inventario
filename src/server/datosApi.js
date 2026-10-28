@@ -169,7 +169,11 @@ export function createDatosApiMiddleware() {
           const cols = await Promise.all(
             cuerpo.search.campos.map((c) => columnaSegura(tabla, c)),
           )
-          const or = cols.map((c) => `${c} ILIKE ${marcador}`).join(' OR ')
+          // `::text` porque no todas las columnas buscables son de texto: el
+          // id de tienda es un número, y `bigint ILIKE` no existe en Postgres
+          // —la consulta entera fallaba—. Convertir deja buscar por ese id
+          // igual que por un nombre.
+          const or = cols.map((c) => `${c}::text ILIKE ${marcador}`).join(' OR ')
           clausula = clausula ? `${clausula} AND (${or})` : `WHERE (${or})`
         }
 

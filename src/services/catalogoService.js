@@ -30,8 +30,23 @@ const CAMPOS = [
   'estado_tienda', 'estado_anuncio_tkc', 'prioridad_tienda',
 ]
 
-/** Columnas en las que busca la caja de búsqueda. */
-const CAMPOS_BUSQUEDA = ['nombre', 'codigo_producto', 'suministrador', 'proveedor', 'marca']
+/**
+ * Columnas en las que busca la caja de búsqueda.
+ *
+ * Todo lo que identifica o describe al producto, incluido el id de tienda:
+ * quien lo tiene a mano lo pega ahí, y antes no encontraba nada.
+ *
+ * Quedan fuera las medidas numéricas (precio, peso, volumen, tasa, cantidad,
+ * existencia): se busca por trozos, así que un «5» las haría coincidir casi
+ * todas y la búsqueda dejaría de servir. Esas se acotan con los filtros.
+ */
+const CAMPOS_BUSQUEDA = [
+  'nombre', 'codigo_producto', 'codigo_pyme', 'id_tienda',
+  'suministrador', 'proveedor', 'marca',
+  'categoria_elineas', 'clasificacion', 'categoria_almacen', 'catalogo_nombre',
+  'unidad_compra', 'unidad_medida', 'locaciones', 'canal',
+  'estado_tienda', 'estado_anuncio_tkc', 'fecha_vencimiento_tkc',
+]
 
 /** Clave de orden de la pantalla → columna real. */
 const ORDEN = {

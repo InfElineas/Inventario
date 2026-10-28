@@ -420,9 +420,18 @@ describe('count con búsqueda', () => {
     });
 
     expect(ultimoSql()).toContain('count(*)');
-    expect(ultimoSql()).toContain('"nombre" ILIKE');
-    expect(ultimoSql()).toContain('"suministrador" ILIKE');
+    expect(ultimoSql()).toContain('"nombre"::text ILIKE');
+    expect(ultimoSql()).toContain('"suministrador"::text ILIKE');
     expect(ultimosValores()).toEqual([true, '%aceite%']);
+  });
+
+  it('busca también en columnas que no son de texto', async () => {
+    // El id de tienda es un número: sin convertir, `bigint ILIKE` no existe en
+    // Postgres y reventaba la consulta entera en vez de no encontrar nada.
+    await llamar('/api/datos/Producto/count', {
+      search: { texto: '12345', campos: ['id_tienda'] },
+    });
+    expect(ultimoSql()).toContain('"id_tienda"::text ILIKE');
   });
 
   it('sin búsqueda cuenta igual que antes', async () => {
