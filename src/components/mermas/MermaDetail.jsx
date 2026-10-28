@@ -88,7 +88,12 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
         <ReadOnlyField label="Destino" value={merma.destino_final} />
         <ReadOnlyField label="Pérdida" value={`$${merma.total_perdida?.toFixed(2) || '0.00'}`} />
         <ReadOnlyField label="Especialista" value={merma.especialista_nombre} />
-        <ReadOnlyField label="Rebaja" value={merma.rebaja_confirmada ? 'Sí' : 'No'} />
+        <ReadOnlyField
+          label="Rebajado de tienda"
+          value={merma.rebaja_confirmada
+            ? `Sí${merma.fecha_rebaja_tienda ? ` — ${merma.fecha_rebaja_tienda}` : ''}`
+            : 'No'}
+        />
         <ReadOnlyField label="Versión" value={merma.version_reconteo} />
         {merma.notas && <ReadOnlyField label="Notas INV" value={merma.notas} />}
       </ReadOnlyBlock>
@@ -284,7 +289,7 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
           {/* Estado de requisitos */}
           <div className="space-y-1.5">
             <div className={`text-xs flex justify-between p-2 rounded ${rebajaOk ? 'bg-[#1D9E7510] text-[#1D9E75]' : 'bg-[#E24B4A10] text-[#E24B4A]'}`} style={{ borderRadius: '4px' }}>
-              <span>Rebaja confirmada</span><span>{rebajaOk ? 'SÍ' : 'NO — bloquea aprobación'}</span>
+              <span>Rebajado de tienda</span><span>{rebajaOk ? 'SÍ' : 'NO — bloquea aprobación'}</span>
             </div>
             <div className={`text-xs flex justify-between p-2 rounded ${destinosOk ? 'bg-[#1D9E7510] text-[#1D9E75]' : 'bg-[#E24B4A10] text-[#E24B4A]'}`} style={{ borderRadius: '4px' }}>
               <span>Destinos asignados: {destSum} / {merma.cantidad}</span>

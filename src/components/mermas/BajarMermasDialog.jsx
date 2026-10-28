@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Button } from '@/components/ui/button';
 import AlertBanner from '@/components/shared/AlertBanner';
 import { useConfirm } from '@/lib/useConfirm';
+import { base44 } from '@/api/base44Client';
 import { planearTienda, ejecutarTienda, esperarTrabajo } from '@/services/tiendaService';
 import { leerPlan, Plan } from '@/components/productos/MoverTiendaDialog';
 import { warehouseName } from '@/services/tkc/warehouses';
@@ -46,6 +47,7 @@ export default function BajarMermasDialog({ mermas, almacen, onHecho, onClose })
   const [ocupado, setOcupado] = useState(null);   // 'analizar' | 'ejecutar'
   const [clave, setClave] = useState(nuevaClave);
   const [intento, setIntento] = useState(0);
+  const [sinAnotar, setSinAnotar] = useState([]);   // se bajaron, no se pudo marcarlas
 
   const lineas = aLineas(mermas);
   const envio = { almacen, lineas, modo: 'integro' };
@@ -93,6 +95,23 @@ export default function BajarMermasDialog({ mermas, almacen, onHecho, onClose })
       const fin = id ? await esperarTrabajo(id) : inicio;
       setResultado(fin);
       setClave(nuevaClave());
+
+      // La merma queda marcada como rebajada porque ACABA de rebajarse, no
+      // porque alguien dijera que sí: eso es lo que mira el auditor antes de
+      // cerrarla. Si no se puede anotar, el movimiento ya está hecho en TKC y
+      // hay que decirlo en vez de callarlo.
+      const fecha = new Date().toISOString().slice(0, 10);
+      const fallos = [];
+      for (const m of mermas) {
+        try {
+          await base44.entities.Merma.update(m.id, {
+            rebaja_confirmada: true, fecha_rebaja_tienda: fecha,
+          });
+        } catch {
+          fallos.push(m.producto_nombre || m.producto_codigo || m.id);
+        }
+      }
+      setSinAnotar(fallos);
       onHecho?.();
     } catch (e) {
       setError(e.message);
@@ -144,6 +163,12 @@ export default function BajarMermasDialog({ mermas, almacen, onHecho, onClose })
             {resultado && (
               <AlertBanner variant="success"
                 message={resultado.detail ?? `Mermas bajadas de tienda en ${warehouseName(almacen)}.`} />
+            )}
+
+            {sinAnotar.length > 0 && (
+              <AlertBanner variant="warning"
+                message={`Se bajaron en TKC, pero no se pudo marcarlas como rebajadas: ${sinAnotar.join(', ')}. `
+                  + 'El auditor las verá sin la rebaja confirmada.'} />
             )}
 
             <div className="flex items-center justify-end gap-2">

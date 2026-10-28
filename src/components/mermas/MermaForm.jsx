@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import ProductSearch from '@/components/shared/ProductSearch';
 import BarcodeScanner from '@/components/inventario/BarcodeScanner';
 import SelectorCoincidencias from '@/components/shared/SelectorCoincidencias';
@@ -37,8 +36,6 @@ export default function MermaForm({ user, onSubmit, onCancel, isPending: isPendi
   const [clasif, setClasif] = useState('');
   const [destino, setDestino] = useState('');
   const [fvLote, setFvLote] = useState('');
-  const [rebajaConfirmada, setRebajaConfirmada] = useState(false);
-  const [fechaRebaja, setFechaRebaja] = useState('');
   const [notas, setNotas] = useState('');
   const [fechaInv, setFechaInv] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [showScanner, setShowScanner] = useState(false);
@@ -83,8 +80,10 @@ export default function MermaForm({ user, onSubmit, onCancel, isPending: isPendi
       clasif_merma: clasif,
       requiere_fact: requiereFact,
       destino_final: destino,
-      rebaja_confirmada: rebajaConfirmada,
-      fecha_rebaja_tienda: rebajaConfirmada && fechaRebaja ? fechaRebaja : null,
+      // Lo marca el sistema al bajarla de tienda de verdad, no quien la
+      // registra: antes era una casilla que había que creerse.
+      rebaja_confirmada: false,
+      fecha_rebaja_tienda: null,
       notas,
       precio_unitario: precioUnit,
       total_perdida: totalPerdida,
@@ -168,14 +167,6 @@ export default function MermaForm({ user, onSubmit, onCancel, isPending: isPendi
                 {DESTINOS_MERMA.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Checkbox checked={rebajaConfirmada} onCheckedChange={setRebajaConfirmada} />
-            <span className="text-sm">Confirmar que se rebajó en sistema externo</span>
-            {rebajaConfirmada && (
-              <Input type="date" value={fechaRebaja} onChange={(e) => setFechaRebaja(e.target.value)} className="w-44" style={{ borderRadius: '8px' }} />
-            )}
           </div>
 
           {Number(cantidad) > 200 && <AlertBanner variant="danger" message={`Cantidad alta: ${cantidad} unidades. Verificar antes de continuar.`} />}
