@@ -53,8 +53,11 @@ const TIPOS = {
  * trabajos asíncronos: devuelven 202 con un id y se consulta aparte.
  */
 const TIENDA = {
-  subir: { ruta: 'up-shop', etiqueta: 'subir a tienda' },
-  bajar: { ruta: 'down-shop', etiqueta: 'bajar de tienda' },
+  // Los modos NO son los mismos en los dos sentidos, y confundirlos da un 400
+  // de su API. Subir puede dejar una reserva en almacén —su propia fórmula—;
+  // bajar admite un tope porcentual sobre lo que hay en tienda.
+  subir: { ruta: 'up-shop', etiqueta: 'subir a tienda', modos: ['integro', 'reserva'] },
+  bajar: { ruta: 'down-shop', etiqueta: 'bajar de tienda', modos: ['integro', 'porcentaje'] },
 }
 
 const PROCESOS = {
@@ -246,11 +249,17 @@ async function atenderTienda(res, req, ctx, modulo, paso, consulta) {
     warehouse: almacenId(cuerpo.almacen),
     lines: lineas(cuerpo.lineas),
   }
-  // `mode` es obligatorio para ellos: «integro» mueve lo pedido (y lo recorta
-  // si no llega, que sigue siendo éxito) y «porcentaje» pone un tope sobre lo
-  // que hay. Por defecto el primero, que es lo que se espera al pedir N.
-  peticion.mode = texto(cuerpo.modo, 'modo', 32) ?? 'integro'
-  if (cuerpo.porcentaje !== undefined) {
+  // `mode` es obligatorio. Por defecto «integro», que es lo que se espera al
+  // pedir N unidades; se comprueba aquí para dar un error claro en vez del
+  // 400 de su API.
+  const modo = texto(cuerpo.modo, 'modo', 32) ?? 'integro'
+  if (!cfg.modos.includes(modo)) {
+    throw new ErrorPeticion(400, `Para ${cfg.etiqueta} el modo es ${cfg.modos.join(' o ')}.`)
+  }
+  peticion.mode = modo
+
+  // `percent` solo acompaña a «porcentaje»; mandarlo con otro modo es ruido.
+  if (modo === 'porcentaje') {
     const p = Number(cuerpo.porcentaje)
     if (!Number.isInteger(p) || p < 1 || p > 100) {
       throw new ErrorPeticion(400, 'El porcentaje debe ser un entero entre 1 y 100.')

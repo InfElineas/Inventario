@@ -442,6 +442,31 @@ describe('subir y bajar de tienda', () => {
     expect(ultimaLlamada().cuerpo).toMatchObject({ mode: 'porcentaje', percent: 30 });
   });
 
+  it('cada sentido tiene SUS modos: confundirlos da un 400 de su API', async () => {
+    // Subir admite «reserva» —su fórmula de resguardo— y bajar «porcentaje».
+    // Cruzarlos es el error que nos devolvió al probar.
+    apiResponde(202, { jobId: 'j8' });
+    await llamar('/api/tienda/subir/plan', { ...CUERPO, modo: 'reserva' }, 'POST');
+    expect(ultimaLlamada().cuerpo.mode).toBe('reserva');
+
+    fetch.mockClear();
+    const { res } = await llamar('/api/tienda/subir/plan', { ...CUERPO, modo: 'porcentaje', porcentaje: 30 }, 'POST');
+    expect(res.statusCode).toBe(400);
+    expect(res.cuerpo.error.message).toMatch(/integro o reserva/i);
+    expect(fetch).not.toHaveBeenCalled();
+
+    fetch.mockClear();
+    const r2 = await llamar('/api/tienda/bajar/plan', { ...CUERPO, modo: 'reserva' }, 'POST');
+    expect(r2.res.statusCode).toBe(400);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('el porcentaje solo acompaña a «porcentaje»', async () => {
+    apiResponde(202, { jobId: 'j9' });
+    await llamar('/api/tienda/bajar/plan', { ...CUERPO, modo: 'integro', porcentaje: 30 }, 'POST');
+    expect(ultimaLlamada().cuerpo.percent).toBeUndefined();
+  });
+
   it('un porcentaje imposible no llega a su API', async () => {
     for (const malo of [0, 101, 12.5, 'mucho']) {
       fetch.mockClear();

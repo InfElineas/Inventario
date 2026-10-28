@@ -31,6 +31,10 @@ const MODULOS = {
     icono: ArrowUpFromLine,
     disponible: (p) => Number(p.enAlmacen ?? 0),
     etiquetaDisponible: 'en almacén',
+    modos: [
+      { valor: 'integro', etiqueta: 'Íntegro — sube lo pedido' },
+      { valor: 'reserva', etiqueta: 'Reserva — deja el resguardo en almacén' },
+    ],
   },
   bajar: {
     titulo: 'Bajar de tienda',
@@ -38,6 +42,10 @@ const MODULOS = {
     icono: ArrowDownToLine,
     disponible: (p) => Number(p.enTienda ?? 0),
     etiquetaDisponible: 'en tienda',
+    modos: [
+      { valor: 'integro', etiqueta: 'Íntegro — baja lo pedido' },
+      { valor: 'porcentaje', etiqueta: 'Porcentaje — tope sobre lo que hay' },
+    ],
   },
 };
 
@@ -57,7 +65,7 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
   const [clave, setClave] = useState(nuevaClave);
   // Sus dos modos: «integro» mueve lo pedido —y lo recorta si no llega, que
   // sigue siendo éxito— y «porcentaje» pone un tope sobre lo que hay.
-  const [modo, setModo] = useState('integro');
+  const [modo, setModo] = useState('integro');   // válido en los dos sentidos
   const [porcentaje, setPorcentaje] = useState('30');
 
   if (!producto) return null;
@@ -143,11 +151,15 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
                 Modo
                 <select value={modo} className={FILTER_CLS}
                   onChange={(e) => { setModo(e.target.value); setPlan(null); setResultado(null); }}>
-                  <option value="integro">Íntegro — mueve lo pedido</option>
-                  <option value="porcentaje">Porcentaje — tope sobre lo que hay</option>
+                  {cfg.modos.map((m) => <option key={m.valor} value={m.valor}>{m.etiqueta}</option>)}
                 </select>
               </label>
             </div>
+
+            {modo === 'reserva' && (
+              <AlertBanner variant="info"
+                message="La reserva la calcula la herramienta de transferencias: sube lo que sobra y deja en almacén el resguardo que le corresponde al producto." />
+            )}
 
             {modo === 'porcentaje' && (
               <label className="block space-y-1.5 text-xs text-muted-foreground max-w-[12rem]">
