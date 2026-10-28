@@ -6,6 +6,9 @@ vi.mock('@/server/session', () => ({ resolverSesion }));
 const leerCredenciales = vi.hoisted(() => vi.fn());
 vi.mock('@/server/credencialesTkc', () => ({ leerCredenciales }));
 
+const query = vi.hoisted(() => vi.fn(async () => ({ rows: [] })));
+vi.mock('@/server/db', () => ({ query }));
+
 const { createTransferenciasApiMiddleware, ROLES_AJUSTES, traspasoCredenciales } =
   await import('@/server/transferenciasApi');
 const { abrir } = await import('@/server/secretBox');
@@ -372,7 +375,11 @@ describe('errores de la API', () => {
 describe('subir y bajar de tienda', () => {
   const CUERPO = { almacen: '789', lineas: [{ code: '7501', quantity: 2 }] };
 
-  beforeEach(() => { resolverSesion.mockResolvedValue(SESION('inv')); });
+  beforeEach(() => {
+    resolverSesion.mockResolvedValue(SESION('inv'));
+    query.mockReset();
+    query.mockResolvedValue({ rows: [] });
+  });
 
   it('analizar llama a plans y NO escribe', async () => {
     apiResponde(202, { jobId: 'j1' });
@@ -394,6 +401,69 @@ describe('subir y bajar de tienda', () => {
     expect(url.pathname).toBe('/api/v1/down-shop/runs');
     // Es lo que impide que un reintento baje dos veces la misma mercancía.
     expect(opts.headers['Idempotency-Key']).toBeTruthy();
+  });
+
+  describe('reflejo en nuestra copia', () => {
+    const TERMINADO = (code, granted) => ({
+      status: 'succeeded',
+      result: { totalGranted: granted, exito: [{ code, granted }], fallido: [] },
+    });
+
+    it('al terminar el trabajo, lo movido pasa a nuestra copia', async () => {
+      // El catálogo lee la copia, no TKC: sin esto quien sube dos unidades
+      // sigue viendo los números viejos hasta la sincronización de la hora.
+      apiResponde(202, { jobId: 'jm1' });
+      await llamar('/api/tienda/subir/ejecutar', CUERPO, 'POST');
+
+      apiResponde(200, TERMINADO('7501', 2));
+      await llamar('/api/tienda/trabajo?id=jm1');
+
+      const [sql, valores] = query.mock.calls.at(-1);
+      expect(sql).toMatch(/UPDATE productos/);
+      // Subir: salen del almacén y entran en la tienda.
+      expect(valores).toEqual([2, '7501', '789']);
+      expect(sql).toMatch(/almacen = GREATEST\(COALESCE\(almacen, 0\) - \$1/);
+    });
+
+    it('bajar mueve al revés', async () => {
+      apiResponde(202, { jobId: 'jm2' });
+      await llamar('/api/tienda/bajar/ejecutar', CUERPO, 'POST');
+
+      apiResponde(200, TERMINADO('7501', 2));
+      await llamar('/api/tienda/trabajo?id=jm2');
+
+      expect(query.mock.calls.at(-1)[1]).toEqual([-2, '7501', '789']);
+    });
+
+    it('un análisis no toca la copia aunque termine bien', async () => {
+      apiResponde(202, { jobId: 'jm3' });
+      await llamar('/api/tienda/subir/plan', CUERPO, 'POST');
+
+      apiResponde(200, TERMINADO('7501', 2));
+      await llamar('/api/tienda/trabajo?id=jm3');
+      expect(query).not.toHaveBeenCalled();
+    });
+
+    it('un trabajo que falla no toca la copia', async () => {
+      apiResponde(202, { jobId: 'jm4' });
+      await llamar('/api/tienda/subir/ejecutar', CUERPO, 'POST');
+
+      apiResponde(200, { status: 'failed', result: { exito: [] } });
+      await llamar('/api/tienda/trabajo?id=jm4');
+      expect(query).not.toHaveBeenCalled();
+    });
+
+    it('si el reflejo falla, el movimiento se informa igual', async () => {
+      // Ya se movió en TKC: callárselo sería lo peor que se puede hacer.
+      query.mockRejectedValueOnce(new Error('conexión caída'));
+      apiResponde(202, { jobId: 'jm5' });
+      await llamar('/api/tienda/subir/ejecutar', CUERPO, 'POST');
+
+      apiResponde(200, TERMINADO('7501', 2));
+      const { res } = await llamar('/api/tienda/trabajo?id=jm5');
+      expect(res.statusCode).toBe(200);
+      expect(res.cuerpo.status).toBe('succeeded');
+    });
   });
 
   it('traduce la clave de almacén al id de TKC', async () => {

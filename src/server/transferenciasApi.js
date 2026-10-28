@@ -35,6 +35,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { resolverSesion } from './session.js'
+import { query } from './db.js'
 import { leerCredenciales } from './credencialesTkc.js'
 import { sellar } from './secretBox.js'
 import { keyToTkcValue } from '../services/tkc/warehouses.js'
@@ -248,12 +249,14 @@ async function atenderTienda(res, req, ctx, modulo, paso, consulta) {
     // `wait` deja la petición colgando hasta que el trabajo avanza, que es
     // mucho más barato que sondear cada segundo.
     const espera = Math.min(30, Math.max(0, Number(consulta.get('wait')) || 0))
-    return reenviar(res, await llamarApi(ctx, {
+    const resultado = await llamarApi(ctx, {
       metodo: 'GET',
       ruta: `jobs/${encodeURIComponent(id)}`,
       consulta: espera ? { wait: String(espera) } : undefined,
       timeoutMs: (espera + 10) * 1000,
-    }))
+    })
+    await aplicarMovimiento(id, resultado.datos)
+    return reenviar(res, resultado)
   }
 
   const cuerpo = await leerCuerpo(req)
@@ -280,14 +283,84 @@ async function atenderTienda(res, req, ctx, modulo, paso, consulta) {
   }
 
   const esEjecutar = paso === 'ejecutar'
-  return reenviar(res, await llamarApi(ctx, {
+  const resultado = await llamarApi(ctx, {
     metodo: 'POST',
     ruta: `${cfg.ruta}/${esEjecutar ? 'runs' : 'plans'}`,
     cuerpo: peticion,
     // Solo las escrituras llevan clave: un análisis repetido no duplica nada.
     idempotencia: esEjecutar ? (texto(cuerpo.idempotencyKey, 'idempotencyKey', 128) ?? randomUUID()) : undefined,
     timeoutMs: TIMEOUT_ANALISIS_MS,
-  }))
+  })
+
+  // Se anota para poder reflejar el movimiento en nuestra copia cuando el
+  // trabajo termine. Los análisis no: no mueven nada.
+  const trabajo = resultado.datos?.jobId ?? resultado.datos?.id
+  if (esEjecutar && trabajo) anotarTrabajo(trabajo, modulo, cuerpo.almacen)
+
+  return reenviar(res, resultado)
+}
+
+// ── Reflejar el movimiento en nuestra copia ───────────────────────
+//
+// El catálogo no lee TKC: lee la copia que llena la sincronización cada hora.
+// Sin esto, quien sube dos unidades desde esta pantalla las ve en TKC y aquí
+// sigue viendo los números viejos hasta la hora siguiente —y de esos números
+// salen el estado de tienda y la prioridad, o sea el orden del trabajo.
+//
+// En memoria a propósito: si el contenedor se reinicia solo se pierde el
+// refresco, y la sincronización lo arregla igual. Tope para que un trabajo que
+// nunca termina no acumule entradas sin fin.
+const TRABAJOS_MAX = 500
+const trabajosTienda = new Map()
+
+function anotarTrabajo(id, modulo, almacen) {
+  if (trabajosTienda.size >= TRABAJOS_MAX) {
+    trabajosTienda.delete(trabajosTienda.keys().next().value)
+  }
+  trabajosTienda.set(id, { modulo, almacen })
+}
+
+/** Las líneas que de verdad se movieron, con lo concedido por TKC. */
+function movidas(datos) {
+  const r = datos?.result ?? datos ?? {}
+  return (Array.isArray(r.exito) ? r.exito : [])
+    .map((l) => ({ code: l.code, granted: Number(l.granted) || 0 }))
+    .filter((l) => l.code && l.granted > 0)
+}
+
+/**
+ * Pasa a nuestra copia lo que acaba de moverse en TKC.
+ *
+ * `estado_tienda` y `prioridad_tienda` son columnas generadas: se recalculan
+ * solas con el UPDATE. La existencia física no cambia —la mercancía sigue en
+ * el mismo almacén, solo cambia de lado— así que `exist_fisica` no se toca.
+ */
+async function aplicarMovimiento(id, datos) {
+  const anotado = trabajosTienda.get(id)
+  if (!anotado) return
+  if ((datos?.status ?? datos?.estado) !== 'succeeded') return
+  trabajosTienda.delete(id)
+
+  const lineas = movidas(datos)
+  if (lineas.length === 0) return
+
+  // Subir mueve del almacén a la tienda; bajar, al revés.
+  const signo = anotado.modulo === 'subir' ? 1 : -1
+  for (const l of lineas) {
+    try {
+      await query(
+        `UPDATE productos
+            SET almacen = GREATEST(COALESCE(almacen, 0) - $1, 0),
+                tienda  = GREATEST(COALESCE(tienda, 0)  + $1, 0)
+          WHERE codigo_producto = $2 AND almacen_num = $3`,
+        [signo * l.granted, l.code, String(anotado.almacen)],
+      )
+    } catch (e) {
+      // Que falle el reflejo no puede tumbar la respuesta: el movimiento en
+      // TKC ya se hizo y hay que contárselo a quien lo pidió.
+      console.error('[tienda] no se pudo reflejar el movimiento', l.code, e.message)
+    }
+  }
 }
 
 /** Los procesamientos: mismas garantías que los ajustes (rol, credenciales, cuerpo reconstruido). */
