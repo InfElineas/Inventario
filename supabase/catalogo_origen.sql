@@ -15,23 +15,23 @@
 -- que es un SELECT local: sin red, sin cuenta de servicio y sin 115 peticiones
 -- por sincronización. La API queda para lo que de verdad no está en esta base.
 --
--- QUÉ SE SIGUE DUPLICANDO, Y POR QUÉ
+-- EL ESTADO DEL ANUNCIO YA NO SE DEDUCE
 --
--- El CASE del estado de anuncio es copia literal de `public."apGlobalV2"`. No
--- se puede unir a esa vista: solo expone cabeceras de hoja de cálculo («Cód.
--- Prod.», «Almacén» con el nombre largo) y ninguna clave limpia con la que
--- cruzarla. Unir por nombre de almacén sería más frágil que copiar siete
--- ramas. Si cambian ese CASE, hay que cambiar este.
+-- Aquí había una copia literal del CASE de `public."apGlobalV2"`, que sacaba
+-- el estado de `is_dead` y `status_provider`. Deducía mal: `is_dead` vale 1
+-- para TODO lo que no está activado, así que un desactivado normal salía como
+-- muerto y el filtro de «desactivado» no devolvía nunca nada.
 --
--- Para comprobar que no han divergido:
---   SELECT estado_anuncio_tkc, count(*) FROM inventario.catalogo_origen GROUP BY 1;
---   SELECT "Estado Anuncio", count(*) FROM public."apGlobalV2" GROUP BY 1;
--- Las dos listas deben coincidir fila por fila.
+-- No era un fallo del CASE, era que el dato que distingue las dos cosas no
+-- existía en `ap_rows`. Ahora sí: `update-ap` publica la columna
+-- `estado_anuncio`, ya calculada y con este mismo vocabulario de siete
+-- valores. Se lee tal cual. Deducir un dato que el origen ya da es inventar
+-- una segunda verdad.
 --
--- OJO CON LA CANTIDAD: el estado se calcula con `ap_rows.cantidad` —la del
+-- OJO CON LA CANTIDAD: ellos calculan el estado con `ap_rows.cantidad` —la del
 -- listado— y NO con la existencia del submayor, que es lo que guardamos en
--- `exist_fisica`. Son dos fuentes distintas y pueden discrepar. Se respeta el
--- criterio de ellos para que los estados cuadren con sus reportes.
+-- `exist_fisica`. Son dos fuentes distintas y pueden discrepar. Se respeta su
+-- criterio para que los estados cuadren con sus reportes.
 --
 -- EJECUTAR como elineasadmin.
 --
@@ -64,17 +64,8 @@ SELECT
     a.precio                               AS precio_costo,
     a.imagenes                             AS fotos,
 
-    -- Copia literal de public."apGlobalV2". Ver la nota de arriba.
-    CASE
-        WHEN a.id_online IS NULL AND a.cantidad = 0::numeric THEN 'SIN ID EF=0'
-        WHEN a.id_online IS NULL AND a.cantidad > 0::numeric THEN 'SIN ID EF>0'
-        WHEN a.is_dead = 1 AND a.cantidad = 0::numeric       THEN 'DESACTIVADO MUERTO EF=0'
-        WHEN a.is_dead = 1 AND a.cantidad > 0::numeric       THEN 'DESACTIVADO MUERTO EF>0'
-        WHEN a.status_provider = 1                           THEN 'ACTIVADO'
-        WHEN a.cantidad = 0::numeric                         THEN 'DESACTIVADO EF=0'
-        WHEN a.cantidad > 0::numeric                         THEN 'DESACTIVADO EF>0'
-        ELSE NULL
-    END                                    AS estado_anuncio_tkc,
+    -- Suyo, ya calculado. Ver la nota de arriba.
+    a.estado_anuncio                       AS estado_anuncio_tkc,
 
     -- Existencias del submayor. Unidas por almacén Y por id_tkc: `invGlobal`
     -- une solo por id_tkc con un DISTINCT ON, lo que cruzaría almacenes si ese
@@ -90,9 +81,9 @@ SELECT
 
 COMMENT ON VIEW inventario.catalogo_origen IS
   'Origen del sync de productos. Lee ap_rows_latest y sub_rows_latest, las '
-  'vistas del monorepo, para no duplicar su lógica de última corrida. El CASE '
-  'del estado es copia de apGlobalV2 porque esa vista no expone clave con la '
-  'que unirla.';
+  'vistas del monorepo, para no duplicar su lógica de última corrida. El '
+  'estado del anuncio se lee de ap_rows.estado_anuncio, que ya viene '
+  'calculado: antes se deducía de is_dead y salía mal.';
 
 
 -- ── Columnas nuevas en productos ────────────────────────────────────────
