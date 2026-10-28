@@ -4,6 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
 import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { tieneRol } from '@/lib/roles';
 import { SyncProvider } from '@/lib/SyncContext';
 import AccessDenied from '@/components/shared/AccessDenied';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';

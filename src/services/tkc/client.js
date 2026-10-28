@@ -90,6 +90,7 @@ export async function tkcPost(config, { path, referer, body, label = 'TKC' }) {
   } catch (error) {
     throw new Error(
       `Respuesta de TKC no es JSON válido: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
     )
   }
 }

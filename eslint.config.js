@@ -9,17 +9,21 @@ export default [
   { ignores: ["dist/**", "coverage/**", "node_modules/**"] },
 
   {
-    files: [
-      "src/components/**/*.{js,mjs,cjs,jsx}",
-      "src/pages/**/*.{js,mjs,cjs,jsx}",
-      "src/lib/**/*.{js,mjs,cjs,jsx}",
-      "src/Layout.jsx",
-    ],
+    // Todo `src/`, no tres carpetas sueltas. Antes App.jsx, main.jsx y
+    // src/api quedaban fuera, y ahi vive el guard de rutas: un
+    // `tieneRol is not defined` paso el lint y el build enteros y reventó
+    // las pantallas de facturacion en produccion. Lo mismo habia pasado con
+    // un `hoveredEnMapa is not defined` en el catalogo.
+    files: ["src/**/*.{js,mjs,cjs,jsx}"],
     // Codigo generado por shadcn: se actualiza regenerandolo, no editandolo.
     ignores: ["src/components/ui/**/*"],
 
     languageOptions: {
-      globals: globals.browser,
+      // Navegador y Node a la vez: en `src/` conviven el frontend y el
+      // servidor (`src/server`, `src/services/tkc`). Separarlos en dos
+      // bloques seria mas estricto, pero lo que se busca aqui es que ningun
+      // fichero se quede sin linar, que es como pasó lo de arriba.
+      globals: { ...globals.browser, ...globals.node },
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: "module",
@@ -79,6 +83,19 @@ export default [
       // `eslint-disable react-hooks/exhaustive-deps`: esos disables producian
       // "Definition for rule not found" en cada `bun run lint`.
       "react-hooks/exhaustive-deps": "warn",
+    },
+  },
+
+  {
+    // Las pruebas corren con `globals: true` (vite.config.js), asi que `vi`,
+    // `describe` y compania existen sin importarlos.
+    files: ["src/__tests__/**/*.{js,jsx}"],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.vitest,
+      },
     },
   },
 ];
