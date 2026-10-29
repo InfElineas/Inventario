@@ -16,8 +16,12 @@
  */
 
 const SYSTEM_SLUG = 'reabastecimiento'
-/** Margen antes de que caduque, para no usar un token que expira en vuelo. */
-const MARGEN_MS = 60 * 1000
+/**
+ * Margen antes de que caduque, para no usar un token que expira en vuelo.
+ * Corto porque el suyo dura cinco minutos: un margen de un minuto se comería
+ * la quinta parte de su vida útil.
+ */
+const MARGEN_MS = 15 * 1000
 
 export function configReab() {
   const base = (process.env.REAB_API_URL ?? '').replace(/\/+$/, '')
@@ -33,6 +37,21 @@ export function configReab() {
 // en paralelo cuando llegan peticiones a la vez.
 let sesion = null        // { token, expira }
 let entrando = null
+
+/**
+ * El `exp` del JWT, en milisegundos. `null` si no se puede leer.
+ *
+ * Solo se mira la caducidad para saber cuándo volver a entrar: la firma la
+ * comprueba su servidor, no este.
+ */
+function caducidadDelJwt(jwt) {
+  try {
+    const carga = JSON.parse(Buffer.from(String(jwt).split('.')[1], 'base64url').toString('utf8'))
+    return carga?.exp ? carga.exp * 1000 : null
+  } catch {
+    return null
+  }
+}
 
 async function cuerpo(res) {
   const datos = await res.json().catch(() => null)
@@ -58,14 +77,20 @@ async function entrar(cfg) {
     )
   }
 
-  const d = datos.data ?? {}
-  const token = d.access_token ?? d.accessToken ?? d.token
+  const t = datos.data?.tokens ?? datos.data ?? {}
+  const token = t.access_token ?? t.accessToken ?? t.token
   if (!token) throw new Error('La API de reabastecimiento no devolvió un token de acceso.')
 
-  // `expires_in` viene en segundos cuando viene; si no, una hora, que es lo
-  // habitual. Un token caducado se detecta igual por el 401 y se renueva.
-  const segundos = Number(d.expires_in ?? d.expiresIn ?? 3600)
-  return { token, expira: Date.now() + segundos * 1000 - MARGEN_MS }
+  // Su `expires_in` viene a null y no hay refresh token, así que la caducidad
+  // se lee del propio JWT. Son CINCO MINUTOS: con el valor por defecto de una
+  // hora, casi todas las peticiones habrían salido con un token muerto y
+  // habrían costado dos viajes en vez de uno.
+  const segundos = Number(t.expires_in ?? t.expiresIn) || null
+  const expira = segundos
+    ? Date.now() + segundos * 1000
+    : (caducidadDelJwt(token) ?? Date.now() + 5 * 60 * 1000)
+
+  return { token, expira: expira - MARGEN_MS }
 }
 
 async function token(cfg, forzar = false) {

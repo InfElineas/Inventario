@@ -167,21 +167,12 @@ export default function Inventario({ ambito = 'inventario' }) {
 
   const inventarios = inventariosRaw ?? [];
 
-  const { data: productosRaw } = useQuery({
-    queryKey: ['productos'],
-    queryFn: () => base44.entities.Producto.list('-updated_date', 500),
-    select: (d) => Array.isArray(d) ? d : [],
-  });
-  const productos = productosRaw ?? [];
-
-  const bajoMinimoCount = productos.filter(p =>
-    p.activo !== false &&
-    (p.stock_minimo || 0) > 0 &&
-    (p.exist_fisica || 0) < (p.stock_minimo || 0)
-  ).length;
-
-  // Map producto_id → stock_minimo for quick lookup in the table
-  const productoMinMap = Object.fromEntries(productos.map(p => [p.id, p.stock_minimo || 0]));
+  // Aquí se descargaban 500 productos en cada visita para marcar los que
+  // están bajo su `stock_minimo`. Ese campo había que rellenarlo a mano
+  // producto por producto y nunca se rellenó, así que el contador salía
+  // siempre a cero y el punto rojo no aparecía jamás. Lo que de verdad
+  // responde «qué hay que reponer» es la rotación de venta, y de eso se
+  // encarga el panel de reabastecimiento.
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Inventario.create(data),
@@ -310,15 +301,9 @@ export default function Inventario({ ambito = 'inventario' }) {
             variant="outline"
             onClick={() => { setShowOrden(v => !v); setShowForm(false); }}
             style={{ borderRadius: '8px' }}
-            className={bajoMinimoCount > 0 ? 'border-[#E24B4A] text-[#E24B4A] hover:bg-[#E24B4A]/5' : ''}
           >
             <ShoppingCart className="w-4 h-4 lg:mr-1.5" />
             <span className="hidden lg:inline">Reabastecimiento</span>
-            {bajoMinimoCount > 0 && (
-              <span className="ml-1.5 bg-[#E24B4A] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                {bajoMinimoCount}
-              </span>
-            )}
           </Button>
           {tieneRol(user, ['inv', 'administrador', 'superadmin']) && (
             <Button onClick={() => { setShowForm(true); setSelectedId(null); setShowOrden(false); }} style={{ borderRadius: '8px' }}>
@@ -338,7 +323,7 @@ export default function Inventario({ ambito = 'inventario' }) {
       </Dialog>
 
       {showOrden && (
-        <OrdenReabastecimiento onClose={() => setShowOrden(false)} />
+        <OrdenReabastecimiento almacen={almacen} onClose={() => setShowOrden(false)} />
       )}
 
       {tapados > 0 && (
@@ -397,26 +382,18 @@ export default function Inventario({ ambito = 'inventario' }) {
                 ) : sorted.length === 0 ? (
                   <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
                 ) : sorted.map(inv => {
-                  const minimo = productoMinMap[inv.producto_id] || 0;
-                  const bajominimo = minimo > 0 && (inv.conteo_real ?? inv.exist_fisica_tkc ?? 0) < minimo;
                   return (
                   <tr key={inv.id}
                     className={`border-b hover:bg-accent/50 cursor-pointer transition-colors
                       ${selectedId === inv.id ? 'bg-accent' : ''}
-                      ${bajominimo && selectedId !== inv.id ? 'bg-[#E24B4A]/[0.04]' : ''}
                     `}
                     onClick={() => { setSelectedId(inv.id); setShowForm(false); setShowOrden(false); }}>
                     {colOrder.filter(k => cols[k]).map(k => {
                       const CELDAS = {
                         producto: (
                           <td key={k} className="p-3">
-                            <div className="flex items-center gap-1.5">
-                              {bajominimo && <span title="Stock bajo mínimo" className="w-1.5 h-1.5 rounded-full bg-[#E24B4A] shrink-0" />}
-                              <div>
-                                <p className={`font-medium ${bajominimo ? 'text-[#E24B4A]' : ''}`}>{inv.producto_nombre}</p>
-                                <p className="text-xs text-muted-foreground">{inv.producto_codigo}</p>
-                              </div>
-                            </div>
+                            <p className="font-medium">{inv.producto_nombre}</p>
+                            <p className="text-xs text-muted-foreground">{inv.producto_codigo}</p>
                           </td>
                         ),
                         almacen: <td key={k} className="p-3 text-xs text-muted-foreground hidden md:table-cell">{warehouseName(inv.almacen_num) || inv.almacen_num || '—'}</td>,

@@ -40,6 +40,11 @@ import { leerCredenciales } from './credencialesTkc.js'
 import { sellar } from './secretBox.js'
 import { keyToTkcValue } from '../services/tkc/warehouses.js'
 import { ROLES_AJUSTES, ROLES_TIENDA } from '../lib/ajustes.js'
+import { rolesDe } from '../lib/roles.js'
+import { rotacion } from './rotacionApi.js'
+
+/** Quién puede ver la rotación de venta: quien decide qué reponer. */
+const ROLES_ROTACION = ['inv', 'fact', 'ca', 'jefe_depto', 'supervisor', 'auditor', 'administrador', 'superadmin']
 
 export { ROLES_AJUSTES, ROLES_TIENDA }
 
@@ -413,7 +418,9 @@ export function createTransferenciasApiMiddleware() {
     const ruta = (req.url ?? '/').split('?')[0]
     const esProceso = ruta === '/api/procesamientos' || ruta.startsWith('/api/procesamientos/')
     const esTienda = ruta.startsWith('/api/tienda/')
-    if (!esProceso && !esTienda && !ruta.startsWith('/api/ajustes/')) return next()
+    // Solo lectura, y de un informe: no toca TKC ni necesita credenciales.
+    const esRotacion = ruta === '/api/rotacion' && req.method === 'GET'
+    if (!esProceso && !esTienda && !esRotacion && !ruta.startsWith('/api/ajustes/')) return next()
 
     let tipo
     let id
@@ -452,6 +459,21 @@ export function createTransferenciasApiMiddleware() {
     try {
       const sesion = await resolverSesion(req, res)
       if (!sesion) return fallo(res, 401, 'unauthorized', 'Sesión no válida')
+
+      // La rotación la mira quien decide qué reponer: inventario y quien
+      // supervisa. Es un informe, así que no hay nada que escribir ni
+      // credenciales de TKC que hagan falta.
+      if (esRotacion) {
+        if (!ROLES_ROTACION.includes(sesion.usuario.role) && !rolesDe(sesion.usuario).some((r) => ROLES_ROTACION.includes(r))) {
+          return fallo(res, 403, 'forbidden', 'Tu rol no puede consultar la rotación de venta.')
+        }
+        const consultaRot = new URL(req.url, 'http://local').searchParams
+        const mapa = await rotacion(
+          { jwt: sesion.jwt }, baseApi(),
+          { refrescar: consultaRot.get('refrescar') === 'true' },
+        )
+        return json(res, 200, { rotacion: Object.fromEntries(mapa) })
+      }
 
       // Subir y bajar de tienda es de inventario; los ajustes y
       // procesamientos, de facturación. Esto solo decide quién ve la pantalla:
