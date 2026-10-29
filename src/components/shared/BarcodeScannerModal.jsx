@@ -32,6 +32,12 @@ export default function BarcodeScannerModal({ onSelect, onClose }) {
     setTimeout(() => { onSelect(producto); onClose(); }, 800);
   };
 
+  const stopCamera = () => {
+    if (readerRef.current) { BrowserMultiFormatReader.releaseAllStreams(); readerRef.current = null; }
+    setCameraActive(false);
+    setScanning(false);
+  };
+
   const handleCode = async (code) => {
     setCoincidencias(null);
     const resultado = await buscarPorCodigo(code, almacen);
@@ -90,12 +96,6 @@ export default function BarcodeScannerModal({ onSelect, onClose }) {
         setStatus({ type: 'error', message: 'No se pudo acceder a la cámara. Verifica los permisos.' });
       }
     }
-  };
-
-  const stopCamera = () => {
-    if (readerRef.current) { BrowserMultiFormatReader.releaseAllStreams(); readerRef.current = null; }
-    setCameraActive(false);
-    setScanning(false);
   };
 
   // Auto-iniciar cámara al montar (pequeño delay para que el video esté en el DOM)

@@ -97,6 +97,7 @@ export default function Mermas({ ambito = 'inventario' }) {
   const [showForm, setShowForm] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   // Por defecto, lo que le toca a esta sección. Ver src/lib/ambito.js.
+  const { almacen, setAlmacen, almacenesConfig } = useAlmacen();
   const [filterEstado, setFilterEstado] = useState('ambito');
   const [searchQ, setSearchQ] = useState('');
   const [cols, setCols] = useState(() => loadColsWithOrder(MERMA_COLS_KEY, MERMA_COL_DEFS).visible);
@@ -113,7 +114,6 @@ export default function Mermas({ ambito = 'inventario' }) {
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const role = user?.role || 'inv';
-  const { almacen, setAlmacen, almacenesConfig } = useAlmacen();
   // Igual que en inventario: cada uno ve lo suyo y lo de su almacén; la vista
   // global es del jefe de departamento y de quien tiene que procesarlas.
   const vistaGlobal = tieneRol(user, VISTA_GLOBAL_MERMAS);

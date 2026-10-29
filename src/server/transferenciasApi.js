@@ -43,6 +43,14 @@ import { ROLES_AJUSTES, ROLES_TIENDA } from '../lib/ajustes.js'
 import { rolesDe } from '../lib/roles.js'
 import { cobertura, baseReportes } from './rotacionApi.js'
 
+class ErrorPeticion extends Error {
+  constructor(status, message) {
+    super(message)
+    this.status = status
+  }
+}
+
+
 /** Quién puede ver la rotación de venta: quien decide qué reponer. */
 const ROLES_ROTACION = ['inv', 'fact', 'ca', 'jefe_depto', 'supervisor', 'auditor', 'administrador', 'superadmin']
 
@@ -115,13 +123,6 @@ function leerCuerpo(req) {
     })
     req.on('error', reject)
   })
-}
-
-class ErrorPeticion extends Error {
-  constructor(status, message) {
-    super(message)
-    this.status = status
-  }
 }
 
 /** Texto libre acotado; cualquier otra cosa es un error del cliente. */

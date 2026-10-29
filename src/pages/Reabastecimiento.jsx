@@ -113,16 +113,16 @@ export default function Reabastecimiento() {
     if (previa.current !== firma) { previa.current = firma; setPage(1); }
   }, [firma]);
 
-  const suministradores = useMemo(
-    () => [...new Set(porAnuncio.map((f) => f.suministrador).filter(Boolean))].sort(),
-    [porAnuncio],
-  );
-
   // El filtro de anuncio se aplica antes de contar las pestañas: si no, los
   // números de arriba no cuadrarían con las filas de abajo.
   const porAnuncio = useMemo(
     () => (anuncio === 'TODOS' ? filas : filas.filter((f) => f.estadoAnuncio === anuncio)),
     [filas, anuncio],
+  );
+
+  const suministradores = useMemo(
+    () => [...new Set(porAnuncio.map((f) => f.suministrador).filter(Boolean))].sort(),
+    [porAnuncio],
   );
 
   const anuncios = useMemo(

@@ -53,6 +53,15 @@ export default [
       ...pluginReact.configs.flat.recommended.rules,
 
       "no-unused-vars": "off",
+      // Usar un `const` antes de su línea no es un aviso de estilo: revienta
+      // en tiempo de ejecución con «Cannot access X before initialization» y
+      // deja la pantalla en blanco. Pasó dos veces en un mismo día al mover
+      // bloques de sitio, y ni el lint ni el build decían nada.
+      //
+      // `functions: false` porque las declaraciones de función sí se izan y
+      // el proyecto las usa así a propósito: los componentes auxiliares van
+      // al final del archivo, después de quien los usa.
+      "no-use-before-define": ["error", { functions: false, classes: true, variables: true }],
       // El proyecto usa `catch {}` a proposito para tragarse fallos de
       // localStorage y JSON.parse, que no deben tumbar la UI. Son 9 sitios y
       // todos son intencionados, asi que se permite el catch vacio en vez de
