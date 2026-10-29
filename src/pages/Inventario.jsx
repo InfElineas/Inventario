@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import StatusBadge from '@/components/shared/StatusBadge';
 import AlertBanner from '@/components/shared/AlertBanner';
+import SugerenciasNota from '@/components/shared/SugerenciasNota';
 import InventarioForm from '@/components/inventario/InventarioForm';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
 import Timeline from '@/components/shared/Timeline';
@@ -623,6 +624,7 @@ function BloqueCorreccion({ inv, devuelto, isUpdating, onGuardar, confirmDialog 
 
       <Textarea value={notas} maxLength={500} onChange={(e) => setNotas(e.target.value)}
         placeholder="Notas del conteo…" style={{ borderRadius: '8px' }} />
+      <SugerenciasNota valor={notas} onElegir={setNotas} />
 
       <div className="flex flex-wrap gap-2">
         {!devuelto && (

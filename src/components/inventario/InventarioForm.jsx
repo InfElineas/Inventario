@@ -19,6 +19,7 @@ import { useAccesoTkc } from '@/lib/useAccesoTkc';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import { SIN_SONDEO } from '@/lib/query-client';
 import { CLASIF_AJUSTE } from '@/lib/constants';
+import SugerenciasNota from '@/components/shared/SugerenciasNota';
 
 
 // Extraída del formulario para poder probarla sin renderizar el componente.
@@ -406,7 +407,10 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
             <Input type="date" value={fechaInv} min={AYER()} max={HOY()}
               onChange={(e) => setFechaInv(e.target.value)} required style={{ borderRadius: '8px' }} />
           </div>
-          <Textarea value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Notas del conteo..." maxLength={500} style={{ borderRadius: '8px' }} />
+          <div className="space-y-2">
+            <Textarea value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Notas del conteo..." maxLength={500} style={{ borderRadius: '8px' }} />
+            <SugerenciasNota valor={notas} onElegir={setNotas} />
+          </div>
 
           {validError && (
             <p className="text-xs text-[#E24B4A] bg-[#E24B4A]/10 px-3 py-2 rounded-md">{validError}</p>
