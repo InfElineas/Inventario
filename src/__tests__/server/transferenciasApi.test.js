@@ -71,6 +71,8 @@ const ultimaLlamada = () => {
 const original = { ...process.env };
 beforeEach(() => {
   process.env.TRANSFERENCIAS_API_URL = 'https://api.test/';
+  // El informe de rotación vive en OTRA aplicación, no en la de transferencias.
+  process.env.REPORTES_API_URL = 'https://informes.test';
   process.env.TKC_HANDOFF_KEY = CLAVE_TRASPASO;
   resolverSesion.mockReset().mockResolvedValue(SESION());
   leerCredenciales.mockReset().mockReturnValue(CREDS);

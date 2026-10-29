@@ -19,6 +19,19 @@
  */
 
 const RUTA = '/api/reports/rdp-ind-general-diario'
+
+/**
+ * Base de elineas-api, que NO es la de transferencias.
+ *
+ * Son dos aplicaciones distintas en dos contenedores distintos: una sirve
+ * transferencias, ajustes y tienda, y la otra los informes. Apuntar el informe
+ * a la primera devolvía un 406 —la ruta no existe allí— que desde fuera
+ * parecía un problema de permisos.
+ */
+export function baseReportes() {
+  return (process.env.REPORTES_API_URL ?? '').replace(/\/+$/, '')
+}
+
 const POR_PAGINA = 500
 /** Tope de páginas: 50 000 filas. Más que eso es que algo va mal. */
 const MAX_PAGINAS = 100
@@ -88,10 +101,13 @@ async function descargar(ctx, base) {
  * `idTienda` → ventas diarias. Compartido entre usuarios y revalidado por TTL.
  *
  * @param {{ jwt: string }} ctx
- * @param {string} base      Base de la API, sin barra final.
  * @param {{ refrescar?: boolean }} [opciones]
  */
-export async function rotacion(ctx, base, { refrescar = false } = {}) {
+export async function rotacion(ctx, { refrescar = false } = {}) {
+  const base = baseReportes()
+  if (!base) {
+    throw new Error('Falta REPORTES_API_URL: la API de informes no está configurada.')
+  }
   if (!refrescar && cache && Date.now() - cache.ts < TTL_MS) return cache.mapa
   // Una descarga en curso se comparte en vez de duplicarse: con varias
   // personas entrando a la vez serían cien peticiones por cabeza.
