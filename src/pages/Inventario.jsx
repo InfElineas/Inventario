@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
@@ -12,7 +12,8 @@ import InventarioForm from '@/components/inventario/InventarioForm';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
 import Timeline from '@/components/shared/Timeline';
 import { ClipboardList, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
-import { ETIQUETA_AMBITO, pasaFiltro } from '@/lib/ambito';
+import { ESTADOS_AMBITO, ETIQUETA_AMBITO } from '@/lib/ambito';
+import { useTablaPaginada } from '@/lib/useTablaPaginada';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { warehouseName, WAREHOUSES } from '@/services/tkc/warehouses';
 import { fetchExistenciaTkc } from '@/services/tkcService';
@@ -32,6 +33,19 @@ import { useSortable } from '@/lib/useSortable';
 import { tieneRol } from '@/lib/roles';
 
 const PAGE_SIZE = 50
+
+/** Clave de orden de la pantalla → columna real, para que ordene Postgres. */
+const ORDEN_COLUMNA = {
+  producto:      'producto_nombre',
+  almacen:       'almacen_num',
+  ef_tkc:        'exist_fisica_tkc',
+  conteo:        'conteo_real',
+  diferencia:    'diferencia',
+  clasificacion: 'clasif_ajuste',
+  especialista:  'especialista_nombre',
+  estado:        'estado_tarea',
+  fecha:         'fecha_inv',
+}
 
 
 /**
@@ -100,17 +114,24 @@ export default function Inventario({ ambito = 'inventario' }) {
   const [showOrden, setShowOrden] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   // Por defecto, lo que le toca a esta sección. Ver src/lib/ambito.js.
+  const { almacen, setAlmacen, almacenesConfig } = useAlmacen();
   const [filterEstado, setFilterEstado] = useState('ambito');
   const [searchQ, setSearchQ] = useState('');
   const [cols, setCols] = useState(() => loadColsWithOrder(INV_COLS_KEY, INV_COL_DEFS).visible);
   const [colOrder, setColOrder] = useState(() => loadColsWithOrder(INV_COLS_KEY, INV_COL_DEFS).order);
   const [page, setPage] = useState(1);
-  const { sort, setSort, onSort } = useSortable('fecha_inv', 'desc')
+  // Cambiar de almacén, de filtro o de búsqueda devuelve a la primera página:
+  // seguir en la siete de un listado que ahora tiene dos deja la tabla vacía.
+  const firmaFiltros = `${almacen}|${filterEstado}|${searchQ.trim()}`;
+  const firmaPrevia = useRef(firmaFiltros);
+  useEffect(() => {
+    if (firmaPrevia.current !== firmaFiltros) { firmaPrevia.current = firmaFiltros; setPage(1); }
+  }, [firmaFiltros]);
+  const { sort, onSort } = useSortable('fecha_inv', 'desc')
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const role = user?.role || 'inv';
-  const { almacen, setAlmacen, almacenesConfig } = useAlmacen();
 
   // Un inventarista ve SUS conteos, y solo los del almacén en el que está.
   // Antes la lista traía los últimos 200 de los treinta almacenes y de todo el
@@ -121,20 +142,29 @@ export default function Inventario({ ambito = 'inventario' }) {
   // de los suyos; facturación y auditoría ven los de todos porque les toca
   // procesarlos.
   const vistaGlobal = tieneRol(user, VISTA_GLOBAL_INV);
-  const { data: inventariosRaw, isLoading } = useQuery({
-    queryKey: ['inventarios', almacen, vistaGlobal ? 'todos' : user?.email],
-    queryFn: () => base44.entities.Inventario.filter(
-      {
-        ...(almacen ? { almacen_num: almacen } : {}),
-        ...(vistaGlobal || !user?.email ? {} : { especialista_id: user.email }),
-      },
-      '-created_date',
-      200,
-    ),
-    enabled: Boolean(user),
-    select: (d) => Array.isArray(d) ? d : [],
-    refetchInterval: 30_000,
+
+  // Qué filas le tocan a esta pantalla. Va al WHERE, no al navegador: lo que
+  // se filtra aquí tiene que contar para el total y para las páginas.
+  const condiciones = {
+    ...(almacen ? { almacen_num: almacen } : {}),
+    ...(vistaGlobal || !user?.email ? {} : { especialista_id: user.email }),
+    ...(filterEstado === 'all' ? {}
+      : filterEstado === 'ambito' ? { estado_tarea: ESTADOS_AMBITO[ambito] }
+      : { estado_tarea: filterEstado }),
+  };
+
+  const { filas: inventariosRaw, total, cargando: isLoading } = useTablaPaginada({
+    entidad: 'Inventario',
+    clave: ['inventarios', almacen, vistaGlobal ? 'todos' : user?.email, ambito, filterEstado],
+    condiciones,
+    texto: searchQ,
+    campos: ['producto_nombre', 'producto_codigo'],
+    orden: ORDEN_COLUMNA[sort.key] ? `${sort.dir === 'asc' ? '' : '-'}${ORDEN_COLUMNA[sort.key]}` : '-created_date',
+    pagina: page,
+    porPagina: PAGE_SIZE,
+    activa: Boolean(user),
   });
+
   const inventarios = inventariosRaw ?? [];
 
   const { data: productosRaw } = useQuery({
@@ -232,23 +262,20 @@ export default function Inventario({ ambito = 'inventario' }) {
         && (i.fecha_inv ?? '') <= (selected.fecha_inv ?? ''))
     : [];
 
-  const coinciden = inventarios.filter(i => {
-    if (!pasaFiltro(i, filterEstado, ambito)) return false;
-    if (searchQ && !i.producto_nombre?.toLowerCase().includes(searchQ.toLowerCase()) && !i.producto_codigo?.toLowerCase().includes(searchQ.toLowerCase())) return false;
-    return true;
-  });
-
-  // En facturación, un producto sale UNA vez: el conteo más reciente.
+  // En facturación, un producto sale UNA vez: el conteo más reciente. Si
+  // inventario cuenta el lunes, nadie lo procesa y el miércoles vuelve a
+  // contar, antes salían los dos y se podían aplicar dos ajustes por la misma
+  // mercancía.
   //
-  // Si inventario cuenta el lunes, no se procesa, y el miércoles vuelve a
-  // contar porque el número cambió, facturación veía los dos y podía aplicar
-  // los dos ajustes por la misma mercancía. Manda el último: es el que
-  // refleja lo que hay.
-  const { visibles: filtered, tapados } = useMemo(() => {
-    if (ambito !== 'facturacion') return { visibles: coinciden, tapados: 0 };
+  // Se hace sobre la página que está a la vista, no sobre toda la tabla: para
+  // lo segundo haría falta un DISTINCT ON que la API de datos no expone. En la
+  // práctica alcanza —lo pendiente de facturar son decenas de filas, no
+  // miles— y el detalle avisa igualmente antes de procesar.
+  const { visibles: sorted, tapados } = useMemo(() => {
+    if (ambito !== 'facturacion') return { visibles: inventarios, tapados: 0 };
 
     const ultimoPorProducto = new Map();
-    for (const i of coinciden) {
+    for (const i of inventarios) {
       const clave = `${i.almacen_num}|${i.producto_id ?? i.producto_codigo}`;
       const previo = ultimoPorProducto.get(clave);
       if (!previo || (i.fecha_inv ?? '') > (previo.fecha_inv ?? '')
@@ -257,30 +284,11 @@ export default function Inventario({ ambito = 'inventario' }) {
       }
     }
     const visibles = [...ultimoPorProducto.values()];
-    return { visibles, tapados: coinciden.length - visibles.length };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coinciden, ambito]);
-
-  const sorted = (() => {
-    const mul = sort.dir === 'asc' ? 1 : -1
-    const arr = [...filtered]
-    switch (sort.key) {
-      case 'producto':      return arr.sort((a,b) => mul * (a.producto_nombre ?? '').localeCompare(b.producto_nombre ?? ''))
-      case 'almacen':       return arr.sort((a,b) => mul * String(a.almacen_num ?? '').localeCompare(String(b.almacen_num ?? '')))
-      case 'ef_tkc':        return arr.sort((a,b) => mul * ((a.exist_fisica_tkc ?? 0) - (b.exist_fisica_tkc ?? 0)))
-      case 'conteo':        return arr.sort((a,b) => mul * ((a.conteo_real ?? 0) - (b.conteo_real ?? 0)))
-      case 'diferencia':    return arr.sort((a,b) => mul * ((a.diferencia ?? 0) - (b.diferencia ?? 0)))
-      case 'clasificacion': return arr.sort((a,b) => mul * (a.clasif_ajuste ?? '').localeCompare(b.clasif_ajuste ?? ''))
-      case 'especialista':  return arr.sort((a,b) => mul * (a.especialista_nombre ?? '').localeCompare(b.especialista_nombre ?? ''))
-      case 'estado':        return arr.sort((a,b) => mul * (a.estado_tarea ?? '').localeCompare(b.estado_tarea ?? ''))
-      case 'fecha':         return arr.sort((a,b) => mul * (a.fecha_inv ?? '').localeCompare(b.fecha_inv ?? ''))
-      default:              return arr
-    }
-  })()
+    return { visibles, tapados: inventarios.length - visibles.length };
+  }, [inventarios, ambito]);
 
   const difColor = (d) => d === 0 ? 'text-[#1D9E75]' : d > 0 ? 'text-[#BA7517]' : 'text-[#E24B4A]';
 
-  const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -386,9 +394,9 @@ export default function Inventario({ ambito = 'inventario' }) {
               <tbody>
                 {isLoading ? (
                   <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
-                ) : filtered.length === 0 ? (
+                ) : sorted.length === 0 ? (
                   <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
-                ) : paginated.map(inv => {
+                ) : sorted.map(inv => {
                   const minimo = productoMinMap[inv.producto_id] || 0;
                   const bajominimo = minimo > 0 && (inv.conteo_real ?? inv.exist_fisica_tkc ?? 0) < minimo;
                   return (
@@ -430,7 +438,7 @@ export default function Inventario({ ambito = 'inventario' }) {
           </div>
         </Card>
 
-        <Pagination page={page} total={filtered.length} pageSize={PAGE_SIZE} onPage={setPage} />
+        <Pagination page={page} total={total} pageSize={PAGE_SIZE} onPage={setPage} />
       </div>
 
       {/* Detail modal */}

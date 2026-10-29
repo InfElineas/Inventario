@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
@@ -10,10 +10,13 @@ import MermaForm from '@/components/mermas/MermaForm';
 import MermaDetail from '@/components/mermas/MermaDetail';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowDownToLine, Check, Plus, Search } from 'lucide-react';
-import { ETIQUETA_AMBITO, pasaFiltro } from '@/lib/ambito';
+import { ESTADOS_AMBITO, ETIQUETA_AMBITO } from '@/lib/ambito';
+import { useTablaPaginada } from '@/lib/useTablaPaginada';
+import Pagination from '@/components/shared/Pagination';
 import BajarMermasDialog from '@/components/mermas/BajarMermasDialog';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
-import { WAREHOUSES } from '@/services/tkc/warehouses';
+import { WAREHOUSES, warehouseName } from '@/services/tkc/warehouses';
+import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import { ROLES_TIENDA } from '@/lib/ajustes';
 import { notifyJefeDepto } from '@/lib/notificationService';
 import { logTransicion, logBorrado, notificarTransicion } from '@/lib/workflowService';
@@ -30,6 +33,44 @@ import { tieneRol } from '@/lib/roles';
  * el almacén equivocado —o sin ninguno— veía una lista vacía y nada que
  * tocar para arreglarlo.
  */
+const PAGE_SIZE = 50
+
+const MERMA_COL_DEFS = [
+  { key: 'producto_nombre',   label: 'Producto',      defaultOn: true,  required: true  },
+  { key: 'almacen',           label: 'Almacén',       defaultOn: false, required: false },
+  { key: 'cantidad',          label: 'Cant.',         defaultOn: true,  required: false },
+  { key: 'clasif_merma',      label: 'Clasificación', defaultOn: true,  required: false },
+  { key: 'total_perdida',     label: 'Pérdida',       defaultOn: true,  required: false },
+  { key: 'estado_tarea',      label: 'Estado',        defaultOn: true,  required: false },
+  { key: 'rebaja_confirmada', label: 'Tienda',        defaultOn: true,  required: false },
+  { key: 'fecha_inv',         label: 'Fecha',         defaultOn: true,  required: false },
+]
+const MERMA_COLS_KEY = 'merma_cols'
+
+/** Cómo se titula y alinea cada columna. La usan la cabecera y las celdas. */
+const COL_TITULO = {
+  producto_nombre:   { label: 'Producto' },
+  almacen:           { label: 'Almacén',       className: 'hidden md:table-cell' },
+  cantidad:          { label: 'Cant.',         align: 'right' },
+  clasif_merma:      { label: 'Clasificación' },
+  total_perdida:     { label: 'Pérdida',       align: 'right' },
+  estado_tarea:      { label: 'Estado',        align: 'center' },
+  rebaja_confirmada: { label: 'Tienda',        align: 'center' },
+  fecha_inv:         { label: 'Fecha' },
+}
+
+/** Clave de orden de la pantalla → columna real, para que ordene Postgres. */
+const ORDEN_COLUMNA = {
+  producto_nombre: 'producto_nombre',
+  almacen:         'almacen_num',
+  cantidad:        'cantidad',
+  clasif_merma:    'clasif_merma',
+  total_perdida:   'total_perdida',
+  rebaja_confirmada: 'rebaja_confirmada',
+  estado_tarea:    'estado_tarea',
+  fecha_inv:       'fecha_inv',
+}
+
 /** Quién ve las mermas de los demás. Mismo criterio que en inventario. */
 const VISTA_GLOBAL_MERMAS = ['jefe_depto', 'fact', 'auditor', 'administrador', 'superadmin'];
 
@@ -58,6 +99,15 @@ export default function Mermas({ ambito = 'inventario' }) {
   // Por defecto, lo que le toca a esta sección. Ver src/lib/ambito.js.
   const [filterEstado, setFilterEstado] = useState('ambito');
   const [searchQ, setSearchQ] = useState('');
+  const [cols, setCols] = useState(() => loadColsWithOrder(MERMA_COLS_KEY, MERMA_COL_DEFS).visible);
+  const [colOrder, setColOrder] = useState(() => loadColsWithOrder(MERMA_COLS_KEY, MERMA_COL_DEFS).order);
+  const [page, setPage] = useState(1);
+  // Cambiar de almacén, de filtro o de búsqueda devuelve a la primera página.
+  const firmaFiltros = `${almacen}|${filterEstado}|${searchQ.trim()}`;
+  const firmaPrevia = useRef(firmaFiltros);
+  useEffect(() => {
+    if (firmaPrevia.current !== firmaFiltros) { firmaPrevia.current = firmaFiltros; setPage(1); }
+  }, [firmaFiltros]);
   const queryClient = useQueryClient();
   const { sort, onSort } = useSortable('fecha_inv', 'desc');
 
@@ -73,19 +123,26 @@ export default function Mermas({ ambito = 'inventario' }) {
   const [seleccion, setSeleccion] = useState(() => new Set());
   const [bajando, setBajando] = useState(null);   // { mermas, almacen }
 
-  const { data: mermasRaw, isLoading } = useQuery({
-    queryKey: ['mermas', almacen, vistaGlobal ? 'todos' : user?.email],
-    queryFn: () => base44.entities.Merma.filter(
-      {
-        ...(almacen ? { almacen_num: almacen } : {}),
-        ...(vistaGlobal || !user?.email ? {} : { especialista_id: user.email }),
-      },
-      '-created_date',
-      200,
-    ),
-    select: (d) => Array.isArray(d) ? d : [],
-    refetchInterval: 30_000,
+  const condiciones = {
+    ...(almacen ? { almacen_num: almacen } : {}),
+    ...(vistaGlobal || !user?.email ? {} : { especialista_id: user.email }),
+    ...(filterEstado === 'all' ? {}
+      : filterEstado === 'ambito' ? { estado_tarea: ESTADOS_AMBITO[ambito] }
+      : { estado_tarea: filterEstado }),
+  };
+
+  const { filas: mermasRaw, total, cargando: isLoading } = useTablaPaginada({
+    entidad: 'Merma',
+    clave: ['mermas', almacen, vistaGlobal ? 'todos' : user?.email, ambito, filterEstado],
+    condiciones,
+    texto: searchQ,
+    campos: ['producto_nombre', 'producto_codigo'],
+    orden: ORDEN_COLUMNA[sort.key] ? `${sort.dir === 'asc' ? '' : '-'}${ORDEN_COLUMNA[sort.key]}` : '-created_date',
+    pagina: page,
+    porPagina: PAGE_SIZE,
+    activa: Boolean(user),
   });
+
   const mermas = mermasRaw ?? [];
 
   const createMut = useMutation({
@@ -132,21 +189,11 @@ export default function Mermas({ ambito = 'inventario' }) {
 
   const selected = mermas.find(m => m.id === selectedId);
 
-  const filtered = mermas.filter(m => {
-    if (!pasaFiltro(m, filterEstado, ambito)) return false;
-    if (searchQ && !m.producto_nombre?.toLowerCase().includes(searchQ.toLowerCase())) return false;
-    return true;
-  });
+  const sorted = mermas;
 
-  const sorted = [...filtered].sort((a, b) => {
-    const dir = sort.dir === 'asc' ? 1 : -1;
-    const av = a[sort.key] ?? '';
-    const bv = b[sort.key] ?? '';
-    if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
-    return String(av).localeCompare(String(bv)) * dir;
-  });
-
-  const totalPerdida = filtered.reduce((s, m) => s + (m.total_perdida || 0), 0);
+  // El acumulado es el de la página que se está viendo, no el de la tabla
+  // entera: decir «total» de lo que solo es una página sería mentir.
+  const perdidaPagina = sorted.reduce((s, m) => s + (m.total_perdida || 0), 0);
 
   // ── Selección para bajar de tienda ──────────────────────────
   //
@@ -186,11 +233,17 @@ export default function Mermas({ ambito = 'inventario' }) {
               : 'Registro y seguimiento de mermas'}
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <ColPicker cols={MERMA_COL_DEFS} visible={cols}
+            onChange={(next) => { setCols(next); saveColsWithOrder(MERMA_COLS_KEY, next, colOrder); }}
+            storageKey={MERMA_COLS_KEY} order={colOrder}
+            onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(MERMA_COLS_KEY, cols, next); }} />
         {tieneRol(user, ['inv', 'administrador', 'superadmin']) && (
           <Button onClick={() => { setShowForm(true); setSelectedId(null); }} style={{ borderRadius: '8px' }}>
             <Plus className="w-4 h-4 mr-1.5" /> Registrar merma
           </Button>
         )}
+        </div>
       </div>
 
       <Dialog open={showForm} onOpenChange={(o) => { if (!o && !createMut.isPending) setShowForm(false) }}>
@@ -273,21 +326,18 @@ export default function Mermas({ ambito = 'inventario' }) {
                         className="w-3.5 h-3.5 accent-[#BA7517] cursor-pointer" />
                     </th>
                   )}
-                  <SortTh colKey="producto_nombre" label="Producto" sort={sort} onSort={onSort} className="text-left p-3 text-xs font-medium text-muted-foreground" />
-                  <SortTh colKey="cantidad" label="Cant." sort={sort} onSort={onSort} className="text-right p-3 text-xs font-medium text-muted-foreground" align="right" />
-                  <SortTh colKey="clasif_merma" label="Clasificación" sort={sort} onSort={onSort} className="text-left p-3 text-xs font-medium text-muted-foreground" />
-                  <SortTh colKey="total_perdida" label="Pérdida" sort={sort} onSort={onSort} className="text-right p-3 text-xs font-medium text-muted-foreground" align="right" />
-                  <SortTh colKey="estado_tarea" label="Estado" sort={sort} onSort={onSort} className="text-center p-3 text-xs font-medium text-muted-foreground" align="center" />
-                  <SortTh colKey="rebaja_confirmada" label="Tienda" sort={sort} onSort={onSort} className="text-center p-3 text-xs font-medium text-muted-foreground" align="center" />
-                  <SortTh colKey="fecha_inv" label="Fecha" sort={sort} onSort={onSort} className="text-left p-3 text-xs font-medium text-muted-foreground" />
-                  {puedeBajar && <th className="p-3 w-10" />}
+                  {colOrder.filter(k => cols[k]).map(k => (
+                    <SortTh key={k} colKey={k} label={COL_TITULO[k].label}
+                      align={COL_TITULO[k].align} sort={sort} onSort={onSort}
+                      className={`p-3 text-xs font-medium text-muted-foreground ${COL_TITULO[k].className ?? ''}`} />
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
-                  <tr><td colSpan={puedeBajar ? 9 : 7} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
-                ) : filtered.length === 0 ? (
-                  <tr><td colSpan={puedeBajar ? 9 : 7} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
+                  <tr><td colSpan={colOrder.filter(k => cols[k]).length + (puedeBajar ? 2 : 0) || 5} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
+                ) : sorted.length === 0 ? (
+                  <tr><td colSpan={colOrder.filter(k => cols[k]).length + (puedeBajar ? 2 : 0) || 5} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
                 ) : sorted.map(m => (
                   <tr key={m.id}
                     className={`border-b hover:bg-accent/50 cursor-pointer transition-colors ${selectedId === m.id ? 'bg-accent' : ''}`}
@@ -301,29 +351,39 @@ export default function Mermas({ ambito = 'inventario' }) {
                         )}
                       </td>
                     )}
-                    <td className="p-3">
-                      <p className="font-medium">{m.producto_nombre}</p>
-                      <p className="text-xs text-muted-foreground">{m.producto_codigo}</p>
-                    </td>
-                    <td className="p-3 text-right font-medium">{m.cantidad}</td>
-                    <td className="p-3 text-xs">{m.clasif_merma}</td>
-                    <td className="p-3 text-right font-medium text-[#E24B4A]">${m.total_perdida?.toFixed(2) || '0.00'}</td>
-                    <td className="p-3 text-center"><StatusBadge status={m.estado_tarea} /></td>
-                    <td className="p-3 text-center">
-                      {m.rebaja_confirmada ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-[#1D9E75] bg-[#1D9E75]/10 px-2 py-1 rounded-md whitespace-nowrap"
-                          title={m.fecha_rebaja_tienda ? `Bajado el ${m.fecha_rebaja_tienda}` : 'Bajado de tienda'}>
-                          <Check className="w-3 h-3" /> Bajado
-                        </span>
-                      ) : m.producto_codigo && Number(m.cantidad) > 0 ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-[#BA7517] bg-[#BA7517]/10 px-2 py-1 rounded-md whitespace-nowrap">
-                          Sin bajar
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground/40">—</span>
-                      )}
-                    </td>
-                    <td className="p-3 text-muted-foreground">{m.fecha_inv}</td>
+                    {colOrder.filter(k => cols[k]).map(k => {
+                      const CELDAS = {
+                        producto_nombre: (
+                          <td key={k} className="p-3">
+                            <p className="font-medium">{m.producto_nombre}</p>
+                            <p className="text-xs text-muted-foreground">{m.producto_codigo}</p>
+                          </td>
+                        ),
+                        almacen: <td key={k} className="p-3 text-xs text-muted-foreground hidden md:table-cell">{warehouseName(m.almacen_num) || m.almacen_num || '—'}</td>,
+                        cantidad: <td key={k} className="p-3 text-right font-medium">{m.cantidad}</td>,
+                        clasif_merma: <td key={k} className="p-3 text-xs">{m.clasif_merma}</td>,
+                        total_perdida: <td key={k} className="p-3 text-right font-medium text-[#E24B4A]">${m.total_perdida?.toFixed(2) || '0.00'}</td>,
+                        estado_tarea: <td key={k} className="p-3 text-center"><StatusBadge status={m.estado_tarea} /></td>,
+                        rebaja_confirmada: (
+                          <td key={k} className="p-3 text-center">
+                            {m.rebaja_confirmada ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-[#1D9E75] bg-[#1D9E75]/10 px-2 py-1 rounded-md whitespace-nowrap"
+                                title={m.fecha_rebaja_tienda ? `Bajado el ${m.fecha_rebaja_tienda}` : 'Bajado de tienda'}>
+                                <Check className="w-3 h-3" /> Bajado
+                              </span>
+                            ) : m.producto_codigo && Number(m.cantidad) > 0 ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-[#BA7517] bg-[#BA7517]/10 px-2 py-1 rounded-md whitespace-nowrap">
+                                Sin bajar
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground/40">—</span>
+                            )}
+                          </td>
+                        ),
+                        fecha_inv: <td key={k} className="p-3 text-muted-foreground">{m.fecha_inv?.slice(0, 10)}</td>,
+                      };
+                      return CELDAS[k] ?? <td key={k} className="p-3" />;
+                    })}
                     {puedeBajar && (
                       <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
                         {m.producto_codigo && Number(m.cantidad) > 0 && !m.rebaja_confirmada && (
@@ -341,14 +401,16 @@ export default function Mermas({ ambito = 'inventario' }) {
               </tbody>
               <tfoot>
                 <tr className="border-t bg-secondary/30">
-                  <td colSpan={puedeBajar ? 4 : 3} className="p-3 text-xs font-medium text-muted-foreground">Total acumulado</td>
-                  <td className="p-3 text-right font-medium text-[#E24B4A]">${totalPerdida.toFixed(2)}</td>
-                  <td colSpan={puedeBajar ? 4 : 3}></td>
+                  <td colSpan={colOrder.filter(k => cols[k]).indexOf('total_perdida') + (puedeBajar ? 1 : 0) || 1} className="p-3 text-xs font-medium text-muted-foreground">Pérdida en esta página</td>
+                  <td className="p-3 text-right font-medium text-[#E24B4A]">${perdidaPagina.toFixed(2)}</td>
+                  <td colSpan={colOrder.filter(k => cols[k]).length + (puedeBajar ? 2 : 0)}></td>
                 </tr>
               </tfoot>
             </table>
           </div>
         </Card>
+
+        <Pagination page={page} total={total} pageSize={PAGE_SIZE} onPage={setPage} />
 
       </div>
 
