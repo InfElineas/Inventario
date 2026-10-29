@@ -74,6 +74,29 @@ export async function logTransicion(tabla, registro, estadoNuevo, actor, datos =
 }
 
 /**
+ * Avisa a quien contó que su conteo se cerró sin ajuste.
+ *
+ * Pasa cuando hay varios conteos del mismo producto esperando a facturación:
+ * se procesa el último y los anteriores dejan de valer, porque su diferencia
+ * se midió contra la existencia de otro día. Sin este aviso, la persona vería
+ * su conteo cerrado sin saber por qué.
+ */
+export async function avisarConteoReemplazado(conteo, actor) {
+  if (!conteo?.especialista_id) return
+  try {
+    await insertNotif(
+      conteo.especialista_id,
+      'inventario',
+      'Un conteo tuyo se cerró sin ajuste',
+      `${conteo.producto_nombre || conteo.producto_codigo || 'Un producto'}: había un conteo más reciente `
+      + `del mismo producto y es el que facturación procesó. `
+      + `Lo cerró ${actor?.full_name || actor?.email || 'facturación'}.`,
+      '/inventario',
+    )
+  } catch { /* el aviso no puede impedir el procesamiento */ }
+}
+
+/**
  * Deja constancia de un borrado.
  *
  * Borrar un conteo o una merma hace desaparecer la fila, y con ella el motivo

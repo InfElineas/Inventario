@@ -9,7 +9,7 @@ import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock'
 import Timeline from '@/components/shared/Timeline';
 import AlertBanner from '@/components/shared/AlertBanner';
 import { Trash2 } from 'lucide-react';
-import { MOTIVOS_RECONTEO, CLASIF_MERMA_SIN_FACT, ALL_CLASIF_MERMA, DESTINOS_MERMA, CLASIF_FACT, ESTADO_FACT } from '@/lib/constants';
+import { MOTIVOS_RECONTEO, CLASIF_MERMA_SIN_FACT, ALL_CLASIF_MERMA, DESTINOS_MERMA, CLASIF_FACT, ESTADO_FACT, conValorActual } from '@/lib/constants';
 import { logTransicion } from '@/lib/workflowService';
 import { useConfirm } from '@/lib/useConfirm';
 import { tieneRol } from '@/lib/roles';
@@ -50,7 +50,7 @@ function EditarMerma({ merma, isUpdating, onGuardar }) {
       </div>
       <Select value={clasif} onValueChange={setClasif}>
         <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Clasificación de merma" /></SelectTrigger>
-        <SelectContent>{ALL_CLASIF_MERMA.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+        <SelectContent>{conValorActual(ALL_CLASIF_MERMA, merma.clasif_merma).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
       </Select>
       <Select value={destino} onValueChange={setDestino}>
         <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Destino final" /></SelectTrigger>

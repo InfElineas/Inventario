@@ -18,8 +18,8 @@ import { fetchExistenciaTkc } from '@/services/tkcService';
 import { useAccesoTkc } from '@/lib/useAccesoTkc';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import { SIN_SONDEO } from '@/lib/query-client';
+import { CLASIF_AJUSTE } from '@/lib/constants';
 
-export const CLASIF_AJUSTE = ['Faltante por deterioro', 'Faltante por robo', 'Faltante sin justificar', 'Sobrante por transferencia', 'Sobrante por devolución', 'Error de sistema', 'Ajuste administrativo'];
 
 // Extraída del formulario para poder probarla sin renderizar el componente.
 /** Hoy y ayer, en el formato de <input type="date">. */

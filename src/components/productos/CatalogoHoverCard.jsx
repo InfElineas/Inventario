@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Package, RefreshCw, AlertTriangle } from 'lucide-react'
 
@@ -17,6 +17,14 @@ import { Package, RefreshCw, AlertTriangle } from 'lucide-react'
  */
 
 const CARD_W = 320
+/**
+ * Alto estimado para colocarla antes de medirla.
+ *
+ * Es solo la primera posición: en cuanto está en pantalla se mide y se
+ * recoloca con el alto de verdad. Con el estimado a secas, un producto de
+ * nombre largo o con categoría larga crecía por debajo y la tarjeta salía
+ * cortada por abajo justo donde están las existencias y el precio.
+ */
 const CARD_H = 420
 const GAP = 14
 /** Cada cuánto pasa a la siguiente foto. */
@@ -24,7 +32,7 @@ const MS_POR_FOTO = 1800
 
 const numberFmt = new Intl.NumberFormat('es-CU')
 
-function posicionar(rect) {
+function posicionar(rect, alto = CARD_H) {
   const vw = window.innerWidth
   const vh = window.innerHeight
 
@@ -32,9 +40,9 @@ function posicionar(rect) {
   if (left + CARD_W > vw - 8) left = rect.left - CARD_W - GAP
   if (left < 8) left = 8
 
-  let top = rect.top + rect.height / 2 - CARD_H / 2
+  let top = rect.top + rect.height / 2 - alto / 2
+  if (top + alto > vh - 8) top = vh - alto - 8
   if (top < 8) top = 8
-  if (top + CARD_H > vh - 8) top = Math.max(8, vh - CARD_H - 8)
 
   return { left, top }
 }
@@ -141,9 +149,19 @@ const COLOR_ANUNCIO = {
  * @param {boolean} [sinAccesoTkc] la persona no tiene credenciales de TKC
  */
 export default function CatalogoHoverCard({ producto, rect, enVivo, cargando, error, sinAccesoTkc }) {
+  const ref = useRef(null)
+  const [alto, setAlto] = useState(CARD_H)
+
+  // Se mide ya pintada y se recoloca si hace falta. `useLayoutEffect` y no
+  // `useEffect` para que el salto ocurra antes de que el ojo lo vea.
+  useLayoutEffect(() => {
+    const medido = ref.current?.offsetHeight
+    if (medido && Math.abs(medido - alto) > 1) setAlto(medido)
+  })
+
   if (!producto || !rect) return null
 
-  const { left, top } = posicionar(rect)
+  const { left, top } = posicionar(rect, alto)
   const fotos = Array.isArray(producto.imagenes) ? producto.imagenes.filter(Boolean) : []
   const vivo = enVivo?.existencia ?? null
   // Nuestra copia puede ir hasta 18 h por detrás del submayor; cuando TKC
@@ -152,9 +170,13 @@ export default function CatalogoHoverCard({ producto, rect, enVivo, cargando, er
 
   const card = (
     <div
+      ref={ref}
       className="fixed z-[9999] rounded-xl shadow-2xl overflow-hidden pointer-events-none"
       style={{
         left, top, width: CARD_W,
+        // Si ni así cabe —pantalla muy baja— se limita al alto de la ventana
+        // en vez de desbordarla.
+        maxHeight: 'calc(100vh - 16px)',
         background: 'hsl(var(--card))',
         border: '1px solid hsl(var(--border))',
         boxShadow: '0 20px 60px rgba(0,0,0,0.3)',

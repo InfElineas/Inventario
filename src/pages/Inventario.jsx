@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import StatusBadge from '@/components/shared/StatusBadge';
-import InventarioForm, { CLASIF_AJUSTE } from '@/components/inventario/InventarioForm';
+import AlertBanner from '@/components/shared/AlertBanner';
+import InventarioForm from '@/components/inventario/InventarioForm';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
 import Timeline from '@/components/shared/Timeline';
 import { ClipboardList, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
@@ -21,9 +22,9 @@ import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/sh
 import Pagination from '@/components/shared/Pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { notifyJefeDepto } from '@/lib/notificationService';
-import { logTransicion, logBorrado, notificarTransicion } from '@/lib/workflowService';
+import { logTransicion, logBorrado, notificarTransicion, avisarConteoReemplazado } from '@/lib/workflowService';
 import { useConfirm } from '@/lib/useConfirm';
-import { CLASIF_FACT, ESTADO_FACT } from '@/lib/constants'
+import { CLASIF_AJUSTE, CLASIF_FACT, ESTADO_FACT, conValorActual } from '@/lib/constants'
 import { ESTADO_POR_RESULTADO, estadoContradictorio } from '@/lib/ajusteFact'
 import SortTh from '@/components/shared/SortTh'
 import { useSortable } from '@/lib/useSortable';
@@ -153,7 +154,30 @@ export default function Inventario({ ambito = 'inventario' }) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Inventario.update(id, data),
+    mutationFn: async ({ id, data, hermanos = [] }) => {
+      const r = await base44.entities.Inventario.update(id, data);
+
+      // Los conteos anteriores del mismo producto se cierran sin ajuste: su
+      // diferencia se midió contra la existencia de otro día. Se les deja
+      // escrito el motivo y se avisa a quien los hizo, para que no se entere
+      // por una bandeja que de pronto está vacía.
+      for (const h of hermanos) {
+        try {
+          await base44.entities.Inventario.update(h.id, {
+            estado_tarea: 'completado',
+            fact_estado: 'No Procesar x Fact',
+            fact_especialista_id: user?.email,
+            fact_especialista_nombre: user?.full_name,
+            fact_fecha: new Date().toISOString().slice(0, 10),
+            fact_notas: `Cerrado sin ajuste: lo reemplaza el conteo del ${data.fecha_inv ?? 'más reciente'}. `
+              + 'Su diferencia se midió contra otra existencia.'
+              + (h.fact_notas ? ` — ${h.fact_notas}` : ''),
+          });
+          await avisarConteoReemplazado(h, user);
+        } catch { /* no puede impedir el procesamiento del que sí vale */ }
+      }
+      return r;
+    },
     onSuccess: (_, variables) => {
       if (variables.data?.estado_tarea) {
         const invAntes = inventarios.find(i => i.id === variables.id) || {}
@@ -167,6 +191,17 @@ export default function Inventario({ ambito = 'inventario' }) {
   });
 
   const selected = inventarios.find(i => i.id === selectedId);
+
+  // Conteos ANTERIORES del mismo producto que siguen esperando a facturación.
+  // Son los que quedarían con un ajuste pendiente que ya no corresponde.
+  const hermanosPendientes = selected
+    ? inventarios.filter(i =>
+        i.id !== selected.id
+        && i.estado_tarea === 'pend_fact'
+        && i.almacen_num === selected.almacen_num
+        && (i.producto_id ?? i.producto_codigo) === (selected.producto_id ?? selected.producto_codigo)
+        && (i.fecha_inv ?? '') <= (selected.fecha_inv ?? ''))
+    : [];
 
   const coinciden = inventarios.filter(i => {
     if (!pasaFiltro(i, filterEstado, ambito)) return false;
@@ -376,7 +411,8 @@ export default function Inventario({ ambito = 'inventario' }) {
               inv={selected}
               role={role}
               user={user}
-              onUpdate={(data) => updateMutation.mutate({ id: selected.id, data })}
+              onUpdate={(data, hermanos) => updateMutation.mutate({ id: selected.id, data, hermanos })}
+              hermanos={hermanosPendientes}
               onDelete={() => { deleteMutation.mutate(selected.id); setSelectedId(null); }}
               onClose={() => setSelectedId(null)}
               isUpdating={updateMutation.isPending}
@@ -581,7 +617,7 @@ function BloqueCorreccion({ inv, devuelto, isUpdating, onGuardar, confirmDialog 
       {diferencia !== 0 && (
         <Select value={clasif} onValueChange={setClasif}>
           <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Clasificación de ajuste" /></SelectTrigger>
-          <SelectContent>{CLASIF_AJUSTE.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+          <SelectContent>{conValorActual(CLASIF_AJUSTE, inv.clasif_ajuste).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
         </Select>
       )}
 
@@ -606,7 +642,7 @@ function BloqueCorreccion({ inv, devuelto, isUpdating, onGuardar, confirmDialog 
   );
 }
 
-function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpdating: isUpdatingRaw }) {
+function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpdating: isUpdatingRaw, hermanos = [] }) {
   const isUpdating = isUpdatingRaw ?? false;
   const [factData, setFactData] = useState({
     fact_no_factura: '', fact_clasif: '', fact_notas: '',
@@ -723,10 +759,14 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
       {canProcessFact && (
         <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: '8px', borderWidth: '0.5px' }}>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Procesamiento FACT</p>
+          {hermanos.length > 0 && (
+            <AlertBanner variant="warning"
+              message={`Hay ${hermanos.length} ${hermanos.length === 1 ? 'conteo anterior' : 'conteos anteriores'} de este producto esperando a facturación. Al procesar este, aquellos se cierran sin ajuste y se avisa a quien los hizo: su diferencia se midió contra otra existencia.`} />
+          )}
           <Input placeholder="No. factura TKC" value={factData.fact_no_factura} onChange={(e) => setFactData({ ...factData, fact_no_factura: e.target.value })} style={{ borderRadius: '8px' }} />
           <Select value={factData.fact_clasif} onValueChange={(v) => setFactData({ ...factData, fact_clasif: v })}>
             <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Clasificación FACT" /></SelectTrigger>
-            <SelectContent>{CLASIF_FACT.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+            <SelectContent>{conValorActual(CLASIF_FACT, inv.fact_clasif).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={factData.fact_estado} onValueChange={(v) => setFactData({ ...factData, fact_estado: v })}>
             <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Estado FACT" /></SelectTrigger>
@@ -747,7 +787,29 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
           )}
           <Textarea placeholder="Notas FACT" value={factData.fact_notas} onChange={(e) => setFactData({ ...factData, fact_notas: e.target.value })} style={{ borderRadius: '8px' }} />
           <div className="flex gap-2">
-            <Button size="sm" disabled={isUpdating} onClick={() => onUpdate({ ...factData, fact_especialista_id: user?.email, fact_especialista_nombre: user?.full_name, fact_fecha: new Date().toISOString().slice(0, 10), estado_tarea: 'en_auditoria' })} style={{ borderRadius: '8px' }}>
+            <Button size="sm" disabled={isUpdating} onClick={async () => {
+              // Los conteos anteriores del mismo producto que siguen esperando
+              // a facturación ya no valen: su diferencia se midió contra una
+              // existencia de otro día. Aplicarles un ajuste además de este
+              // sería mover dos veces la misma mercancía, y dejarlos ahí es
+              // dejar datos falseados en la bandeja de alguien.
+              if (hermanos.length > 0) {
+                const ok = await confirmDialog(
+                  `Hay ${hermanos.length} ${hermanos.length === 1 ? 'conteo anterior' : 'conteos anteriores'} ` +
+                  'del mismo producto esperando a facturación. Se cerrarán sin ajuste, porque su diferencia ' +
+                  'se midió contra otra existencia, y se avisará a quien los hizo.',
+                  { title: '¿Procesar este conteo?' },
+                );
+                if (!ok) return;
+              }
+              onUpdate({
+                ...factData,
+                fact_especialista_id: user?.email,
+                fact_especialista_nombre: user?.full_name,
+                fact_fecha: new Date().toISOString().slice(0, 10),
+                estado_tarea: 'en_auditoria',
+              }, hermanos);
+            }} style={{ borderRadius: '8px' }}>
               {isUpdating ? 'Enviando...' : 'Enviar a auditor'}
             </Button>
             <Button size="sm" variant="outline" disabled={isUpdating} onClick={() => onUpdate({ estado_tarea: 'devuelto' })} style={{ borderRadius: '8px' }}>

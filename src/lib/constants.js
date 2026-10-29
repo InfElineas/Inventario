@@ -177,7 +177,43 @@ export const CLASIF_FACT = [
   'No disponibilidad TKC',
   'Transferencia bodegón no registrada',
   'Cuenta casa administrativa-Libia',
+  // Las que faltaban del catálogo de TKC. Sin ellas, quien clasificaba un
+  // ajuste tenía que elegir la más parecida, y el motivo real se perdía.
+  'Fitosanitario e Higiene',
+  'Higiene',
+  'Veterinario',
+  'Creación de anuncio',
+  'Reserva Transporte',
+  'Módulo para trabajadores',
+  'Error Fact +-',
+  'Merma de Origen',
+  'Reposición del proveedor',
+  'Intercambio de Producto',
 ]
+
+/**
+ * Clasificación de un ajuste de inventario.
+ *
+ * Es la MISMA lista que usa facturación: el motivo por el que la existencia no
+ * cuadra no cambia según quién lo escriba, y tener dos vocabularios obligaba a
+ * traducir de uno a otro —inventario decía «Faltante por robo» y facturación
+ * «Robo»— con la pérdida de detalle que eso trae.
+ *
+ * Antes inventario solo ofrecía siete opciones genéricas.
+ */
+export const CLASIF_AJUSTE = CLASIF_FACT
+
+/**
+ * La lista con el valor ya guardado dentro, aunque sea de una versión vieja.
+ *
+ * Al unificar los vocabularios, un registro clasificado como «Faltante por
+ * robo» dejó de tener su opción en el desplegable: al abrirlo salía vacío y el
+ * primer guardado le borraba la clasificación sin que nadie lo pidiera.
+ */
+export function conValorActual(lista, valor) {
+  if (!valor || lista.includes(valor)) return lista
+  return [valor, ...lista]
+}
 
 // Estado FACT
 export const ESTADO_FACT = [
