@@ -305,6 +305,22 @@ describe('listar y líneas', () => {
   });
 });
 
+describe('rotación de venta', () => {
+  // Es una ruta suelta, sin tipo ni id: antes caía en el despachador de
+  // ajustes, se quedaba sin operación y respondía «No encontrado» sin llegar
+  // nunca a pedir el informe.
+  it('GET /api/rotacion no se pierde en el despachador de ajustes', async () => {
+    fetch.mockResolvedValue(new Response(
+      JSON.stringify({ success: true, data: [{ idTienda: '141473', promUlt1Mes: '2.5' }], pagination: { hasNextPage: false } }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    ));
+
+    const { res } = await llamar('/api/rotacion');
+    expect(res.statusCode).toBe(200);
+    expect(res.cuerpo.rotacion['141473']).toMatchObject({ diaria: 2.5, segun: 'promUlt1Mes' });
+  });
+});
+
 describe('errores de la API', () => {
   it('403 (sin el permiso en el IS) se reenvía como 403 con su mensaje', async () => {
     apiResponde(403, { error: { code: 'forbidden', message: 'sin permiso increase:create' } });

@@ -438,6 +438,12 @@ export function createTransferenciasApiMiddleware() {
       const partes = ruta.split('/').slice(3).filter(Boolean) // [accion?]
       if (partes.length === 0 && req.method === 'POST') operacion = 'procesar'
       else if (partes.length === 1 && PROCESOS[partes[0]]?.metodo === req.method) operacion = partes[0]
+    } else if (esRotacion) {
+      // No pasa por el despachador de ajustes: no tiene tipo ni id, es una
+      // sola ruta de lectura. Sin esto caía en la rama de abajo, se quedaba
+      // sin `operacion` y respondía «No encontrado» antes de llegar a su
+      // manejador.
+      operacion = 'rotacion'
     } else {
       const partes = ruta.split('/').slice(3).filter(Boolean) // [tipo, id?, accion?]
       tipo = TIPOS[partes[0]]
