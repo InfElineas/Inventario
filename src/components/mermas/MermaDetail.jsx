@@ -12,6 +12,67 @@ import { Trash2 } from 'lucide-react';
 import { MOTIVOS_RECONTEO, CLASIF_MERMA_SIN_FACT, ALL_CLASIF_MERMA, DESTINOS_MERMA, CLASIF_FACT, ESTADO_FACT } from '@/lib/constants';
 import { logTransicion } from '@/lib/workflowService';
 import { useConfirm } from '@/lib/useConfirm';
+import { tieneRol } from '@/lib/roles';
+
+
+/**
+ * Corregir una merma que todavía es de inventario.
+ *
+ * Un dedazo en la cantidad o una clasificación equivocada obligaban a borrarla
+ * y registrarla otra vez, perdiendo la fecha y el rastro. Mientras no se haya
+ * bajado de tienda —y por tanto no haya salido de inventario— se corrige aquí.
+ *
+ * La pérdida se recalcula sola: es la cantidad por el precio unitario que se
+ * guardó al registrarla.
+ */
+function EditarMerma({ merma, isUpdating, onGuardar }) {
+  const [cantidad, setCantidad] = useState(String(merma.cantidad ?? ''));
+  const [clasif, setClasif] = useState(merma.clasif_merma ?? '');
+  const [destino, setDestino] = useState(merma.destino_final ?? '');
+  const [notas, setNotas] = useState(merma.notas ?? '');
+
+  const n = Number(cantidad);
+  const valido = cantidad !== '' && Number.isFinite(n) && n > 0 && Boolean(clasif);
+  const precioUnit = Number(merma.precio_unitario) || 0;
+
+  return (
+    <div className="space-y-3 p-4 border border-border rounded-lg bg-secondary/40" style={{ borderRadius: '8px' }}>
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Sin bajar de tienda — puedes corregirla</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block space-y-1.5 text-xs text-muted-foreground">
+          Cantidad
+          <Input type="number" min="1" value={cantidad} onChange={(e) => setCantidad(e.target.value)} style={{ borderRadius: '8px' }} />
+        </label>
+        <label className="block space-y-1.5 text-xs text-muted-foreground">
+          Pérdida
+          <p className="text-sm font-medium text-[#E24B4A] pt-2">${(n * precioUnit || 0).toFixed(2)}</p>
+        </label>
+      </div>
+      <Select value={clasif} onValueChange={setClasif}>
+        <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Clasificación de merma" /></SelectTrigger>
+        <SelectContent>{ALL_CLASIF_MERMA.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+      </Select>
+      <Select value={destino} onValueChange={setDestino}>
+        <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Destino final" /></SelectTrigger>
+        <SelectContent>{DESTINOS_MERMA.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+      </Select>
+      <Textarea value={notas} maxLength={500} onChange={(e) => setNotas(e.target.value)}
+        placeholder="Notas…" style={{ borderRadius: '8px' }} />
+      <div className="flex justify-end">
+        <Button size="sm" disabled={!valido || isUpdating} style={{ borderRadius: '8px' }}
+          onClick={() => onGuardar({
+            cantidad: n,
+            clasif_merma: clasif,
+            destino_final: destino,
+            notas,
+            total_perdida: Number((n * precioUnit).toFixed(2)),
+          })}>
+          {isUpdating ? 'Guardando…' : 'Guardar cambios'}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isUpdating: isUpdatingRaw }) {
   const isUpdating = isUpdatingRaw ?? false;
@@ -42,11 +103,16 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
     onUpdate(data)
   }
 
-  const canFact       = (role === 'fact'    || role === 'administrador') && merma.estado_tarea === 'pend_fact';
-  const canAudit      = (role === 'auditor' || role === 'administrador') && merma.estado_tarea === 'en_auditoria';
-  const canReconteo   = (role === 'inv'     || role === 'administrador') && merma.estado_tarea === 'reconteo_solicitado';
-  const canDevueltoInv = (role === 'inv'    || role === 'administrador') && merma.estado_tarea === 'devuelto';
-  const canSuperDelete = role === 'superadmin';
+  const canFact        = tieneRol(user, ['fact'])    && merma.estado_tarea === 'pend_fact';
+  const canAudit       = tieneRol(user, ['auditor'])  && merma.estado_tarea === 'en_auditoria';
+  const canReconteo    = tieneRol(user, ['inv'])      && merma.estado_tarea === 'reconteo_solicitado';
+  const canDevueltoInv = tieneRol(user, ['inv'])      && merma.estado_tarea === 'devuelto';
+  const canSuperDelete = tieneRol(user, ['superadmin']);
+  // Mientras sigue siendo de inventario, quien la registró la puede corregir
+  // entera. Antes había que borrarla y volver a empezar por un dedazo en la
+  // cantidad o en la clasificación.
+  const canEditar = merma.estado_tarea === 'en_curso'
+    && (tieneRol(user, ['administrador']) || merma.especialista_id === user?.email);
 
   // Audit validations (usa estado local para feedback en tiempo real)
   const destSum   = destinos.reduce((s, d) => s + (Number(d.cantidad) || 0), 0);
@@ -97,6 +163,8 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
         <ReadOnlyField label="Versión" value={merma.version_reconteo} />
         {merma.notas && <ReadOnlyField label="Notas INV" value={merma.notas} />}
       </ReadOnlyBlock>
+
+      {canEditar && <EditarMerma merma={merma} isUpdating={isUpdating} onGuardar={onUpdate} />}
 
       {(merma.fact_no_factura || merma.fact_clasif || merma.fact_notas || merma.fact_estado || merma.fact_fecha) && (
         <ReadOnlyBlock title="Registro FACT">

@@ -14,7 +14,7 @@ import { ETIQUETA_AMBITO, pasaFiltro } from '@/lib/ambito';
 import BajarMermasDialog from '@/components/mermas/BajarMermasDialog';
 import { ROLES_TIENDA } from '@/lib/ajustes';
 import { notifyJefeDepto } from '@/lib/notificationService';
-import { logTransicion, notificarTransicion } from '@/lib/workflowService';
+import { logTransicion, logBorrado, notificarTransicion } from '@/lib/workflowService';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import { tieneRol } from '@/lib/roles';
@@ -75,7 +75,13 @@ export default function Mermas({ ambito = 'inventario' }) {
   });
 
   const deleteMut = useMutation({
-    mutationFn: (id) => base44.entities.Merma.delete(id),
+    mutationFn: async (id) => {
+      // La traza va ANTES del borrado: después ya no hay fila de la que
+      // sacar el producto ni la diferencia.
+      const fila = mermas.find((x) => x.id === id);
+      if (fila) await logBorrado('mermas', fila, user);
+      return base44.entities.Merma.delete(id);
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['mermas'] }); setSelectedId(null); },
     onError: (error) => alert(error.message),
   });

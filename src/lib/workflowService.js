@@ -74,6 +74,57 @@ export async function logTransicion(tabla, registro, estadoNuevo, actor, datos =
 }
 
 /**
+ * Deja constancia de un borrado.
+ *
+ * Borrar un conteo o una merma hace desaparecer la fila, y con ella el motivo
+ * por el que había una diferencia. La traza queda en dos sitios: en los
+ * eventos del flujo —qué se borró y quién— y en el historial del producto,
+ * que es donde mira quien investiga por qué una existencia no cuadra.
+ *
+ * Es best-effort a propósito: si falla el registro no se impide el borrado,
+ * que ya fue una decisión consciente de quien tiene permiso.
+ */
+export async function logBorrado(tabla, registro, actor) {
+  const quien = actor?.full_name || actor?.email || 'alguien'
+  const resumen = [
+    registro.producto_nombre || registro.producto_codigo || '—',
+    registro.cantidad != null ? `cantidad ${registro.cantidad}` : null,
+    registro.diferencia != null ? `diferencia ${registro.diferencia}` : null,
+    registro.estado_tarea ? `estaba en ${registro.estado_tarea}` : null,
+  ].filter(Boolean).join(' · ')
+
+  try {
+    await base44.entities.WorkflowEvento.create({
+      tabla,
+      registro_id:  registro.id,
+      estado_antes: registro.estado_tarea ?? null,
+      estado_nuevo: 'borrado',
+      actor_id:     actor?.email || 'sistema',
+      actor_nombre: quien,
+      actor_rol:    actor?.role,
+      datos:        registro,
+    })
+  } catch { /* la traza no puede impedir el borrado */ }
+
+  if (!registro.producto_id) return
+  try {
+    await base44.entities.HistorialMovimiento.create({
+      producto_id:     registro.producto_id,
+      producto_nombre: registro.producto_nombre || '',
+      producto_codigo: registro.producto_codigo || '',
+      usuario_id:      actor?.email || 'sistema',
+      usuario_nombre:  quien,
+      tipo_cambio:     'borrado',
+      campo:           tabla,
+      valor_anterior:  resumen,
+      valor_nuevo:     '',
+      fecha:           new Date().toISOString(),
+      origen:          'borrado',
+    })
+  } catch { /* idem */ }
+}
+
+/**
  * Envía notificaciones dirigidas según la transición de estado.
  * Reglas:
  *   pend_fact            → todos los usuarios de 'fact' + jefe facturacion

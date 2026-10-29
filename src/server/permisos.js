@@ -33,8 +33,11 @@ const FLUJOS = {
                  hacia: ['en_curso', 'devuelto', 'reconteo_solicitado', 'pend_fact', 'en_auditoria'] },
       fact:    { desde: ['pend_fact'],
                  hacia: ['pend_fact', 'en_auditoria', 'devuelto', 'reconteo_solicitado'] },
+      // `pend_fact` entre los destinos: no todo lo que el auditor rechaza es
+      // culpa del conteo. Si lo que está mal es la factura o la clasificación
+      // contable, devolverlo a quien contó no arregla nada.
       auditor: { desde: ['en_auditoria'],
-                 hacia: ['en_auditoria', 'completado', 'devuelto'] },
+                 hacia: ['en_auditoria', 'completado', 'devuelto', 'pend_fact'] },
     },
   },
 
@@ -45,8 +48,11 @@ const FLUJOS = {
                  hacia: ['en_curso', 'devuelto', 'pend_fact', 'en_auditoria'] },
       fact:    { desde: ['pend_fact'],
                  hacia: ['pend_fact', 'en_auditoria', 'devuelto'] },
+      // `pend_fact` entre los destinos: no todo lo que el auditor rechaza es
+      // culpa del conteo. Si lo que está mal es la factura o la clasificación
+      // contable, devolverlo a quien contó no arregla nada.
       auditor: { desde: ['en_auditoria'],
-                 hacia: ['en_auditoria', 'completado', 'devuelto'] },
+                 hacia: ['en_auditoria', 'completado', 'devuelto', 'pend_fact'] },
     },
   },
 

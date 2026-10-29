@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
@@ -13,13 +13,15 @@ import { ClipboardList, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react'
 import { ETIQUETA_AMBITO, pasaFiltro } from '@/lib/ambito';
 import { useAlmacen } from '@/lib/useAlmacen';
 import { warehouseName } from '@/services/tkc/warehouses';
+import { fetchExistenciaTkc } from '@/services/tkcService';
+import { SIN_SONDEO } from '@/lib/query-client';
 import OrdenReabastecimiento from '@/components/inventario/OrdenReabastecimiento';
 import { Textarea } from '@/components/ui/textarea';
-import ColPicker, { loadCols } from '@/components/shared/ColPicker';
+import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import Pagination from '@/components/shared/Pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { notifyJefeDepto } from '@/lib/notificationService';
-import { logTransicion, notificarTransicion } from '@/lib/workflowService';
+import { logTransicion, logBorrado, notificarTransicion } from '@/lib/workflowService';
 import { useConfirm } from '@/lib/useConfirm';
 import { CLASIF_FACT, ESTADO_FACT } from '@/lib/constants'
 import { ESTADO_POR_RESULTADO, estadoContradictorio } from '@/lib/ajusteFact'
@@ -50,6 +52,19 @@ const INV_COL_DEFS = [
 ]
 const INV_COLS_KEY = 'inv_cols'
 
+/** Cómo se titula y alinea cada columna. La usan la cabecera y el ColPicker. */
+const COL_TITULO = {
+  producto:      { label: 'Producto',      className: 'hidden sm:table-cell' },
+  almacen:       { label: 'Almacén',       className: 'hidden md:table-cell' },
+  ef_tkc:        { label: 'EF TKC',        align: 'right', className: 'hidden sm:table-cell' },
+  conteo:        { label: 'Conteo',        align: 'right', className: 'hidden sm:table-cell' },
+  diferencia:    { label: 'Diferencia',    align: 'right' },
+  clasificacion: { label: 'Clasificación', className: 'hidden lg:table-cell' },
+  especialista:  { label: 'Especialista',  className: 'hidden lg:table-cell' },
+  estado:        { label: 'Estado',        align: 'center' },
+  fecha:         { label: 'Fecha',         className: 'hidden md:table-cell' },
+}
+
 export default function Inventario({ ambito = 'inventario' }) {
   const [showForm, setShowForm] = useState(false);
   const [showOrden, setShowOrden] = useState(false);
@@ -57,7 +72,8 @@ export default function Inventario({ ambito = 'inventario' }) {
   // Por defecto, lo que le toca a esta sección. Ver src/lib/ambito.js.
   const [filterEstado, setFilterEstado] = useState('ambito');
   const [searchQ, setSearchQ] = useState('');
-  const [cols, setCols] = useState(() => loadCols(INV_COLS_KEY, INV_COL_DEFS));
+  const [cols, setCols] = useState(() => loadColsWithOrder(INV_COLS_KEY, INV_COL_DEFS).visible);
+  const [colOrder, setColOrder] = useState(() => loadColsWithOrder(INV_COLS_KEY, INV_COL_DEFS).order);
   const [page, setPage] = useState(1);
   const { sort, setSort, onSort } = useSortable('fecha_inv', 'desc')
   const queryClient = useQueryClient();
@@ -125,7 +141,13 @@ export default function Inventario({ ambito = 'inventario' }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Inventario.delete(id),
+    mutationFn: async (id) => {
+      // La traza va ANTES del borrado: después ya no hay fila de la que
+      // sacar el producto ni la diferencia.
+      const fila = inventarios.find((x) => x.id === id);
+      if (fila) await logBorrado('inventarios', fila, user);
+      return base44.entities.Inventario.delete(id);
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['inventarios'] }); setSelectedId(null); },
     onError: (error) => alert(error.message),
   });
@@ -146,11 +168,34 @@ export default function Inventario({ ambito = 'inventario' }) {
 
   const selected = inventarios.find(i => i.id === selectedId);
 
-  const filtered = inventarios.filter(i => {
+  const coinciden = inventarios.filter(i => {
     if (!pasaFiltro(i, filterEstado, ambito)) return false;
     if (searchQ && !i.producto_nombre?.toLowerCase().includes(searchQ.toLowerCase()) && !i.producto_codigo?.toLowerCase().includes(searchQ.toLowerCase())) return false;
     return true;
   });
+
+  // En facturación, un producto sale UNA vez: el conteo más reciente.
+  //
+  // Si inventario cuenta el lunes, no se procesa, y el miércoles vuelve a
+  // contar porque el número cambió, facturación veía los dos y podía aplicar
+  // los dos ajustes por la misma mercancía. Manda el último: es el que
+  // refleja lo que hay.
+  const { visibles: filtered, tapados } = useMemo(() => {
+    if (ambito !== 'facturacion') return { visibles: coinciden, tapados: 0 };
+
+    const ultimoPorProducto = new Map();
+    for (const i of coinciden) {
+      const clave = `${i.almacen_num}|${i.producto_id ?? i.producto_codigo}`;
+      const previo = ultimoPorProducto.get(clave);
+      if (!previo || (i.fecha_inv ?? '') > (previo.fecha_inv ?? '')
+        || ((i.fecha_inv ?? '') === (previo.fecha_inv ?? '') && (i.created_date ?? '') > (previo.created_date ?? ''))) {
+        ultimoPorProducto.set(clave, i);
+      }
+    }
+    const visibles = [...ultimoPorProducto.values()];
+    return { visibles, tapados: coinciden.length - visibles.length };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coinciden, ambito]);
 
   const sorted = (() => {
     const mul = sort.dir === 'asc' ? 1 : -1
@@ -185,7 +230,10 @@ export default function Inventario({ ambito = 'inventario' }) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <ColPicker cols={INV_COL_DEFS} visible={cols} onChange={setCols} storageKey={INV_COLS_KEY} />
+          <ColPicker cols={INV_COL_DEFS} visible={cols}
+            onChange={(next) => { setCols(next); saveColsWithOrder(INV_COLS_KEY, next, colOrder); }}
+            storageKey={INV_COLS_KEY} order={colOrder}
+            onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(INV_COLS_KEY, cols, next); }} />
           <Button
             variant="outline"
             onClick={() => { setShowOrden(v => !v); setShowForm(false); }}
@@ -221,6 +269,13 @@ export default function Inventario({ ambito = 'inventario' }) {
         <OrdenReabastecimiento onClose={() => setShowOrden(false)} />
       )}
 
+      {tapados > 0 && (
+        <p className="text-xs text-muted-foreground px-1">
+          {tapados} {tapados === 1 ? 'conteo anterior queda oculto' : 'conteos anteriores quedan ocultos'} porque
+          hay uno más reciente del mismo producto. Procesa el último: es el que refleja lo que hay.
+        </p>
+      )}
+
       <MisPendientes
         inventarios={inventarios}
         email={user?.email}
@@ -252,23 +307,22 @@ export default function Inventario({ ambito = 'inventario' }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
+                {/* En el orden que haya elegido la persona, como en el
+                    catálogo. Producto va siempre y va primero: sin él la fila
+                    no se identifica. */}
                 <tr className="border-b">
-                  <SortTh colKey="producto"      label="Producto"       sort={sort} onSort={onSort} className="hidden sm:table-cell" />
-                  {cols.almacen       && <SortTh colKey="almacen"       label="Almacén"        sort={sort} onSort={onSort} className="hidden md:table-cell" />}
-                  {cols.ef_tkc        && <SortTh colKey="ef_tkc"        label="EF TKC"         sort={sort} onSort={onSort} align="right" className="hidden sm:table-cell" />}
-                  {cols.conteo        && <SortTh colKey="conteo"        label="Conteo"         sort={sort} onSort={onSort} align="right" className="hidden sm:table-cell" />}
-                  {cols.diferencia    && <SortTh colKey="diferencia"    label="Diferencia"     sort={sort} onSort={onSort} align="right" />}
-                  {cols.clasificacion && <SortTh colKey="clasificacion" label="Clasificación"  sort={sort} onSort={onSort} className="hidden lg:table-cell" />}
-                  {cols.especialista  && <SortTh colKey="especialista"  label="Especialista"   sort={sort} onSort={onSort} className="hidden lg:table-cell" />}
-                  {cols.estado        && <SortTh colKey="estado"        label="Estado"         sort={sort} onSort={onSort} align="center" />}
-                  {cols.fecha         && <SortTh colKey="fecha"         label="Fecha"          sort={sort} onSort={onSort} className="hidden md:table-cell" />}
+                  {colOrder.filter(k => cols[k]).map(k => (
+                    <SortTh key={k} colKey={k} label={COL_TITULO[k].label}
+                      align={COL_TITULO[k].align} className={COL_TITULO[k].className}
+                      sort={sort} onSort={onSort} />
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
-                  <tr><td colSpan={1 + Object.values(cols).filter(Boolean).length} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
+                  <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={1 + Object.values(cols).filter(Boolean).length} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
+                  <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
                 ) : paginated.map(inv => {
                   const minimo = productoMinMap[inv.producto_id] || 0;
                   const bajominimo = minimo > 0 && (inv.conteo_real ?? inv.exist_fisica_tkc ?? 0) < minimo;
@@ -279,23 +333,30 @@ export default function Inventario({ ambito = 'inventario' }) {
                       ${bajominimo && selectedId !== inv.id ? 'bg-[#E24B4A]/[0.04]' : ''}
                     `}
                     onClick={() => { setSelectedId(inv.id); setShowForm(false); setShowOrden(false); }}>
-                    <td className="p-3">
-                      <div className="flex items-center gap-1.5">
-                        {bajominimo && <span title="Stock bajo mínimo" className="w-1.5 h-1.5 rounded-full bg-[#E24B4A] shrink-0" />}
-                        <div>
-                          <p className={`font-medium ${bajominimo ? 'text-[#E24B4A]' : ''}`}>{inv.producto_nombre}</p>
-                          <p className="text-xs text-muted-foreground">{inv.producto_codigo}</p>
-                        </div>
-                      </div>
-                    </td>
-                    {cols.almacen       && <td className="p-3 text-xs text-muted-foreground hidden md:table-cell">{warehouseName(inv.almacen_num) || inv.almacen_num || '—'}</td>}
-                    {cols.ef_tkc        && <td className="p-3 text-right hidden sm:table-cell">{inv.exist_fisica_tkc ?? '—'}</td>}
-                    {cols.conteo        && <td className="p-3 text-right font-medium hidden sm:table-cell">{inv.conteo_real}</td>}
-                    {cols.diferencia    && <td className={`p-3 text-right font-medium ${difColor(inv.diferencia)}`}>{inv.diferencia > 0 ? '+' : ''}{inv.diferencia}</td>}
-                    {cols.clasificacion && <td className="p-3 text-xs text-muted-foreground hidden lg:table-cell">{inv.clasif_ajuste || '—'}</td>}
-                    {cols.especialista  && <td className="p-3 text-xs text-muted-foreground hidden lg:table-cell">{inv.especialista_nombre || '—'}</td>}
-                    {cols.estado        && <td className="p-3 text-center"><StatusBadge status={inv.estado_tarea} /></td>}
-                    {cols.fecha         && <td className="p-3 text-muted-foreground hidden md:table-cell">{inv.fecha_inv}</td>}
+                    {colOrder.filter(k => cols[k]).map(k => {
+                      const CELDAS = {
+                        producto: (
+                          <td key={k} className="p-3">
+                            <div className="flex items-center gap-1.5">
+                              {bajominimo && <span title="Stock bajo mínimo" className="w-1.5 h-1.5 rounded-full bg-[#E24B4A] shrink-0" />}
+                              <div>
+                                <p className={`font-medium ${bajominimo ? 'text-[#E24B4A]' : ''}`}>{inv.producto_nombre}</p>
+                                <p className="text-xs text-muted-foreground">{inv.producto_codigo}</p>
+                              </div>
+                            </div>
+                          </td>
+                        ),
+                        almacen: <td key={k} className="p-3 text-xs text-muted-foreground hidden md:table-cell">{warehouseName(inv.almacen_num) || inv.almacen_num || '—'}</td>,
+                        ef_tkc: <td key={k} className="p-3 text-right hidden sm:table-cell">{inv.exist_fisica_tkc ?? '—'}</td>,
+                        conteo: <td key={k} className="p-3 text-right font-medium hidden sm:table-cell">{inv.conteo_real}</td>,
+                        diferencia: <td key={k} className={`p-3 text-right font-medium ${difColor(inv.diferencia)}`}>{inv.diferencia > 0 ? '+' : ''}{inv.diferencia}</td>,
+                        clasificacion: <td key={k} className="p-3 text-xs text-muted-foreground hidden lg:table-cell">{inv.clasif_ajuste || '—'}</td>,
+                        especialista: <td key={k} className="p-3 text-xs text-muted-foreground hidden lg:table-cell">{inv.especialista_nombre || '—'}</td>,
+                        estado: <td key={k} className="p-3 text-center"><StatusBadge status={inv.estado_tarea} /></td>,
+                        fecha: <td key={k} className="p-3 text-muted-foreground hidden md:table-cell">{inv.fecha_inv?.slice(0, 10)}</td>,
+                      };
+                      return CELDAS[k] ?? <td key={k} className="p-3" />;
+                    })}
                   </tr>
                   );
                 })}
@@ -388,6 +449,61 @@ export const AYER = () => aIso(new Date(Date.now() - 86400000));
  * cantidad, y si lo que estaba mal era la clasificación o la fecha no había
  * forma de arreglarlo sin borrarlo y empezar de cero.
  */
+
+/**
+ * De cuándo es el conteo y cómo está la existencia ahora.
+ *
+ * El `EF TKC` del registro es una foto del momento de contar, y eso está
+ * bien: es contra lo que se midió la diferencia. Pero quien lo procesa días
+ * después lo lee como si fuera de hoy. Aquí se dicen los dos números y los
+ * días que han pasado, para que nadie confunda uno con otro.
+ */
+function ExistenciaAhora({ inv }) {
+  const { data: producto } = useQuery({
+    queryKey: ['producto-de-conteo', inv.producto_id],
+    queryFn: () => base44.entities.Producto.filter({ id: inv.producto_id }, '-updated_date', 1),
+    enabled: Boolean(inv.producto_id),
+    select: (d) => (Array.isArray(d) ? d[0] : null),
+    ...SIN_SONDEO,
+  });
+
+  const idTienda = producto?.id_tienda;
+  const { data: submayor, isLoading } = useQuery({
+    queryKey: ['submayor-producto', inv.almacen_num, idTienda],
+    queryFn: () => fetchExistenciaTkc({ almacen: inv.almacen_num, idTienda }),
+    enabled: Boolean(inv.almacen_num && idTienda),
+    retry: false,
+    ...SIN_SONDEO,
+  });
+
+  const ahora = submayor?.existencia?.fisica;
+  const entonces = inv.exist_fisica_tkc;
+  const dias = inv.fecha_inv
+    ? Math.round((Date.now() - new Date(inv.fecha_inv).getTime()) / 86400000)
+    : null;
+  const cambio = Number.isFinite(ahora) && Number.isFinite(entonces) && ahora !== entonces;
+
+  return (
+    <div className="px-4 py-3 rounded-lg border border-border bg-secondary/40 text-xs space-y-1" style={{ borderRadius: '8px' }}>
+      <p className="font-medium text-foreground">
+        Conteo del {inv.fecha_inv?.slice(0, 10) ?? '—'}
+        {dias !== null && dias > 0 && <span className="text-muted-foreground font-normal"> — hace {dias} {dias === 1 ? 'día' : 'días'}</span>}
+      </p>
+      <p className="text-muted-foreground">
+        Se midió contra una existencia de <span className="text-foreground">{entonces ?? '—'}</span>.
+        {' '}Ahora TKC dice{' '}
+        <span className="text-foreground">{isLoading ? '…' : Number.isFinite(ahora) ? ahora : '—'}</span>.
+      </p>
+      {cambio && (
+        <p className="text-[#BA7517]">
+          La existencia ha cambiado desde el conteo. La diferencia registrada sigue siendo la de
+          aquel día; comprueba si el ajuste sigue teniendo sentido.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function BloqueCorreccion({ inv, devuelto, isUpdating, onGuardar, confirmDialog }) {
   const [conteo, setConteo] = useState(String(inv.conteo_real ?? ''));
   const [clasif, setClasif] = useState(inv.clasif_ajuste ?? '');
@@ -569,6 +685,10 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
         {inv.notas_inv && <ReadOnlyField label="Notas INV" value={inv.notas_inv} />}
       </ReadOnlyBlock>
 
+      {/* Solo cuando ya no es de inventario: es quien procesa días después
+          el que necesita saber de cuándo es el número. */}
+      {inv.estado_tarea !== 'en_curso' && <ExistenciaAhora inv={inv} />}
+
       {(inv.fact_no_factura || inv.fact_clasif || inv.fact_notas || inv.fact_estado || inv.fact_fecha) && (
         <ReadOnlyBlock title="Registro FACT">
           {inv.fact_fecha               && <ReadOnlyField label="Fecha"        value={inv.fact_fecha} />}
@@ -647,8 +767,18 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
               if (!await confirmDialog('Se completará el proceso y no podrá revertirse.', { title: '¿Aprobar y completar este inventario?' })) return;
               onUpdate({ nota_auditor: auditorNota, auditor_id: user?.email, auditor_nombre: user?.full_name, auditoria_fecha: new Date().toISOString().slice(0, 10), estado_tarea: 'completado' });
             }} style={{ borderRadius: '8px' }}>{isUpdating ? 'Guardando...' : 'Aprobar y completar'}</Button>
-            <Button size="sm" variant="outline" disabled={isUpdating} onClick={() => onUpdate({ nota_auditor: auditorNota, auditoria_fecha: new Date().toISOString().slice(0, 10), estado_tarea: 'devuelto' })} style={{ borderRadius: '8px' }}>
-              Devolver
+            {/* Dos destinos: no siempre el problema es del conteo. Si lo que
+                está mal es la factura o la clasificación contable, devolverlo
+                a quien contó no arregla nada y hace perder un viaje. */}
+            <Button size="sm" variant="outline" disabled={isUpdating}
+              onClick={() => onUpdate({ nota_auditor: auditorNota, auditoria_fecha: new Date().toISOString().slice(0, 10), estado_tarea: 'devuelto' })}
+              style={{ borderRadius: '8px' }}>
+              Devolver a inventario
+            </Button>
+            <Button size="sm" variant="outline" disabled={isUpdating}
+              onClick={() => onUpdate({ nota_auditor: auditorNota, auditoria_fecha: new Date().toISOString().slice(0, 10), estado_tarea: 'pend_fact' })}
+              style={{ borderRadius: '8px' }}>
+              Devolver a facturación
             </Button>
           </div>
         </div>

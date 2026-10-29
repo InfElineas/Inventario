@@ -83,8 +83,17 @@ export function rolesDe(usuario) {
   return usuario?.role ? [usuario.role] : [];
 }
 
-/** ¿Alguno de sus roles está en la lista? */
+/**
+ * ¿Alguno de sus roles está en la lista?
+ *
+ * Un superadministrador cuenta siempre. Es lo que ya hacían el menú y el guard
+ * de rutas, pero cada botón repetía la lista a mano y se olvidaba: con un
+ * usuario superadmin no salía el formulario de facturación, ni el del auditor,
+ * ni el de corregir el propio conteo. Ponerlo aquí evita que vuelva a pasar en
+ * el siguiente sitio donde haga falta.
+ */
 export function tieneRol(usuario, permitidos) {
   const suyos = rolesDe(usuario);
+  if (suyos.includes('superadmin')) return true;
   return (permitidos ?? []).some((r) => suyos.includes(r));
 }
