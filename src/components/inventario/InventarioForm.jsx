@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
 import { useAlmacen } from '@/lib/useAlmacen';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,16 +12,21 @@ import BarcodeScanner from '@/components/inventario/BarcodeScanner';
 import ProductThumb from '@/components/shared/ProductThumb';
 import SelectorCoincidencias from '@/components/shared/SelectorCoincidencias';
 import { buscarPorCodigo, avisoSinCoincidencia } from '@/lib/buscarPorCodigo';
-import { Plus, Trash2, Save, ScanLine } from 'lucide-react';
+import { Plus, Trash2, Save, ScanLine, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { fetchExistenciaTkc } from '@/services/tkcService';
 import { useAccesoTkc } from '@/lib/useAccesoTkc';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import { SIN_SONDEO } from '@/lib/query-client';
 
-const CLASIF_AJUSTE = ['Faltante por deterioro', 'Faltante por robo', 'Faltante sin justificar', 'Sobrante por transferencia', 'Sobrante por devolución', 'Error de sistema', 'Ajuste administrativo'];
+export const CLASIF_AJUSTE = ['Faltante por deterioro', 'Faltante por robo', 'Faltante sin justificar', 'Sobrante por transferencia', 'Sobrante por devolución', 'Error de sistema', 'Ajuste administrativo'];
 
 // Extraída del formulario para poder probarla sin renderizar el componente.
+/** Hoy y ayer, en el formato de <input type="date">. */
+const aIso = (d) => d.toISOString().slice(0, 10);
+export const HOY = () => aIso(new Date());
+export const AYER = () => aIso(new Date(Date.now() - 86400000));
+
 export function validateInventario({ producto, detalles, fechaInv, notas }) {
   if (!producto) return 'Selecciona un producto';
   for (const d of detalles) {
@@ -29,6 +35,12 @@ export function validateInventario({ producto, detalles, fechaInv, notas }) {
     if (q > 100_000)                        return 'Cantidad máxima por línea: 100.000';
   }
   if (!fechaInv)             return 'Fecha requerida';
+  // El conteo se hace en el día; como mucho se registra a la mañana
+  // siguiente. Una fecha futura o de la semana pasada es un dedazo, y la
+  // diferencia que salga de ahí se compara contra una existencia que no
+  // corresponde.
+  if (fechaInv > HOY())      return 'La fecha no puede ser futura';
+  if (fechaInv < AYER())     return 'Solo se puede registrar el conteo de hoy o el de ayer';
   if (notas.length > 500)    return 'Notas: máximo 500 caracteres';
   return null;
 }
@@ -69,7 +81,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
   // que puede llevar días sin sincronizar, y contra ese número desfasado se
   // venía calculando la diferencia del inventario.
   const { tiene: conTkc } = useAccesoTkc();
-  const { data: submayor, isLoading: cargandoSubmayor, isError: errorSubmayor } = useQuery({
+  const { data: submayor, isLoading: cargandoSubmayor, isError: errorSubmayor, refetch: refetchSubmayor } = useQuery({
     queryKey: ['submayor-producto', almacen, producto?.id_tienda],
     queryFn: () => fetchExistenciaTkc({ almacen, idTienda: producto.id_tienda }),
     enabled: conTkc && Boolean(almacen && producto?.id_tienda),
@@ -77,6 +89,22 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
     ...SIN_SONDEO,
     retry: false,
   });
+
+  // ── Un producto, un conteo al día ──────────────────────────
+  //
+  // Contarlo dos veces manda dos ajustes por la misma diferencia y facturación
+  // los aplica los dos. Si hay que volver a contarlo, se corrige el conteo que
+  // ya existe: para eso está, y así queda uno solo.
+  const { data: yaContado } = useQuery({
+    queryKey: ['conteo-del-dia', almacen, producto?.id, fechaInv],
+    queryFn: () => base44.entities.Inventario.filter(
+      { almacen_num: almacen, producto_id: producto.id, fecha_inv: fechaInv }, '-created_date', 5,
+    ),
+    enabled: Boolean(almacen && producto?.id && fechaInv),
+    select: (d) => (Array.isArray(d) ? d : []),
+    ...SIN_SONDEO,
+  });
+  const conteoPrevio = (yaContado ?? []).find((i) => i.estado_tarea !== 'completado') ?? null;
 
   const conteoReal = detalles.reduce((s, d) => s + (Number(d.cantidad) || 0), 0);
   const efLocal = producto?.exist_fisica || 0;
@@ -86,6 +114,11 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
   const efTkc = desglose ? desglose.fisica : efLocal;
   const desfase = desglose && desglose.fisica !== efLocal;
   const diferencia = conteoReal - efTkc;
+
+  // Sin el dato de TKC no se cuenta. Nuestra copia puede llevar horas, y una
+  // diferencia calculada contra un número viejo es un ajuste equivocado: hace
+  // falta volver a preguntar, no seguir adelante.
+  const sinSubmayor = Boolean(producto) && !cargandoSubmayor && !desglose;
 
   const addDetalle = () => setDetalles([...detalles, { fecha_vencimiento: '', no_lote: '', cantidad: 0 }]);
   const removeDetalle = (i) => setDetalles(detalles.filter((_, idx) => idx !== i));
@@ -281,17 +314,40 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
               ahora mismo; el catálogo lleva sin sincronizar desde la última vez.
             </p>
           )}
-          {!cargandoSubmayor && !desglose && producto.id_tienda && (
-            <p className="text-xs text-muted-foreground bg-secondary/60 px-3 py-2 rounded-md">
-              {errorSubmayor
-                ? `No se pudo consultar el submayor. Se compara contra el catálogo: EF ${efLocal}.`
-                : `El submayor no tiene este producto en el almacén ${almacen}. Se compara contra el catálogo: EF ${efLocal}.`}
-            </p>
+          {/* Sin el dato de TKC no se cuenta: la copia puede llevar horas y la
+              diferencia saldría contra un número que ya no es. */}
+          {sinSubmayor && (
+            <div className="flex items-start gap-3 px-3 py-2.5 rounded-md border border-[#E24B4A]/30 bg-[#E24B4A]/10">
+              <div className="flex-1 text-xs text-[#E24B4A]">
+                <p className="font-medium">No hay existencia de TKC para este producto.</p>
+                <p className="mt-0.5">
+                  {!producto.id_tienda
+                    ? 'No tiene ID de tienda, así que no está en el submayor. Hay que crearle el anuncio en TKC antes de contarlo.'
+                    : errorSubmayor
+                      ? 'No se pudo consultar el submayor. Vuelve a intentarlo; si sigue sin responder, avisa a soporte.'
+                      : `El submayor no tiene este producto en el almacén ${almacen}.`}
+                </p>
+              </div>
+              {producto.id_tienda && (
+                <Button type="button" variant="outline" size="sm" onClick={() => refetchSubmayor()}
+                  disabled={cargandoSubmayor} style={{ borderRadius: '8px' }}>
+                  <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${cargandoSubmayor ? 'animate-spin' : ''}`} />
+                  Reintentar
+                </Button>
+              )}
+            </div>
           )}
-          {!producto.id_tienda && (
-            <p className="text-xs text-muted-foreground bg-secondary/60 px-3 py-2 rounded-md">
-              Sin ID de tienda no hay submayor que consultar. Se compara contra el catálogo: EF {efLocal}.
-            </p>
+
+          {/* Ya hay un conteo suyo hoy: se corrige ese, no se crea otro. */}
+          {conteoPrevio && (
+            <div className="px-3 py-2.5 rounded-md border border-[#BA7517]/30 bg-[#BA7517]/10 text-xs text-[#BA7517]">
+              <p className="font-medium">Este producto ya se contó hoy en este almacén.</p>
+              <p className="mt-0.5">
+                Lo contó {conteoPrevio.especialista_nombre || conteoPrevio.especialista_id || 'otra persona'} y
+                está en «{conteoPrevio.estado_tarea}». Si hay que volver a contarlo, corrige ese conteo desde
+                la lista en vez de crear otro: dos conteos del mismo día son dos ajustes por la misma diferencia.
+              </p>
+            </div>
           )}
 
           {/* Detail lines */}
@@ -347,7 +403,8 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
 
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground font-medium">Fecha del conteo *</label>
-            <Input type="date" value={fechaInv} onChange={(e) => setFechaInv(e.target.value)} required style={{ borderRadius: '8px' }} />
+            <Input type="date" value={fechaInv} min={AYER()} max={HOY()}
+              onChange={(e) => setFechaInv(e.target.value)} required style={{ borderRadius: '8px' }} />
           </div>
           <Textarea value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Notas del conteo..." maxLength={500} style={{ borderRadius: '8px' }} />
 
@@ -356,7 +413,10 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
           )}
 
           <div className="flex justify-end gap-2">
-            <Button onClick={handleSubmit} disabled={!producto || (diferencia !== 0 && !clasifAjuste) || isPending} style={{ borderRadius: '8px' }}>
+            <Button onClick={handleSubmit}
+              disabled={!producto || sinSubmayor || Boolean(conteoPrevio) || cargandoSubmayor
+                || (diferencia !== 0 && !clasifAjuste) || isPending}
+              style={{ borderRadius: '8px' }}>
               <Save className="w-4 h-4 mr-1.5" /> {isPending ? 'Guardando...' : 'Confirmar conteo'}
             </Button>
           </div>

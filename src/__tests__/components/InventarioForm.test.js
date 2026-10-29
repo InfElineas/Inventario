@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { validateInventario } from '@/components/inventario/InventarioForm';
+import { validateInventario, HOY, AYER } from '@/components/inventario/InventarioForm';
 
 const producto = { id: 'p1', nombre: 'Producto X', exist_fisica: 20 };
 
 const baseFields = {
   producto,
   detalles: [{ fecha_vencimiento: '2026-08-01', no_lote: 'L1', cantidad: 10 }],
-  fechaInv: '2026-07-17',
+  fechaInv: HOY(),
   notas: '',
 };
 
@@ -60,5 +60,24 @@ describe('validateInventario', () => {
 
   it('acepta notas de exactamente 500 caracteres (límite inclusive)', () => {
     expect(validateInventario({ ...baseFields, notas: 'x'.repeat(500) })).toBeNull();
+  });
+});
+
+describe('fecha del conteo', () => {
+  // Un conteo se hace en el día y como mucho se registra a la mañana
+  // siguiente. Contra una fecha vieja la diferencia sale de una existencia
+  // que ya no corresponde, y lo que llega a facturación es un ajuste falso.
+  it('acepta el de ayer', () => {
+    expect(validateInventario({ ...baseFields, fechaInv: AYER() })).toBeNull();
+  });
+
+  it('rechaza el de anteayer', () => {
+    const anteayer = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+    expect(validateInventario({ ...baseFields, fechaInv: anteayer })).toMatch(/hoy o el de ayer/i);
+  });
+
+  it('rechaza una fecha futura', () => {
+    const manana = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    expect(validateInventario({ ...baseFields, fechaInv: manana })).toMatch(/futura/i);
   });
 });

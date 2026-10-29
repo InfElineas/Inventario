@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import StatusBadge from '@/components/shared/StatusBadge';
-import InventarioForm from '@/components/inventario/InventarioForm';
+import InventarioForm, { CLASIF_AJUSTE } from '@/components/inventario/InventarioForm';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
 import Timeline from '@/components/shared/Timeline';
 import { ClipboardList, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
 import { ETIQUETA_AMBITO, pasaFiltro } from '@/lib/ambito';
+import { useAlmacen } from '@/lib/useAlmacen';
+import { warehouseName } from '@/services/tkc/warehouses';
 import OrdenReabastecimiento from '@/components/inventario/OrdenReabastecimiento';
 import { Textarea } from '@/components/ui/textarea';
 import ColPicker, { loadCols } from '@/components/shared/ColPicker';
@@ -27,8 +29,17 @@ import { tieneRol } from '@/lib/roles';
 
 const PAGE_SIZE = 50
 
+/**
+ * Quién ve los conteos de los demás.
+ *
+ * El inventarista, los suyos. El jefe de departamento sigue el trabajo de su
+ * gente; facturación y auditoría los procesan, así que tienen que verlos.
+ */
+const VISTA_GLOBAL_INV = ['jefe_depto', 'fact', 'auditor', 'administrador', 'superadmin'];
+
 const INV_COL_DEFS = [
   { key: 'producto',      label: 'Producto',       defaultOn: true,  required: true  },
+  { key: 'almacen',       label: 'Almacén',        defaultOn: true,  required: false },
   { key: 'ef_tkc',        label: 'EF TKC',         defaultOn: true,  required: false },
   { key: 'conteo',        label: 'Conteo real',     defaultOn: true,  required: false },
   { key: 'diferencia',    label: 'Diferencia',      defaultOn: true,  required: false },
@@ -53,10 +64,28 @@ export default function Inventario({ ambito = 'inventario' }) {
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const role = user?.role || 'inv';
+  const { almacen } = useAlmacen();
 
+  // Un inventarista ve SUS conteos, y solo los del almacén en el que está.
+  // Antes la lista traía los últimos 200 de los treinta almacenes y de todo el
+  // mundo, sin decir siquiera a cuál pertenecía cada uno: con eso no se puede
+  // trabajar ni saber si falta algo por contar.
+  //
+  // La vista global es del jefe de departamento, que es quien sigue el trabajo
+  // de los suyos; facturación y auditoría ven los de todos porque les toca
+  // procesarlos.
+  const vistaGlobal = tieneRol(user, VISTA_GLOBAL_INV);
   const { data: inventariosRaw, isLoading } = useQuery({
-    queryKey: ['inventarios'],
-    queryFn: () => base44.entities.Inventario.list('-created_date', 200),
+    queryKey: ['inventarios', almacen, vistaGlobal ? 'todos' : user?.email],
+    queryFn: () => base44.entities.Inventario.filter(
+      {
+        ...(almacen ? { almacen_num: almacen } : {}),
+        ...(vistaGlobal || !user?.email ? {} : { especialista_id: user.email }),
+      },
+      '-created_date',
+      200,
+    ),
+    enabled: Boolean(user),
     select: (d) => Array.isArray(d) ? d : [],
     refetchInterval: 30_000,
   });
@@ -128,6 +157,7 @@ export default function Inventario({ ambito = 'inventario' }) {
     const arr = [...filtered]
     switch (sort.key) {
       case 'producto':      return arr.sort((a,b) => mul * (a.producto_nombre ?? '').localeCompare(b.producto_nombre ?? ''))
+      case 'almacen':       return arr.sort((a,b) => mul * String(a.almacen_num ?? '').localeCompare(String(b.almacen_num ?? '')))
       case 'ef_tkc':        return arr.sort((a,b) => mul * ((a.exist_fisica_tkc ?? 0) - (b.exist_fisica_tkc ?? 0)))
       case 'conteo':        return arr.sort((a,b) => mul * ((a.conteo_real ?? 0) - (b.conteo_real ?? 0)))
       case 'diferencia':    return arr.sort((a,b) => mul * ((a.diferencia ?? 0) - (b.diferencia ?? 0)))
@@ -224,6 +254,7 @@ export default function Inventario({ ambito = 'inventario' }) {
               <thead>
                 <tr className="border-b">
                   <SortTh colKey="producto"      label="Producto"       sort={sort} onSort={onSort} className="hidden sm:table-cell" />
+                  {cols.almacen       && <SortTh colKey="almacen"       label="Almacén"        sort={sort} onSort={onSort} className="hidden md:table-cell" />}
                   {cols.ef_tkc        && <SortTh colKey="ef_tkc"        label="EF TKC"         sort={sort} onSort={onSort} align="right" className="hidden sm:table-cell" />}
                   {cols.conteo        && <SortTh colKey="conteo"        label="Conteo"         sort={sort} onSort={onSort} align="right" className="hidden sm:table-cell" />}
                   {cols.diferencia    && <SortTh colKey="diferencia"    label="Diferencia"     sort={sort} onSort={onSort} align="right" />}
@@ -257,7 +288,8 @@ export default function Inventario({ ambito = 'inventario' }) {
                         </div>
                       </div>
                     </td>
-                    {cols.ef_tkc        && <td className="p-3 text-right hidden sm:table-cell">{inv.exist_fisica_tkc}</td>}
+                    {cols.almacen       && <td className="p-3 text-xs text-muted-foreground hidden md:table-cell">{warehouseName(inv.almacen_num) || inv.almacen_num || '—'}</td>}
+                    {cols.ef_tkc        && <td className="p-3 text-right hidden sm:table-cell">{inv.exist_fisica_tkc ?? '—'}</td>}
                     {cols.conteo        && <td className="p-3 text-right font-medium hidden sm:table-cell">{inv.conteo_real}</td>}
                     {cols.diferencia    && <td className={`p-3 text-right font-medium ${difColor(inv.diferencia)}`}>{inv.diferencia > 0 ? '+' : ''}{inv.diferencia}</td>}
                     {cols.clasificacion && <td className="p-3 text-xs text-muted-foreground hidden lg:table-cell">{inv.clasif_ajuste || '—'}</td>}
@@ -342,6 +374,122 @@ function MisPendientes({ inventarios, email, onAbrir }) {
   );
 }
 
+
+/** Ayer o hoy, en el formato que quiere <input type="date">. */
+const aIso = (d) => d.toISOString().slice(0, 10);
+export const HOY = () => aIso(new Date());
+export const AYER = () => aIso(new Date(Date.now() - 86400000));
+
+/**
+ * Corregir un conteo que todavía es de inventario.
+ *
+ * Dos casos, el mismo formulario: el borrador propio sin enviar y el que
+ * facturación o auditoría devolvieron. Antes solo se podía cambiar la
+ * cantidad, y si lo que estaba mal era la clasificación o la fecha no había
+ * forma de arreglarlo sin borrarlo y empezar de cero.
+ */
+function BloqueCorreccion({ inv, devuelto, isUpdating, onGuardar, confirmDialog }) {
+  const [conteo, setConteo] = useState(String(inv.conteo_real ?? ''));
+  const [clasif, setClasif] = useState(inv.clasif_ajuste ?? '');
+  const [fecha, setFecha] = useState(inv.fecha_inv?.slice(0, 10) ?? HOY());
+  const [notas, setNotas] = useState(inv.notas_inv ?? '');
+
+  const n = Number(conteo);
+  const conteoValido = conteo !== '' && !isNaN(n) && n >= 0;
+  const diferencia = n - (inv.exist_fisica_tkc || 0);
+  const resultado = diferencia === 0 ? 'ok' : diferencia > 0 ? 'sobrante' : 'faltante';
+  // La clasificación solo hace falta si hay algo que clasificar.
+  const faltaClasif = diferencia !== 0 && !clasif;
+  const valido = conteoValido && !faltaClasif;
+
+  const cambios = {
+    conteo_real: n,
+    diferencia,
+    resultado,
+    clasif_ajuste: diferencia === 0 ? '' : clasif,
+    fecha_inv: fecha,
+    notas_inv: notas,
+  };
+
+  const enviar = async () => {
+    const destino = diferencia === 0 ? 'completado' : 'pend_fact';
+    const aviso = diferencia === 0
+      ? 'No hay diferencia, así que el conteo se cierra aquí mismo.'
+      : 'Facturación lo verá en su bandeja y dejarás de poder editarlo.';
+    if (!await confirmDialog(aviso, { title: '¿Enviar este conteo?' })) return;
+    onGuardar({ ...cambios, estado_tarea: destino });
+  };
+
+  const borde = devuelto ? 'border-[#E24B4A]/40 bg-[#E24B4A08]' : 'border-border bg-secondary/40';
+
+  return (
+    <div className={`space-y-3 p-4 border rounded-lg ${borde}`} style={{ borderRadius: '8px' }}>
+      <p className={`text-xs font-medium uppercase tracking-wider ${devuelto ? 'text-[#E24B4A]' : 'text-muted-foreground'}`}>
+        {devuelto ? 'Devuelto — corrección requerida' : 'Sin enviar — puedes recontar'}
+      </p>
+
+      {devuelto && inv.nota_auditor && (
+        <p className="text-xs text-muted-foreground"><span className="font-medium">Nota del auditor:</span> {inv.nota_auditor}</p>
+      )}
+      {devuelto && inv.fact_notas && (
+        <p className="text-xs text-muted-foreground"><span className="font-medium">Nota de facturación:</span> {inv.fact_notas}</p>
+      )}
+      {!devuelto && (
+        <p className="text-xs text-muted-foreground">
+          Mientras no lo envíes, este conteo es tuyo y nadie más lo ve en su bandeja.
+        </p>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block space-y-1.5 text-xs text-muted-foreground">
+          Conteo real
+          <Input type="number" min="0" value={conteo} onChange={(e) => setConteo(e.target.value)} style={{ borderRadius: '8px' }} />
+        </label>
+        <label className="block space-y-1.5 text-xs text-muted-foreground">
+          Fecha del conteo
+          {/* Hoy o ayer: un conteo se hace en el día, y como mucho se registra
+              a la mañana siguiente. */}
+          <Input type="date" value={fecha} min={AYER()} max={HOY()}
+            onChange={(e) => setFecha(e.target.value)} style={{ borderRadius: '8px' }} />
+        </label>
+      </div>
+
+      {conteoValido && (
+        <p className="text-xs text-muted-foreground">
+          EF TKC del conteo: <span className="text-foreground">{inv.exist_fisica_tkc ?? 0}</span>
+          {' · '}Diferencia: <span className="text-foreground font-medium">{diferencia > 0 ? '+' : ''}{diferencia}</span>
+          {diferencia === 0 && ' — sin diferencia, al enviarlo queda completado.'}
+        </p>
+      )}
+
+      {diferencia !== 0 && (
+        <Select value={clasif} onValueChange={setClasif}>
+          <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Clasificación de ajuste" /></SelectTrigger>
+          <SelectContent>{CLASIF_AJUSTE.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+        </Select>
+      )}
+
+      <Textarea value={notas} maxLength={500} onChange={(e) => setNotas(e.target.value)}
+        placeholder="Notas del conteo…" style={{ borderRadius: '8px' }} />
+
+      <div className="flex flex-wrap gap-2">
+        {!devuelto && (
+          <Button size="sm" variant="outline" disabled={!valido || isUpdating}
+            onClick={() => onGuardar(cambios)} style={{ borderRadius: '8px' }}>
+            {isUpdating ? 'Guardando…' : 'Guardar el nuevo conteo'}
+          </Button>
+        )}
+        <Button size="sm" disabled={!valido || isUpdating} onClick={enviar} style={{ borderRadius: '8px' }}>
+          {devuelto ? 'Reenviar conteo corregido' : 'Enviar a facturación'}
+        </Button>
+      </div>
+      {faltaClasif && (
+        <p className="text-xs text-[#BA7517]">Hay diferencia: elige una clasificación antes de guardar.</p>
+      )}
+    </div>
+  );
+}
+
 function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpdating: isUpdatingRaw }) {
   const isUpdating = isUpdatingRaw ?? false;
   const [factData, setFactData] = useState({
@@ -350,7 +498,6 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
     fact_estado: ESTADO_POR_RESULTADO[inv.resultado] ?? '',
   });
   const [auditorNota, setAuditorNota] = useState('');
-  const [nuevoConteo, setNuevoConteo] = useState(String(inv.conteo_real ?? ''));
   const { confirmDialog, ConfirmDialogNode } = useConfirm();
 
   const steps = ['INV', 'FACT', 'Auditor', 'Completado'];
@@ -362,8 +509,11 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
   const canDevuelto    = tieneRol(user, ['inv', 'administrador']) && inv.estado_tarea === 'devuelto';
   // Un conteo propio sin enviar se puede seguir tocando: es el caso de contar,
   // dudar y volver a contar antes de pasárselo a facturación.
+  // Mientras no lo haya enviado es suyo y lo puede corregir entero. Antes
+  // faltaba `superadmin` en la lista, así que a un superadministrador el
+  // bloque no le salía y su propio conteo se quedaba congelado.
   const canEditarBorrador = inv.estado_tarea === 'en_curso'
-    && (tieneRol(user, ['administrador']) || (tieneRol(user, ['inv']) && inv.especialista_id === user?.email));
+    && (tieneRol(user, ['administrador', 'superadmin']) || inv.especialista_id === user?.email);
   const canDelete = tieneRol(user, ['superadmin'])
     || (tieneRol(user, ['administrador']) && inv.estado_tarea !== 'completado')
     || (tieneRol(user, ['inv']) && inv.estado_tarea === 'en_curso' && inv.especialista_id === user?.email);
@@ -438,95 +588,16 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
         </ReadOnlyBlock>
       )}
 
-      {/* Borrador propio — recontar o enviar */}
-      {canEditarBorrador && (() => {
-        const conteoNum = Number(nuevoConteo)
-        const conteoValido = !isNaN(conteoNum) && conteoNum >= 0
-        const diff = conteoNum - (inv.exist_fisica_tkc || 0)
-        const resultado = diff === 0 ? 'ok' : diff > 0 ? 'sobrante' : 'faltante'
-        const cambios = { conteo_real: conteoNum, diferencia: diff, resultado }
-        return (
-          <div className="space-y-3 p-4 border border-border rounded-lg bg-secondary/40" style={{ borderRadius: '8px' }}>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Sin enviar — puedes recontar</p>
-            <p className="text-xs text-muted-foreground">
-              Mientras no lo envíes, este conteo es tuyo y nadie más lo ve en su bandeja.
-            </p>
-            <Input
-              type="number"
-              placeholder="Conteo real"
-              value={nuevoConteo}
-              onChange={(e) => setNuevoConteo(e.target.value)}
-              style={{ borderRadius: '8px' }}
-            />
-            {conteoValido && (
-              <p className="text-xs text-muted-foreground">
-                Diferencia: <span className="text-foreground font-medium">{diff > 0 ? '+' : ''}{diff}</span>
-                {diff === 0 && ' — sin diferencia, al enviarlo queda completado.'}
-              </p>
-            )}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm" variant="outline" disabled={!conteoValido || isUpdating}
-                onClick={() => onUpdate(cambios)}
-                style={{ borderRadius: '8px' }}
-              >
-                {isUpdating ? 'Guardando…' : 'Guardar el nuevo conteo'}
-              </Button>
-              <Button
-                size="sm" disabled={!conteoValido || isUpdating}
-                onClick={async () => {
-                  const destino = diff === 0 ? 'completado' : 'pend_fact'
-                  const aviso = diff === 0
-                    ? 'No hay diferencia, así que el conteo se cierra aquí mismo.'
-                    : 'Facturación lo verá en su bandeja y dejarás de poder editarlo.'
-                  if (!await confirmDialog(aviso, { title: '¿Enviar este conteo?' })) return
-                  onUpdate({ ...cambios, estado_tarea: destino })
-                }}
-                style={{ borderRadius: '8px' }}
-              >
-                Enviar a facturación
-              </Button>
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* Devuelto — acción INV */}
-      {canDevuelto && (() => {
-        const conteoNum = Number(nuevoConteo)
-        const conteoValido = !isNaN(conteoNum) && conteoNum >= 0
-        return (
-          <div className="space-y-3 p-4 border border-[#E24B4A]/40 rounded-lg bg-[#E24B4A08]" style={{ borderRadius: '8px' }}>
-            <p className="text-xs font-medium text-[#E24B4A] uppercase tracking-wider">Devuelto — corrección requerida</p>
-            {inv.nota_auditor && (
-              <p className="text-xs text-muted-foreground"><span className="font-medium">Nota:</span> {inv.nota_auditor}</p>
-            )}
-            {inv.fact_notas && (
-              <p className="text-xs text-muted-foreground"><span className="font-medium">Nota FACT:</span> {inv.fact_notas}</p>
-            )}
-            <Input
-              type="number"
-              placeholder="Conteo real corregido"
-              value={nuevoConteo}
-              onChange={(e) => setNuevoConteo(e.target.value)}
-              style={{ borderRadius: '8px' }}
-            />
-            <Button
-              size="sm"
-              disabled={!conteoValido || isUpdating}
-              onClick={() => {
-                const diff = conteoNum - (inv.exist_fisica_tkc || 0)
-                const resultado = diff === 0 ? 'ok' : diff > 0 ? 'sobrante' : 'faltante'
-                const nuevoEstado = resultado === 'ok' ? 'completado' : 'pend_fact'
-                onUpdate({ conteo_real: conteoNum, diferencia: diff, resultado, estado_tarea: nuevoEstado })
-              }}
-              style={{ borderRadius: '8px' }}
-            >
-              {isUpdating ? 'Enviando...' : 'Reenviar conteo corregido'}
-            </Button>
-          </div>
-        )
-      })()}
+      {/* Corrección del conteo: el borrador propio y el devuelto */}
+      {(canEditarBorrador || canDevuelto) && (
+        <BloqueCorreccion
+          inv={inv}
+          devuelto={inv.estado_tarea === 'devuelto'}
+          isUpdating={isUpdating}
+          onGuardar={onUpdate}
+          confirmDialog={confirmDialog}
+        />
+      )}
 
       {/* FACT form */}
       {canProcessFact && (
