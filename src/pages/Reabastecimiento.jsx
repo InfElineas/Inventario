@@ -34,6 +34,17 @@ import { Download, Loader2, RefreshCw, Search, ShoppingCart } from 'lucide-react
  */
 
 const PAGE_SIZE = 50;
+
+/**
+ * Por defecto solo se ofrecen los anuncios activados.
+ *
+ * De los cinco mil productos que piden reposición en un almacén, casi todos
+ * están agotados; y entre esos hay muchos cuyo anuncio está desactivado o
+ * muerto en TKC. Comprar para un anuncio muerto no tiene sentido, pero
+ * esconderlo tampoco: puede ser justo el que conviene reactivar porque se
+ * vendía bien. Se filtra, no se oculta.
+ */
+const ANUNCIO_POR_DEFECTO = 'ACTIVADO';
 const DIAS_KEY = 'reab_dias_cobertura';
 const DIAS_POR_DEFECTO = 15;
 
@@ -70,6 +81,7 @@ export default function Reabastecimiento() {
   const [estado, setEstado] = useState('TODOS');
   const [busqueda, setBusqueda] = useState('');
   const [suministrador, setSuministrador] = useState('');
+  const [anuncio, setAnuncio] = useState(ANUNCIO_POR_DEFECTO);
   const [cantidades, setCantidades] = useState({});
   const [page, setPage] = useState(1);
   const { sort, onSort } = useSortable('cobertura', 'asc');
@@ -95,26 +107,38 @@ export default function Reabastecimiento() {
 
   // Cambiar de filtro devuelve a la primera página: quedarse en la siete de
   // una lista que ahora tiene dos deja la tabla vacía.
-  const firma = `${almacen}|${dias}|${estado}|${busqueda.trim()}|${suministrador}`;
+  const firma = `${almacen}|${dias}|${estado}|${busqueda.trim()}|${suministrador}|${anuncio}`;
   const previa = useRef(firma);
   useEffect(() => {
     if (previa.current !== firma) { previa.current = firma; setPage(1); }
   }, [firma]);
 
   const suministradores = useMemo(
-    () => [...new Set(filas.map((f) => f.suministrador).filter(Boolean))].sort(),
+    () => [...new Set(porAnuncio.map((f) => f.suministrador).filter(Boolean))].sort(),
+    [porAnuncio],
+  );
+
+  // El filtro de anuncio se aplica antes de contar las pestañas: si no, los
+  // números de arriba no cuadrarían con las filas de abajo.
+  const porAnuncio = useMemo(
+    () => (anuncio === 'TODOS' ? filas : filas.filter((f) => f.estadoAnuncio === anuncio)),
+    [filas, anuncio],
+  );
+
+  const anuncios = useMemo(
+    () => [...new Set(filas.map((f) => f.estadoAnuncio).filter(Boolean))].sort(),
     [filas],
   );
 
   const porEstado = useMemo(() => {
     const cuenta = new Map();
-    for (const f of filas) cuenta.set(f.estadoTienda, (cuenta.get(f.estadoTienda) ?? 0) + 1);
+    for (const f of porAnuncio) cuenta.set(f.estadoTienda, (cuenta.get(f.estadoTienda) ?? 0) + 1);
     return cuenta;
-  }, [filas]);
+  }, [porAnuncio]);
 
   const filtradas = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    const lista = filas.filter((f) => {
+    const lista = porAnuncio.filter((f) => {
       if (estado !== 'TODOS' && f.estadoTienda !== estado) return false;
       if (suministrador && f.suministrador !== suministrador) return false;
       if (q && !f.nombre?.toLowerCase().includes(q) && !String(f.codigo).toLowerCase().includes(q)) return false;
@@ -128,7 +152,7 @@ export default function Reabastecimiento() {
       if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * mul;
       return String(va).localeCompare(String(vb)) * mul;
     });
-  }, [filas, estado, suministrador, busqueda, sort]);
+  }, [porAnuncio, estado, suministrador, busqueda, sort]);
 
   const pagina = filtradas.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const unidades = filtradas.reduce((s, f) => s + (Number(cantidades[f.id] ?? f.faltan) || 0), 0);
@@ -215,7 +239,7 @@ export default function Reabastecimiento() {
               filas esa diferencia se pierde. */}
           <Tabs value={estado} onValueChange={setEstado}>
             <TabsList className="flex-wrap h-auto">
-              <TabsTrigger value="TODOS">Todos ({filas.length})</TabsTrigger>
+              <TabsTrigger value="TODOS">Todos ({porAnuncio.length})</TabsTrigger>
               {estadosConFilas.map((e) => (
                 <TabsTrigger key={e} value={e}>{e} ({porEstado.get(e)})</TabsTrigger>
               ))}
@@ -228,6 +252,15 @@ export default function Reabastecimiento() {
               <Input value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
                 placeholder="Nombre o código…" className="pl-10" style={{ borderRadius: '8px' }} />
             </div>
+            <Select value={anuncio} onValueChange={setAnuncio}>
+              <SelectTrigger className="w-56" style={{ borderRadius: '8px' }}>
+                <SelectValue placeholder="Estado del anuncio" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TODOS">Todos los anuncios</SelectItem>
+                {anuncios.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Select value={suministrador || 'all'} onValueChange={(v) => setSuministrador(v === 'all' ? '' : v)}>
               <SelectTrigger className="w-60" style={{ borderRadius: '8px' }}>
                 <SelectValue placeholder="Suministrador" />
@@ -238,6 +271,13 @@ export default function Reabastecimiento() {
               </SelectContent>
             </Select>
           </div>
+
+          {anuncio !== 'TODOS' && porAnuncio.length < filas.length && (
+            <p className="text-xs text-muted-foreground">
+              Se muestran los de anuncio «{anuncio}». Hay {filas.length - porAnuncio.length} más con otro
+              estado de anuncio —desactivados o muertos—: no se compran, pero alguno puede merecer reactivarse.
+            </p>
+          )}
 
           <p className="text-xs text-muted-foreground">
             {filtradas.length} {filtradas.length === 1 ? 'producto' : 'productos'} · {unidades} unidades a pedir.

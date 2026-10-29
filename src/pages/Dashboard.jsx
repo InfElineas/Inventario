@@ -5,6 +5,7 @@ import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen'
 import { isExternaConfigured, fetchAlmacenes } from '@/services/syncService'
 import { ChevronDown, Clock, CalendarDays, X } from 'lucide-react'
 import { base44 } from '@/api/base44Client';
+import CriticosReabastecimiento from '@/components/dashboard/CriticosReabastecimiento'
 
 const PERIODS = [
   { key: '7D',  label: '7D',  days: 7   },
@@ -677,6 +678,10 @@ export default function Dashboard() {
             <DashKPI title={`Mermas (${periodLabel})`}       value={mermaStats.total}  sub={`${mermaStats.pendFact} pend. FACT`} color="#fb923c" />
             <DashKPI title="Monto mermas"                    value={`$${mermaStats.monto.toFixed(2)}`} sub="período completado"  color="#7f77dd" />
           </div>
+
+          {/* Row 2.5 — Qué comprar hoy. Los KPI dicen cómo está el almacén;
+              esto dice qué hacer con él. */}
+          <CriticosReabastecimiento almacen={almacen} />
 
           {/* Row 3 — Estado Tienda + Vencimientos */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

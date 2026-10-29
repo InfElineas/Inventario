@@ -149,7 +149,7 @@ export async function cobertura(ctx, { almacen, dias, refrescar = false }) {
     `SELECT id, nombre, codigo_producto, id_tienda, suministrador,
             COALESCE(exist_fisica, 0) AS exist_fisica,
             COALESCE(almacen, 0) AS almacen, COALESCE(tienda, 0) AS tienda,
-            estado_tienda, prioridad_tienda
+            estado_tienda, prioridad_tienda, estado_anuncio_tkc
        FROM productos
       WHERE activo AND almacen_num = $1 AND id_tienda IS NOT NULL AND btrim(id_tienda) <> ''`,
     [String(almacen)],
@@ -176,6 +176,10 @@ export async function cobertura(ctx, { almacen, dias, refrescar = false }) {
       enAlmacen: Number(p.almacen) || 0,
       enTienda: Number(p.tienda) || 0,
       estadoTienda: p.estado_tienda ?? 'SIN DATOS',
+      // Comprar para un anuncio muerto o desactivado no tiene sentido, pero
+      // esconderlo tampoco: puede ser justo el que conviene reactivar. Se
+      // devuelve y la pantalla decide.
+      estadoAnuncio: p.estado_anuncio_tkc ?? '',
       diaria,
       segun: r.segun,
       ultimaVenta: r.ultimaVenta,
