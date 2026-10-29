@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
@@ -18,7 +19,6 @@ import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { warehouseName, WAREHOUSES } from '@/services/tkc/warehouses';
 import { fetchExistenciaTkc } from '@/services/tkcService';
 import { SIN_SONDEO } from '@/lib/query-client';
-import OrdenReabastecimiento from '@/components/inventario/OrdenReabastecimiento';
 import { Textarea } from '@/components/ui/textarea';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import Pagination from '@/components/shared/Pagination';
@@ -111,7 +111,6 @@ const COL_TITULO = {
 
 export default function Inventario({ ambito = 'inventario' }) {
   const [showForm, setShowForm] = useState(false);
-  const [showOrden, setShowOrden] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   // Por defecto, lo que le toca a esta sección. Ver src/lib/ambito.js.
   const { almacen, setAlmacen, almacenesConfig } = useAlmacen();
@@ -297,16 +296,16 @@ export default function Inventario({ ambito = 'inventario' }) {
             onChange={(next) => { setCols(next); saveColsWithOrder(INV_COLS_KEY, next, colOrder); }}
             storageKey={INV_COLS_KEY} order={colOrder}
             onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(INV_COLS_KEY, cols, next); }} />
-          <Button
-            variant="outline"
-            onClick={() => { setShowOrden(v => !v); setShowForm(false); }}
-            style={{ borderRadius: '8px' }}
-          >
-            <ShoppingCart className="w-4 h-4 lg:mr-1.5" />
-            <span className="hidden lg:inline">Reabastecimiento</span>
+          {/* Reabastecimiento tiene pantalla propia: comprar no es contar, y
+              el panel incrustado aquí no daba sitio para pestañas ni filtros. */}
+          <Button variant="outline" asChild style={{ borderRadius: '8px' }}>
+            <Link to="/reabastecimiento">
+              <ShoppingCart className="w-4 h-4 lg:mr-1.5" />
+              <span className="hidden lg:inline">Reabastecimiento</span>
+            </Link>
           </Button>
           {tieneRol(user, ['inv', 'administrador', 'superadmin']) && (
-            <Button onClick={() => { setShowForm(true); setSelectedId(null); setShowOrden(false); }} style={{ borderRadius: '8px' }}>
+            <Button onClick={() => { setShowForm(true); setSelectedId(null); }} style={{ borderRadius: '8px' }}>
               <Plus className="w-4 h-4 lg:mr-1.5" /><span className="hidden lg:inline"> Nuevo conteo</span>
             </Button>
           )}
@@ -322,10 +321,6 @@ export default function Inventario({ ambito = 'inventario' }) {
         </DialogContent>
       </Dialog>
 
-      {showOrden && (
-        <OrdenReabastecimiento almacen={almacen} onClose={() => setShowOrden(false)} />
-      )}
-
       {tapados > 0 && (
         <p className="text-xs text-muted-foreground px-1">
           {tapados} {tapados === 1 ? 'conteo anterior queda oculto' : 'conteos anteriores quedan ocultos'} porque
@@ -336,7 +331,7 @@ export default function Inventario({ ambito = 'inventario' }) {
       <MisPendientes
         inventarios={inventarios}
         email={user?.email}
-        onAbrir={(id) => { setSelectedId(id); setShowForm(false); setShowOrden(false); }}
+        onAbrir={(id) => { setSelectedId(id); setShowForm(false); }}
       />
 
       <div className="flex gap-3">
@@ -387,7 +382,7 @@ export default function Inventario({ ambito = 'inventario' }) {
                     className={`border-b hover:bg-accent/50 cursor-pointer transition-colors
                       ${selectedId === inv.id ? 'bg-accent' : ''}
                     `}
-                    onClick={() => { setSelectedId(inv.id); setShowForm(false); setShowOrden(false); }}>
+                    onClick={() => { setSelectedId(inv.id); setShowForm(false); }}>
                     {colOrder.filter(k => cols[k]).map(k => {
                       const CELDAS = {
                         producto: (

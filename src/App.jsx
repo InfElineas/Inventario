@@ -22,6 +22,7 @@ const Inventario    = lazy(() => import('@/pages/Inventario'));
 const Mermas        = lazy(() => import('@/pages/Mermas'));
 const Lotes         = lazy(() => import('@/pages/Lotes'));
 const Recepciones   = lazy(() => import('@/pages/Recepciones'));
+const Reabastecimiento   = lazy(() => import('@/pages/Reabastecimiento'));
 const Anuncios      = lazy(() => import('@/pages/Anuncios'));
 const AjusteAumento     = lazy(() => import('@/pages/AjusteAumento'));
 const AjusteDisminucion = lazy(() => import('@/pages/AjusteDisminucion'));
@@ -86,6 +87,7 @@ const AuthenticatedApp = () => {
           <Route path="/mermas"         element={<Mermas />} />
           <Route path="/lotes"          element={<Lotes />} />
           <Route path="/recepciones"    element={<Recepciones />} />
+          <Route path="/reabastecimiento" element={<Reabastecimiento />} />
           <Route path="/anuncios"       element={<RoleGuard element={<Anuncios />} roles={['inv','ca','auditor','jefe_depto','administrador','superadmin']} />} />
           {/* Las mismas pantallas, abiertas desde facturación y con su filtro
               puesto: lo que le toca a esa área. Ver src/lib/ambito.js. */}

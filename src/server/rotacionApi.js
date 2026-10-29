@@ -18,6 +18,8 @@
  * sería gastar minutos para obtener lo mismo.
  */
 
+import { query } from './db.js'
+
 const RUTA = '/api/reports/rdp-ind-general-diario'
 
 /**
@@ -123,4 +125,68 @@ export async function rotacion(ctx, { refrescar = false } = {}) {
 export function _olvidarRotacion() {
   cache = null
   cargando = null
+}
+
+/**
+ * Qué hay que reponer en un almacén, ya cruzado con las existencias.
+ *
+ * Se calcula aquí y no en el navegador por una razón de corrección, no de
+ * velocidad: la API de datos devuelve 2 000 filas como mucho, y un almacén
+ * tiene veinte mil productos. Al pedir las 2 000 con más existencia se caían
+ * justo las de existencia cero, que son las urgentes. Aquí se recorre la
+ * tabla entera.
+ *
+ * Lo que no se vende no sale: no es que falte, es que no rota. Lo que no
+ * tiene id de tienda tampoco, porque el informe va por ese id.
+ *
+ * @param {{ jwt: string }} ctx
+ * @param {{ almacen: string, dias: number, refrescar?: boolean }} params
+ */
+export async function cobertura(ctx, { almacen, dias, refrescar = false }) {
+  const mapa = await rotacion(ctx, { refrescar })
+
+  const { rows } = await query(
+    `SELECT id, nombre, codigo_producto, id_tienda, suministrador,
+            COALESCE(exist_fisica, 0) AS exist_fisica,
+            COALESCE(almacen, 0) AS almacen, COALESCE(tienda, 0) AS tienda,
+            estado_tienda, prioridad_tienda
+       FROM productos
+      WHERE activo AND almacen_num = $1 AND id_tienda IS NOT NULL AND btrim(id_tienda) <> ''`,
+    [String(almacen)],
+  )
+
+  const filas = []
+  for (const p of rows) {
+    const r = mapa.get(String(p.id_tienda).trim())
+    const diaria = r?.diaria ?? 0
+    if (!diaria) continue
+
+    const existencia = Number(p.exist_fisica) || 0
+    const minimo = Math.ceil(diaria * dias)
+    const faltan = Math.max(0, minimo - existencia)
+    if (faltan === 0) continue
+
+    filas.push({
+      id: p.id,
+      nombre: p.nombre,
+      codigo: p.codigo_producto,
+      idTienda: p.id_tienda,
+      suministrador: p.suministrador ?? '',
+      existencia,
+      enAlmacen: Number(p.almacen) || 0,
+      enTienda: Number(p.tienda) || 0,
+      estadoTienda: p.estado_tienda ?? 'SIN DATOS',
+      diaria,
+      segun: r.segun,
+      ultimaVenta: r.ultimaVenta,
+      // Cuántos días aguanta lo que hay al ritmo al que se vende.
+      cobertura: existencia / diaria,
+      minimo,
+      faltan,
+    })
+  }
+
+  // Lo que menos aguanta, primero: es el orden en que hay que comprar.
+  filas.sort((a, b) => a.cobertura - b.cobertura)
+  return filas
 }

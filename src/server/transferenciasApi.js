@@ -41,7 +41,7 @@ import { sellar } from './secretBox.js'
 import { keyToTkcValue } from '../services/tkc/warehouses.js'
 import { ROLES_AJUSTES, ROLES_TIENDA } from '../lib/ajustes.js'
 import { rolesDe } from '../lib/roles.js'
-import { rotacion, baseReportes } from './rotacionApi.js'
+import { cobertura, baseReportes } from './rotacionApi.js'
 
 /** Quién puede ver la rotación de venta: quien decide qué reponer. */
 const ROLES_ROTACION = ['inv', 'fact', 'ca', 'jefe_depto', 'supervisor', 'auditor', 'administrador', 'superadmin']
@@ -478,11 +478,13 @@ export function createTransferenciasApiMiddleware() {
           return fallo(res, 403, 'forbidden', 'Tu rol no puede consultar la rotación de venta.')
         }
         const consultaRot = new URL(req.url, 'http://local').searchParams
-        const mapa = await rotacion(
-          { jwt: sesion.jwt },
-          { refrescar: consultaRot.get('refrescar') === 'true' },
-        )
-        return json(res, 200, { rotacion: Object.fromEntries(mapa) })
+        const refrescar = consultaRot.get('refrescar') === 'true'
+        const almacenRot = consultaRot.get('almacen')
+        if (!almacenRot) return fallo(res, 400, 'bad_request', 'Falta el almacén.')
+
+        const dias = Math.min(365, Math.max(1, Number(consultaRot.get('dias')) || 15))
+        const filas = await cobertura({ jwt: sesion.jwt }, { almacen: almacenRot, dias, refrescar })
+        return json(res, 200, { filas, dias })
       }
 
       // Subir y bajar de tienda es de inventario; los ajustes y

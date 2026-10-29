@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ClipboardList, TrendingDown, Clock, PackageOpen,
   Megaphone, BarChart3, Package, ShieldCheck, Users, Warehouse,
   ChevronsLeft, ChevronsRight, Settings2, Eye, Crown, ChevronDown,
-  PackagePlus, PackageMinus, Repeat,
+  PackagePlus, PackageMinus, Repeat, ShoppingCart,
 } from 'lucide-react';
 import { ROLES_AJUSTES } from '@/lib/ajustes';
 import { tieneRol } from '@/lib/roles';
@@ -13,7 +13,7 @@ import { ROLES_PROCESAMIENTOS } from '@/lib/procesamientos';
 const ICONS = {
   LayoutDashboard, ClipboardList, TrendingDown, Clock, PackageOpen,
   Megaphone, BarChart3, Package, ShieldCheck, Users, Settings2, Eye, Crown,
-  PackagePlus, PackageMinus, Repeat,
+  PackagePlus, PackageMinus, Repeat, ShoppingCart,
 };
 
 const ALL = ['inv', 'fact', 'auditor', 'ca', 'jefe_depto', 'administrador', 'superadmin'];
@@ -37,6 +37,7 @@ const NAV_GROUPS = [
       { path: '/mermas',      label: 'Mermas',       icon: 'TrendingDown',  roles: ['inv','fact','auditor','jefe_depto','administrador','superadmin'] },
       { path: '/lotes',       label: 'Vencimientos', icon: 'Clock',         roles: ['inv','ca','auditor','jefe_depto','administrador','superadmin']  },
       { path: '/recepciones', label: 'Recepciones',  icon: 'PackageOpen',   roles: ['inv','jefe_depto','administrador','superadmin']                 },
+      { path: '/reabastecimiento', label: 'Reabastecimiento', icon: 'ShoppingCart', roles: ['inv','ca','jefe_depto','supervisor','administrador','superadmin'] },
     ],
   },
   {

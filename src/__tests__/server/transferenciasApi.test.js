@@ -316,10 +316,24 @@ describe('rotación de venta', () => {
       JSON.stringify({ success: true, data: [{ idTienda: '141473', promUlt1Mes: '2.5' }], pagination: { hasNextPage: false } }),
       { status: 200, headers: { 'content-type': 'application/json' } },
     ));
+    // Una existencia de 1 con 2,5 de venta diaria son 0,4 días: falta por
+    // reponer, así que la fila sale.
+    query.mockResolvedValue({ rows: [{
+      id: 'p1', nombre: 'Agua', codigo_producto: '7501', id_tienda: '141473',
+      suministrador: 'SEL', exist_fisica: 1, almacen: 1, tienda: 0,
+      estado_tienda: 'NO TIENDA', prioridad_tienda: 2,
+    }] });
 
-    const { res } = await llamar('/api/rotacion');
+    const { res } = await llamar('/api/rotacion?almacen=789&dias=15');
     expect(res.statusCode).toBe(200);
-    expect(res.cuerpo.rotacion['141473']).toMatchObject({ diaria: 2.5, segun: 'promUlt1Mes' });
+    expect(res.cuerpo.filas[0]).toMatchObject({
+      codigo: '7501', diaria: 2.5, minimo: 38, faltan: 37, estadoTienda: 'NO TIENDA',
+    });
+  });
+
+  it('sin almacén no se puede calcular nada: 400', async () => {
+    const { res } = await llamar('/api/rotacion');
+    expect(res.statusCode).toBe(400);
   });
 });
 
