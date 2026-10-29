@@ -16,6 +16,9 @@ import { format } from 'date-fns';
 import { useConfirm } from '@/lib/useConfirm';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
+import { notifyJefeDepto } from '@/lib/notificationService';
+import { fetchPedidosEnCamino, fetchLineasDePedido } from '@/services/pedidosService';
+import { SIN_SONDEO } from '@/lib/query-client';
 
 export default function Recepciones() {
   const [showCreate, setShowCreate] = useState(false);
@@ -164,29 +167,153 @@ export default function Recepciones() {
   );
 }
 
+/**
+ * Crear una recepción contra un pedido en camino.
+ *
+ * Antes se tecleaba el proveedor y el número de orden a mano, y las
+ * cantidades esperadas también: justo el número que no puede inventarse,
+ * porque es contra el que se mide si llegó de menos. Ahora se elige el pedido
+ * que hizo comercial y las líneas vienen con lo que se pidió.
+ *
+ * Si la API de pedidos no está disponible se puede seguir a mano: una
+ * recepción no puede quedar bloqueada porque falle un sistema de al lado,
+ * con el camión en la puerta.
+ */
 function CreateRecepcionForm({ genNo, user, onSubmit, onCancel }) {
+  const [pedidoId, setPedidoId] = useState('');
   const [proveedor, setProveedor] = useState('');
   const [noOrden, setNoOrden] = useState('');
+  const [aMano, setAMano] = useState(false);
+
+  const { data: pedidos, isLoading, error } = useQuery({
+    queryKey: ['pedidos-en-camino'],
+    queryFn: () => fetchPedidosEnCamino(),
+    ...SIN_SONDEO,
+    retry: false,
+  });
+
+  const elegido = (pedidos ?? []).find((p) => p.id === pedidoId) ?? null;
+
+  const { data: lineas, isLoading: cargandoLineas } = useQuery({
+    queryKey: ['lineas-pedido', pedidoId],
+    queryFn: () => fetchLineasDePedido(pedidoId),
+    enabled: Boolean(pedidoId),
+    ...SIN_SONDEO,
+    retry: false,
+  });
+
+  const porPedido = !aMano && !error;
+  const listo = porPedido ? Boolean(elegido) : Boolean(proveedor);
+
+  const crear = () => {
+    const base = {
+      no_recepcion: genNo(),
+      fecha: format(new Date(), 'yyyy-MM-dd'),
+      especialista_id: user?.email,
+      especialista_nombre: user?.full_name,
+      estado: 'en_curso',
+      diferencias: [],
+    };
+
+    if (!porPedido) {
+      return onSubmit({ ...base, proveedor, no_orden: noOrden, detalles: [] });
+    }
+
+    // Las líneas del pedido entran ya puestas, con lo pedido como esperado y
+    // lo recibido en blanco: lo que hay que hacer es contar, no transcribir.
+    const detalles = (lineas ?? []).map((l) => ({
+      producto_codigo: l.codigo,
+      producto_nombre: l.nombre,
+      cant_esperada: l.cantidad,
+      cant_recibida: 0,
+      cant_merma_origen: 0,
+      diferencia: -l.cantidad,
+      no_lote: '',
+      fecha_vencimiento: '',
+      temperatura: 'ambient',
+      calidad_ok: true,
+      nota_calidad: '',
+      contada: false,
+    }));
+
+    return onSubmit({
+      ...base,
+      proveedor: elegido.proveedor,
+      no_orden: elegido.numero,
+      pedido_id: elegido.id,
+      detalles,
+      total_items: detalles.length,
+      items_confirmados: 0,
+    });
+  };
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Input value={proveedor} onChange={(e) => setProveedor(e.target.value)} placeholder="Proveedor *" style={{ borderRadius: '8px' }} />
-        <Input value={noOrden} onChange={(e) => setNoOrden(e.target.value)} placeholder="No. orden (opcional)" style={{ borderRadius: '8px' }} />
-      </div>
+      {error && (
+        <AlertBanner variant="warning"
+          message={`No se pudieron cargar los pedidos (${error.message}). Puedes registrar la recepción a mano.`} />
+      )}
+
+      {porPedido ? (
+        <>
+          <label className="block space-y-1.5 text-xs text-muted-foreground">
+            Pedido en camino
+            <Select value={pedidoId} onValueChange={setPedidoId}>
+              <SelectTrigger style={{ borderRadius: '8px' }}>
+                <SelectValue placeholder={isLoading ? 'Cargando pedidos…' : 'Elige el pedido que llega'} />
+              </SelectTrigger>
+              <SelectContent>
+                {(pedidos ?? []).map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.proveedor} — {p.numero} · {p.lineas} líneas
+                    {p.llegadaEstimada ? ` · llega ${p.llegadaEstimada}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+
+          {!isLoading && (pedidos ?? []).length === 0 && (
+            <AlertBanner variant="info"
+              message="No hay pedidos en camino ahora mismo. Si la mercancía llegó igualmente, regístrala a mano." />
+          )}
+
+          {elegido && (
+            <div className="rounded-lg border border-border bg-secondary/40 p-3 text-xs space-y-1" style={{ borderRadius: '8px' }}>
+              <p className="text-sm font-medium">{elegido.proveedor}</p>
+              <p className="text-muted-foreground">
+                {elegido.oferta || 'Sin oferta asociada'} · {elegido.estado.replace(/_/g, ' ')}
+                {elegido.importe ? ` · ${elegido.importe} ${elegido.moneda}` : ''}
+              </p>
+              <p className="text-muted-foreground">
+                {cargandoLineas ? 'Cargando líneas…' : `${(lineas ?? []).length} productos a recibir`}
+              </p>
+            </div>
+          )}
+
+          <button type="button" onClick={() => setAMano(true)}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2">
+            La mercancía no viene de un pedido: registrarla a mano
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input value={proveedor} onChange={(e) => setProveedor(e.target.value)} placeholder="Proveedor *" style={{ borderRadius: '8px' }} />
+            <Input value={noOrden} onChange={(e) => setNoOrden(e.target.value)} placeholder="No. orden (opcional)" style={{ borderRadius: '8px' }} />
+          </div>
+          {!error && (
+            <button type="button" onClick={() => setAMano(false)}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2">
+              Volver a elegir un pedido
+            </button>
+          )}
+        </>
+      )}
+
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={onCancel} style={{ borderRadius: '8px' }}>Cancelar</Button>
-        <Button onClick={() => onSubmit({
-          no_recepcion: genNo(),
-          proveedor,
-          no_orden: noOrden,
-          fecha: format(new Date(), 'yyyy-MM-dd'),
-          especialista_id: user?.email,
-          especialista_nombre: user?.full_name,
-          estado: 'en_curso',
-          detalles: [],
-          diferencias: [],
-        })} disabled={!proveedor} style={{ borderRadius: '8px' }}>
+        <Button onClick={crear} disabled={!listo || cargandoLineas} style={{ borderRadius: '8px' }}>
           <PackageOpen className="w-4 h-4 mr-1.5" /> Crear recepción
         </Button>
       </div>
@@ -231,17 +358,45 @@ function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
     setNewItem(null);
   };
 
+  const sinContar = detalles.filter((d) => d.contada === false);
+
   const cerrarRecepcion = async () => {
-    if (!await confirmDialog('Se registrarán las diferencias y no podrá modificarse.', { title: '¿Cerrar esta recepción?' })) return;
     const difs = detalles.filter(d => d.diferencia !== 0);
+
+    // La incidencia no bloquea: con el camión en la puerta, impedir cerrar
+    // hasta que alguien resuelva una diferencia es como se consiguen números
+    // inventados. Se registra, se avisa al jefe y la recepción sigue su
+    // curso marcada «con diferencias».
+    const aviso = difs.length > 0
+      ? `Hay ${difs.length} ${difs.length === 1 ? 'producto' : 'productos'} donde lo contado no cuadra con lo pedido. `
+        + 'Se registrará la incidencia y se avisará al jefe de departamento.'
+      : 'Se registrarán las diferencias y no podrá modificarse.';
+    if (!await confirmDialog(aviso, { title: '¿Cerrar esta recepción?' })) return;
+
     const estado = difs.length > 0 ? 'con_diferencias' : 'cerrada';
     const diferencias = difs.map(d => ({
       producto_id: d.producto_id,
       producto_nombre: d.producto_nombre,
+      producto_codigo: d.producto_codigo,
+      cant_esperada: d.cant_esperada,
+      cant_recibida: d.cant_recibida,
       cantidad_diferencia: d.diferencia,
       tipo_diferencia: 'pendiente',
     }));
     onUpdate({ estado, diferencias });
+
+    if (difs.length > 0) {
+      const detalle = difs
+        .slice(0, 5)
+        .map((d) => `${d.producto_nombre}: se pidieron ${d.cant_esperada} y llegaron ${d.cant_recibida}`)
+        .join('; ');
+      notifyJefeDepto(
+        'inventario', 'recepciones',
+        `Recepción ${recepcion.no_recepcion} con diferencias`,
+        `${recepcion.proveedor || 'Proveedor sin nombre'} — ${difs.length} ${difs.length === 1 ? 'producto no cuadra' : 'productos no cuadran'}. ${detalle}`
+        + (difs.length > 5 ? ` …y ${difs.length - 5} más.` : ''),
+      ).catch(() => {});
+    }
   };
 
   return (
@@ -345,10 +500,35 @@ function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
       {/* Items list */}
       <div className="space-y-2">
         {detalles.map((d, i) => (
-          <div key={i} className="p-3 bg-secondary/50 rounded-lg flex items-center justify-between gap-2" style={{ borderRadius: '8px' }}>
+          <div key={i} className={`p-3 rounded-lg flex items-center justify-between gap-2 ${
+            d.contada === false ? 'bg-[#BA7517]/[0.06] border border-[#BA7517]/20' : 'bg-secondary/50'
+          }`} style={{ borderRadius: '8px' }}>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{d.producto_nombre}</p>
-              <p className="text-xs text-muted-foreground">Esp: {d.cant_esperada} · Rec: {d.cant_recibida}{d.no_lote ? ` · Lote: ${d.no_lote}` : ''}{d.cant_merma_origen > 0 ? ` · Merma origen: ${d.cant_merma_origen}` : ''}</p>
+              {/* Las líneas que vienen del pedido nacen sin contar: la cantidad
+                  recibida se escribe aquí mismo, al lado de lo que se pidió. */}
+              {d.contada === false && canEdit ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">Pedidas: {d.cant_esperada} · Recibidas</span>
+                  <Input type="number" min="0" className="w-20 h-7 text-xs text-right"
+                    defaultValue=""
+                    onBlur={(e) => {
+                      const v = e.target.value;
+                      if (v === '') return;
+                      const recibida = Number(v) || 0;
+                      const updated = detalles.map((x, j) => j === i
+                        ? { ...x, cant_recibida: recibida, diferencia: recibida - (Number(x.cant_esperada) || 0), contada: true }
+                        : x);
+                      onUpdate({
+                        detalles: updated,
+                        items_confirmados: updated.filter((x) => x.contada !== false).length,
+                      });
+                    }}
+                    style={{ borderRadius: '6px' }} />
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">Esp: {d.cant_esperada} · Rec: {d.cant_recibida}{d.no_lote ? ` · Lote: ${d.no_lote}` : ''}{d.cant_merma_origen > 0 ? ` · Merma origen: ${d.cant_merma_origen}` : ''}</p>
+              )}
               {d.recomienda_devolucion && (
                 <p className="text-xs font-medium text-[#E24B4A] mt-0.5">Recomendado: devolver al proveedor</p>
               )}
@@ -375,9 +555,18 @@ function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
       </div>
 
       {recepcion.estado === 'en_curso' && detalles.length > 0 && (
-        <Button className="w-full" variant="outline" onClick={cerrarRecepcion} style={{ borderRadius: '8px' }}>
-          Cerrar recepción
-        </Button>
+        <>
+          {sinContar.length > 0 && (
+            <p className="text-xs text-[#BA7517]">
+              Faltan {sinContar.length} {sinContar.length === 1 ? 'producto por contar' : 'productos por contar'}.
+              Un producto sin contar no es lo mismo que uno que llegó a cero: escribe 0 si no vino.
+            </p>
+          )}
+          <Button className="w-full" variant="outline" onClick={cerrarRecepcion}
+            disabled={sinContar.length > 0} style={{ borderRadius: '8px' }}>
+            Cerrar recepción
+          </Button>
+        </>
       )}
 
       {/* Diferencias for supervisor */}

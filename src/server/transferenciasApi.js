@@ -42,6 +42,7 @@ import { keyToTkcValue } from '../services/tkc/warehouses.js'
 import { ROLES_AJUSTES, ROLES_TIENDA } from '../lib/ajustes.js'
 import { rolesDe } from '../lib/roles.js'
 import { cobertura, baseReportes } from './rotacionApi.js'
+import { pedidosEnCamino, lineasDePedido, hayPedidos } from './pedidosApi.js'
 
 class ErrorPeticion extends Error {
   constructor(status, message) {
@@ -53,6 +54,15 @@ class ErrorPeticion extends Error {
 
 /** Quién puede ver la rotación de venta: quien decide qué reponer. */
 const ROLES_ROTACION = ['inv', 'fact', 'ca', 'jefe_depto', 'supervisor', 'auditor', 'administrador', 'superadmin']
+
+/** Quién recibe mercancía, y por tanto ve los pedidos en camino. */
+const ROLES_RECEPCION = ['inv', 'jefe_depto', 'supervisor', 'administrador', 'superadmin']
+
+/** Cualquiera de sus roles vale; un superadministrador siempre. */
+const tieneAlgun = (usuario, permitidos) => {
+  const suyos = rolesDe(usuario)
+  return suyos.includes('superadmin') || permitidos.some((r) => suyos.includes(r))
+}
 
 export { ROLES_AJUSTES, ROLES_TIENDA }
 
@@ -421,7 +431,9 @@ export function createTransferenciasApiMiddleware() {
     const esTienda = ruta.startsWith('/api/tienda/')
     // Solo lectura, y de un informe: no toca TKC ni necesita credenciales.
     const esRotacion = ruta === '/api/rotacion' && req.method === 'GET'
-    if (!esProceso && !esTienda && !esRotacion && !ruta.startsWith('/api/ajustes/')) return next()
+    // Los pedidos en camino, para recibir contra ellos. Solo lectura.
+    const esPedidos = ruta === '/api/pedidos' && req.method === 'GET'
+    if (!esProceso && !esTienda && !esRotacion && !esPedidos && !ruta.startsWith('/api/ajustes/')) return next()
 
     let tipo
     let id
@@ -439,6 +451,8 @@ export function createTransferenciasApiMiddleware() {
       const partes = ruta.split('/').slice(3).filter(Boolean) // [accion?]
       if (partes.length === 0 && req.method === 'POST') operacion = 'procesar'
       else if (partes.length === 1 && PROCESOS[partes[0]]?.metodo === req.method) operacion = partes[0]
+    } else if (esPedidos) {
+      operacion = 'pedidos'
     } else if (esRotacion) {
       // No pasa por el despachador de ajustes: no tiene tipo ni id, es una
       // sola ruta de lectura. Sin esto caía en la rama de abajo, se quedaba
@@ -470,12 +484,27 @@ export function createTransferenciasApiMiddleware() {
       // La rotación la mira quien decide qué reponer: inventario y quien
       // supervisa. Es un informe, así que no hay nada que escribir ni
       // credenciales de TKC que hagan falta.
+      if (esPedidos) {
+        if (!tieneAlgun(sesion.usuario, ROLES_RECEPCION)) {
+          return fallo(res, 403, 'forbidden', 'Tu rol no puede ver los pedidos de compra.')
+        }
+        if (!hayPedidos()) {
+          return fallo(res, 503, 'not_configured',
+            'Falta REAB_API_URL, REAB_USER o REAB_PASS: la API de reabastecimiento no está configurada.')
+        }
+        const c = new URL(req.url, 'http://local').searchParams
+        // Con `id` vienen las líneas de ese pedido; sin él, la lista.
+        const idPedido = c.get('id')
+        if (idPedido) return json(res, 200, { lineas: await lineasDePedido(idPedido) })
+        return json(res, 200, { pedidos: await pedidosEnCamino({ proveedor: c.get('proveedor') ?? undefined }) })
+      }
+
       if (esRotacion) {
         if (!baseReportes()) {
           return fallo(res, 503, 'not_configured',
             'Falta REPORTES_API_URL: la API de informes no está configurada. Es otra aplicación, distinta de la de transferencias.')
         }
-        if (!ROLES_ROTACION.includes(sesion.usuario.role) && !rolesDe(sesion.usuario).some((r) => ROLES_ROTACION.includes(r))) {
+        if (!tieneAlgun(sesion.usuario, ROLES_ROTACION)) {
           return fallo(res, 403, 'forbidden', 'Tu rol no puede consultar la rotación de venta.')
         }
         const consultaRot = new URL(req.url, 'http://local').searchParams
