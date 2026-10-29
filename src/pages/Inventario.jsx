@@ -13,8 +13,8 @@ import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock'
 import Timeline from '@/components/shared/Timeline';
 import { ClipboardList, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
 import { ETIQUETA_AMBITO, pasaFiltro } from '@/lib/ambito';
-import { useAlmacen } from '@/lib/useAlmacen';
-import { warehouseName } from '@/services/tkc/warehouses';
+import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
+import { warehouseName, WAREHOUSES } from '@/services/tkc/warehouses';
 import { fetchExistenciaTkc } from '@/services/tkcService';
 import { SIN_SONDEO } from '@/lib/query-client';
 import OrdenReabastecimiento from '@/components/inventario/OrdenReabastecimiento';
@@ -32,6 +32,34 @@ import { useSortable } from '@/lib/useSortable';
 import { tieneRol } from '@/lib/roles';
 
 const PAGE_SIZE = 50
+
+
+/**
+ * Elegir el almacén que se está mirando.
+ *
+ * La lista va filtrada por él, así que sin este control la pantalla depende
+ * de un almacén elegido en otro sitio: quien entrara directo a Inventario con
+ * el almacén equivocado —o sin ninguno— veía una lista vacía y nada que
+ * tocar para arreglarlo.
+ */
+function SelectorAlmacen({ almacen, setAlmacen, almacenesConfig }) {
+  const almacenes = useMemo(
+    () => WAREHOUSES.filter((w) => filterAlmacenesByConfig([w.key], almacenesConfig).length > 0),
+    [almacenesConfig],
+  );
+  const valido = almacenes.some((w) => w.key === almacen);
+
+  return (
+    <Select value={valido ? almacen : ''} onValueChange={setAlmacen}>
+      <SelectTrigger className="w-52" style={{ borderRadius: '8px' }}>
+        <SelectValue placeholder="Elige un almacén" />
+      </SelectTrigger>
+      <SelectContent>
+        {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+}
 
 /**
  * Quién ve los conteos de los demás.
@@ -82,7 +110,7 @@ export default function Inventario({ ambito = 'inventario' }) {
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const role = user?.role || 'inv';
-  const { almacen } = useAlmacen();
+  const { almacen, setAlmacen, almacenesConfig } = useAlmacen();
 
   // Un inventarista ve SUS conteos, y solo los del almacén en el que está.
   // Antes la lista traía los últimos 200 de los treinta almacenes y de todo el
@@ -323,6 +351,7 @@ export default function Inventario({ ambito = 'inventario' }) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar..." className="pl-10" style={{ borderRadius: '8px' }} />
         </div>
+        <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />
         <Select value={filterEstado} onValueChange={setFilterEstado}>
           <SelectTrigger className="w-44" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
           <SelectContent>

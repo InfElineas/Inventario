@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
@@ -12,12 +12,45 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ArrowDownToLine, Check, Plus, Search } from 'lucide-react';
 import { ETIQUETA_AMBITO, pasaFiltro } from '@/lib/ambito';
 import BajarMermasDialog from '@/components/mermas/BajarMermasDialog';
+import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
+import { WAREHOUSES } from '@/services/tkc/warehouses';
 import { ROLES_TIENDA } from '@/lib/ajustes';
 import { notifyJefeDepto } from '@/lib/notificationService';
 import { logTransicion, logBorrado, notificarTransicion } from '@/lib/workflowService';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import { tieneRol } from '@/lib/roles';
+
+
+/**
+ * Elegir el almacén que se está mirando.
+ *
+ * La lista va filtrada por él, así que sin este control la pantalla depende
+ * de un almacén elegido en otro sitio: quien entrara directo a Inventario con
+ * el almacén equivocado —o sin ninguno— veía una lista vacía y nada que
+ * tocar para arreglarlo.
+ */
+/** Quién ve las mermas de los demás. Mismo criterio que en inventario. */
+const VISTA_GLOBAL_MERMAS = ['jefe_depto', 'fact', 'auditor', 'administrador', 'superadmin'];
+
+function SelectorAlmacen({ almacen, setAlmacen, almacenesConfig }) {
+  const almacenes = useMemo(
+    () => WAREHOUSES.filter((w) => filterAlmacenesByConfig([w.key], almacenesConfig).length > 0),
+    [almacenesConfig],
+  );
+  const valido = almacenes.some((w) => w.key === almacen);
+
+  return (
+    <Select value={valido ? almacen : ''} onValueChange={setAlmacen}>
+      <SelectTrigger className="w-52" style={{ borderRadius: '8px' }}>
+        <SelectValue placeholder="Elige un almacén" />
+      </SelectTrigger>
+      <SelectContent>
+        {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+}
 
 export default function Mermas({ ambito = 'inventario' }) {
   const [showForm, setShowForm] = useState(false);
@@ -30,6 +63,10 @@ export default function Mermas({ ambito = 'inventario' }) {
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const role = user?.role || 'inv';
+  const { almacen, setAlmacen, almacenesConfig } = useAlmacen();
+  // Igual que en inventario: cada uno ve lo suyo y lo de su almacén; la vista
+  // global es del jefe de departamento y de quien tiene que procesarlas.
+  const vistaGlobal = tieneRol(user, VISTA_GLOBAL_MERMAS);
   // Una merma sigue contada en el piso de tienda hasta que se baja. Quien
   // puede mover mercancía puede hacerlo desde aquí.
   const puedeBajar = tieneRol(user, ROLES_TIENDA);
@@ -37,8 +74,15 @@ export default function Mermas({ ambito = 'inventario' }) {
   const [bajando, setBajando] = useState(null);   // { mermas, almacen }
 
   const { data: mermasRaw, isLoading } = useQuery({
-    queryKey: ['mermas'],
-    queryFn: () => base44.entities.Merma.list('-created_date', 200),
+    queryKey: ['mermas', almacen, vistaGlobal ? 'todos' : user?.email],
+    queryFn: () => base44.entities.Merma.filter(
+      {
+        ...(almacen ? { almacen_num: almacen } : {}),
+        ...(vistaGlobal || !user?.email ? {} : { especialista_id: user.email }),
+      },
+      '-created_date',
+      200,
+    ),
     select: (d) => Array.isArray(d) ? d : [],
     refetchInterval: 30_000,
   });
@@ -163,6 +207,7 @@ export default function Mermas({ ambito = 'inventario' }) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar..." className="pl-10" style={{ borderRadius: '8px' }} />
         </div>
+        <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />
         <Select value={filterEstado} onValueChange={setFilterEstado}>
           <SelectTrigger className="w-48" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
           <SelectContent>
