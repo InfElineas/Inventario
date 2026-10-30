@@ -21,6 +21,12 @@
 -- EJECUTAR como elineasadmin.
 --
 
+-- La foránea a `lotes` sale primero: apunta a una tabla que ya no se llena,
+-- y mientras exista, `lote_id` no puede dejar de ser uuid. Lo que identifica
+-- al lote pasa a estar en el informe, donde no hay nada a lo que referenciar.
+ALTER TABLE inventario.lotes_ic
+  DROP CONSTRAINT IF EXISTS lotes_ic_lote_id_fkey;
+
 ALTER TABLE inventario.lotes_ic
   ALTER COLUMN lote_id TYPE text USING lote_id::text;
 
