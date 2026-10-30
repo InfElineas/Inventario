@@ -10,6 +10,7 @@ import { Search, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
 import { format } from 'date-fns';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
+import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 
 const TIPOS = [
   { value: 'all', label: 'Todos los tipos' },
@@ -38,7 +39,33 @@ const TIPO_COLORS = {
 
 const PAGE_SIZE = 20;
 
+const AUD_COL_DEFS = [
+  { key: 'fecha',           label: 'Fecha y hora',   defaultOn: true,  required: true  },
+  { key: 'usuario_nombre',  label: 'Usuario',        defaultOn: true,  required: false },
+  { key: 'producto_nombre', label: 'Producto',       defaultOn: true,  required: false },
+  { key: 'tipo_cambio',     label: 'Tipo',           defaultOn: true,  required: false },
+  { key: 'campo',           label: 'Campo',          defaultOn: true,  required: false },
+  { key: 'valor_anterior',  label: 'Valor anterior', defaultOn: true,  required: false },
+  { key: 'valor_nuevo',     label: 'Valor nuevo',    defaultOn: true,  required: false },
+  { key: 'origen',          label: 'Origen',         defaultOn: true,  required: false },
+]
+const AUD_COLS_KEY = 'auditoria_cols'
+
+/** Cómo se titula y alinea cada columna. La usan la cabecera y las celdas. */
+const COL_TITULO = {
+  fecha:           { label: 'Fecha y hora' },
+  usuario_nombre:  { label: 'Usuario' },
+  producto_nombre: { label: 'Producto' },
+  tipo_cambio:     { label: 'Tipo' },
+  campo:           { label: 'Campo' },
+  valor_anterior:  { label: 'Valor anterior', align: 'right' },
+  valor_nuevo:     { label: 'Valor nuevo', align: 'right' },
+  origen:          { label: 'Origen', align: 'center' },
+}
+
 export default function Auditoria() {
+  const [cols, setCols] = useState(() => loadColsWithOrder(AUD_COLS_KEY, AUD_COL_DEFS).visible);
+  const [colOrder, setColOrder] = useState(() => loadColsWithOrder(AUD_COLS_KEY, AUD_COL_DEFS).order);
   const { user } = useAuth();
 
   const [searchQ, setSearchQ] = useState('');
@@ -99,13 +126,19 @@ export default function Auditoria() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="p-2 rounded-lg bg-primary/10">
           <ClipboardList className="w-5 h-5 text-primary" />
         </div>
         <div>
           <h1 className="text-xl font-medium">Auditoría de cambios</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Historial de modificaciones en productos</p>
+        </div>
+        <div className="ml-auto">
+          <ColPicker cols={AUD_COL_DEFS} visible={cols}
+            onChange={(next) => { setCols(next); saveColsWithOrder(AUD_COLS_KEY, next, colOrder); }}
+            storageKey={AUD_COLS_KEY} order={colOrder}
+            onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(AUD_COLS_KEY, cols, next); }} />
         </div>
       </div>
 
@@ -188,49 +221,60 @@ export default function Auditoria() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-secondary/40">
-                <SortTh colKey="fecha" label="Fecha y hora" sort={sort} onSort={onSort} />
-                <SortTh colKey="usuario_nombre" label="Usuario" sort={sort} onSort={onSort} />
-                <SortTh colKey="producto_nombre" label="Producto" sort={sort} onSort={onSort} />
-                <SortTh colKey="tipo_cambio" label="Tipo" sort={sort} onSort={onSort} />
-                <SortTh colKey="campo" label="Campo" sort={sort} onSort={onSort} />
-                <SortTh colKey="valor_anterior" label="Valor anterior" sort={sort} onSort={onSort} align="right" />
-                <SortTh colKey="valor_nuevo" label="Valor nuevo" sort={sort} onSort={onSort} align="right" />
-                <SortTh colKey="origen" label="Origen" sort={sort} onSort={onSort} align="center" />
+                {colOrder.filter(k => cols[k]).map(k => (
+                  <SortTh key={k} colKey={k} label={COL_TITULO[k].label}
+                    align={COL_TITULO[k].align} sort={sort} onSort={onSort} />
+                ))}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={8} className="p-10 text-center text-muted-foreground text-sm">Cargando...</td></tr>
+                <tr><td colSpan={colOrder.filter(k => cols[k]).length || 8} className="p-10 text-center text-muted-foreground text-sm">Cargando...</td></tr>
               ) : paginated.length === 0 ? (
-                <tr><td colSpan={8} className="p-10 text-center text-muted-foreground text-sm">Sin registros</td></tr>
+                <tr><td colSpan={colOrder.filter(k => cols[k]).length || 8} className="p-10 text-center text-muted-foreground text-sm">Sin registros</td></tr>
               ) : paginated.map((r, i) => (
                 <tr key={r.id || i} className="border-b last:border-0 hover:bg-accent/30 transition-colors">
-                  <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">
-                    {r.fecha ? format(new Date(r.fecha), 'dd/MM/yyyy HH:mm') : '—'}
-                  </td>
-                  <td className="p-3">
-                    <p className="text-xs font-medium">{r.usuario_nombre || '—'}</p>
-                    <p className="text-[10px] text-muted-foreground">{r.usuario_id}</p>
-                  </td>
-                  <td className="p-3">
-                    <p className="text-xs font-medium">{r.producto_nombre || '—'}</p>
-                    <p className="text-[10px] text-muted-foreground">{r.producto_codigo}</p>
-                  </td>
-                  <td className="p-3">
-                    <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${TIPO_COLORS[r.tipo_cambio] || 'bg-secondary text-secondary-foreground'}`}
-                      style={{ borderRadius: '4px' }}>
-                      {r.tipo_cambio || '—'}
-                    </span>
-                  </td>
-                  <td className="p-3 text-xs">{CAMPO_LABELS[r.campo] || r.campo || '—'}</td>
-                  <td className="p-3 text-right text-xs text-muted-foreground">{r.valor_anterior ?? '—'}</td>
-                  <td className="p-3 text-right text-xs font-medium">{r.valor_nuevo ?? '—'}</td>
-                  <td className="p-3 text-center">
-                    <span className={`text-[10px] px-2 py-0.5 rounded ${r.origen === 'importacion' ? 'bg-green-50 text-green-700' : 'bg-secondary text-muted-foreground'}`}
-                      style={{ borderRadius: '4px' }}>
-                      {r.origen || 'manual'}
-                    </span>
-                  </td>
+                  {colOrder.filter(k => cols[k]).map(k => {
+                    const CELDAS = {
+                      fecha: (
+                        <td key={k} className="p-3 text-xs text-muted-foreground whitespace-nowrap">
+                          {r.fecha ? format(new Date(r.fecha), 'dd/MM/yyyy HH:mm') : '—'}
+                        </td>
+                      ),
+                      usuario_nombre: (
+                        <td key={k} className="p-3">
+                          <p className="text-xs font-medium">{r.usuario_nombre || '—'}</p>
+                          <p className="text-[10px] text-muted-foreground">{r.usuario_id}</p>
+                        </td>
+                      ),
+                      producto_nombre: (
+                        <td key={k} className="p-3">
+                          <p className="text-xs font-medium">{r.producto_nombre || '—'}</p>
+                          <p className="text-[10px] text-muted-foreground">{r.producto_codigo}</p>
+                        </td>
+                      ),
+                      tipo_cambio: (
+                        <td key={k} className="p-3">
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${TIPO_COLORS[r.tipo_cambio] || 'bg-secondary text-secondary-foreground'}`}
+                            style={{ borderRadius: '4px' }}>
+                            {r.tipo_cambio || '—'}
+                          </span>
+                        </td>
+                      ),
+                      campo: <td key={k} className="p-3 text-xs">{CAMPO_LABELS[r.campo] || r.campo || '—'}</td>,
+                      valor_anterior: <td key={k} className="p-3 text-right text-xs text-muted-foreground">{r.valor_anterior ?? '—'}</td>,
+                      valor_nuevo: <td key={k} className="p-3 text-right text-xs font-medium">{r.valor_nuevo ?? '—'}</td>,
+                      origen: (
+                        <td key={k} className="p-3 text-center">
+                          <span className={`text-[10px] px-2 py-0.5 rounded ${r.origen === 'importacion' ? 'bg-green-50 text-green-700' : 'bg-secondary text-muted-foreground'}`}
+                            style={{ borderRadius: '4px' }}>
+                            {r.origen || 'manual'}
+                          </span>
+                        </td>
+                      ),
+                    };
+                    return CELDAS[k] ?? <td key={k} className="p-3" />;
+                  })}
                 </tr>
               ))}
             </tbody>

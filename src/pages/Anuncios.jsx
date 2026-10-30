@@ -21,12 +21,33 @@ import { useConfirm } from '@/lib/useConfirm';
 import { format } from 'date-fns';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
+import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import { tieneRol } from '@/lib/roles';
 
 /** Casos por página. 1.185 no caben, y 50 es lo que usan las demás tablas. */
 const PAGE_SIZE = 50;
 
+const ANUNCIO_COL_DEFS = [
+  { key: 'producto', label: 'Producto', defaultOn: true, required: true  },
+  { key: 'tipo',     label: 'Tipo',     defaultOn: true, required: false },
+  { key: 'ef',       label: 'EF',       defaultOn: true, required: false },
+  { key: 'estado',   label: 'Estado',   defaultOn: true, required: false },
+  { key: 'fecha',    label: 'Fecha',    defaultOn: true, required: false },
+]
+const ANUNCIO_COLS_KEY = 'anuncio_cols'
+
+/** Cómo se titula y alinea cada columna. La usan la cabecera y las celdas. */
+const COL_TITULO = {
+  producto: { label: 'Producto' },
+  tipo:     { label: 'Tipo',   align: 'center' },
+  ef:       { label: 'EF',     align: 'right' },
+  estado:   { label: 'Estado', align: 'center' },
+  fecha:    { label: 'Fecha' },
+}
+
 export default function Anuncios() {
+  const [cols, setCols] = useState(() => loadColsWithOrder(ANUNCIO_COLS_KEY, ANUNCIO_COL_DEFS).visible);
+  const [colOrder, setColOrder] = useState(() => loadColsWithOrder(ANUNCIO_COLS_KEY, ANUNCIO_COL_DEFS).order);
   const [filterTipo, setFilterTipo] = useState('all');
   const [filterEstado, setFilterEstado] = useState('all');
   const [searchQ, setSearchQ] = useState('');
@@ -103,9 +124,15 @@ export default function Anuncios() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-medium">Anuncios desactivados</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Gestión de anuncios desactivados y sin ID</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-medium">Anuncios desactivados</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Gestión de anuncios desactivados y sin ID</p>
+        </div>
+        <ColPicker cols={ANUNCIO_COL_DEFS} visible={cols}
+          onChange={(next) => { setCols(next); saveColsWithOrder(ANUNCIO_COLS_KEY, next, colOrder); }}
+          storageKey={ANUNCIO_COLS_KEY} order={colOrder}
+          onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(ANUNCIO_COLS_KEY, cols, next); }} />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -148,36 +175,44 @@ export default function Anuncios() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
-                  <SortTh colKey="producto" label="Producto" sort={sort} onSort={onSort} />
-                  <SortTh colKey="tipo"     label="Tipo"     sort={sort} onSort={onSort} className="text-center" align="center" />
-                  <SortTh colKey="ef"       label="EF"       sort={sort} onSort={onSort} className="text-right"  align="right" />
-                  <SortTh colKey="estado"   label="Estado"   sort={sort} onSort={onSort} className="text-center" align="center" />
-                  <SortTh colKey="fecha"    label="Fecha"    sort={sort} onSort={onSort} />
+                  {colOrder.filter(k => cols[k]).map(k => (
+                    <SortTh key={k} colKey={k} label={COL_TITULO[k].label}
+                      align={COL_TITULO[k].align} sort={sort} onSort={onSort} />
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
-                  <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
+                  <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
+                  <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
                 ) : pagina.map(a => {
                   const tc = TIPO_CASO_LABELS[a.tipo_caso] || {};
                   return (
                     <tr key={a.id}
                       className={`border-b hover:bg-accent/50 cursor-pointer transition-colors ${selectedId === a.id ? 'bg-accent' : ''}`}
                       onClick={() => setSelectedId(a.id)}>
-                      <td className="p-3">
-                        <p className="font-medium">{a.producto_nombre}</p>
-                        <p className="text-xs text-muted-foreground">{a.suministrador}</p>
-                      </td>
-                      <td className="p-3 text-center">
-                        <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${tc.bg} ${tc.text}`} style={{ borderRadius: '4px' }}>
-                          {tc.label}
-                        </span>
-                      </td>
-                      <td className="p-3 text-right font-medium">{a.ef_al_detectar}</td>
-                      <td className="p-3 text-center"><StatusBadge status={a.estado_tarea} /></td>
-                      <td className="p-3 text-muted-foreground">{a.fecha_deteccion}</td>
+                      {colOrder.filter(k => cols[k]).map(k => {
+                        const CELDAS = {
+                          producto: (
+                            <td key={k} className="p-3">
+                              <p className="font-medium">{a.producto_nombre}</p>
+                              <p className="text-xs text-muted-foreground">{a.suministrador}</p>
+                            </td>
+                          ),
+                          tipo: (
+                            <td key={k} className="p-3 text-center">
+                              <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${tc.bg} ${tc.text}`} style={{ borderRadius: '4px' }}>
+                                {tc.label}
+                              </span>
+                            </td>
+                          ),
+                          ef: <td key={k} className="p-3 text-right font-medium">{a.ef_al_detectar}</td>,
+                          estado: <td key={k} className="p-3 text-center"><StatusBadge status={a.estado_tarea} /></td>,
+                          fecha: <td key={k} className="p-3 text-muted-foreground">{a.fecha_deteccion}</td>,
+                        };
+                        return CELDAS[k] ?? <td key={k} className="p-3" />;
+                      })}
                     </tr>
                   );
                 })}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
@@ -16,7 +17,29 @@ import { Search, AlertTriangle, Clock, CheckCircle, HelpCircle, Send } from 'luc
 import { format } from 'date-fns';
 import { tieneRol } from '@/lib/roles';
 
+const LOTE_COL_DEFS = [
+  { key: 'producto_nombre',   label: 'Producto',  defaultOn: true,  required: true  },
+  { key: 'no_lote',           label: 'Lote',      defaultOn: true,  required: false },
+  { key: 'temperatura',       label: 'Temp.',     defaultOn: true,  required: false },
+  { key: 'fecha_vencimiento', label: 'FV',        defaultOn: true,  required: false },
+  { key: 'cantidad',          label: 'Cant.',     defaultOn: true,  required: false },
+  { key: 'estado_fv',         label: 'Estado',    defaultOn: true,  required: false },
+]
+const LOTE_COLS_KEY = 'lote_cols'
+
+/** Cómo se titula y alinea cada columna. La usan la cabecera y las celdas. */
+const COL_TITULO = {
+  producto_nombre:   { label: 'Producto' },
+  no_lote:           { label: 'Lote' },
+  temperatura:       { label: 'Temp.', align: 'center' },
+  fecha_vencimiento: { label: 'FV' },
+  cantidad:          { label: 'Cant.', align: 'right' },
+  estado_fv:         { label: 'Estado', align: 'center' },
+}
+
 export default function Lotes() {
+  const [cols, setCols] = useState(() => loadColsWithOrder(LOTE_COLS_KEY, LOTE_COL_DEFS).visible);
+  const [colOrder, setColOrder] = useState(() => loadColsWithOrder(LOTE_COLS_KEY, LOTE_COL_DEFS).order);
   const [filterEstado, setFilterEstado] = useState('all');
   const [filterTemp, setFilterTemp] = useState('all');
   const [searchQ, setSearchQ] = useState('');
@@ -66,9 +89,15 @@ export default function Lotes() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-medium">Vencimientos LOT</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Control de fechas de vencimiento por lote</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-medium">Vencimientos LOT</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Control de fechas de vencimiento por lote</p>
+        </div>
+        <ColPicker cols={LOTE_COL_DEFS} visible={cols}
+          onChange={(next) => { setCols(next); saveColsWithOrder(LOTE_COLS_KEY, next, colOrder); }}
+          storageKey={LOTE_COLS_KEY} order={colOrder}
+          onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(LOTE_COLS_KEY, cols, next); }} />
       </div>
 
       {/* KPIs */}
@@ -113,36 +142,43 @@ export default function Lotes() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
-                  <SortTh colKey="producto_nombre" label="Producto" sort={sort} onSort={onSort} />
-                  <SortTh colKey="no_lote" label="Lote" sort={sort} onSort={onSort} />
-                  <SortTh colKey="temperatura" label="Temp." sort={sort} onSort={onSort} align="center" />
-                  <SortTh colKey="fecha_vencimiento" label="FV" sort={sort} onSort={onSort} />
-                  <SortTh colKey="cantidad" label="Cant." sort={sort} onSort={onSort} align="right" />
-                  <SortTh colKey="estado_fv" label="Estado" sort={sort} onSort={onSort} align="center" />
+                  {colOrder.filter(k => cols[k]).map(k => (
+                    <SortTh key={k} colKey={k} label={COL_TITULO[k].label}
+                      align={COL_TITULO[k].align} sort={sort} onSort={onSort} />
+                  ))}
                   <th className="text-center p-3 text-xs font-medium text-muted-foreground">Acción</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
-                  <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
+                  <tr><td colSpan={colOrder.filter(k => cols[k]).length + 1} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
+                  <tr><td colSpan={colOrder.filter(k => cols[k]).length + 1} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
                 ) : sorted.map(l => (
                   <tr key={l.id} className={`border-b hover:bg-accent/50 cursor-pointer transition-colors ${selectedId === l.id ? 'bg-accent' : ''}`}
                     onClick={() => setSelectedId(l.id)}>
-                    <td className="p-3">
-                      <p className="font-medium">{l.producto_nombre}</p>
-                      <p className="text-xs text-muted-foreground">{l.producto_codigo}</p>
-                    </td>
-                    <td className="p-3 text-xs">{l.no_lote || '—'}</td>
-                    <td className="p-3 text-center">
-                      <span className={`text-[10px] px-2 py-0.5 rounded ${l.temperatura === 'chilled' ? 'bg-[#378ADD]/10 text-[#378ADD]' : 'bg-secondary text-muted-foreground'}`} style={{ borderRadius: '4px' }}>
-                        {l.temperatura === 'chilled' ? '❄ Frío' : '☀ Amb'}
-                      </span>
-                    </td>
-                    <td className="p-3 text-xs">{l.fecha_vencimiento || '—'}</td>
-                    <td className="p-3 text-right font-medium">{l.cantidad}</td>
-                    <td className="p-3 text-center"><LotBadge estado={l.estado_fv} dias={l.vigencia_dias} /></td>
+                    {colOrder.filter(k => cols[k]).map(k => {
+                      const CELDAS = {
+                        producto_nombre: (
+                          <td key={k} className="p-3">
+                            <p className="font-medium">{l.producto_nombre}</p>
+                            <p className="text-xs text-muted-foreground">{l.producto_codigo}</p>
+                          </td>
+                        ),
+                        no_lote: <td key={k} className="p-3 text-xs">{l.no_lote || '—'}</td>,
+                        temperatura: (
+                          <td key={k} className="p-3 text-center">
+                            <span className={`text-[10px] px-2 py-0.5 rounded ${l.temperatura === 'chilled' ? 'bg-[#378ADD]/10 text-[#378ADD]' : 'bg-secondary text-muted-foreground'}`} style={{ borderRadius: '4px' }}>
+                              {l.temperatura === 'chilled' ? '❄ Frío' : '☀ Amb'}
+                            </span>
+                          </td>
+                        ),
+                        fecha_vencimiento: <td key={k} className="p-3 text-xs">{l.fecha_vencimiento || '—'}</td>,
+                        cantidad: <td key={k} className="p-3 text-right font-medium">{l.cantidad}</td>,
+                        estado_fv: <td key={k} className="p-3 text-center"><LotBadge estado={l.estado_fv} dias={l.vigencia_dias} /></td>,
+                      };
+                      return CELDAS[k] ?? <td key={k} className="p-3" />;
+                    })}
                     <td className="p-3 text-center">
                       {['critico', 'por_vencer'].includes(l.estado_fv) && tieneRol(user, ['inv', 'administrador']) && (
                         <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setSelectedId(l.id); }}

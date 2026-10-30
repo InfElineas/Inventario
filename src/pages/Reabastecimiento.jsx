@@ -282,6 +282,9 @@ export default function Reabastecimiento() {
           <p className="text-xs text-muted-foreground">
             {filtradas.length} {filtradas.length === 1 ? 'producto' : 'productos'} · {unidades} unidades a pedir.
             «Días» es cuánto dura la existencia al ritmo al que se vende; «mínimo», lo que haría falta para {dias} días.
+            La venta diaria se calcula sobre los días en que hubo venta, no sobre el calendario: un día sin existencia
+            vende cero y contarlo haría parecer que el producto se pide menos de lo que se pide. No entra lo que lleve
+            más de noventa días sin venderse.
           </p>
 
           <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>

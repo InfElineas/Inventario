@@ -40,12 +40,37 @@ const MAX_PAGINAS = 100
 const TTL_MS = 60 * 60 * 1000
 
 /**
- * De más reciente a más antiguo. Se usa el primero que no sea cero: un
- * producto que no se vendió el último mes pero sí el trimestre pasado tiene
- * rotación, solo que más lenta, y decir que no se vende nunca lo dejaría
- * fuera del reabastecimiento para siempre.
+ * El índice: ventas diarias contando SOLO los días en que hubo venta.
+ *
+ * El informe trae una docena de promedios y hasta ahora se cogía el primero
+ * que no fuera cero, empezando por el del último mes. Eso mezclaba criterios
+ * de una fila a otra —uno salía del último mes, otro del semestre— y hacía
+ * que dos productos con la misma demanda dieran mínimos distintos según
+ * cuándo se hubieran vendido.
+ *
+ * `promMayor0` es «promedio de ventas diario > 0»: reparte lo vendido entre
+ * los días en que se vendió algo, no entre todos los del calendario. Esa es
+ * la medida que pedimos, porque un día sin existencia vende cero y meterlo en
+ * el promedio hace parecer que el producto se vende menos de lo que la gente
+ * pide. Lo que se quiere saber es a qué ritmo sale cuando SE PUEDE vender.
+ *
+ * Tiene un sesgo que conviene conocer: un día en que el producto estaba
+ * disponible y simplemente nadie lo compró también queda fuera, así que el
+ * ritmo sale algo alto y el mínimo, algo generoso. Es el lado correcto por el
+ * que equivocarse —se queda uno corto de mercancía menos veces— pero no es
+ * neutro, y el informe no publica los días de disponibilidad reales, que es
+ * lo único que lo arreglaría del todo.
  */
-const PROMEDIOS = ['promUlt1Mes', 'promUlt3Mes', 'promUlt6Mes', 'promMayor0', 'promTodos']
+const INDICE = 'promMayor0'
+
+/**
+ * Un índice de hace años no es rotación: es historia.
+ *
+ * `promMayor0` promedia toda la vida del producto. Sin este corte, algo que
+ * se vendía bien en 2024 y no se vende desde entonces seguiría pidiendo
+ * reposición para siempre, con un ritmo que ya no existe.
+ */
+const DIAS_SIN_VENDER_MAX = 90
 
 /** Sus numéricos llegan como texto desde Postgres. */
 function num(v) {
@@ -53,13 +78,29 @@ function num(v) {
   return Number.isFinite(n) ? n : 0
 }
 
-/** Ventas diarias de una fila, y de cuál de los promedios salió. */
-export function ventaDiaria(fila) {
-  for (const clave of PROMEDIOS) {
-    const v = num(fila?.[clave])
-    if (v > 0) return { diaria: v, segun: clave }
+/** Días desde la última venta, o `null` si nunca se vendió o no consta. */
+export function diasSinVender(fecha, ahora = Date.now()) {
+  if (!fecha) return null
+  const t = new Date(fecha).getTime()
+  if (!Number.isFinite(t)) return null
+  return Math.floor((ahora - t) / 86400000)
+}
+
+/**
+ * Ventas diarias de una fila, y de cuál de los promedios salió.
+ *
+ * Devuelve 0 cuando el producto no se vende o lleva demasiado sin venderse:
+ * en los dos casos no hay nada que reponer.
+ */
+export function ventaDiaria(fila, ahora = Date.now()) {
+  const diaria = num(fila?.[INDICE])
+  if (diaria <= 0) return { diaria: 0, segun: null }
+
+  const dias = diasSinVender(fila?.fechaUltimaVenta, ahora)
+  if (dias !== null && dias > DIAS_SIN_VENDER_MAX) {
+    return { diaria: 0, segun: null, paradoHace: dias }
   }
-  return { diaria: 0, segun: null }
+  return { diaria, segun: INDICE }
 }
 
 let cache = null        // { mapa, ts }

@@ -313,7 +313,8 @@ describe('rotación de venta', () => {
   // nunca a pedir el informe.
   it('GET /api/rotacion no se pierde en el despachador de ajustes', async () => {
     fetch.mockResolvedValue(new Response(
-      JSON.stringify({ success: true, data: [{ idTienda: '141473', promUlt1Mes: '2.5' }], pagination: { hasNextPage: false } }),
+      // `promMayor0` es el índice: ventas diarias sobre los días en que hubo venta.
+      JSON.stringify({ success: true, data: [{ idTienda: '141473', promMayor0: '2.5' }], pagination: { hasNextPage: false } }),
       { status: 200, headers: { 'content-type': 'application/json' } },
     ));
     // Una existencia de 1 con 2,5 de venta diaria son 0,4 días: falta por
