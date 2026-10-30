@@ -519,20 +519,17 @@ export function createTransferenciasApiMiddleware() {
       }
 
       if (esLotes) {
-        if (!baseReportes()) {
-          return fallo(res, 503, 'not_configured',
-            'Falta REPORTES_API_URL: la API de informes no está configurada.')
-        }
+        // Sin comprobar REPORTES_API_URL: la vista del cron está en nuestra
+        // propia base, no detrás de la API de informes.
         if (!tieneAlgun(sesion.usuario, ROLES_LOTES)) {
           return fallo(res, 403, 'forbidden', 'Tu rol no puede ver los vencimientos.')
         }
         const cl = new URL(req.url, 'http://local').searchParams
         return json(res, 200, {
-          lotes: await lotesDe({ jwt: sesion.jwt }, {
+          lotes: await lotesDe({
             almacen: cl.get('almacen') ?? undefined,
             estados: cl.get('estados')?.split(',').map((e) => e.trim()).filter(Boolean),
             limite: Number(cl.get('limite')) || 0,
-            refrescar: cl.get('refrescar') === 'true',
           }),
         })
       }

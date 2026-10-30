@@ -1,29 +1,24 @@
 /**
- * Lotes y fechas de vencimiento, desde el informe central.
+ * Lotes y fechas de vencimiento.
  *
  * La pantalla de Vencimientos leía `inventario.lotes`, una tabla que no
- * llenaba nadie: salía vacía desde el primer día. Los lotes los publica ahora
- * la API central en `GET /api/reports/lot-latest`, que es la vista
- * `lot_rows_latest` que mantiene su cron —una fila por almacén, producto y
- * número de lote—.
+ * llenaba nadie: salía vacía desde el primer día. Los lotes los publica el
+ * cron central en la vista `lot_rows_latest` —una fila por almacén, producto
+ * y número de lote—, que vive en esta misma base.
  *
- * No se copia a una tabla nuestra. Una copia envejece por su cuenta y habría
- * que decidir cada cuánto refrescarla; así lo que se ve es lo que publicó su
- * última corrida, y el estado de vigencia se calcula contra la fecha de hoy
- * en el momento de mirar, que es justo lo que no puede estar precalculado.
+ * Se lee de ahí directamente y no por la API de informes. La API expone la
+ * misma vista, pero pasar por HTTP obligaba a paginar de quinientas en
+ * quinientas, a cachear el resultado entero en el proceso y a llevar el JWT
+ * de quien mira; con SQL se cruza de una vez con las correcciones de
+ * inventario y con el costo del catálogo, y lo que se ve siempre es la última
+ * corrida.
  *
- * Va con el JWT de quien usa la web, igual que la rotación: ni cuenta de
- * servicio ni credenciales nuevas.
+ * Nada se copia a una tabla nuestra. El estado de vigencia se calcula contra
+ * la fecha de hoy en el momento de mirar, que es justo lo que no puede estar
+ * precalculado.
  */
 
 import { query } from './db.js'
-import { baseReportes } from './rotacionApi.js'
-
-const RUTA = '/api/reports/lot-latest'
-const POR_PAGINA = 500
-/** Tope: 100 000 filas. Más que eso es que algo va mal en el informe. */
-const MAX_PAGINAS = 200
-const TTL_MS = 30 * 60 * 1000
 
 /**
  * Los mismos cortes que hacía la vista `lotes_vigencia`, para que la pantalla
@@ -57,118 +52,104 @@ export function temperaturaDe(clasificacion) {
   return /refriger|congel|frio|frío|chill|fresc/.test(t) ? 'chilled' : 'ambient'
 }
 
-let cache = null        // { filas, ts }
-let cargando = null
-
-async function descargar(ctx, base) {
-  const filas = []
-
-  for (let page = 1; page <= MAX_PAGINAS; page += 1) {
-    const url = new URL(`${base}${RUTA}`)
-    url.searchParams.set('page', String(page))
-    url.searchParams.set('pageSize', String(POR_PAGINA))
-    if (page > 1) url.searchParams.set('withTotal', 'false')
-
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${ctx.jwt}`, Accept: 'application/json' },
-      signal: AbortSignal.timeout(30_000),
-    })
-    const datos = await res.json().catch(() => null)
-    if (!res.ok || !Array.isArray(datos?.data)) {
-      throw new Error(datos?.error?.message ?? `El informe de lotes respondió HTTP ${res.status}`)
-    }
-
-    filas.push(...datos.data)
-
-    const hayMas = datos.pagination?.hasNextPage ?? (datos.data.length === POR_PAGINA)
-    if (!hayMas || datos.data.length === 0) break
-  }
-
-  return filas
-}
-
-/** El informe entero, compartido entre usuarios y revalidado por TTL. */
-async function informe(ctx, refrescar) {
-  const base = baseReportes()
-  if (!base) {
-    throw new Error('Falta REPORTES_API_URL: la API de informes no está configurada.')
-  }
-  if (!refrescar && cache && Date.now() - cache.ts < TTL_MS) return cache.filas
-  // Una descarga en curso se comparte en vez de duplicarse.
-  if (!cargando) {
-    cargando = descargar(ctx, base)
-      .then((filas) => { cache = { filas, ts: Date.now() }; return filas })
-      .finally(() => { cargando = null })
-  }
-  return cargando
-}
-
-/** Solo para las pruebas. */
-export function _olvidarLotes() {
-  cache = null
-  cargando = null
-}
+/**
+ * Las fechas se piden ya formateadas y no como `timestamp`.
+ *
+ * `fecha_venc` es un timestamp sin zona: node-pg lo convierte a un Date en la
+ * hora local del servidor, y pasarlo a ISO ahí puede restarle un día. Un lote
+ * que vence el 1 de mayo no vence el 30 de abril porque el contenedor esté en
+ * Caracas.
+ */
+const SQL = `
+  SELECT l.id                                 AS fila_id,
+         l.warehouse_key                      AS almacen_num,
+         l.warehouse_name                     AS almacen_nombre,
+         l.clasificacion,
+         l.producto,
+         l.codigo,
+         l.suministrador,
+         COALESCE(l.no_lote, '')              AS no_lote,
+         to_char(l.fecha_fab,  'YYYY-MM-DD')  AS fecha_fab,
+         to_char(l.fecha_venc, 'YYYY-MM-DD')  AS fecha_venc,
+         l.cantidad,
+         l.referencia,
+         to_char(r.fecha_vencimiento, 'YYYY-MM-DD') AS rev_fecha,
+         r.nota                               AS rev_nota,
+         r.revisado_por                       AS rev_por,
+         p.precio_costo
+    FROM lot_rows_latest l
+    -- La última corrección de inventario sobre este lote, si la hay. Cada
+    -- corrección es una fila nueva; gana la más reciente.
+    LEFT JOIN LATERAL (
+      SELECT rv.fecha_vencimiento, rv.nota, rv.revisado_por
+        FROM lote_revisiones rv
+       WHERE rv.almacen_num     = l.warehouse_key
+         AND rv.producto_codigo = l.codigo
+         AND rv.no_lote         = COALESCE(l.no_lote, '')
+       ORDER BY rv.created_date DESC
+       LIMIT 1
+    ) r ON true
+    -- El costo no viene en el informe y la intervención comercial lo
+    -- necesita: sin él no hay descuento ni pérdida que calcular.
+    LEFT JOIN LATERAL (
+      SELECT MAX(pp.precio_costo) AS precio_costo
+        FROM productos pp
+       WHERE pp.codigo_producto = l.codigo
+         AND ($1::text IS NULL OR pp.almacen_num = $1)
+    ) p ON true
+   WHERE ($1::text IS NULL OR l.warehouse_key = $1)
+`
 
 /**
  * Los lotes de un almacén, en el vocabulario de la pantalla.
  *
- * El precio de costo no viene en el informe y la intervención comercial lo
- * necesita —sin él no se puede calcular el descuento ni la pérdida—, así que
- * se cruza con nuestro catálogo por código.
- *
  * `estados` y `limite` existen para quien solo necesita una parte —el panel
- * pinta cinco lotes críticos, el menú cuenta pendientes— y no tiene por qué
- * descargarse el almacén entero para eso.
+ * pinta unos pocos críticos, el menú cuenta pendientes— y no tiene por qué
+ * traerse el almacén entero para eso.
  *
- * @param {{ jwt: string }} ctx
- * @param {{ almacen?: string, estados?: string[], limite?: number, refrescar?: boolean }} params
+ * @param {{ almacen?: string, estados?: string[], limite?: number }} params
  */
-export async function lotesDe(ctx, { almacen, estados, limite, refrescar = false } = {}) {
-  const filas = await informe(ctx, refrescar)
-  const suyas = almacen
-    ? filas.filter((f) => String(f.warehouseKey ?? '').trim() === String(almacen).trim())
-    : filas
-
-  const [costos, revisiones] = await Promise.all([
-    preciosDe(suyas.map((f) => String(f.codigo ?? '').trim()), almacen),
-    revisionesDe(almacen),
-  ])
+export async function lotesDe({ almacen, estados, limite } = {}) {
+  const { rows } = await query(SQL, [almacen ? String(almacen).trim() : null])
   const hoy = new Date()
 
-  let lotes = suyas.map((f) => {
-    const codigo = String(f.codigo ?? '').trim()
-    const noLote = String(f.noLote ?? '').trim()
-    // Lo que inventario corrigió pisa al informe: la fecha suele faltar en el
-    // origen y es la que hace que el lote se pueda gestionar.
-    const revision = revisiones.get(`${String(f.warehouseKey ?? '').trim()}|${codigo}|${noLote}`)
-    const vence = revision?.fecha_vencimiento ?? f.fechaVenc ?? f.fecha_venc ?? null
+  let lotes = rows.map((f) => {
+    // Lo que inventario corrigió pisa al informe: la fecha falta a menudo en
+    // el origen y es la que hace que el lote se pueda gestionar.
+    const vence = f.rev_fecha ?? f.fecha_venc ?? null
     const dias = diasHasta(vence, hoy)
 
     return {
-      // El informe no trae id. Almacén, producto y lote identifican la fila y
-      // se mantienen entre corridas, así que sirve de clave en React y para
-      // apuntar de qué lote salió una intervención comercial.
-      id: `${f.warehouseKey ?? ''}|${codigo}|${noLote}`,
-      almacen_num: String(f.warehouseKey ?? '').trim(),
-      almacen_nombre: f.warehouseName ?? '',
+      // El id de la fila de la vista. Hace falta uno PROPIO DE LA FILA
+      // porque el mismo producto y lote aparecen varias veces en un almacén
+      // —cada una con su cantidad—, y con la clave compuesta React recibía
+      // claves repetidas: reutilizaba nodos y al filtrar seguían viéndose
+      // las filas de antes, como si el filtro no hiciera nada.
+      id: f.fila_id,
+      // Lo que identifica al LOTE, no a la fila: con esto se enlazan las
+      // revisiones y los casos de intervención comercial, y se mantiene
+      // entre corridas (el id de arriba no).
+      clave: `${f.almacen_num ?? ''}|${f.codigo ?? ''}|${f.no_lote ?? ''}`,
+      almacen_num: f.almacen_num ?? '',
+      almacen_nombre: f.almacen_nombre ?? '',
       producto_nombre: f.producto ?? '',
-      producto_codigo: codigo,
+      producto_codigo: f.codigo ?? '',
       suministrador: f.suministrador ?? '',
-      no_lote: noLote,
-      fecha_fabricacion: f.fechaFab ?? null,
-      fecha_vencimiento: vence ? String(vence).slice(0, 10) : null,
-      // De dónde salió la fecha: sin esto, nadie distingue la que publicó el
+      no_lote: f.no_lote ?? '',
+      fecha_fabricacion: f.fecha_fab,
+      fecha_vencimiento: vence,
+      // De dónde salió la fecha: sin esto nadie distingue la que publicó el
       // informe de la que alguien leyó del envase.
-      fecha_corregida: Boolean(revision?.fecha_vencimiento),
-      nota_revision: revision?.nota ?? '',
-      revisado_por: revision?.revisado_por ?? '',
+      fecha_corregida: Boolean(f.rev_fecha),
+      nota_revision: f.rev_nota ?? '',
+      revisado_por: f.rev_por ?? '',
       cantidad: Number(f.cantidad) || 0,
       referencia: f.referencia ?? '',
       temperatura: temperaturaDe(f.clasificacion),
       clasificacion: f.clasificacion ?? '',
       vigencia_dias: dias,
       estado_fv: estadoDeVigencia(dias),
-      precio_costo: costos.get(codigo) ?? 0,
+      precio_costo: Number(f.precio_costo) || 0,
     }
   })
 
@@ -177,58 +158,9 @@ export async function lotesDe(ctx, { almacen, estados, limite, refrescar = false
     lotes = lotes.filter((l) => quiere.has(l.estado_fv))
   }
 
-  // Lo que vence antes, primero: así un `limite` corta por la cola y no por
-  // una fila cualquiera.
+  // Lo que vence antes, primero, y lo que no tiene fecha al final: así un
+  // `limite` corta por la cola y no se lleva por delante lo urgente.
   lotes.sort((a, b) => (a.vigencia_dias ?? Infinity) - (b.vigencia_dias ?? Infinity))
 
   return limite > 0 ? lotes.slice(0, limite) : lotes
-}
-
-/**
- * La última revisión de cada lote del almacén.
- *
- * `DISTINCT ON` con el orden descendente se queda con la más reciente de cada
- * lote en una sola pasada; traerlas todas y filtrar en memoria sería bajar el
- * histórico entero para usar una fila de cada grupo.
- */
-async function revisionesDe(almacen) {
-  if (!almacen) return new Map()
-
-  const { rows } = await query(
-    `SELECT DISTINCT ON (almacen_num, producto_codigo, no_lote)
-            almacen_num, producto_codigo, no_lote, fecha_vencimiento, nota, revisado_por
-       FROM lote_revisiones
-      WHERE almacen_num = $1
-      ORDER BY almacen_num, producto_codigo, no_lote, created_date DESC`,
-    [String(almacen)],
-  )
-
-  return new Map(rows.map((r) => [
-    `${r.almacen_num}|${r.producto_codigo}|${r.no_lote}`,
-    {
-      ...r,
-      fecha_vencimiento: r.fecha_vencimiento
-        ? new Date(r.fecha_vencimiento).toISOString().slice(0, 10)
-        : null,
-    },
-  ]))
-}
-
-/** `codigo_producto` → `precio_costo`, de nuestro catálogo. */
-async function preciosDe(codigos, almacen) {
-  const unicos = [...new Set(codigos.filter(Boolean))]
-  if (unicos.length === 0) return new Map()
-
-  const valores = [unicos]
-  let sql = `SELECT codigo_producto, MAX(precio_costo) AS precio_costo
-               FROM productos
-              WHERE codigo_producto = ANY($1)`
-  if (almacen) {
-    valores.push(String(almacen))
-    sql += ` AND almacen_num = $2`
-  }
-  sql += ' GROUP BY codigo_producto'
-
-  const { rows } = await query(sql, valores)
-  return new Map(rows.map((r) => [r.codigo_producto, Number(r.precio_costo) || 0]))
 }

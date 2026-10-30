@@ -50,9 +50,9 @@ const PAGE_SIZE = 50
  */
 const ESTADOS = [
   { clave: 'vencido',    label: 'Vencidos' },
-  { clave: 'critico',    label: 'Críticos' },
-  { clave: 'por_vencer', label: 'Por vencer' },
-  { clave: 'vigente',    label: 'Vigentes' },
+  { clave: 'critico',    label: 'Críticos',   rango: '≤ 15 días' },
+  { clave: 'por_vencer', label: 'Por vencer', rango: '16 a 30 días' },
+  { clave: 'vigente',    label: 'Vigentes',   rango: '+ 30 días' },
   { clave: 'sin_fecha',  label: 'Sin fecha' },
 ]
 
@@ -223,10 +223,20 @@ export default function Lotes() {
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="all">Todos ({lotes.length})</TabsTrigger>
           {ESTADOS.map((e) => (
-            <TabsTrigger key={e.clave} value={e.clave}>{e.label} ({counts[e.clave]})</TabsTrigger>
+            <TabsTrigger key={e.clave} value={e.clave}
+              title={e.rango ? `Vence en ${e.rango}` : undefined}>
+              {e.label} ({counts[e.clave]})
+            </TabsTrigger>
           ))}
         </TabsList>
       </Tabs>
+
+      {ESTADOS.find((e) => e.clave === estado)?.rango && (
+        <p className="text-xs text-muted-foreground -mt-2">
+          «{ESTADOS.find((e) => e.clave === estado).label}» son los lotes que
+          vencen en {ESTADOS.find((e) => e.clave === estado).rango}.
+        </p>
+      )}
 
       <div className="flex gap-3">
         <div className="relative flex-1">
@@ -401,7 +411,7 @@ export default function Lotes() {
               <Button className="w-full" onClick={() => createIcMut.mutate({
                 // El lote ya no es una fila nuestra: su id es almacén, código
                 // y número de lote, que es lo que lo identifica en el informe.
-                lote_id: selected.id,
+                lote_id: selected.clave,
                 no_lote: selected.no_lote,
                 almacen_num: selected.almacen_num,
                 producto_nombre: selected.producto_nombre,
