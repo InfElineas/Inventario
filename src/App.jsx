@@ -87,6 +87,11 @@ const AuthenticatedApp = () => {
           <Route path="/mermas"         element={<Mermas />} />
           <Route path="/lotes"          element={<Lotes />} />
           <Route path="/recepciones"    element={<Recepciones />} />
+          {/* La recepción abierta es una pantalla, no un modal: se usa desde
+              el móvil en el muelle, donde un diálogo con seis campos por
+              línea no hay por dónde cogerlo. Además así el botón de atrás
+              del teléfono hace lo que se espera. */}
+          <Route path="/recepciones/:id" element={<Recepciones />} />
           <Route path="/reabastecimiento" element={<Reabastecimiento />} />
           <Route path="/anuncios"       element={<RoleGuard element={<Anuncios />} roles={['inv','ca','auditor','jefe_depto','administrador','superadmin']} />} />
           {/* Las mismas pantallas, abiertas desde facturación y con su filtro

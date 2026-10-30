@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
@@ -11,7 +12,7 @@ import ProductSearch from '@/components/shared/ProductSearch';
 import AlertBanner from '@/components/shared/AlertBanner';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Search, PackageOpen, Trash2, Pencil, Image as ImageIcon } from 'lucide-react';
+import { Plus, Search, PackageOpen, Trash2, Pencil, ChevronLeft, Image as ImageIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { useConfirm } from '@/lib/useConfirm';
 import SortTh from '@/components/shared/SortTh';
@@ -103,8 +104,13 @@ export default function Recepciones() {
   const [cols, setCols] = useState(() => loadColsWithOrder(RECEP_COLS_KEY, RECEP_COL_DEFS).visible);
   const [colOrder, setColOrder] = useState(() => loadColsWithOrder(RECEP_COLS_KEY, RECEP_COL_DEFS).order);
   const [showCreate, setShowCreate] = useState(false);
-  const [selectedId, setSelectedId] = useState(null);
   const [searchQ, setSearchQ] = useState('');
+  // La recepción abierta va en la URL, no en el estado: así es una pantalla
+  // propia y el botón de atrás del móvil vuelve a la lista.
+  const { id: selectedId } = useParams();
+  const navigate = useNavigate();
+  const abrir = (id) => navigate(`/recepciones/${id}`);
+  const cerrar = () => navigate('/recepciones');
   // Se abre en los pedidos y no en las recepciones: descargar un camión
   // empieza por buscar de qué pedido viene, y mientras no se recibe nada la
   // otra pestaña está vacía por definición.
@@ -131,17 +137,27 @@ export default function Recepciones() {
 
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Recepcion.update(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['recepciones'] }),
+    onSuccess: (_d, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['recepciones'] });
+      queryClient.invalidateQueries({ queryKey: ['recepcion', id] });
+    },
     onError: (error) => alert(error.message),
   });
 
   const deleteMut = useMutation({
     mutationFn: (id) => base44.entities.Recepcion.delete(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['recepciones'] }); setSelectedId(null); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['recepciones'] }); cerrar(); },
     onError: (error) => alert(error.message),
   });
 
-  const selected = recepciones.find(r => r.id === selectedId);
+  // La lista trae las cien últimas; una más vieja abierta por su enlace no
+  // está ahí, así que se pide suelta.
+  const { data: suelta, isLoading: cargandoSuelta } = useQuery({
+    queryKey: ['recepcion', selectedId],
+    queryFn: async () => (await base44.entities.Recepcion.filter({ id: selectedId }, null, 1))[0] ?? null,
+    enabled: Boolean(selectedId),
+  });
+  const selected = recepciones.find(r => r.id === selectedId) ?? suelta ?? null;
 
   const filtered = recepciones.filter(r => {
     if (searchQ && !r.proveedor?.toLowerCase().includes(searchQ.toLowerCase()) && !r.no_recepcion?.toLowerCase().includes(searchQ.toLowerCase())) return false;
@@ -177,7 +193,7 @@ export default function Recepciones() {
    */
   const recibirPedido = async (pedido) => {
     const ya = recepciones.find((r) => r.pedido_id === pedido.id);
-    if (ya) { setVista('recepciones'); setSelectedId(ya.id); return; }
+    if (ya) return abrir(ya.id);
 
     setCreando(pedido.id);
     try {
@@ -185,14 +201,40 @@ export default function Recepciones() {
       const creada = await createMut.mutateAsync(
         recepcionDePedido({ pedido, lineas, no: genNoRecepcion(), user }),
       );
-      setVista('recepciones');
-      if (creada?.id) setSelectedId(creada.id);
+      if (creada?.id) abrir(creada.id);
     } catch {
       // El aviso lo da `createMut.onError`; aquí solo se suelta el botón.
     } finally {
       setCreando(null);
     }
   };
+
+  // Una recepción abierta ocupa la pantalla entera. Se cuenta con el móvil en
+  // la mano y una caja en la otra: un diálogo con seis campos por línea, sobre
+  // la lista y con su propio scroll, no se puede usar así.
+  if (selectedId) {
+    return (
+      <div className="space-y-4">
+        <button onClick={cerrar}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <ChevronLeft className="w-4 h-4" /> Recepciones
+        </button>
+        {selected ? (
+          <RecepcionDetail
+            recepcion={selected}
+            role={role}
+            user={user}
+            onUpdate={(data) => updateMut.mutate({ id: selected.id, data })}
+            onDelete={() => deleteMut.mutate(selected.id)}
+          />
+        ) : cargandoSuelta ? (
+          <p className="text-sm text-muted-foreground p-8 text-center">Cargando…</p>
+        ) : (
+          <AlertBanner variant="warning" message="Esa recepción ya no existe." />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -271,8 +313,8 @@ export default function Recepciones() {
                   <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
                 ) : sorted.map(r => (
                   <tr key={r.id}
-                    className={`border-b hover:bg-accent/50 cursor-pointer transition-colors ${selectedId === r.id ? 'bg-accent' : ''}`}
-                    onClick={() => { setSelectedId(r.id); setShowCreate(false); }}>
+                    className="border-b hover:bg-accent/50 cursor-pointer transition-colors"
+                    onClick={() => abrir(r.id)}>
                     {colOrder.filter(k => cols[k]).map(k => {
                       const CELDAS = {
                         no_recepcion: <td key={k} className="p-3 font-medium">{r.no_recepcion}</td>,
@@ -293,22 +335,6 @@ export default function Recepciones() {
       </>
       )}
 
-      {/* Ancho: cada línea pide cantidad, gramaje, unidades por caja,
-          vencimiento, merma y foto. En el ancho de antes no cabían sin
-          apelotonarse unos encima de otros. */}
-      <Dialog open={!!selectedId} onOpenChange={(o) => { if (!o) setSelectedId(null); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
-          {selected && (
-            <RecepcionDetail
-              recepcion={selected}
-              role={role}
-              user={user}
-              onUpdate={(data) => updateMut.mutate({ id: selected.id, data })}
-              onDelete={() => deleteMut.mutate(selected.id)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -605,9 +631,9 @@ function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
 
   return (
     <>
-    <div className="p-5 space-y-4">
-      <div className="flex items-center justify-between pr-6">
-        <DialogTitle className="text-sm font-medium">{recepcion.no_recepcion}</DialogTitle>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-medium">{recepcion.no_recepcion}</h1>
         {canEdit && (
           <Button
             variant="ghost" size="sm"
@@ -688,7 +714,7 @@ function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
           }
 
           return (
-            <div key={i} className={`p-3 rounded-lg flex items-center justify-between gap-2 ${
+            <div key={i} className={`p-3 rounded-lg flex flex-wrap items-center justify-between gap-2 ${
               d.contada === false ? 'bg-[#BA7517]/[0.06] border border-[#BA7517]/20' : 'bg-secondary/50'
             }`} style={{ borderRadius: '8px' }}>
               <div className="flex-1 min-w-0">
@@ -736,7 +762,7 @@ function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
                 )}
                 {canEdit && (
                   <Button size="sm" variant={d.contada === false ? 'default' : 'ghost'}
-                    className="h-7 text-xs" onClick={() => setContando(i)} style={{ borderRadius: '6px' }}>
+                    className="h-9 px-4 text-xs" onClick={() => setContando(i)} style={{ borderRadius: '8px' }}>
                     {d.contada === false ? 'Contar' : <Pencil className="w-3 h-3" />}
                   </Button>
                 )}

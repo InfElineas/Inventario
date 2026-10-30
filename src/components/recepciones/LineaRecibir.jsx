@@ -90,7 +90,9 @@ export default function LineaRecibir({ linea, producto, nuevo, onConfirmar, onCa
         <EstadoTkc producto={producto} nuevo={nuevo} />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Dos columnas en el móvil, que es donde se cuenta: con una sola hay
+          que bajar media pantalla para cada campo. */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <label className="space-y-1 text-xs text-muted-foreground">
           Cantidad recibida *
           <Input type="number" min="0" value={cantidad} autoFocus
@@ -106,7 +108,7 @@ export default function LineaRecibir({ linea, producto, nuevo, onConfirmar, onCa
           <Input type="number" min="0" value={porCaja}
             onChange={(e) => setPorCaja(e.target.value)} style={{ borderRadius: '8px' }} />
         </label>
-        <label className="space-y-1 text-xs text-muted-foreground">
+        <label className="col-span-2 lg:col-span-1 space-y-1 text-xs text-muted-foreground">
           Fecha de vencimiento
           <Input type="date" value={vence}
             onChange={(e) => setVence(e.target.value)} style={{ borderRadius: '8px' }} />
