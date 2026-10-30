@@ -18,10 +18,17 @@
 
 const BASE = '/api/datos'
 
-/** Entidades que acepta el servidor (ver TABLA en src/server/datosApi.js). */
-const ENTIDADES = new Set([
+/**
+ * Entidades que acepta el servidor (ver TABLA en src/server/datosApi.js).
+ *
+ * Son dos listas que tienen que decir lo mismo, y olvidar esta no se nota
+ * hasta que alguien usa la entidad nueva en producción: aquí revienta con
+ * «Entidad no mapeada» y el servidor nunca llega a enterarse. Hay una prueba
+ * que las compara —por eso se exporta—.
+ */
+export const ENTIDADES = new Set([
   'Producto', 'AnuncioDesact', 'Merma', 'Lote', 'LoteIC',
-  'Inventario', 'Recepcion', 'Notificacion', 'HistorialMovimiento', 'Usuario',
+  'Inventario', 'Recepcion', 'RecepcionFoto', 'Notificacion', 'HistorialMovimiento', 'Usuario',
   'WorkflowEvento', 'ComentarioSupervision', 'AdminAuditLog', 'SyncAutoLog',
 ])
 

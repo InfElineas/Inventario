@@ -1,3 +1,5 @@
+import { TABLA } from '@/server/datosApi';
+import { ENTIDADES } from '@/api/base44Client';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // La base y la sesión se sustituyen: lo que se prueba aquí es el SQL que se
@@ -479,5 +481,14 @@ describe('count con búsqueda', () => {
     await llamar('/api/datos/Producto/count', { conditions: { activo: true } });
     expect(ultimoSql()).not.toContain('ILIKE');
     expect(ultimosValores()).toEqual([true]);
+  });
+});
+
+describe('el cliente y el servidor conocen las mismas entidades', () => {
+  it('ninguna lista se adelanta a la otra', () => {
+    // Son dos listas separadas y añadir una entidad solo en el servidor pasa
+    // todas las pruebas: el fallo aparece en producción, en el navegador,
+    // como «Entidad no mapeada» al primer uso. Ya ocurrió con RecepcionFoto.
+    expect([...ENTIDADES].sort()).toEqual(Object.keys(TABLA).sort());
   });
 });

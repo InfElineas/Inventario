@@ -1,10 +1,10 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import AlertBanner from '@/components/shared/AlertBanner';
 import { Camera, Check, Loader2, X } from 'lucide-react';
-import { comprimirImagen } from '@/lib/imagen';
+import CamaraFoto from './CamaraFoto';
 
 /** A partir de aquí la merma de origen deja de ser un roce del transporte. */
 const MERMA_PARA_DEVOLVER = 0.15;
@@ -33,23 +33,8 @@ export default function LineaRecibir({ linea, producto, nuevo, onConfirmar, onCa
   const [calidadOk, setCalidadOk] = useState(true);
   const [notaCalidad, setNotaCalidad] = useState('');
   const [foto, setFoto] = useState(null);
-  const [subiendo, setSubiendo] = useState(false);
+  const [camara, setCamara] = useState(false);
   const [guardando, setGuardando] = useState(false);
-  const archivo = useRef(null);
-
-  const elegirFoto = async (e) => {
-    const f = e.target.files?.[0];
-    e.target.value = '';
-    if (!f) return;
-    setSubiendo(true);
-    try {
-      setFoto(await comprimirImagen(f));
-    } catch (err) {
-      alert(`No se pudo preparar la foto: ${err.message}`);
-    } finally {
-      setSubiendo(false);
-    }
-  };
 
   // El código completo solo se exige en los nuevos: de los que ya están en el
   // catálogo lo tenemos, y pedirlo otra vez es teclear por teclear.
@@ -135,13 +120,9 @@ export default function LineaRecibir({ linea, producto, nuevo, onConfirmar, onCa
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <input ref={archivo} type="file" accept="image/*" capture="environment"
-          className="hidden" onChange={elegirFoto} />
-        <Button variant="outline" size="sm" onClick={() => archivo.current?.click()}
-          disabled={subiendo} style={{ borderRadius: '8px' }}>
-          {subiendo
-            ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Preparando…</>
-            : <><Camera className="w-4 h-4 mr-1.5" /> {foto ? 'Cambiar foto' : 'Foto de la presentación'}</>}
+        <CamaraFoto abierta={camara} onCerrar={() => setCamara(false)} onTomar={setFoto} />
+        <Button variant="outline" size="sm" onClick={() => setCamara(true)} style={{ borderRadius: '8px' }}>
+          <Camera className="w-4 h-4 mr-1.5" /> {foto ? 'Repetir foto' : 'Foto de la presentación'}
         </Button>
         {foto && (
           <div className="flex items-center gap-2">
@@ -175,7 +156,7 @@ export default function LineaRecibir({ linea, producto, nuevo, onConfirmar, onCa
             <X className="w-4 h-4 mr-1.5" /> Cancelar
           </Button>
         )}
-        <Button size="sm" onClick={confirmar} disabled={falta || guardando || subiendo}
+        <Button size="sm" onClick={confirmar} disabled={falta || guardando}
           style={{ borderRadius: '8px' }}>
           {guardando
             ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Guardando…</>

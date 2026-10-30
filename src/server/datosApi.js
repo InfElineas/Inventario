@@ -16,8 +16,11 @@ import {
   puedeLeer, puedeCrear, puedeActualizar, puedeBorrar, filtroPropias, esAdmin,
 } from './permisos.js'
 
-// Mismo mapeo que tenía base44Client.
-const TABLA = {
+// Mismo mapeo que tenía base44Client. El cliente lleva la lista de nombres
+// por su lado (ENTIDADES, en src/api/base44Client.js) y una prueba comprueba
+// que no se separen: cuando lo hacen, la entidad nueva muere en el navegador
+// con «Entidad no mapeada» sin llegar a pedir nada.
+export const TABLA = {
   Producto:            'productos',
   AnuncioDesact:       'anuncios_desact',
   Merma:               'mermas',
