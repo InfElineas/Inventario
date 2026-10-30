@@ -157,6 +157,25 @@ describe('actualización — anuncios y recepciones', () => {
     expect(puedeActualizar(ctx('ca'), 'anuncios_desact', { estado_tarea: 'pendiente' }, {})).toBe(false);
   });
 
+  it('resolver incluye devolver la recepción al muelle', () => {
+    // Cuando lo que falla es el conteo, lo que hay que hacer es volver a
+    // contar; sin esta transición el reconteo no se podía pedir.
+    const conDifs = { estado: 'con_diferencias' };
+    expect(puedeActualizar(ctx('supervisor'), 'recepciones', conDifs, { estado: 'en_curso' })).toBe(true);
+    expect(puedeActualizar(ctx('jefe_depto'), 'recepciones', conDifs, { estado: 'en_curso' })).toBe(true);
+    expect(puedeActualizar(ctx('supervisor'), 'recepciones', conDifs, { estado: 'cerrada' })).toBe(true);
+  });
+
+  it('facturación resuelve lo suyo, pero no mueve la recepción', () => {
+    const conDifs = { estado: 'con_diferencias' };
+    // Su parte es cuánto se factura de verdad de cada línea.
+    expect(puedeActualizar(ctx('fact'), 'recepciones', conDifs, { diferencias: [] })).toBe(true);
+    // Mandar a recontar y dar por cerrada no son suyas.
+    expect(puedeActualizar(ctx('fact'), 'recepciones', conDifs, { estado: 'en_curso' })).toBe(false);
+    expect(puedeActualizar(ctx('fact'), 'recepciones', conDifs, { estado: 'cerrada' })).toBe(false);
+    expect(puedeActualizar(ctx('fact'), 'recepciones', { estado: 'en_curso' }, {})).toBe(false);
+  });
+
   it('el supervisor solo resuelve recepciones con diferencias', () => {
     expect(puedeActualizar(ctx('supervisor'), 'recepciones', { estado: 'con_diferencias' }, {})).toBe(true);
     expect(puedeActualizar(ctx('supervisor'), 'recepciones', { estado: 'en_curso' }, {})).toBe(false);

@@ -70,7 +70,16 @@ const FLUJOS = {
     transiciones: {
       inv:        { desde: ['en_curso'],
                     hacia: ['en_curso', 'cerrada', 'con_diferencias'] },
+      // Resolver una incidencia incluye devolverla al muelle: cuando lo que
+      // falla es el conteo, lo que hay que hacer es volver a contar, no
+      // discutir el número.
       supervisor: { desde: ['con_diferencias'],
+                    hacia: ['con_diferencias', 'en_curso', 'cerrada'] },
+      jefe_depto: { desde: ['con_diferencias'],
+                    hacia: ['con_diferencias', 'en_curso', 'cerrada'] },
+      // Facturación resuelve lo suyo —cuánto se factura de verdad de cada
+      // línea— pero no manda a recontar ni da la recepción por cerrada.
+      fact:       { desde: ['con_diferencias'],
                     hacia: ['con_diferencias'] },
     },
   },

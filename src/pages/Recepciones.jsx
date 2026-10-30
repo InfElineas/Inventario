@@ -21,6 +21,8 @@ import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/sh
 import { notifyJefeDepto, notifyRoles } from '@/lib/notificationService';
 import { incidenciasDe, hayIncidencia, resumenIncidencias } from '@/lib/incidenciasRecepcion';
 import ReporteIncidencia from '@/components/recepciones/ReporteIncidencia';
+import ResolverIncidencia from '@/components/recepciones/ResolverIncidencia';
+import { tieneRol } from '@/lib/roles';
 import { fetchPedidos, fetchLineasDePedido } from '@/services/pedidosService';
 import LineaRecibir from '@/components/recepciones/LineaRecibir';
 import { SIN_SONDEO } from '@/lib/query-client';
@@ -122,7 +124,6 @@ export default function Recepciones() {
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
-  const role = user?.role || 'inv';
 
   const { data: recepcionesRaw, isLoading } = useQuery({
     queryKey: ['recepciones'],
@@ -185,7 +186,9 @@ export default function Recepciones() {
 
   const estadoMap = { en_curso: 'en_curso', cerrada: 'completado', con_diferencias: 'devuelto' };
 
-  const puedeRecibir = ['inv', 'administrador', 'superadmin'].includes(role);
+  // `tieneRol` y no `user.role`: quien es inventarista y además factura
+  // resolvía al rol de más autoridad y perdía lo que solo puede `inv`.
+  const puedeRecibir = tieneRol(user, ['inv', 'administrador']);
 
   /**
    * Empezar a recibir un pedido.
@@ -224,7 +227,6 @@ export default function Recepciones() {
         {selected ? (
           <RecepcionDetail
             recepcion={selected}
-            role={role}
             user={user}
             onUpdate={(data) => updateMut.mutate({ id: selected.id, data })}
             onDelete={() => deleteMut.mutate(selected.id)}
@@ -489,14 +491,14 @@ function CreateRecepcionForm({ genNo, user, onSubmit, onCancel }) {
   );
 }
 
-function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
+function RecepcionDetail({ recepcion, user, onUpdate, onDelete }) {
   const [newItem, setNewItem] = useState(null);
   const [contando, setContando] = useState(null);
   const [editingProveedor, setEditingProveedor] = useState(false);
   const [proveedorDraft, setProveedorDraft] = useState(recepcion.proveedor || '');
   const { confirmDialog, ConfirmDialogNode } = useConfirm();
   const detalles = recepcion.detalles || [];
-  const canEdit = ['inv', 'administrador', 'superadmin'].includes(role) && recepcion.estado === 'en_curso';
+  const canEdit = tieneRol(user, ['inv', 'administrador']) && recepcion.estado === 'en_curso';
   // Una línea del pedido nace sin contar; las que se añaden a mano ya vienen
   // contadas. El progreso es lo contado, no lo listado: con lo segundo una
   // recepción recién abierta decía 100% sin que nadie hubiera tocado nada.
@@ -507,7 +509,12 @@ function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
 
   // Las diferencias son de quien las resuelve, no de quien cuenta: ver el
   // número de más o de menos es ver lo que se esperaba.
-  const veCantidades = ['supervisor', 'administrador', 'superadmin'].includes(role);
+  const veCantidades = tieneRol(user, ['supervisor', 'jefe_depto', 'fact', 'administrador']);
+  // Facturación entra a resolver porque la mitad de la resolución es suya:
+  // cuánto se factura de verdad de cada línea. Lo que no hace es devolver la
+  // recepción al muelle ni darla por resuelta.
+  const puedeResolver = tieneRol(user, ['supervisor', 'jefe_depto', 'fact', 'administrador']);
+  const puedeRecontar = tieneRol(user, ['supervisor', 'jefe_depto', 'administrador']);
 
   /**
    * Qué sabe el catálogo de los productos de esta recepción.
@@ -595,6 +602,47 @@ function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
       total_items: updated.length,
     });
     setNewItem(null);
+  };
+
+  /**
+   * Devolver al muelle los productos que hay que volver a contar.
+   *
+   * Las líneas vuelven a nacer sin contar —no a cero, sin contar— y la
+   * recepción entera vuelve a `en_curso`. Lo contado antes se borra a
+   * propósito: si se deja a la vista, el reconteo es mirar el número de la
+   * vez pasada y confirmarlo, que es exactamente lo que se quiere evitar.
+   *
+   * @param {number[]} indices posiciones dentro de `recepcion.diferencias`
+   */
+  const mandarARecontar = (indices) => {
+    const diferencias = recepcion.diferencias ?? [];
+    const codigos = new Set(indices.map((i) => diferencias[i]?.producto_codigo).filter(Boolean));
+    if (codigos.size === 0) return;
+
+    const nuevosDetalles = detalles.map((d) => (codigos.has(d.producto_codigo) ? {
+      ...d,
+      cant_recibida: 0,
+      diferencia: -(Number(d.cant_esperada) || 0),
+      contada: false,
+    } : d));
+
+    onUpdate({
+      estado: 'en_curso',
+      detalles: nuevosDetalles,
+      items_confirmados: nuevosDetalles.filter((x) => x.contada !== false).length,
+      diferencias: diferencias.map((d, i) => (indices.includes(i)
+        ? { ...d, tipo_diferencia: 'reconteo_solicitado', resuelto_por: user?.email,
+            fecha_resolucion: format(new Date(), 'yyyy-MM-dd') }
+        : d)),
+    });
+
+    notifyJefeDepto(
+      'inventario', 'recepcion',
+      `Reconteo pedido en ${recepcion.no_recepcion}`,
+      `${codigos.size} ${codigos.size === 1 ? 'producto vuelve' : 'productos vuelven'} a contarse `
+      + `en la recepción de ${recepcion.proveedor || 'proveedor sin nombre'}.`,
+      `/recepciones/${recepcion.id}`,
+    ).catch(() => {});
   };
 
   const cerrarRecepcion = async () => {
@@ -821,30 +869,15 @@ function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
           «faltaron 1270», que es justo el número que no debe verse. */}
       {recepcion.estado !== 'en_curso' && <ReporteIncidencia recepcion={recepcion} />}
 
-      {/* Diferencias for supervisor */}
-      {recepcion.estado === 'con_diferencias' && (role === 'supervisor' || role === 'administrador') && (
-        <div className="space-y-3">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Resolver diferencias</p>
-          {(recepcion.diferencias || []).map((dif, i) => (
-            <div key={i} className="p-3 border rounded-lg space-y-2" style={{ borderRadius: '8px', borderWidth: '0.5px' }}>
-              <p className="text-sm font-medium">{dif.producto_nombre}</p>
-              <p className="text-xs text-muted-foreground">Diferencia: {dif.cantidad_diferencia}</p>
-              <Select value={dif.tipo_diferencia} onValueChange={(val) => {
-                const diffs = [...(recepcion.diferencias || [])];
-                diffs[i] = { ...diffs[i], tipo_diferencia: val, resuelto_por: user?.email, fecha_resolucion: format(new Date(), 'yyyy-MM-dd') };
-                onUpdate({ diferencias: diffs });
-              }}>
-                <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pendiente">Pendiente</SelectItem>
-                  <SelectItem value="aceptada">Aceptada</SelectItem>
-                  <SelectItem value="reclamada_proveedor">Reclamada al proveedor</SelectItem>
-                  <SelectItem value="rechazo_parcial">Rechazo parcial</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          ))}
-        </div>
+      {recepcion.estado === 'con_diferencias' && puedeResolver && (
+        <ResolverIncidencia
+          recepcion={recepcion}
+          puedeRecontar={puedeRecontar}
+          puedeCerrar={puedeRecontar}
+          usuario={user}
+          onUpdate={onUpdate}
+          onRecontar={mandarARecontar}
+        />
       )}
     </div>
     {ConfirmDialogNode}
