@@ -19,6 +19,7 @@ import { tieneRol } from '@/lib/roles';
 import { useAlmacen } from '@/lib/useAlmacen';
 import { fetchLotes } from '@/services/lotesService';
 import AlertBanner from '@/components/shared/AlertBanner';
+import Pagination from '@/components/shared/Pagination';
 
 const LOTE_COL_DEFS = [
   { key: 'producto_nombre',   label: 'Producto',  defaultOn: true,  required: true  },
@@ -29,6 +30,9 @@ const LOTE_COL_DEFS = [
   { key: 'estado_fv',         label: 'Estado',    defaultOn: true,  required: false },
 ]
 const LOTE_COLS_KEY = 'lote_cols'
+
+/** Un almacén tiene miles de lotes; pintarlos todos cuelga el navegador. */
+const PAGE_SIZE = 50
 
 /** Cómo se titula y alinea cada columna. La usan la cabecera y las celdas. */
 const COL_TITULO = {
@@ -47,6 +51,7 @@ export default function Lotes() {
   const [filterTemp, setFilterTemp] = useState('all');
   const [searchQ, setSearchQ] = useState('');
   const [selectedId, setSelectedId] = useState(null);
+  const [page, setPage] = useState(1);
   const [icForm, setIcForm] = useState({ cant_x_vencer: '', clasif_inv: '', nota_inv: '', propuesta_precio_ic: '', precio_restaurar: '', notas_ic: '' });
   const { sort, onSort } = useSortable('fecha_vencimiento', 'asc');
   const queryClient = useQueryClient();
@@ -92,6 +97,12 @@ export default function Lotes() {
     return av < bv ? -dir : av > bv ? dir : 0;
   });
 
+  // Filtrar o reordenar cambia qué hay: quedarse en la página siete de una
+  // lista que ahora tiene dos deja la tabla vacía sin explicar por qué.
+  const pagina = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const irA = (n) => setPage(Math.max(1, n));
+  const reiniciar = (aplicar) => (v) => { aplicar(v); setPage(1); };
+
   const selected = lotes.find(l => l.id === selectedId);
 
   return (
@@ -128,9 +139,9 @@ export default function Lotes() {
       <div className="flex gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar por producto o lote..." className="pl-10" style={{ borderRadius: '8px' }} />
+          <Input value={searchQ} onChange={(e) => { setSearchQ(e.target.value); setPage(1); }} placeholder="Buscar por producto o lote..." className="pl-10" style={{ borderRadius: '8px' }} />
         </div>
-        <Select value={filterEstado} onValueChange={setFilterEstado}>
+        <Select value={filterEstado} onValueChange={reiniciar(setFilterEstado)}>
           <SelectTrigger className="w-40" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
@@ -141,7 +152,7 @@ export default function Lotes() {
             <SelectItem value="sin_fecha">Sin fecha</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={filterTemp} onValueChange={setFilterTemp}>
+        <Select value={filterTemp} onValueChange={reiniciar(setFilterTemp)}>
           <SelectTrigger className="w-36" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas temp.</SelectItem>
@@ -159,7 +170,8 @@ export default function Lotes() {
                 <tr className="border-b">
                   {colOrder.filter(k => cols[k]).map(k => (
                     <SortTh key={k} colKey={k} label={COL_TITULO[k].label}
-                      align={COL_TITULO[k].align} sort={sort} onSort={onSort} />
+                      align={COL_TITULO[k].align} sort={sort}
+                      onSort={(c) => { onSort(c); setPage(1); }} />
                   ))}
                   <th className="text-center p-3 text-xs font-medium text-muted-foreground">Acción</th>
                 </tr>
@@ -169,7 +181,7 @@ export default function Lotes() {
                   <tr><td colSpan={colOrder.filter(k => cols[k]).length + 1} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan={colOrder.filter(k => cols[k]).length + 1} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
-                ) : sorted.map(l => (
+                ) : pagina.map(l => (
                   <tr key={l.id} className={`border-b hover:bg-accent/50 cursor-pointer transition-colors ${selectedId === l.id ? 'bg-accent' : ''}`}
                     onClick={() => setSelectedId(l.id)}>
                     {colOrder.filter(k => cols[k]).map(k => {
@@ -207,6 +219,7 @@ export default function Lotes() {
               </tbody>
             </table>
           </div>
+          <Pagination page={page} total={sorted.length} pageSize={PAGE_SIZE} onPage={irA} />
         </Card>
 
       </div>
