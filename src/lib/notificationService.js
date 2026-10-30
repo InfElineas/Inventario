@@ -3,22 +3,44 @@ import { base44 } from '@/api/base44Client';
 // ── Notificar a los jefes de departamento ─────────────────────
 // Inserta una notificación directamente para cada jefe activo
 // del departamento indicado. Sin deduplicación: es por evento real.
-export async function notifyJefeDepto(departamento, tipo, titulo, mensaje) {
+export async function notifyJefeDepto(departamento, tipo, titulo, mensaje, link) {
   try {
     const jefes = await base44.entities.Usuario.filter({
       role: 'jefe_depto', departamento, activo: true,
     });
-    if (!jefes.length) return;
-    await Promise.all(jefes.map(j =>
-      base44.entities.Notificacion.create({
-        usuario_id: j.email,
-        tipo,
-        titulo,
-        mensaje,
-        leida: false,
-      })
-    ));
+    await avisar(jefes, tipo, titulo, mensaje, link);
   } catch {}
+}
+
+/**
+ * Avisar a todos los que tienen uno de estos roles.
+ *
+ * Hace falta cuando el aviso no es para que alguien lo supervise sino para
+ * que alguien lo use: una recepción con incidencias tiene que llegarle a
+ * quien va a cuadrar la factura del proveedor, no solo a su jefe.
+ */
+export async function notifyRoles(roles, tipo, titulo, mensaje, link) {
+  try {
+    const gente = await base44.entities.Usuario.filter({ role: roles, activo: true });
+    await avisar(gente, tipo, titulo, mensaje, link);
+  } catch {}
+}
+
+async function avisar(gente, tipo, titulo, mensaje, link) {
+  if (!gente?.length) return;
+  // Alguien puede salir por dos vías —jefe de facturación y rol fact—; una
+  // notificación por persona, no una por motivo.
+  const correos = [...new Set(gente.map((u) => u.email).filter(Boolean))];
+  await Promise.all(correos.map(email =>
+    base44.entities.Notificacion.create({
+      usuario_id: email,
+      tipo,
+      titulo,
+      mensaje,
+      leida: false,
+      ...(link ? { link } : {}),
+    })
+  ));
 }
 
 // ── Deduplicación via localStorage (TTL 24 h) ──────────────

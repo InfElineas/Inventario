@@ -36,7 +36,10 @@ const NAV_GROUPS = [
       { path: '/inventario',  label: 'Inventario',  icon: 'ClipboardList', roles: ['inv','fact','auditor','jefe_depto','administrador','superadmin'] },
       { path: '/mermas',      label: 'Mermas',       icon: 'TrendingDown',  roles: ['inv','fact','auditor','jefe_depto','administrador','superadmin'] },
       { path: '/lotes',       label: 'Vencimientos', icon: 'Clock',         roles: ['inv','ca','auditor','jefe_depto','administrador','superadmin']  },
-      { path: '/recepciones', label: 'Recepciones',  icon: 'PackageOpen',   roles: ['inv','jefe_depto','administrador','superadmin']                 },
+      // `fact` entra pero sin poder recibir (eso lo gatea la propia página):
+      // el reporte de incidencia le llega por notificación y tiene que poder
+      // volver a él para cuadrar la factura del proveedor.
+      { path: '/recepciones', label: 'Recepciones',  icon: 'PackageOpen',   roles: ['inv','fact','jefe_depto','administrador','superadmin']          },
       { path: '/reabastecimiento', label: 'Reabastecimiento', icon: 'ShoppingCart', roles: ['inv','ca','jefe_depto','supervisor','administrador','superadmin'] },
     ],
   },

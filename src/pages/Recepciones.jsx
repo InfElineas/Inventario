@@ -18,7 +18,9 @@ import { useConfirm } from '@/lib/useConfirm';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
-import { notifyJefeDepto } from '@/lib/notificationService';
+import { notifyJefeDepto, notifyRoles } from '@/lib/notificationService';
+import { incidenciasDe, hayIncidencia, resumenIncidencias } from '@/lib/incidenciasRecepcion';
+import ReporteIncidencia from '@/components/recepciones/ReporteIncidencia';
 import { fetchPedidos, fetchLineasDePedido } from '@/services/pedidosService';
 import LineaRecibir from '@/components/recepciones/LineaRecibir';
 import { SIN_SONDEO } from '@/lib/query-client';
@@ -549,6 +551,10 @@ function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
       ...x, ...campos,
       diferencia: campos.cant_recibida - (Number(x.cant_esperada) || 0),
       contada: true,
+      // Se anota al contar y no se recalcula luego: si el producto se da de
+      // alta la semana que viene, el reporte seguirá diciendo que cuando
+      // llegó no existía, que es lo que pasó.
+      nuevo_en_tkc: esNuevo(x.producto_codigo),
       ...(fotoId ? { foto_id: fotoId } : {}),
     } : x));
     onUpdate({
@@ -579,6 +585,7 @@ function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
       ...newItem, ...campos,
       diferencia: campos.cant_recibida,
       contada: true,
+      nuevo_en_tkc: esNuevo(newItem.producto_codigo),
       ...(fotoId ? { foto_id: fotoId } : {}),
     };
     const updated = [...detalles, item];
@@ -591,19 +598,24 @@ function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
   };
 
   const cerrarRecepcion = async () => {
+    // Lo que se mira ya no son solo las cantidades: también cuenta la
+    // mercancía dañada, la de calidad deficiente y el producto que no existe
+    // en el catálogo. Una recepción donde las cifras cuadran pero media caja
+    // viene rota también es una incidencia.
+    const incidencias = incidenciasDe(recepcion);
+    const marcar = hayIncidencia(incidencias);
     const difs = detalles.filter(d => d.diferencia !== 0);
 
     // La incidencia no bloquea: con el camión en la puerta, impedir cerrar
-    // hasta que alguien resuelva una diferencia es como se consiguen números
-    // inventados. Se registra, se avisa al jefe y la recepción sigue su
-    // curso marcada «con diferencias».
-    const aviso = difs.length > 0
-      ? `Hay ${difs.length} ${difs.length === 1 ? 'producto' : 'productos'} donde lo contado no cuadra con lo pedido. `
-        + 'Se registrará la incidencia y se avisará al jefe de departamento.'
+    // hasta que alguien la resuelva es como se consiguen números inventados.
+    // Se registra, se avisa y la recepción sigue su curso marcada.
+    const aviso = marcar
+      ? `Se generará el reporte de incidencia (${resumenIncidencias(incidencias)}) `
+        + 'y se avisará al jefe de departamento y a facturación.'
       : 'Se registrarán las diferencias y no podrá modificarse.';
     if (!await confirmDialog(aviso, { title: '¿Cerrar esta recepción?' })) return;
 
-    const estado = difs.length > 0 ? 'con_diferencias' : 'cerrada';
+    const estado = marcar ? 'con_diferencias' : 'cerrada';
     const diferencias = difs.map(d => ({
       producto_id: d.producto_id,
       producto_nombre: d.producto_nombre,
@@ -615,18 +627,22 @@ function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
     }));
     onUpdate({ estado, diferencias });
 
-    if (difs.length > 0) {
-      const detalle = difs
-        .slice(0, 5)
-        .map((d) => `${d.producto_nombre}: se pidieron ${d.cant_esperada} y llegaron ${d.cant_recibida}`)
-        .join('; ');
-      notifyJefeDepto(
-        'inventario', 'recepciones',
-        `Recepción ${recepcion.no_recepcion} con diferencias`,
-        `${recepcion.proveedor || 'Proveedor sin nombre'} — ${difs.length} ${difs.length === 1 ? 'producto no cuadra' : 'productos no cuadran'}. ${detalle}`
-        + (difs.length > 5 ? ` …y ${difs.length - 5} más.` : ''),
-      ).catch(() => {});
-    }
+    if (!marcar) return;
+
+    const titulo = `Recepción ${recepcion.no_recepcion} con incidencias`;
+    const cuerpo = `${recepcion.proveedor || 'Proveedor sin nombre'}`
+      + `${recepcion.no_orden ? ` (orden ${recepcion.no_orden})` : ''} — ${resumenIncidencias(incidencias)}. `
+      + 'Abre la recepción para ver el reporte completo.';
+    const enlace = `/recepciones/${recepcion.id}`;
+
+    // A inventario para reclamar al proveedor; a facturación porque es quien
+    // cuadra la factura contra lo que de verdad entró, y hasta ahora se
+    // enteraba cuando ya la había pagado.
+    // `recepcion` en singular: es la clave del icono y el color en el menú de
+    // notificaciones. Con el plural que había antes salía el aviso sin icono.
+    notifyJefeDepto('inventario', 'recepcion', titulo, cuerpo, enlace).catch(() => {});
+    notifyJefeDepto('facturacion', 'recepcion', titulo, cuerpo, enlace).catch(() => {});
+    notifyRoles(['fact'], 'recepcion', titulo, cuerpo, enlace).catch(() => {});
   };
 
   return (
@@ -800,6 +816,10 @@ function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
           </Button>
         </>
       )}
+
+      {/* El reporte solo cuando ya está cerrada: mientras se cuenta diría
+          «faltaron 1270», que es justo el número que no debe verse. */}
+      {recepcion.estado !== 'en_curso' && <ReporteIncidencia recepcion={recepcion} />}
 
       {/* Diferencias for supervisor */}
       {recepcion.estado === 'con_diferencias' && (role === 'supervisor' || role === 'administrador') && (
