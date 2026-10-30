@@ -21,7 +21,15 @@
 name: inventario-prod
 
 services:
-  app:
+  # No llamar `app` a este servicio: su nombre es un alias DNS en cada red a la
+  # que se une, y el proxy de elineas-transferencia descubre sus réplicas
+  # resolviendo `app` dentro de elineas-transferencia_default. Al unirnos a esa
+  # red para poder llamar a su API, nuestro contenedor empezó a contestar a
+  # peticiones que no eran suyas y aparecieron 502 intermitentes en su lado.
+  #
+  # Se arregló en el servidor antes que aquí; esto trae el cambio al repo para
+  # que un despliegue desde cero no lo repita.
+  inventario:
     build:
       context: .
       dockerfile: Dockerfile
@@ -58,6 +66,10 @@ services:
       # está en elineas_default sino en la red de su propio compose. Sin esto
       # el contenedor ni siquiera resuelve su nombre («bad address») y la
       # pantalla de ajustes responde «respuesta inesperada de la API».
+      #
+      # Entrar en la red de otro tiene un precio: el nombre del servicio pasa a
+      # ser un alias DNS ahí dentro. Por eso este no se llama `app` (ver
+      # arriba). Cuidado al añadir más redes ajenas por el mismo motivo.
       - elineas-transferencia_default
 
 networks:
