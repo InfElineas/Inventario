@@ -26,6 +26,7 @@ const TABLA = {
   LoteIC:              'lotes_ic',
   Inventario:          'inventarios',
   Recepcion:           'recepciones',
+  RecepcionFoto:       'recepcion_fotos',
   Notificacion:        'notificaciones',
   HistorialMovimiento: 'historial_movimientos',
   Usuario:             'usuarios',

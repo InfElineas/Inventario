@@ -4,7 +4,6 @@ import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StatusBadge from '@/components/shared/StatusBadge';
@@ -12,7 +11,7 @@ import ProductSearch from '@/components/shared/ProductSearch';
 import AlertBanner from '@/components/shared/AlertBanner';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Search, Check, X, PackageOpen, Trash2, Pencil } from 'lucide-react';
+import { Plus, Search, PackageOpen, Trash2, Pencil, Image as ImageIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { useConfirm } from '@/lib/useConfirm';
 import SortTh from '@/components/shared/SortTh';
@@ -20,6 +19,7 @@ import { useSortable } from '@/lib/useSortable';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import { notifyJefeDepto } from '@/lib/notificationService';
 import { fetchPedidos, fetchLineasDePedido } from '@/services/pedidosService';
+import LineaRecibir from '@/components/recepciones/LineaRecibir';
 import { SIN_SONDEO } from '@/lib/query-client';
 
 const RECEP_COL_DEFS = [
@@ -293,8 +293,11 @@ export default function Recepciones() {
       </>
       )}
 
+      {/* Ancho: cada línea pide cantidad, gramaje, unidades por caja,
+          vencimiento, merma y foto. En el ancho de antes no cabían sin
+          apelotonarse unos encima de otros. */}
       <Dialog open={!!selectedId} onOpenChange={(o) => { if (!o) setSelectedId(null); }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
           {selected && (
             <RecepcionDetail
               recepcion={selected}
@@ -460,42 +463,106 @@ function CreateRecepcionForm({ genNo, user, onSubmit, onCancel }) {
 
 function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
   const [newItem, setNewItem] = useState(null);
+  const [contando, setContando] = useState(null);
   const [editingProveedor, setEditingProveedor] = useState(false);
   const [proveedorDraft, setProveedorDraft] = useState(recepcion.proveedor || '');
   const { confirmDialog, ConfirmDialogNode } = useConfirm();
   const detalles = recepcion.detalles || [];
-  const canEdit = (role === 'inv' || role === 'administrador') && recepcion.estado === 'en_curso';
-  const confirmados = detalles.length;
+  const canEdit = ['inv', 'administrador', 'superadmin'].includes(role) && recepcion.estado === 'en_curso';
+  // Una línea del pedido nace sin contar; las que se añaden a mano ya vienen
+  // contadas. El progreso es lo contado, no lo listado: con lo segundo una
+  // recepción recién abierta decía 100% sin que nadie hubiera tocado nada.
+  const sinContar = detalles.filter((d) => d.contada === false);
+  const confirmados = detalles.length - sinContar.length;
   const total = recepcion.total_items || detalles.length;
   const progress = total > 0 ? (confirmados / total) * 100 : 0;
 
-  const addItem = (producto) => {
-    setNewItem({ producto_id: producto.id, producto_nombre: producto.nombre, producto_codigo: producto.codigo_producto, cant_esperada: '', cant_recibida: '', cant_merma_origen: '', no_lote: '', fecha_vencimiento: '', temperatura: 'ambient', calidad_ok: true, nota_calidad: '' });
+  // Las diferencias son de quien las resuelve, no de quien cuenta: ver el
+  // número de más o de menos es ver lo que se esperaba.
+  const veCantidades = ['supervisor', 'administrador', 'superadmin'].includes(role);
+
+  /**
+   * Qué sabe el catálogo de los productos de esta recepción.
+   *
+   * Lo que se busca es sobre todo lo que NO está: un código que no aparece es
+   * un producto nuevo, sin anuncio en TKC, y de ese hay que apuntar el código
+   * completo porque no lo tenemos de ningún otro sitio.
+   */
+  const codigos = [...new Set(detalles.map((d) => d.producto_codigo).filter(Boolean))];
+  const { data: catalogo } = useQuery({
+    queryKey: ['recepcion-catalogo', recepcion.id, codigos.length],
+    queryFn: () => base44.entities.Producto.filter(
+      { codigo_producto: codigos }, 'nombre', 1000, 0,
+      ['codigo_producto', 'nombre', 'estado_anuncio', 'id_tienda', 'suministrador'],
+    ),
+    enabled: codigos.length > 0,
+    ...SIN_SONDEO,
+  });
+  const porCodigo = new Map((catalogo ?? []).map((p) => [String(p.codigo_producto), p]));
+  // Mientras el catálogo no ha llegado nada es «nuevo»: marcarlo antes de
+  // saberlo haría teclear códigos completos que ya tenemos.
+  const esNuevo = (codigo) => Boolean(catalogo) && !porCodigo.has(String(codigo));
+
+  /** Guarda la foto aparte y devuelve su id, que es lo que va en la línea. */
+  const guardarFoto = async (codigo, datos) => {
+    if (!datos) return null;
+    const fila = await base44.entities.RecepcionFoto.create({
+      recepcion_id: recepcion.id,
+      producto_codigo: String(codigo ?? ''),
+      datos,
+      creado_por: user?.email,
+    });
+    return fila?.id ?? null;
   };
 
-  const pctMermaOrigen = newItem && Number(newItem.cant_recibida) > 0
-    ? (Number(newItem.cant_merma_origen) || 0) / Number(newItem.cant_recibida)
-    : 0;
-  const recomiendaDevolucion = pctMermaOrigen > 0.15;
+  /** Escribe lo contado en una línea que ya venía del pedido. */
+  const contarLinea = async (i, datos) => {
+    const { foto, ...campos } = datos;
+    const fotoId = await guardarFoto(detalles[i]?.producto_codigo, foto);
+    const updated = detalles.map((x, j) => (j === i ? {
+      ...x, ...campos,
+      diferencia: campos.cant_recibida - (Number(x.cant_esperada) || 0),
+      contada: true,
+      ...(fotoId ? { foto_id: fotoId } : {}),
+    } : x));
+    onUpdate({
+      detalles: updated,
+      items_confirmados: updated.filter((x) => x.contada !== false).length,
+    });
+    setContando(null);
+  };
 
-  const confirmItem = () => {
-    if (!newItem) return;
-    const cantRecibida = Number(newItem.cant_recibida) || 0;
-    const cantMermaOrigen = Number(newItem.cant_merma_origen) || 0;
+  const addItem = (producto) => {
+    setNewItem({
+      producto_id: producto.id,
+      producto_nombre: producto.nombre,
+      producto_codigo: producto.codigo_producto,
+      // No venía en el pedido, así que no se esperaba ninguna: la diferencia
+      // es todo lo que llegue.
+      cant_esperada: 0,
+      no_lote: '',
+      temperatura: 'ambient',
+    });
+  };
+
+  /** Añade un producto que no venía en el pedido. */
+  const confirmItem = async (datos) => {
+    const { foto, ...campos } = datos;
+    const fotoId = await guardarFoto(newItem.producto_codigo, foto);
     const item = {
-      ...newItem,
-      cant_esperada: Number(newItem.cant_esperada) || 0,
-      cant_recibida: cantRecibida,
-      cant_merma_origen: cantMermaOrigen,
-      recomienda_devolucion: cantRecibida > 0 && (cantMermaOrigen / cantRecibida) > 0.15,
-      diferencia: cantRecibida - (Number(newItem.cant_esperada) || 0),
+      ...newItem, ...campos,
+      diferencia: campos.cant_recibida,
+      contada: true,
+      ...(fotoId ? { foto_id: fotoId } : {}),
     };
     const updated = [...detalles, item];
-    onUpdate({ detalles: updated, items_confirmados: updated.length, total_items: updated.length });
+    onUpdate({
+      detalles: updated,
+      items_confirmados: updated.filter((x) => x.contada !== false).length,
+      total_items: updated.length,
+    });
     setNewItem(null);
   };
-
-  const sinContar = detalles.filter((d) => d.contada === false);
 
   const cerrarRecepcion = async () => {
     const difs = detalles.filter(d => d.diferencia !== 0);
@@ -593,102 +660,104 @@ function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
 
       {recepcion.estado === 'en_curso' && (
         <>
-          <ProductSearch onSelect={addItem} placeholder="Agregar producto..." />
+          <ProductSearch onSelect={addItem} placeholder="Agregar un producto que no venía en el pedido..." />
           {newItem && (
-            <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: '8px', borderWidth: '0.5px' }}>
-              <p className="text-sm font-medium">{newItem.producto_nombre}</p>
-              <div className="grid grid-cols-2 gap-2">
-                <Input type="number" placeholder="Cant. esperada" value={newItem.cant_esperada}
-                  onChange={(e) => setNewItem({ ...newItem, cant_esperada: e.target.value })} style={{ borderRadius: '8px' }} />
-                <Input type="number" placeholder="Cant. recibida *" value={newItem.cant_recibida}
-                  onChange={(e) => setNewItem({ ...newItem, cant_recibida: e.target.value })} style={{ borderRadius: '8px' }} />
-                <Input placeholder="No. lote" value={newItem.no_lote}
-                  onChange={(e) => setNewItem({ ...newItem, no_lote: e.target.value })} style={{ borderRadius: '8px' }} />
-                <Input type="date" value={newItem.fecha_vencimiento}
-                  onChange={(e) => setNewItem({ ...newItem, fecha_vencimiento: e.target.value })} style={{ borderRadius: '8px' }} />
-                <Input type="number" placeholder="Unidades merma de origen" value={newItem.cant_merma_origen}
-                  onChange={(e) => setNewItem({ ...newItem, cant_merma_origen: e.target.value })} className="col-span-2" style={{ borderRadius: '8px' }} />
-              </div>
-              {recomiendaDevolucion && (
-                <AlertBanner variant="danger" message={`La merma de origen (${(pctMermaOrigen * 100).toFixed(0)}%) supera el 15% de lo recibido. Se recomienda devolver este ítem al proveedor.`} />
-              )}
-              <div className="flex gap-2">
-                <Button size="sm" variant={newItem.calidad_ok ? 'default' : 'outline'}
-                  onClick={() => setNewItem({ ...newItem, calidad_ok: true })} style={{ borderRadius: '8px' }}>
-                  <Check className="w-3.5 h-3.5 mr-1" /> Calidad OK
-                </Button>
-                <Button size="sm" variant={!newItem.calidad_ok ? 'destructive' : 'outline'}
-                  onClick={() => setNewItem({ ...newItem, calidad_ok: false })} style={{ borderRadius: '8px' }}>
-                  <X className="w-3.5 h-3.5 mr-1" /> Deficiente
-                </Button>
-              </div>
-              {!newItem.calidad_ok && (
-                <Textarea placeholder="Nota de calidad..." value={newItem.nota_calidad}
-                  onChange={(e) => setNewItem({ ...newItem, nota_calidad: e.target.value })} style={{ borderRadius: '8px' }} />
-              )}
-              <Button size="sm" className="w-full" onClick={confirmItem} disabled={!newItem.cant_recibida} style={{ borderRadius: '8px' }}>
-                Confirmar ítem
-              </Button>
-            </div>
+            <LineaRecibir
+              linea={newItem}
+              producto={porCodigo.get(String(newItem.producto_codigo))}
+              nuevo={esNuevo(newItem.producto_codigo)}
+              onConfirmar={confirmItem}
+              onCancelar={() => setNewItem(null)}
+            />
           )}
         </>
       )}
 
-      {/* Items list */}
+      {/* Las líneas por contar primero: es lo que queda por hacer. */}
       <div className="space-y-2">
-        {detalles.map((d, i) => (
-          <div key={i} className={`p-3 rounded-lg flex items-center justify-between gap-2 ${
-            d.contada === false ? 'bg-[#BA7517]/[0.06] border border-[#BA7517]/20' : 'bg-secondary/50'
-          }`} style={{ borderRadius: '8px' }}>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{d.producto_nombre}</p>
-              {/* Las líneas que vienen del pedido nacen sin contar: la cantidad
-                  recibida se escribe aquí mismo, al lado de lo que se pidió. */}
-              {d.contada === false && canEdit ? (
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">Pedidas: {d.cant_esperada} · Recibidas</span>
-                  <Input type="number" min="0" className="w-20 h-7 text-xs text-right"
-                    defaultValue=""
-                    onBlur={(e) => {
-                      const v = e.target.value;
-                      if (v === '') return;
-                      const recibida = Number(v) || 0;
-                      const updated = detalles.map((x, j) => j === i
-                        ? { ...x, cant_recibida: recibida, diferencia: recibida - (Number(x.cant_esperada) || 0), contada: true }
-                        : x);
+        {detalles.map((d, i) => {
+          // Contando esta: el formulario ocupa el sitio de la fila.
+          if (contando === i && canEdit) {
+            return (
+              <LineaRecibir key={i} linea={d}
+                producto={porCodigo.get(String(d.producto_codigo))}
+                nuevo={esNuevo(d.producto_codigo)}
+                onConfirmar={(datos) => contarLinea(i, datos)}
+                onCancelar={() => setContando(null)} />
+            );
+          }
+
+          return (
+            <div key={i} className={`p-3 rounded-lg flex items-center justify-between gap-2 ${
+              d.contada === false ? 'bg-[#BA7517]/[0.06] border border-[#BA7517]/20' : 'bg-secondary/50'
+            }`} style={{ borderRadius: '8px' }}>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-medium truncate">{d.producto_nombre}</p>
+                  {esNuevo(d.producto_codigo) && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-[#BA751714] text-[#BA7517] shrink-0"
+                      style={{ borderRadius: '4px' }}>Nuevo en TKC</span>
+                  )}
+                </div>
+                {/* Sin contar: no se dice cuántas se pidieron. Con el número
+                    delante, contar se vuelve comprobar que cuadra, y lo que
+                    queda registrado es el pedido y no la caja. */}
+                {d.contada === false ? (
+                  <p className="text-xs text-muted-foreground">{d.producto_codigo} · por contar</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Contadas: {d.cant_recibida}
+                    {veCantidades ? ` · Pedidas: ${d.cant_esperada}` : ''}
+                    {d.gramaje ? ` · ${d.gramaje}` : ''}
+                    {d.unidades_por_caja > 0 ? ` · ${d.unidades_por_caja} u/caja` : ''}
+                    {d.fecha_vencimiento ? ` · vence ${d.fecha_vencimiento}` : ''}
+                    {d.cant_merma_origen > 0 ? ` · merma origen ${d.cant_merma_origen}` : ''}
+                  </p>
+                )}
+                {d.recomienda_devolucion && (
+                  <p className="text-xs font-medium text-[#E24B4A] mt-0.5">Recomendado: devolver al proveedor</p>
+                )}
+                {!d.calidad_ok && d.nota_calidad && (
+                  <p className="text-xs text-[#E24B4A] mt-0.5">Calidad: {d.nota_calidad}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {d.foto_id && <VerFoto id={d.foto_id} />}
+                {d.contada !== false && d.diferencia !== 0 && (
+                  veCantidades ? (
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded ${d.diferencia > 0 ? 'bg-[#BA751714] text-[#BA7517]' : 'bg-[#E24B4A14] text-[#E24B4A]'}`} style={{ borderRadius: '4px' }}>
+                      {d.diferencia > 0 ? '+' : ''}{d.diferencia}
+                    </span>
+                  ) : (
+                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-[#E24B4A14] text-[#E24B4A]" style={{ borderRadius: '4px' }}>
+                      No cuadra
+                    </span>
+                  )
+                )}
+                {canEdit && (
+                  <Button size="sm" variant={d.contada === false ? 'default' : 'ghost'}
+                    className="h-7 text-xs" onClick={() => setContando(i)} style={{ borderRadius: '6px' }}>
+                    {d.contada === false ? 'Contar' : <Pencil className="w-3 h-3" />}
+                  </Button>
+                )}
+                {canEdit && (
+                  <button
+                    className="text-muted-foreground hover:text-[#E24B4A] transition-colors text-xs font-bold leading-none"
+                    onClick={() => {
+                      const updated = detalles.filter((_, j) => j !== i)
                       onUpdate({
                         detalles: updated,
                         items_confirmados: updated.filter((x) => x.contada !== false).length,
-                      });
+                        total_items: updated.length,
+                      })
                     }}
-                    style={{ borderRadius: '6px' }} />
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">Esp: {d.cant_esperada} · Rec: {d.cant_recibida}{d.no_lote ? ` · Lote: ${d.no_lote}` : ''}{d.cant_merma_origen > 0 ? ` · Merma origen: ${d.cant_merma_origen}` : ''}</p>
-              )}
-              {d.recomienda_devolucion && (
-                <p className="text-xs font-medium text-[#E24B4A] mt-0.5">Recomendado: devolver al proveedor</p>
-              )}
+                    title="Quitar ítem"
+                  >×</button>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              {d.diferencia !== 0 && (
-                <span className={`text-xs font-medium px-2 py-0.5 rounded ${d.diferencia > 0 ? 'bg-[#BA751714] text-[#BA7517]' : 'bg-[#E24B4A14] text-[#E24B4A]'}`} style={{ borderRadius: '4px' }}>
-                  {d.diferencia > 0 ? '+' : ''}{d.diferencia}
-                </span>
-              )}
-              {canEdit && (
-                <button
-                  className="text-muted-foreground hover:text-[#E24B4A] transition-colors text-xs font-bold leading-none"
-                  onClick={() => {
-                    const updated = detalles.filter((_, j) => j !== i)
-                    onUpdate({ detalles: updated, items_confirmados: updated.length, total_items: updated.length })
-                  }}
-                  title="Quitar ítem"
-                >×</button>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {recepcion.estado === 'en_curso' && detalles.length > 0 && (
@@ -733,6 +802,49 @@ function RecepcionDetail({ recepcion, role, user, onUpdate, onDelete }) {
       )}
     </div>
     {ConfirmDialogNode}
+    </>
+  );
+}
+
+/**
+ * La foto de una línea, que solo se descarga si alguien la mira.
+ *
+ * Están aparte de la recepción justamente para esto: una recepción de cien
+ * líneas lleva cien fotos y traerlas todas para pintar una lista sería
+ * descargar varios megas que nadie pidió.
+ */
+function VerFoto({ id }) {
+  const [abierta, setAbierta] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['recepcion-foto', id],
+    queryFn: async () => {
+      const [f] = await base44.entities.RecepcionFoto.filter({ id }, null, 1);
+      return f ?? null;
+    },
+    enabled: abierta,
+    ...SIN_SONDEO,
+  });
+
+  return (
+    <>
+      <button onClick={() => setAbierta(true)} title="Ver la foto de la presentación"
+        className="text-muted-foreground hover:text-foreground transition-colors">
+        <ImageIcon className="w-4 h-4" />
+      </button>
+      <Dialog open={abierta} onOpenChange={setAbierta}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle className="text-sm">Foto de la presentación</DialogTitle></DialogHeader>
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground p-8 text-center">Cargando…</p>
+          ) : data?.datos ? (
+            <img src={data.datos} alt="Presentación del producto" className="w-full rounded"
+              style={{ borderRadius: '8px' }} />
+          ) : (
+            <p className="text-sm text-muted-foreground p-8 text-center">La foto ya no está.</p>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

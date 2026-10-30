@@ -83,6 +83,8 @@ const CREACION = {
   mermas:      { roles: ['inv'], campoDueño: 'especialista_id' },
   inventarios: { roles: ['inv'], campoDueño: 'especialista_id' },
   recepciones: { roles: ['inv'], campoDueño: 'especialista_id' },
+  // La foto de la presentación, que se toma al contar la línea.
+  recepcion_fotos: { roles: ['inv'], campoDueño: 'creado_por' },
   // lotes_ic_insert
   lotes_ic:    { roles: ['inv', 'ca'], campoDueño: 'especialista_inv_id' },
   // anuncios_insert: el caso debe nacer en 'pendiente', el primer paso del
@@ -133,6 +135,14 @@ const BORRADO = {
 
   anuncios_desact: [{ rol: 'superadmin' }],
   usuarios: [{ rol: 'administrador' }, { rol: 'superadmin' }],
+
+  // Repetir la foto es lo normal: sale movida y se vuelve a tirar. Quien
+  // recibe borra la suya; el estado de la recepción no entra porque la foto
+  // no es parte del flujo, es la prueba de lo que había en la caja.
+  recepcion_fotos: [
+    { rol: 'superadmin' }, { rol: 'administrador' },
+    { rol: 'inv', dueño: 'creado_por' },
+  ],
 }
 
 // ── Tablas de solo lectura para el cliente ─────────────────────

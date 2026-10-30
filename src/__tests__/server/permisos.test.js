@@ -76,6 +76,12 @@ describe('creación', () => {
     expect(puedeCrear(ctx('auditor'), 'lotes_ic', { especialista_inv_id: 'yo@mercadoelineas.com' })).toBe(false);
   });
 
+  it('la foto de la recepción la sube inventario, a su nombre', () => {
+    expect(puedeCrear(ctx('inv'), 'recepcion_fotos', { creado_por: 'yo@mercadoelineas.com' })).toBe(true);
+    expect(puedeCrear(ctx('inv'), 'recepcion_fotos', { creado_por: 'otro@mercadoelineas.com' })).toBe(false);
+    expect(puedeCrear(ctx('fact'), 'recepcion_fotos', { creado_por: 'yo@mercadoelineas.com' })).toBe(false);
+  });
+
   it('una tabla no declarada no se puede crear', () => {
     expect(puedeCrear(ctx('inv'), 'tabla_inventada', {})).toBe(false);
   });
@@ -235,6 +241,16 @@ describe('borrado', () => {
     // Única de las tres sin comprobación de propiedad; se respeta la policy.
     expect(puedeBorrar(ctx('inv'), 'recepciones', { estado: 'en_curso', especialista_id: 'otro@mercadoelineas.com' })).toBe(true);
     expect(puedeBorrar(ctx('inv'), 'recepciones', { estado: 'cerrada' })).toBe(false);
+  });
+
+  it('la foto de una recepción la borra quien la tomó', () => {
+    // Sale movida y se vuelve a tirar. El estado de la recepción no entra:
+    // la foto no es un paso del flujo, es la prueba de lo que traía la caja.
+    const mia = { creado_por: 'yo@mercadoelineas.com' };
+    expect(puedeBorrar(ctx('inv'), 'recepcion_fotos', mia)).toBe(true);
+    expect(puedeBorrar(ctx('inv'), 'recepcion_fotos', { creado_por: 'otro@mercadoelineas.com' })).toBe(false);
+    expect(puedeBorrar(ctx('administrador'), 'recepcion_fotos', { creado_por: 'otro@mercadoelineas.com' })).toBe(true);
+    expect(puedeBorrar(ctx('fact'), 'recepcion_fotos', mia)).toBe(false);
   });
 
   it('una tabla sin regla de borrado no se borra', () => {
