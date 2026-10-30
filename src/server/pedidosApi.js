@@ -38,23 +38,30 @@ export const hayPedidos = () => configReab().configurada
 /**
  * Pedidos de compra, opcionalmente de un proveedor y de ciertos estados.
  *
+ * El filtrado se hace aquí y no en la consulta: su API no documenta ningún
+ * parámetro para ello y el que se le pasaba —`status_in`— se lo tragaba sin
+ * filtrar nada. Son unos pocos pedidos abiertos a la vez, así que traerlos
+ * todos y quedarse con los que interesan no cuesta nada y no depende de
+ * adivinar cómo se llama su filtro.
+ *
  * @param {{ proveedor?: string, estados?: string[] }} [filtros]
  *   `estados` sin dar son los de en camino; una lista vacía, todos.
  */
 export async function listarPedidos({ proveedor, estados = ESTADOS_EN_CAMINO } = {}) {
-  const pedidos = estados.filter((e) => ESTADOS_PEDIDO.includes(e))
+  const quiere = estados.filter((e) => ESTADOS_PEDIDO.includes(e))
+  const busca = (proveedor ?? '').trim().toLowerCase()
 
   const { datos } = await pedirReab('purchase-orders', {
-    // Sin estados que filtrar vienen todos: `pedirReab` no manda los vacíos.
-    status_in: pedidos.join(','),
-    supplier_name: proveedor,
     sortBy: 'created_at',
     sortOrder: 'desc',
     pageSize: 200,
     count: 'none',
   })
 
-  return datos.map((p) => ({
+  return datos.filter((p) => (
+    (quiere.length === 0 || quiere.includes(p.status))
+    && (!busca || String(p.supplier_name ?? '').toLowerCase().includes(busca))
+  )).map((p) => ({
     id: p.id,
     numero: p.order_number ?? p.id.slice(0, 8),
     proveedor: p.supplier_name ?? '',

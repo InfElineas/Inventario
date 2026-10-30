@@ -22,39 +22,61 @@ beforeEach(() => {
 });
 
 describe('listarPedidos', () => {
-  it('por defecto pide solo los que están en camino', async () => {
-    pedirReab.mockResolvedValue({ datos: [] });
-    await listarPedidos();
+  const PEDIDO = (estado, extra = {}) => ({
+    id: `id-${estado}`, order_number: estado, status: estado,
+    supplier_name: 'Proveedor TEST S.A.', total_items: 3, ...extra,
+  });
+  const LOS_CUATRO = [
+    PEDIDO('enviado'), PEDIDO('borrador'),
+    PEDIDO('pendiente_revision'), PEDIDO('confirmado'),
+  ];
 
-    const [ruta, consulta] = pedirReab.mock.calls[0];
-    expect(ruta).toBe('purchase-orders');
+  it('por defecto deja solo los que están en camino', async () => {
+    pedirReab.mockResolvedValue({ datos: LOS_CUATRO });
+    const r = await listarPedidos();
+
     // Ni los que se están negociando ni los ya recibidos: contra esos no se
     // recibe nada de normal.
-    expect(consulta.status_in).toBe('enviado,parcialmente_recibido');
+    expect(r.map((p) => p.estado)).toEqual(['enviado']);
     expect(ESTADOS_EN_CAMINO).toEqual(['enviado', 'parcialmente_recibido']);
+  });
+
+  it('el filtro no se le pide a la API, que no lo entiende', async () => {
+    // Se le pasaba `status_in`, que no es un parámetro suyo: lo ignoraba y
+    // devolvía la lista entera. Filtrar aquí no depende de adivinarlo.
+    pedirReab.mockResolvedValue({ datos: [] });
+    await listarPedidos();
+    const [ruta, consulta] = pedirReab.mock.calls[0];
+    expect(ruta).toBe('purchase-orders');
+    expect(consulta).not.toHaveProperty('status_in');
   });
 
   it('se puede pedir un estado concreto', async () => {
     // Llega mercancía de pedidos que comercial dejó en `confirmado` sin
     // marcarlos enviados; sin esto no había forma de encontrarlos.
-    pedirReab.mockResolvedValue({ datos: [] });
-    await listarPedidos({ estados: ['confirmado'] });
-    expect(pedirReab.mock.calls[0][1].status_in).toBe('confirmado');
+    pedirReab.mockResolvedValue({ datos: LOS_CUATRO });
+    const r = await listarPedidos({ estados: ['confirmado'] });
+    expect(r.map((p) => p.estado)).toEqual(['confirmado']);
   });
 
   it('sin estados que filtrar vienen todos', async () => {
-    pedirReab.mockResolvedValue({ datos: [] });
-    await listarPedidos({ estados: [] });
-    // Vacío: `pedirReab` no manda el parámetro y la API no filtra.
-    expect(pedirReab.mock.calls[0][1].status_in).toBe('');
+    pedirReab.mockResolvedValue({ datos: LOS_CUATRO });
+    expect(await listarPedidos({ estados: [] })).toHaveLength(4);
   });
 
-  it('un estado inventado no se le manda a la API', async () => {
-    // Llegaría en la URL y su validación devolvería un 400 que el usuario
-    // vería como «error al consultar los pedidos».
-    pedirReab.mockResolvedValue({ datos: [] });
-    await listarPedidos({ estados: ['confirmado', 'en_camino'] });
-    expect(pedirReab.mock.calls[0][1].status_in).toBe('confirmado');
+  it('un estado inventado no deja pasar nada de más', async () => {
+    pedirReab.mockResolvedValue({ datos: LOS_CUATRO });
+    const r = await listarPedidos({ estados: ['confirmado', 'en_camino'] });
+    expect(r.map((p) => p.estado)).toEqual(['confirmado']);
+  });
+
+  it('el proveedor se busca por trozo del nombre, sin importar mayúsculas', async () => {
+    pedirReab.mockResolvedValue({ datos: [PEDIDO('enviado'), PEDIDO('enviado', {
+      id: 'otro', supplier_name: 'Quanzhou Jianda',
+    })] });
+    const r = await listarPedidos({ proveedor: 'quanzhou' });
+    expect(r).toHaveLength(1);
+    expect(r[0].proveedor).toBe('Quanzhou Jianda');
   });
 
   it('sin número de orden usa un trozo del id, no «null»', async () => {
