@@ -14,24 +14,47 @@ vi.mock('@/server/reabApi', () => ({
   pedirReab, pedirTodoReab, configReab: () => ({ configurada: true }),
 }));
 
-const { pedidosEnCamino, lineasDePedido, ESTADOS_EN_CAMINO } = await import('@/server/pedidosApi');
+const { listarPedidos, lineasDePedido, ESTADOS_EN_CAMINO } = await import('@/server/pedidosApi');
 
 beforeEach(() => {
   pedirReab.mockReset();
   pedirTodoReab.mockReset();
 });
 
-describe('pedidosEnCamino', () => {
-  it('pide solo los que están en camino', async () => {
+describe('listarPedidos', () => {
+  it('por defecto pide solo los que están en camino', async () => {
     pedirReab.mockResolvedValue({ datos: [] });
-    await pedidosEnCamino();
+    await listarPedidos();
 
     const [ruta, consulta] = pedirReab.mock.calls[0];
     expect(ruta).toBe('purchase-orders');
     // Ni los que se están negociando ni los ya recibidos: contra esos no se
-    // recibe nada.
+    // recibe nada de normal.
     expect(consulta.status_in).toBe('enviado,parcialmente_recibido');
     expect(ESTADOS_EN_CAMINO).toEqual(['enviado', 'parcialmente_recibido']);
+  });
+
+  it('se puede pedir un estado concreto', async () => {
+    // Llega mercancía de pedidos que comercial dejó en `confirmado` sin
+    // marcarlos enviados; sin esto no había forma de encontrarlos.
+    pedirReab.mockResolvedValue({ datos: [] });
+    await listarPedidos({ estados: ['confirmado'] });
+    expect(pedirReab.mock.calls[0][1].status_in).toBe('confirmado');
+  });
+
+  it('sin estados que filtrar vienen todos', async () => {
+    pedirReab.mockResolvedValue({ datos: [] });
+    await listarPedidos({ estados: [] });
+    // Vacío: `pedirReab` no manda el parámetro y la API no filtra.
+    expect(pedirReab.mock.calls[0][1].status_in).toBe('');
+  });
+
+  it('un estado inventado no se le manda a la API', async () => {
+    // Llegaría en la URL y su validación devolvería un 400 que el usuario
+    // vería como «error al consultar los pedidos».
+    pedirReab.mockResolvedValue({ datos: [] });
+    await listarPedidos({ estados: ['confirmado', 'en_camino'] });
+    expect(pedirReab.mock.calls[0][1].status_in).toBe('confirmado');
   });
 
   it('sin número de orden usa un trozo del id, no «null»', async () => {
@@ -40,7 +63,7 @@ describe('pedidosEnCamino', () => {
       supplier_name: 'Quanzhou Jianda', total_items: 4, status: 'enviado',
     }] });
 
-    const [p] = await pedidosEnCamino();
+    const [p] = await listarPedidos();
     expect(p.numero).toBe('f7ee879c');
     expect(p.proveedor).toBe('Quanzhou Jianda');
   });

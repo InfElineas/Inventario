@@ -18,7 +18,7 @@ import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import { notifyJefeDepto } from '@/lib/notificationService';
-import { fetchPedidosEnCamino, fetchLineasDePedido } from '@/services/pedidosService';
+import { fetchPedidos, fetchLineasDePedido } from '@/services/pedidosService';
 import { SIN_SONDEO } from '@/lib/query-client';
 
 const RECEP_COL_DEFS = [
@@ -29,6 +29,26 @@ const RECEP_COL_DEFS = [
   { key: 'estado',            label: 'Estado',        defaultOn: true, required: false },
 ]
 const RECEP_COLS_KEY = 'recep_cols'
+
+/**
+ * Los estados de un pedido de compra, dichos como los dice la gente.
+ *
+ * `en_camino` y `todos` no son estados suyos: son los dos atajos del filtro.
+ * El primero viene puesto porque es contra lo que se recibe casi siempre; el
+ * segundo está porque a veces el camión llega de un pedido que comercial dejó
+ * en otro estado y había que poder encontrarlo.
+ */
+const FILTRO_PEDIDO = [
+  { valor: 'en_camino',             label: 'En camino' },
+  { valor: 'todos',                 label: 'Todos los pedidos' },
+  { valor: 'enviado',               label: 'Enviados' },
+  { valor: 'parcialmente_recibido', label: 'Parcialmente recibidos' },
+  { valor: 'confirmado',            label: 'Confirmados' },
+  { valor: 'pendiente_revision',    label: 'Pendientes de revisión' },
+  { valor: 'borrador',              label: 'Borradores' },
+  { valor: 'recibido',              label: 'Ya recibidos' },
+  { valor: 'cancelado',             label: 'Cancelados' },
+]
 
 /** Cómo se titula y alinea cada columna. La usan la cabecera y las celdas. */
 const COL_TITULO = {
@@ -212,13 +232,15 @@ export default function Recepciones() {
  */
 function CreateRecepcionForm({ genNo, user, onSubmit, onCancel }) {
   const [pedidoId, setPedidoId] = useState('');
+  const [filtro, setFiltro] = useState('en_camino');
   const [proveedor, setProveedor] = useState('');
   const [noOrden, setNoOrden] = useState('');
   const [aMano, setAMano] = useState(false);
 
   const { data: pedidos, isLoading, error } = useQuery({
-    queryKey: ['pedidos-en-camino'],
-    queryFn: () => fetchPedidosEnCamino(),
+    queryKey: ['pedidos', filtro],
+    // `en_camino` es lo que el servidor hace por defecto, así que no se manda.
+    queryFn: () => fetchPedidos({ estados: filtro === 'en_camino' ? undefined : filtro }),
     ...SIN_SONDEO,
     retry: false,
   });
@@ -288,7 +310,19 @@ function CreateRecepcionForm({ genNo, user, onSubmit, onCancel }) {
       {porPedido ? (
         <>
           <label className="block space-y-1.5 text-xs text-muted-foreground">
-            Pedido en camino
+            Estado del pedido
+            <Select value={filtro} onValueChange={(v) => { setFiltro(v); setPedidoId(''); }}>
+              <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {FILTRO_PEDIDO.map((f) => (
+                  <SelectItem key={f.valor} value={f.valor}>{f.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+
+          <label className="block space-y-1.5 text-xs text-muted-foreground">
+            Pedido
             <Select value={pedidoId} onValueChange={setPedidoId}>
               <SelectTrigger style={{ borderRadius: '8px' }}>
                 <SelectValue placeholder={isLoading ? 'Cargando pedidos…' : 'Elige el pedido que llega'} />
@@ -296,7 +330,7 @@ function CreateRecepcionForm({ genNo, user, onSubmit, onCancel }) {
               <SelectContent>
                 {(pedidos ?? []).map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {p.proveedor} — {p.numero} · {p.lineas} líneas
+                    {p.proveedor} — {p.numero} · {p.lineas} líneas · {p.estado.replace(/_/g, ' ')}
                     {p.llegadaEstimada ? ` · llega ${p.llegadaEstimada}` : ''}
                   </SelectItem>
                 ))}
@@ -306,7 +340,9 @@ function CreateRecepcionForm({ genNo, user, onSubmit, onCancel }) {
 
           {!isLoading && (pedidos ?? []).length === 0 && (
             <AlertBanner variant="info"
-              message="No hay pedidos en camino ahora mismo. Si la mercancía llegó igualmente, regístrala a mano." />
+              message={filtro === 'todos'
+                ? 'No hay ningún pedido de compra. Si la mercancía llegó igualmente, regístrala a mano.'
+                : 'Ningún pedido en ese estado. Prueba con «Todos los pedidos»: puede que se haya quedado en otro.'} />
           )}
 
           {elegido && (

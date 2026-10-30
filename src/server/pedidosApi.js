@@ -10,23 +10,43 @@
  * «En camino» son dos estados suyos: `enviado` y `parcialmente_recibido` —el
  * segundo es un envío que llegó en tandas—. Los anteriores todavía se están
  * negociando y los posteriores ya se recibieron.
+ *
+ * Esos dos son lo normal al descargar un camión, pero no lo único: en la
+ * práctica llega mercancía de un pedido que comercial dejó en `confirmado` sin
+ * marcarlo enviado, y hay que poder encontrarlo. Por eso se puede pedir
+ * cualquier estado; «en camino» es solo el que viene puesto.
  */
 
 import { pedirReab, pedirTodoReab, configReab } from './reabApi.js'
 
 export const ESTADOS_EN_CAMINO = ['enviado', 'parcialmente_recibido']
 
+/** Los siete estados de su `purchase_order_status`, en orden de avance. */
+export const ESTADOS_PEDIDO = [
+  'borrador',
+  'pendiente_revision',
+  'confirmado',
+  'enviado',
+  'parcialmente_recibido',
+  'recibido',
+  'cancelado',
+]
+
 /** ¿Está configurada la API? La pantalla lo dice en vez de fallar sin más. */
 export const hayPedidos = () => configReab().configurada
 
 /**
- * Pedidos en camino, opcionalmente de un proveedor.
+ * Pedidos de compra, opcionalmente de un proveedor y de ciertos estados.
  *
- * @param {{ proveedor?: string }} [filtros]
+ * @param {{ proveedor?: string, estados?: string[] }} [filtros]
+ *   `estados` sin dar son los de en camino; una lista vacía, todos.
  */
-export async function pedidosEnCamino({ proveedor } = {}) {
+export async function listarPedidos({ proveedor, estados = ESTADOS_EN_CAMINO } = {}) {
+  const pedidos = estados.filter((e) => ESTADOS_PEDIDO.includes(e))
+
   const { datos } = await pedirReab('purchase-orders', {
-    status_in: ESTADOS_EN_CAMINO.join(','),
+    // Sin estados que filtrar vienen todos: `pedirReab` no manda los vacíos.
+    status_in: pedidos.join(','),
     supplier_name: proveedor,
     sortBy: 'created_at',
     sortOrder: 'desc',

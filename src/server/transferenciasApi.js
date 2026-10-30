@@ -42,7 +42,7 @@ import { keyToTkcValue } from '../services/tkc/warehouses.js'
 import { ROLES_AJUSTES, ROLES_TIENDA } from '../lib/ajustes.js'
 import { rolesDe } from '../lib/roles.js'
 import { cobertura, baseReportes } from './rotacionApi.js'
-import { pedidosEnCamino, lineasDePedido, hayPedidos } from './pedidosApi.js'
+import { listarPedidos, lineasDePedido, hayPedidos, ESTADOS_PEDIDO } from './pedidosApi.js'
 
 class ErrorPeticion extends Error {
   constructor(status, message) {
@@ -496,7 +496,19 @@ export function createTransferenciasApiMiddleware() {
         // Con `id` vienen las líneas de ese pedido; sin él, la lista.
         const idPedido = c.get('id')
         if (idPedido) return json(res, 200, { lineas: await lineasDePedido(idPedido) })
-        return json(res, 200, { pedidos: await pedidosEnCamino({ proveedor: c.get('proveedor') ?? undefined }) })
+        // Sin `estados` van los de en camino, que es lo habitual al descargar.
+        // Con `estados=todos` —o cualquier cosa que no sea un estado suyo— no
+        // se filtra y vienen todos, que es justo lo que pide quien busca un
+        // pedido que se quedó en otro estado.
+        const estados = c.get('estados')
+        return json(res, 200, {
+          pedidos: await listarPedidos({
+            proveedor: c.get('proveedor') ?? undefined,
+            estados: estados === null
+              ? undefined
+              : estados.split(',').map((e) => e.trim()).filter((e) => ESTADOS_PEDIDO.includes(e)),
+          }),
+        })
       }
 
       if (esRotacion) {

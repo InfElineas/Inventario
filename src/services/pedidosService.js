@@ -16,14 +16,20 @@ async function pedir(params) {
 }
 
 /**
- * Los que están `enviado` o `parcialmente_recibido`.
+ * Los pedidos de compra.
  *
- * @param {{ proveedor?: string }} [filtros]
+ * Sin `estados` vienen los que están en camino (`enviado` y
+ * `parcialmente_recibido`), que es con lo que se recibe casi siempre. Con
+ * `estados: 'todos'` vienen todos, para cuando la mercancía llegó de un pedido
+ * que se quedó en otro estado.
+ *
+ * @param {{ proveedor?: string, estados?: string }} [filtros]
  * @returns {Promise<Array<{id, numero, proveedor, oferta, estado, lineas, importe, moneda, llegadaEstimada}>>}
  */
-export async function fetchPedidosEnCamino({ proveedor } = {}) {
+export async function fetchPedidos({ proveedor, estados } = {}) {
   const params = new URLSearchParams()
   if (proveedor) params.set('proveedor', proveedor)
+  if (estados) params.set('estados', estados)
   const datos = await pedir(params)
   return Array.isArray(datos?.pedidos) ? datos.pedidos : []
 }
