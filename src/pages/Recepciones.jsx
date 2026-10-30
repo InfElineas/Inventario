@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StatusBadge from '@/components/shared/StatusBadge';
 import ProductSearch from '@/components/shared/ProductSearch';
 import AlertBanner from '@/components/shared/AlertBanner';
@@ -50,6 +51,45 @@ const FILTRO_PEDIDO = [
   { valor: 'cancelado',             label: 'Cancelados' },
 ]
 
+/**
+ * La recepción que nace de un pedido de compra.
+ *
+ * Las líneas entran ya puestas, con lo que pidió comercial como esperado y lo
+ * recibido en blanco: lo que hay que hacer al descargar es contar, no
+ * transcribir. `contada: false` las distingue de una línea que llegó a cero.
+ */
+function recepcionDePedido({ pedido, lineas, no, user }) {
+  const detalles = lineas.map((l) => ({
+    producto_codigo: l.codigo,
+    producto_nombre: l.nombre,
+    cant_esperada: l.cantidad,
+    cant_recibida: 0,
+    cant_merma_origen: 0,
+    diferencia: -l.cantidad,
+    no_lote: '',
+    fecha_vencimiento: '',
+    temperatura: 'ambient',
+    calidad_ok: true,
+    nota_calidad: '',
+    contada: false,
+  }));
+
+  return {
+    no_recepcion: no,
+    fecha: format(new Date(), 'yyyy-MM-dd'),
+    especialista_id: user?.email,
+    especialista_nombre: user?.full_name,
+    estado: 'en_curso',
+    diferencias: [],
+    proveedor: pedido.proveedor,
+    no_orden: pedido.numero,
+    pedido_id: pedido.id,
+    detalles,
+    total_items: detalles.length,
+    items_confirmados: 0,
+  };
+}
+
 /** Cómo se titula y alinea cada columna. La usan la cabecera y las celdas. */
 const COL_TITULO = {
   no_recepcion:      { label: 'No. Recepción' },
@@ -65,6 +105,11 @@ export default function Recepciones() {
   const [showCreate, setShowCreate] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [searchQ, setSearchQ] = useState('');
+  // Se abre en los pedidos y no en las recepciones: descargar un camión
+  // empieza por buscar de qué pedido viene, y mientras no se recibe nada la
+  // otra pestaña está vacía por definición.
+  const [vista, setVista] = useState('pedidos');
+  const [creando, setCreando] = useState(null);
   const { sort, onSort } = useSortable('fecha', 'desc');
   const queryClient = useQueryClient();
 
@@ -122,6 +167,33 @@ export default function Recepciones() {
 
   const estadoMap = { en_curso: 'en_curso', cerrada: 'completado', con_diferencias: 'devuelto' };
 
+  const puedeRecibir = ['inv', 'administrador', 'superadmin'].includes(role);
+
+  /**
+   * Empezar a recibir un pedido.
+   *
+   * Si ya tiene recepción se abre esa en vez de crear otra: dos recepciones
+   * del mismo pedido son dos conteos que luego nadie sabe cuál vale.
+   */
+  const recibirPedido = async (pedido) => {
+    const ya = recepciones.find((r) => r.pedido_id === pedido.id);
+    if (ya) { setVista('recepciones'); setSelectedId(ya.id); return; }
+
+    setCreando(pedido.id);
+    try {
+      const lineas = await fetchLineasDePedido(pedido.id);
+      const creada = await createMut.mutateAsync(
+        recepcionDePedido({ pedido, lineas, no: genNoRecepcion(), user }),
+      );
+      setVista('recepciones');
+      if (creada?.id) setSelectedId(creada.id);
+    } catch {
+      // El aviso lo da `createMut.onError`; aquí solo se suelta el botón.
+    } finally {
+      setCreando(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -130,23 +202,32 @@ export default function Recepciones() {
           <p className="text-sm text-muted-foreground mt-0.5">Recepción de mercancía</p>
         </div>
         <div className="flex items-center gap-2">
-          <ColPicker cols={RECEP_COL_DEFS} visible={cols}
-            onChange={(next) => { setCols(next); saveColsWithOrder(RECEP_COLS_KEY, next, colOrder); }}
-            storageKey={RECEP_COLS_KEY} order={colOrder}
-            onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(RECEP_COLS_KEY, cols, next); }} />
-          {['inv', 'administrador', 'superadmin'].includes(role) && (
-            <Button onClick={() => setShowCreate(true)} style={{ borderRadius: '8px' }}>
-              <Plus className="w-4 h-4 mr-1.5" /> Nueva recepción
+          {vista === 'recepciones' && (
+            <ColPicker cols={RECEP_COL_DEFS} visible={cols}
+              onChange={(next) => { setCols(next); saveColsWithOrder(RECEP_COLS_KEY, next, colOrder); }}
+              storageKey={RECEP_COLS_KEY} order={colOrder}
+              onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(RECEP_COLS_KEY, cols, next); }} />
+          )}
+          {puedeRecibir && (
+            <Button variant="outline" onClick={() => setShowCreate(true)} style={{ borderRadius: '8px' }}>
+              <Plus className="w-4 h-4 mr-1.5" /> Recepción sin pedido
             </Button>
           )}
         </div>
       </div>
 
+      <Tabs value={vista} onValueChange={setVista}>
+        <TabsList>
+          <TabsTrigger value="pedidos">Pedidos de compra</TabsTrigger>
+          <TabsTrigger value="recepciones">Recepciones ({recepciones.length})</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Create form */}
       <Dialog open={showCreate} onOpenChange={(o) => { if (!o) setShowCreate(false); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Nueva recepción</DialogTitle>
+            <DialogTitle>Recepción sin pedido</DialogTitle>
           </DialogHeader>
           <CreateRecepcionForm
             genNo={genNoRecepcion}
@@ -157,6 +238,15 @@ export default function Recepciones() {
         </DialogContent>
       </Dialog>
 
+      {vista === 'pedidos' ? (
+        <PedidosPorRecibir
+          puedeRecibir={puedeRecibir}
+          recepciones={recepciones}
+          creando={creando}
+          onRecibir={recibirPedido}
+        />
+      ) : (
+      <>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar por proveedor o número..." className="pl-10" style={{ borderRadius: '8px' }} />
@@ -200,6 +290,8 @@ export default function Recepciones() {
           </div>
         </Card>
       </div>
+      </>
+      )}
 
       <Dialog open={!!selectedId} onOpenChange={(o) => { if (!o) setSelectedId(null); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
@@ -219,23 +311,20 @@ export default function Recepciones() {
 }
 
 /**
- * Crear una recepción contra un pedido en camino.
+ * Los pedidos de compra que hizo comercial, para recibir contra ellos.
  *
- * Antes se tecleaba el proveedor y el número de orden a mano, y las
- * cantidades esperadas también: justo el número que no puede inventarse,
- * porque es contra el que se mide si llegó de menos. Ahora se elige el pedido
- * que hizo comercial y las líneas vienen con lo que se pidió.
+ * Están aquí y no escondidos en el formulario de «nueva recepción» porque
+ * recibir empieza justo por esto: mirar qué pedido es el que acaba de llegar.
+ * De paso se ve cuáles ya se recibieron, que antes solo se sabía abriendo el
+ * desplegable.
  *
- * Si la API de pedidos no está disponible se puede seguir a mano: una
- * recepción no puede quedar bloqueada porque falle un sistema de al lado,
- * con el camión en la puerta.
+ * El filtro trae por defecto los que están en camino, pero se puede pedir
+ * cualquier estado: en la práctica llega mercancía de pedidos que se quedaron
+ * en `confirmado`.
  */
-function CreateRecepcionForm({ genNo, user, onSubmit, onCancel }) {
-  const [pedidoId, setPedidoId] = useState('');
+function PedidosPorRecibir({ puedeRecibir, recepciones, creando, onRecibir }) {
   const [filtro, setFiltro] = useState('en_camino');
-  const [proveedor, setProveedor] = useState('');
-  const [noOrden, setNoOrden] = useState('');
-  const [aMano, setAMano] = useState(false);
+  const [busca, setBusca] = useState('');
 
   const { data: pedidos, isLoading, error } = useQuery({
     queryKey: ['pedidos', filtro],
@@ -245,142 +334,123 @@ function CreateRecepcionForm({ genNo, user, onSubmit, onCancel }) {
     retry: false,
   });
 
-  const elegido = (pedidos ?? []).find((p) => p.id === pedidoId) ?? null;
+  const q = busca.trim().toLowerCase();
+  const lista = (pedidos ?? []).filter((p) => !q
+    || p.proveedor.toLowerCase().includes(q)
+    || String(p.numero).toLowerCase().includes(q)
+    || p.oferta.toLowerCase().includes(q));
 
-  const { data: lineas, isLoading: cargandoLineas } = useQuery({
-    queryKey: ['lineas-pedido', pedidoId],
-    queryFn: () => fetchLineasDePedido(pedidoId),
-    enabled: Boolean(pedidoId),
-    ...SIN_SONDEO,
-    retry: false,
-  });
+  /** La recepción de este pedido, si ya se empezó. */
+  const recepcionDe = (id) => recepciones.find((r) => r.pedido_id === id);
 
-  const porPedido = !aMano && !error;
-  const listo = porPedido ? Boolean(elegido) : Boolean(proveedor);
-
-  const crear = () => {
-    const base = {
-      no_recepcion: genNo(),
-      fecha: format(new Date(), 'yyyy-MM-dd'),
-      especialista_id: user?.email,
-      especialista_nombre: user?.full_name,
-      estado: 'en_curso',
-      diferencias: [],
-    };
-
-    if (!porPedido) {
-      return onSubmit({ ...base, proveedor, no_orden: noOrden, detalles: [] });
-    }
-
-    // Las líneas del pedido entran ya puestas, con lo pedido como esperado y
-    // lo recibido en blanco: lo que hay que hacer es contar, no transcribir.
-    const detalles = (lineas ?? []).map((l) => ({
-      producto_codigo: l.codigo,
-      producto_nombre: l.nombre,
-      cant_esperada: l.cantidad,
-      cant_recibida: 0,
-      cant_merma_origen: 0,
-      diferencia: -l.cantidad,
-      no_lote: '',
-      fecha_vencimiento: '',
-      temperatura: 'ambient',
-      calidad_ok: true,
-      nota_calidad: '',
-      contada: false,
-    }));
-
-    return onSubmit({
-      ...base,
-      proveedor: elegido.proveedor,
-      no_orden: elegido.numero,
-      pedido_id: elegido.id,
-      detalles,
-      total_items: detalles.length,
-      items_confirmados: 0,
-    });
-  };
+  if (error) {
+    return (
+      <AlertBanner variant="warning"
+        message={`No se pudieron cargar los pedidos (${error.message}). Puedes registrar la recepción sin pedido.`} />
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {error && (
-        <AlertBanner variant="warning"
-          message={`No se pudieron cargar los pedidos (${error.message}). Puedes registrar la recepción a mano.`} />
-      )}
+      <div className="flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input value={busca} onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar por proveedor, número u oferta..." className="pl-10" style={{ borderRadius: '8px' }} />
+        </div>
+        <Select value={filtro} onValueChange={setFiltro}>
+          <SelectTrigger className="w-[220px]" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {FILTRO_PEDIDO.map((f) => (
+              <SelectItem key={f.valor} value={f.valor}>{f.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-      {porPedido ? (
-        <>
-          <label className="block space-y-1.5 text-xs text-muted-foreground">
-            Estado del pedido
-            <Select value={filtro} onValueChange={(v) => { setFiltro(v); setPedidoId(''); }}>
-              <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {FILTRO_PEDIDO.map((f) => (
-                  <SelectItem key={f.valor} value={f.valor}>{f.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </label>
-
-          <label className="block space-y-1.5 text-xs text-muted-foreground">
-            Pedido
-            <Select value={pedidoId} onValueChange={setPedidoId}>
-              <SelectTrigger style={{ borderRadius: '8px' }}>
-                <SelectValue placeholder={isLoading ? 'Cargando pedidos…' : 'Elige el pedido que llega'} />
-              </SelectTrigger>
-              <SelectContent>
-                {(pedidos ?? []).map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.proveedor} — {p.numero} · {p.lineas} líneas · {p.estado.replace(/_/g, ' ')}
-                    {p.llegadaEstimada ? ` · llega ${p.llegadaEstimada}` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </label>
-
-          {!isLoading && (pedidos ?? []).length === 0 && (
-            <AlertBanner variant="info"
-              message={filtro === 'todos'
-                ? 'No hay ningún pedido de compra. Si la mercancía llegó igualmente, regístrala a mano.'
-                : 'Ningún pedido en ese estado. Prueba con «Todos los pedidos»: puede que se haya quedado en otro.'} />
-          )}
-
-          {elegido && (
-            <div className="rounded-lg border border-border bg-secondary/40 p-3 text-xs space-y-1" style={{ borderRadius: '8px' }}>
-              <p className="text-sm font-medium">{elegido.proveedor}</p>
-              <p className="text-muted-foreground">
-                {elegido.oferta || 'Sin oferta asociada'} · {elegido.estado.replace(/_/g, ' ')}
-                {elegido.importe ? ` · ${elegido.importe} ${elegido.moneda}` : ''}
-              </p>
-              <p className="text-muted-foreground">
-                {cargandoLineas ? 'Cargando líneas…' : `${(lineas ?? []).length} productos a recibir`}
+      {isLoading ? (
+        <Card className="p-8 text-center text-muted-foreground" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+          Cargando pedidos…
+        </Card>
+      ) : lista.length === 0 ? (
+        <AlertBanner variant="info"
+          message={filtro === 'todos'
+            ? 'No hay ningún pedido de compra. Si la mercancía llegó igualmente, regístrala sin pedido.'
+            : 'Ningún pedido en ese estado. Prueba con «Todos los pedidos»: puede que se haya quedado en otro.'} />
+      ) : lista.map((p) => {
+        const ya = recepcionDe(p.id);
+        return (
+          <Card key={p.id} className="p-4 flex flex-wrap items-center gap-3"
+            style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+            <div className="flex-1 min-w-[220px] space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-medium">{p.numero}</span>
+                <span className="text-xs px-2 py-0.5 rounded bg-secondary text-muted-foreground"
+                  style={{ borderRadius: '4px' }}>{p.estado.replace(/_/g, ' ')}</span>
+                {ya && (
+                  <span className="text-xs px-2 py-0.5 rounded bg-[#3E9B4F14] text-[#3E9B4F]"
+                    style={{ borderRadius: '4px' }}>Recepción {ya.no_recepcion}</span>
+                )}
+              </div>
+              <p className="text-sm">{p.proveedor || 'Sin proveedor'}</p>
+              <p className="text-xs text-muted-foreground">
+                {p.lineas} {p.lineas === 1 ? 'ítem' : 'ítems'}
+                {p.importe ? ` · ${p.importe} ${p.moneda}` : ''}
+                {p.oferta ? ` · ${p.oferta}` : ''}
+                {p.llegadaEstimada ? ` · llega ${p.llegadaEstimada}` : ''}
               </p>
             </div>
-          )}
+            {puedeRecibir && (
+              <Button variant={ya ? 'outline' : 'default'} onClick={() => onRecibir(p)}
+                disabled={creando === p.id} style={{ borderRadius: '8px' }}>
+                <PackageOpen className="w-4 h-4 mr-1.5" />
+                {creando === p.id ? 'Preparando…' : ya ? 'Abrir recepción' : 'Recibir'}
+              </Button>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
 
-          <button type="button" onClick={() => setAMano(true)}
-            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2">
-            La mercancía no viene de un pedido: registrarla a mano
-          </button>
-        </>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input value={proveedor} onChange={(e) => setProveedor(e.target.value)} placeholder="Proveedor *" style={{ borderRadius: '8px' }} />
-            <Input value={noOrden} onChange={(e) => setNoOrden(e.target.value)} placeholder="No. orden (opcional)" style={{ borderRadius: '8px' }} />
-          </div>
-          {!error && (
-            <button type="button" onClick={() => setAMano(false)}
-              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2">
-              Volver a elegir un pedido
-            </button>
-          )}
-        </>
-      )}
+/**
+ * Una recepción sin pedido detrás.
+ *
+ * Lo normal es recibir contra un pedido —así las cantidades esperadas son las
+ * que pidió comercial y no las que alguien recuerde—, pero la mercancía a
+ * veces llega sin él, o la API de pedidos está caída con el camión en la
+ * puerta. Entonces se teclea el proveedor y se van añadiendo los productos.
+ */
+function CreateRecepcionForm({ genNo, user, onSubmit, onCancel }) {
+  const [proveedor, setProveedor] = useState('');
+  const [noOrden, setNoOrden] = useState('');
+
+  const crear = () => onSubmit({
+    no_recepcion: genNo(),
+    fecha: format(new Date(), 'yyyy-MM-dd'),
+    especialista_id: user?.email,
+    especialista_nombre: user?.full_name,
+    estado: 'en_curso',
+    diferencias: [],
+    proveedor,
+    no_orden: noOrden,
+    detalles: [],
+  });
+
+  return (
+    <div className="space-y-4">
+      <AlertBanner variant="info"
+        message="Si la mercancía viene de un pedido, recíbela desde la pestaña «Pedidos de compra»: las cantidades esperadas vienen puestas." />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Input value={proveedor} onChange={(e) => setProveedor(e.target.value)} placeholder="Proveedor *" style={{ borderRadius: '8px' }} />
+        <Input value={noOrden} onChange={(e) => setNoOrden(e.target.value)} placeholder="No. orden (opcional)" style={{ borderRadius: '8px' }} />
+      </div>
 
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={onCancel} style={{ borderRadius: '8px' }}>Cancelar</Button>
-        <Button onClick={crear} disabled={!listo || cargandoLineas} style={{ borderRadius: '8px' }}>
+        <Button onClick={crear} disabled={!proveedor.trim()} style={{ borderRadius: '8px' }}>
           <PackageOpen className="w-4 h-4 mr-1.5" /> Crear recepción
         </Button>
       </div>
