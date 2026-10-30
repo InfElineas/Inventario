@@ -43,6 +43,7 @@ import { ROLES_AJUSTES, ROLES_TIENDA } from '../lib/ajustes.js'
 import { rolesDe } from '../lib/roles.js'
 import { cobertura, baseReportes } from './rotacionApi.js'
 import { listarPedidos, lineasDePedido, hayPedidos, ESTADOS_PEDIDO } from './pedidosApi.js'
+import { lotesDe } from './lotesApi.js'
 
 class ErrorPeticion extends Error {
   constructor(status, message) {
@@ -57,6 +58,8 @@ const ROLES_ROTACION = ['inv', 'fact', 'ca', 'jefe_depto', 'supervisor', 'audito
 
 /** Quién recibe mercancía, y por tanto ve los pedidos en camino. */
 const ROLES_RECEPCION = ['inv', 'jefe_depto', 'supervisor', 'administrador', 'superadmin']
+// Los vencimientos los mira quien los gestiona y quien decide la rebaja.
+const ROLES_LOTES = ['inv', 'ca', 'auditor', 'jefe_depto', 'supervisor', 'administrador', 'superadmin']
 
 /** Cualquiera de sus roles vale; un superadministrador siempre. */
 const tieneAlgun = (usuario, permitidos) => {
@@ -433,7 +436,9 @@ export function createTransferenciasApiMiddleware() {
     const esRotacion = ruta === '/api/rotacion' && req.method === 'GET'
     // Los pedidos en camino, para recibir contra ellos. Solo lectura.
     const esPedidos = ruta === '/api/pedidos' && req.method === 'GET'
-    if (!esProceso && !esTienda && !esRotacion && !esPedidos && !ruta.startsWith('/api/ajustes/')) return next()
+    // Los lotes del informe central. Solo lectura, como la rotación.
+    const esLotes = ruta === '/api/lotes' && req.method === 'GET'
+    if (!esProceso && !esTienda && !esRotacion && !esPedidos && !esLotes && !ruta.startsWith('/api/ajustes/')) return next()
 
     let tipo
     let id
@@ -453,6 +458,8 @@ export function createTransferenciasApiMiddleware() {
       else if (partes.length === 1 && PROCESOS[partes[0]]?.metodo === req.method) operacion = partes[0]
     } else if (esPedidos) {
       operacion = 'pedidos'
+    } else if (esLotes) {
+      operacion = 'lotes'
     } else if (esRotacion) {
       // No pasa por el despachador de ajustes: no tiene tipo ni id, es una
       // sola ruta de lectura. Sin esto caía en la rama de abajo, se quedaba
@@ -507,6 +514,25 @@ export function createTransferenciasApiMiddleware() {
             estados: estados === null
               ? undefined
               : estados.split(',').map((e) => e.trim()).filter((e) => ESTADOS_PEDIDO.includes(e)),
+          }),
+        })
+      }
+
+      if (esLotes) {
+        if (!baseReportes()) {
+          return fallo(res, 503, 'not_configured',
+            'Falta REPORTES_API_URL: la API de informes no está configurada.')
+        }
+        if (!tieneAlgun(sesion.usuario, ROLES_LOTES)) {
+          return fallo(res, 403, 'forbidden', 'Tu rol no puede ver los vencimientos.')
+        }
+        const cl = new URL(req.url, 'http://local').searchParams
+        return json(res, 200, {
+          lotes: await lotesDe({ jwt: sesion.jwt }, {
+            almacen: cl.get('almacen') ?? undefined,
+            estados: cl.get('estados')?.split(',').map((e) => e.trim()).filter(Boolean),
+            limite: Number(cl.get('limite')) || 0,
+            refrescar: cl.get('refrescar') === 'true',
           }),
         })
       }

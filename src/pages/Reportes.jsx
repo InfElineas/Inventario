@@ -2,6 +2,8 @@ import { useState, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import { useAlmacen } from '@/lib/useAlmacen';
+import { fetchLotes } from '@/services/lotesService';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -58,6 +60,7 @@ function ReportCard({ title, onExport, children }) {
 export default function Reportes() {
   const { user } = useAuth();
   const role = user?.role || 'inv';
+  const { almacen } = useAlmacen();
 
   const [periodo, setPeriodo] = useState('mes');
   const [showPDF, setShowPDF] = useState(false);
@@ -67,7 +70,8 @@ export default function Reportes() {
   const mermas = mermasRaw ?? [];
   const { data: inventariosRaw } = useQuery({ queryKey: ['reportes-inventarios'], queryFn: () => base44.entities.Inventario.list('-created_date', 500), select: toArr });
   const inventarios = inventariosRaw ?? [];
-  const { data: lotesRaw } = useQuery({ queryKey: ['reportes-lotes'], queryFn: () => base44.entities.Lote.list('-updated_date', 500), select: toArr });
+  // Los lotes salen del informe central, no de `inventario.lotes`.
+  const { data: lotesRaw } = useQuery({ queryKey: ['reportes-lotes', almacen], queryFn: () => fetchLotes({ almacen, limite: 1000 }), enabled: Boolean(almacen), retry: false, select: toArr });
   const lotes = lotesRaw ?? [];
   const { data: anunciosRaw } = useQuery({ queryKey: ['reportes-anuncios'], queryFn: () => base44.entities.AnuncioDesact.list('-created_date', 500), select: toArr });
   const anuncios = anunciosRaw ?? [];

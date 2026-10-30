@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen'
+import { fetchLotes } from '@/services/lotesService'
 import { isExternaConfigured, fetchAlmacenes } from '@/services/syncService'
 import { ChevronDown, Clock, CalendarDays, X } from 'lucide-react'
 import { base44 } from '@/api/base44Client';
@@ -479,13 +480,10 @@ export default function Dashboard() {
 
   // ── Lotes ────────────────────────────────────────────────
   const { data: lotesRaw } = useQuery({
-    queryKey: ['dash_lotes'],
-    queryFn: async () => {
-      return base44.entities.Lote.filter(
-        { estado_fv: ['vencido', 'critico', 'por_vencer'] },
-        'fecha_vencimiento', 50,
-      )
-    },
+    queryKey: ['dash_lotes', almacen],
+    queryFn: () => fetchLotes({ almacen, estados: ['vencido', 'critico', 'por_vencer'], limite: 50 }),
+    enabled: Boolean(almacen),
+    retry: false,
     select: d => Array.isArray(d) ? d : [],
   })
   const lotes = lotesRaw ?? []

@@ -11,6 +11,7 @@ import { useTheme } from '@/lib/useTheme';
 import ProfileModal from '@/components/shared/ProfileModal';
 import { useSyncManager } from '@/lib/SyncContext';
 import { useAlmacen } from '@/lib/useAlmacen';
+import { fetchLotes } from '@/services/lotesService';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import { ROLES } from '@/lib/constants';
 import Sidebar from './Sidebar';
@@ -179,9 +180,13 @@ export default function AppLayout() {
   });
   const anuncios = anunciosRaw ?? [];
 
+  // Del informe central. Solo los que avisan de algo y un tope corto: esto
+  // alimenta un contador del menú, no una pantalla.
   const { data: lotesRaw } = useQuery({
-    queryKey: ['pending-lotes'],
-    queryFn:  () => base44.entities.Lote.list('-updated_date', 100),
+    queryKey: ['pending-lotes', almacen],
+    queryFn:  () => fetchLotes({ almacen, estados: ['vencido', 'critico', 'por_vencer'], limite: 200 }),
+    enabled: Boolean(almacen),
+    retry: false,
     select: toArray,
   });
   const lotes = lotesRaw ?? [];

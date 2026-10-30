@@ -16,6 +16,9 @@ import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock'
 import { Search, AlertTriangle, Clock, CheckCircle, HelpCircle, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { tieneRol } from '@/lib/roles';
+import { useAlmacen } from '@/lib/useAlmacen';
+import { fetchLotes } from '@/services/lotesService';
+import AlertBanner from '@/components/shared/AlertBanner';
 
 const LOTE_COL_DEFS = [
   { key: 'producto_nombre',   label: 'Producto',  defaultOn: true,  required: true  },
@@ -48,13 +51,17 @@ export default function Lotes() {
   const { sort, onSort } = useSortable('fecha_vencimiento', 'asc');
   const queryClient = useQueryClient();
 
-  const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
-  const role = user?.role || 'inv';
+  const { almacen } = useAlmacen();
 
-  const { data: lotesRaw, isLoading } = useQuery({
-    queryKey: ['lotes'],
-    queryFn: () => base44.entities.Lote.list('-updated_date', 300),
-    select: (d) => Array.isArray(d) ? d : [],
+  const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
+
+  // Del informe central, no de `inventario.lotes`: esa tabla no la llenaba
+  // nadie y la pantalla llevaba vacía desde el principio.
+  const { data: lotesRaw, isLoading, error } = useQuery({
+    queryKey: ['lotes', almacen],
+    queryFn: () => fetchLotes({ almacen }),
+    enabled: Boolean(almacen),
+    retry: false,
   });
   const lotes = lotesRaw ?? [];
 
@@ -99,6 +106,14 @@ export default function Lotes() {
           storageKey={LOTE_COLS_KEY} order={colOrder}
           onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(LOTE_COLS_KEY, cols, next); }} />
       </div>
+
+      {!almacen && (
+        <AlertBanner variant="info"
+          message="Elige un almacén arriba: los lotes vienen por almacén, no todos juntos." />
+      )}
+      {error && (
+        <AlertBanner variant="warning" message={`No se pudieron cargar los vencimientos: ${error.message}`} />
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -248,8 +263,11 @@ export default function Lotes() {
               )}
 
               <Button className="w-full" onClick={() => createIcMut.mutate({
+                // El lote ya no es una fila nuestra: su id es almacén, código
+                // y número de lote, que es lo que lo identifica en el informe.
                 lote_id: selected.id,
-                producto_id: selected.producto_id,
+                no_lote: selected.no_lote,
+                almacen_num: selected.almacen_num,
                 producto_nombre: selected.producto_nombre,
                 producto_codigo: selected.producto_codigo,
                 fecha_deteccion: format(new Date(), 'yyyy-MM-dd'),
