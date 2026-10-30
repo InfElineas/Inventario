@@ -27,7 +27,7 @@ const BASE = '/api/datos'
  * que las compara —por eso se exporta—.
  */
 export const ENTIDADES = new Set([
-  'Producto', 'AnuncioDesact', 'Merma', 'Lote', 'LoteIC',
+  'Producto', 'AnuncioDesact', 'Merma', 'Lote', 'LoteIC', 'LoteRevision',
   'Inventario', 'Recepcion', 'RecepcionFoto', 'Notificacion', 'HistorialMovimiento', 'Usuario',
   'WorkflowEvento', 'ComentarioSupervision', 'AdminAuditLog', 'SyncAutoLog',
 ])

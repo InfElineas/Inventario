@@ -27,6 +27,7 @@ export const TABLA = {
   // lotes_vigencia recalcula estado_fv/vigencia_dias contra la fecha actual.
   Lote:                'lotes_vigencia',
   LoteIC:              'lotes_ic',
+  LoteRevision:        'lote_revisiones',
   Inventario:          'inventarios',
   Recepcion:           'recepciones',
   RecepcionFoto:       'recepcion_fotos',

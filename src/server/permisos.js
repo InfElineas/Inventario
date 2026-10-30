@@ -96,6 +96,8 @@ const CREACION = {
   recepcion_fotos: { roles: ['inv'], campoDueño: 'creado_por' },
   // lotes_ic_insert
   lotes_ic:    { roles: ['inv', 'ca'], campoDueño: 'especialista_inv_id' },
+  // La fecha que inventario lee del envase cuando el informe no la trae.
+  lote_revisiones: { roles: ['inv', 'ca'], campoDueño: 'revisado_por' },
   // anuncios_insert: el caso debe nacer en 'pendiente', el primer paso del
   // flujo, para que nadie inserte uno ya aprobado.
   anuncios_desact: { roles: ['esp_anuncio', 'inv'], estadoInicial: { campo: 'estado_tarea', valor: 'pendiente' } },

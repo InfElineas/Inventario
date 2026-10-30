@@ -129,13 +129,20 @@ export async function lotesDe(ctx, { almacen, estados, limite, refrescar = false
     ? filas.filter((f) => String(f.warehouseKey ?? '').trim() === String(almacen).trim())
     : filas
 
-  const costos = await preciosDe(suyas.map((f) => String(f.codigo ?? '').trim()), almacen)
+  const [costos, revisiones] = await Promise.all([
+    preciosDe(suyas.map((f) => String(f.codigo ?? '').trim()), almacen),
+    revisionesDe(almacen),
+  ])
   const hoy = new Date()
 
   let lotes = suyas.map((f) => {
     const codigo = String(f.codigo ?? '').trim()
     const noLote = String(f.noLote ?? '').trim()
-    const dias = diasHasta(f.fechaVenc, hoy)
+    // Lo que inventario corrigió pisa al informe: la fecha suele faltar en el
+    // origen y es la que hace que el lote se pueda gestionar.
+    const revision = revisiones.get(`${String(f.warehouseKey ?? '').trim()}|${codigo}|${noLote}`)
+    const vence = revision?.fecha_vencimiento ?? f.fechaVenc ?? f.fecha_venc ?? null
+    const dias = diasHasta(vence, hoy)
 
     return {
       // El informe no trae id. Almacén, producto y lote identifican la fila y
@@ -149,7 +156,12 @@ export async function lotesDe(ctx, { almacen, estados, limite, refrescar = false
       suministrador: f.suministrador ?? '',
       no_lote: noLote,
       fecha_fabricacion: f.fechaFab ?? null,
-      fecha_vencimiento: f.fechaVenc ? String(f.fechaVenc).slice(0, 10) : null,
+      fecha_vencimiento: vence ? String(vence).slice(0, 10) : null,
+      // De dónde salió la fecha: sin esto, nadie distingue la que publicó el
+      // informe de la que alguien leyó del envase.
+      fecha_corregida: Boolean(revision?.fecha_vencimiento),
+      nota_revision: revision?.nota ?? '',
+      revisado_por: revision?.revisado_por ?? '',
       cantidad: Number(f.cantidad) || 0,
       referencia: f.referencia ?? '',
       temperatura: temperaturaDe(f.clasificacion),
@@ -170,6 +182,36 @@ export async function lotesDe(ctx, { almacen, estados, limite, refrescar = false
   lotes.sort((a, b) => (a.vigencia_dias ?? Infinity) - (b.vigencia_dias ?? Infinity))
 
   return limite > 0 ? lotes.slice(0, limite) : lotes
+}
+
+/**
+ * La última revisión de cada lote del almacén.
+ *
+ * `DISTINCT ON` con el orden descendente se queda con la más reciente de cada
+ * lote en una sola pasada; traerlas todas y filtrar en memoria sería bajar el
+ * histórico entero para usar una fila de cada grupo.
+ */
+async function revisionesDe(almacen) {
+  if (!almacen) return new Map()
+
+  const { rows } = await query(
+    `SELECT DISTINCT ON (almacen_num, producto_codigo, no_lote)
+            almacen_num, producto_codigo, no_lote, fecha_vencimiento, nota, revisado_por
+       FROM lote_revisiones
+      WHERE almacen_num = $1
+      ORDER BY almacen_num, producto_codigo, no_lote, created_date DESC`,
+    [String(almacen)],
+  )
+
+  return new Map(rows.map((r) => [
+    `${r.almacen_num}|${r.producto_codigo}|${r.no_lote}`,
+    {
+      ...r,
+      fecha_vencimiento: r.fecha_vencimiento
+        ? new Date(r.fecha_vencimiento).toISOString().slice(0, 10)
+        : null,
+    },
+  ]))
 }
 
 /** `codigo_producto` → `precio_costo`, de nuestro catálogo. */

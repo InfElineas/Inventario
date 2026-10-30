@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -13,13 +13,20 @@ import LotBadge from '@/components/shared/LotBadge';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
-import { Search, AlertTriangle, Clock, CheckCircle, HelpCircle, Send } from 'lucide-react';
+import { Search, AlertTriangle, Clock, CheckCircle, HelpCircle, Send, MoreHorizontal,
+  CalendarPlus, TrendingDown, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { tieneRol } from '@/lib/roles';
+import { ALL_CLASIF_MERMA } from '@/lib/constants';
 import { useAlmacen } from '@/lib/useAlmacen';
 import { fetchLotes } from '@/services/lotesService';
 import AlertBanner from '@/components/shared/AlertBanner';
 import Pagination from '@/components/shared/Pagination';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { WAREHOUSES, warehouseName } from '@/services/tkc/warehouses';
+import { filterAlmacenesByConfig } from '@/lib/useAlmacen';
+import { notifyJefeDepto } from '@/lib/notificationService';
 
 const LOTE_COL_DEFS = [
   { key: 'producto_nombre',   label: 'Producto',  defaultOn: true,  required: true  },
@@ -34,6 +41,21 @@ const LOTE_COLS_KEY = 'lote_cols'
 /** Un almacén tiene miles de lotes; pintarlos todos cuelga el navegador. */
 const PAGE_SIZE = 50
 
+/**
+ * Las pestañas, de lo más urgente a lo que no corre prisa.
+ *
+ * «Sin fecha» va en una propia y no mezclado: no es un estado de vigencia,
+ * es un dato que falta, y lo que hay que hacer con él —ir a mirar el envase—
+ * no se parece en nada a lo que se hace con un lote que vence en diez días.
+ */
+const ESTADOS = [
+  { clave: 'vencido',    label: 'Vencidos' },
+  { clave: 'critico',    label: 'Críticos' },
+  { clave: 'por_vencer', label: 'Por vencer' },
+  { clave: 'vigente',    label: 'Vigentes' },
+  { clave: 'sin_fecha',  label: 'Sin fecha' },
+]
+
 /** Cómo se titula y alinea cada columna. La usan la cabecera y las celdas. */
 const COL_TITULO = {
   producto_nombre:   { label: 'Producto' },
@@ -47,22 +69,27 @@ const COL_TITULO = {
 export default function Lotes() {
   const [cols, setCols] = useState(() => loadColsWithOrder(LOTE_COLS_KEY, LOTE_COL_DEFS).visible);
   const [colOrder, setColOrder] = useState(() => loadColsWithOrder(LOTE_COLS_KEY, LOTE_COL_DEFS).order);
-  const [filterEstado, setFilterEstado] = useState('all');
+  const [estado, setEstado] = useState('all');
   const [filterTemp, setFilterTemp] = useState('all');
   const [searchQ, setSearchQ] = useState('');
   const [selectedId, setSelectedId] = useState(null);
+  const [accion, setAccion] = useState(null);   // 'ic' | 'editar' | 'merma'
   const [page, setPage] = useState(1);
   const [icForm, setIcForm] = useState({ cant_x_vencer: '', clasif_inv: '', nota_inv: '', propuesta_precio_ic: '', precio_restaurar: '', notas_ic: '' });
   const { sort, onSort } = useSortable('fecha_vencimiento', 'asc');
   const queryClient = useQueryClient();
 
-  const { almacen } = useAlmacen();
+  const { almacen, setAlmacen, almacenesConfig } = useAlmacen();
+  const almacenes = useMemo(
+    () => WAREHOUSES.filter((w) => filterAlmacenesByConfig([w.key], almacenesConfig).length > 0),
+    [almacenesConfig],
+  );
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
 
   // Del informe central, no de `inventario.lotes`: esa tabla no la llenaba
   // nadie y la pantalla llevaba vacía desde el principio.
-  const { data: lotesRaw, isLoading, error } = useQuery({
+  const { data: lotesRaw, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['lotes', almacen],
     queryFn: () => fetchLotes({ almacen }),
     enabled: Boolean(almacen),
@@ -70,9 +97,38 @@ export default function Lotes() {
   });
   const lotes = lotesRaw ?? [];
 
+  const cerrar = () => { setSelectedId(null); setAccion(null); };
+
   const createIcMut = useMutation({
     mutationFn: (data) => base44.entities.LoteIC.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['lotes'] }); setSelectedId(null); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['lotes'] }); cerrar(); },
+    onError: (e) => alert(e.message),
+  });
+
+  /**
+   * La fecha que inventario leyó del envase.
+   *
+   * No se puede escribir en el informe central, así que se guarda aparte y se
+   * superpone al leer: el estado de vigencia pasa a calcularse con ella.
+   */
+  const createRevisionMut = useMutation({
+    mutationFn: (data) => base44.entities.LoteRevision.create(data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['lotes'] }); cerrar(); },
+    onError: (e) => alert(e.message),
+  });
+
+  /** Un lote vencido con existencia no es un aviso: es una merma. */
+  const createMermaMut = useMutation({
+    mutationFn: (data) => base44.entities.Merma.create(data),
+    onSuccess: (_r, v) => {
+      queryClient.invalidateQueries({ queryKey: ['mermas'] });
+      notifyJefeDepto(
+        'inventario', 'merma', 'Merma por lote vencido',
+        `${v.producto_nombre} — ${v.cantidad} u. del lote ${v.notas ? '' : ''}por ${user?.full_name || user?.email || '—'}`,
+      ).catch(() => {});
+      cerrar();
+    },
+    onError: (e) => alert(e.message),
   });
 
   const counts = {
@@ -84,7 +140,7 @@ export default function Lotes() {
   };
 
   const filtered = lotes.filter(l => {
-    if (filterEstado !== 'all' && l.estado_fv !== filterEstado) return false;
+    if (estado !== 'all' && l.estado_fv !== estado) return false;
     if (filterTemp !== 'all' && l.temperatura !== filterTemp) return false;
     if (searchQ && !l.producto_nombre?.toLowerCase().includes(searchQ.toLowerCase()) && !l.no_lote?.toLowerCase().includes(searchQ.toLowerCase())) return false;
     return true;
@@ -92,8 +148,14 @@ export default function Lotes() {
 
   const sorted = [...filtered].sort((a, b) => {
     const dir = sort.dir === 'asc' ? 1 : -1;
-    const av = a[sort.key] ?? '';
-    const bv = b[sort.key] ?? '';
+    // Un lote sin fecha no es un lote que vence el año cero. Con la cadena
+    // vacía por delante, lo que falta se ponía primero y tapaba lo urgente.
+    const av = a[sort.key];
+    const bv = b[sort.key];
+    const vacio = (v) => v === null || v === undefined || v === '';
+    if (vacio(av) && vacio(bv)) return 0;
+    if (vacio(av)) return 1;
+    if (vacio(bv)) return -1;
     return av < bv ? -dir : av > bv ? dir : 0;
   });
 
@@ -110,12 +172,32 @@ export default function Lotes() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-medium">Vencimientos LOT</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Control de fechas de vencimiento por lote</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {almacen
+              ? `Lotes de ${warehouseName(almacen)}`
+              : 'Control de fechas de vencimiento por lote'}
+          </p>
         </div>
-        <ColPicker cols={LOTE_COL_DEFS} visible={cols}
-          onChange={(next) => { setCols(next); saveColsWithOrder(LOTE_COLS_KEY, next, colOrder); }}
-          storageKey={LOTE_COLS_KEY} order={colOrder}
-          onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(LOTE_COLS_KEY, cols, next); }} />
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Qué almacén se está mirando, a la vista y cambiable aquí: los
+              lotes vienen por almacén y antes no se decía cuál. */}
+          <Select value={almacenes.some((w) => w.key === almacen) ? almacen : ''} onValueChange={setAlmacen}>
+            <SelectTrigger className="w-52" style={{ borderRadius: '8px' }}>
+              <SelectValue placeholder="Elige un almacén" />
+            </SelectTrigger>
+            <SelectContent>
+              {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={() => refetch()} disabled={isFetching || !almacen}
+            style={{ borderRadius: '8px' }} title="Volver a pedir el informe de lotes">
+            <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+          </Button>
+          <ColPicker cols={LOTE_COL_DEFS} visible={cols}
+            onChange={(next) => { setCols(next); saveColsWithOrder(LOTE_COLS_KEY, next, colOrder); }}
+            storageKey={LOTE_COLS_KEY} order={colOrder}
+            onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(LOTE_COLS_KEY, cols, next); }} />
+        </div>
       </div>
 
       {!almacen && (
@@ -135,23 +217,22 @@ export default function Lotes() {
         <KPICard title="Sin fecha" value={counts.sin_fecha} icon={HelpCircle} color="text-[#888780]" bgColor="bg-[#888780]/10" />
       </div>
 
-      {/* Filters */}
+      {/* Pestañas y no un desplegable: con un desplegable hay que abrirlo
+          para saber en qué filtro estás, y los números no se ven. */}
+      <Tabs value={estado} onValueChange={reiniciar(setEstado)}>
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="all">Todos ({lotes.length})</TabsTrigger>
+          {ESTADOS.map((e) => (
+            <TabsTrigger key={e.clave} value={e.clave}>{e.label} ({counts[e.clave]})</TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
       <div className="flex gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input value={searchQ} onChange={(e) => { setSearchQ(e.target.value); setPage(1); }} placeholder="Buscar por producto o lote..." className="pl-10" style={{ borderRadius: '8px' }} />
         </div>
-        <Select value={filterEstado} onValueChange={reiniciar(setFilterEstado)}>
-          <SelectTrigger className="w-40" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="vencido">Vencido</SelectItem>
-            <SelectItem value="critico">Crítico</SelectItem>
-            <SelectItem value="por_vencer">Por vencer</SelectItem>
-            <SelectItem value="vigente">Vigente</SelectItem>
-            <SelectItem value="sin_fecha">Sin fecha</SelectItem>
-          </SelectContent>
-        </Select>
         <Select value={filterTemp} onValueChange={reiniciar(setFilterTemp)}>
           <SelectTrigger className="w-36" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -183,7 +264,7 @@ export default function Lotes() {
                   <tr><td colSpan={colOrder.filter(k => cols[k]).length + 1} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
                 ) : pagina.map(l => (
                   <tr key={l.id} className={`border-b hover:bg-accent/50 cursor-pointer transition-colors ${selectedId === l.id ? 'bg-accent' : ''}`}
-                    onClick={() => setSelectedId(l.id)}>
+                    onClick={() => { setSelectedId(l.id); setAccion('editar'); }}>
                     {colOrder.filter(k => cols[k]).map(k => {
                       const CELDAS = {
                         producto_nombre: (
@@ -206,13 +287,9 @@ export default function Lotes() {
                       };
                       return CELDAS[k] ?? <td key={k} className="p-3" />;
                     })}
-                    <td className="p-3 text-center">
-                      {['critico', 'por_vencer'].includes(l.estado_fv) && tieneRol(user, ['inv', 'administrador']) && (
-                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setSelectedId(l.id); }}
-                          style={{ borderRadius: '8px' }} className="text-xs">
-                          IC
-                        </Button>
-                      )}
+                    <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <MenuLote lote={l} puedeGestionar={tieneRol(user, ['inv', 'ca', 'administrador'])}
+                        onAccion={(a) => { setSelectedId(l.id); setAccion(a); }} />
                     </td>
                   </tr>
                 ))}
@@ -224,16 +301,62 @@ export default function Lotes() {
 
       </div>
 
+      {/* Corregir el lote: la fecha del envase y una nota. Vale para
+          cualquier estado, porque la fecha también puede venir mal. */}
+      <Dialog open={accion === 'editar' && !!selected} onOpenChange={(o) => { if (!o) cerrar(); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Revisar el lote</DialogTitle></DialogHeader>
+          {selected && (
+            <EditarLote lote={selected} guardando={createRevisionMut.isPending}
+              onGuardar={(datos) => createRevisionMut.mutate({
+                almacen_num: selected.almacen_num,
+                producto_codigo: selected.producto_codigo,
+                no_lote: selected.no_lote,
+                revisado_por: user?.email,
+                ...datos,
+              })}
+              onCancelar={cerrar} />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Lo vencido con existencia es una merma, no un aviso. */}
+      <Dialog open={accion === 'merma' && !!selected} onOpenChange={(o) => { if (!o) cerrar(); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Mandar a merma</DialogTitle></DialogHeader>
+          {selected && (
+            <MermaDeLote lote={selected} guardando={createMermaMut.isPending}
+              onGuardar={({ cantidad, clasif, notas }) => createMermaMut.mutate({
+                producto_nombre: selected.producto_nombre,
+                producto_codigo: selected.producto_codigo,
+                suministrador: selected.suministrador,
+                almacen_num: selected.almacen_num,
+                cantidad,
+                clasif_merma: clasif,
+                notas: [`Lote ${selected.no_lote || 's/n'}`, notas].filter(Boolean).join('. '),
+                fecha_inv: format(new Date(), 'yyyy-MM-dd'),
+                fecha_vencimiento_lote: selected.fecha_vencimiento,
+                precio_unitario: selected.precio_costo || 0,
+                total_perdida: cantidad * (selected.precio_costo || 0),
+                estado_tarea: 'en_curso',
+                especialista_id: user?.email,
+                especialista_nombre: user?.full_name,
+              })}
+              onCancelar={cerrar} />
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* IC Panel */}
       <Dialog
-        open={!!(selected && ['critico', 'por_vencer'].includes(selected.estado_fv))}
-        onOpenChange={(o) => { if (!o) setSelectedId(null); }}
+        open={accion === 'ic' && !!selected}
+        onOpenChange={(o) => { if (!o) cerrar(); }}
       >
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Intervención Comercial</DialogTitle>
           </DialogHeader>
-          {selected && ['critico', 'por_vencer'].includes(selected.estado_fv) && (
+          {selected && (
           <div className="space-y-4">
             <ReadOnlyBlock title="Datos del lote">
               <ReadOnlyField label="Producto" value={selected.producto_nombre} />
@@ -304,6 +427,171 @@ export default function Lotes() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+/**
+ * Qué se puede hacer con un lote, según en qué estado esté.
+ *
+ * Antes solo había un botón «IC» y solo salía en dos estados: un lote
+ * vencido o sin fecha no dejaba hacer nada, que son justo los dos casos
+ * donde hay algo que hacer. Lo que corresponde no es lo mismo en cada uno:
+ * al vencido se le da salida, al que no tiene fecha se le pone, y al que
+ * está por vencer se le busca una rebaja antes de que sea tarde.
+ */
+function MenuLote({ lote, puedeGestionar, onAccion }) {
+  const [abierto, setAbierto] = useState(false);
+  if (!puedeGestionar) return <span className="text-muted-foreground/40 text-xs">—</span>;
+
+  const acciones = [];
+  if (lote.estado_fv === 'vencido' && lote.cantidad > 0) {
+    acciones.push({ clave: 'merma', etiqueta: 'Mandar a merma', Icono: TrendingDown, color: 'text-[#E24B4A]' });
+  }
+  if (['critico', 'por_vencer'].includes(lote.estado_fv)) {
+    acciones.push({ clave: 'ic', etiqueta: 'Enviar a intervención comercial', Icono: Send, color: 'text-[#BA7517]' });
+  }
+  acciones.push({
+    clave: 'editar',
+    etiqueta: lote.fecha_vencimiento ? 'Corregir fecha o anotar' : 'Poner la fecha del envase',
+    Icono: CalendarPlus, color: 'text-[#60a5fa]',
+  });
+
+  return (
+    <Popover open={abierto} onOpenChange={setAbierto}>
+      <PopoverTrigger asChild>
+        <button type="button" aria-label={`Acciones: ${lote.producto_nombre}`}
+          className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+          <MoreHorizontal className="w-4 h-4" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-60 p-1">
+        {acciones.map(({ clave, etiqueta, Icono, color }) => (
+          <button key={clave} type="button"
+            onClick={() => { setAbierto(false); onAccion(clave); }}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-left hover:bg-secondary transition-colors">
+            <Icono className={`w-3.5 h-3.5 ${color}`} />
+            {etiqueta}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/**
+ * Corregir lo que el informe no trae o trae mal.
+ *
+ * Buena parte de los lotes llegan sin fecha, y sin fecha no se puede hacer
+ * nada con ellos: ni avisan, ni entran en una intervención comercial, ni se
+ * sabe si ya vencieron. La fecha está en el envase. Esto es donde se anota.
+ *
+ * No se escribe en el informe —ahí no se puede—, se guarda aparte y se
+ * superpone al leer, así que la vigencia pasa a calcularse con ella.
+ */
+function EditarLote({ lote, guardando, onGuardar, onCancelar }) {
+  const [fecha, setFecha] = useState(lote.fecha_vencimiento ?? '');
+  const [nota, setNota] = useState('');
+
+  return (
+    <div className="space-y-4">
+      <ReadOnlyBlock title="Datos del lote">
+        <ReadOnlyField label="Producto" value={lote.producto_nombre} />
+        <ReadOnlyField label="Código" value={lote.producto_codigo} />
+        <ReadOnlyField label="Lote" value={lote.no_lote || '—'} />
+        <ReadOnlyField label="Cantidad" value={lote.cantidad} />
+        <ReadOnlyField label="Almacén" value={lote.almacen_nombre || lote.almacen_num} />
+        <ReadOnlyField label="FV del informe" value={lote.fecha_corregida ? 'Sin fecha' : (lote.fecha_vencimiento || 'Sin fecha')} />
+      </ReadOnlyBlock>
+
+      {lote.nota_revision && (
+        <AlertBanner variant="info"
+          message={`Ya revisado por ${lote.revisado_por || 'alguien'}: ${lote.nota_revision}`} />
+      )}
+
+      <label className="block space-y-1 text-xs text-muted-foreground">
+        Fecha de vencimiento del envase
+        <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)}
+          style={{ borderRadius: '8px' }} />
+      </label>
+
+      <label className="block space-y-1 text-xs text-muted-foreground">
+        Nota
+        <Textarea value={nota} onChange={(e) => setNota(e.target.value)} rows={2}
+          placeholder="Qué se vio al revisar: el envase no la trae, está borrosa, el lote no aparece…"
+          style={{ borderRadius: '8px' }} />
+      </label>
+
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={onCancelar} style={{ borderRadius: '8px' }}>Cancelar</Button>
+        <Button disabled={guardando || (!fecha && !nota.trim())}
+          onClick={() => onGuardar({ fecha_vencimiento: fecha || null, nota: nota.trim() })}
+          style={{ borderRadius: '8px' }}>
+          Guardar revisión
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Dar salida a un lote vencido. La cantidad arranca en la del lote entero. */
+function MermaDeLote({ lote, guardando, onGuardar, onCancelar }) {
+  const [cantidad, setCantidad] = useState(String(lote.cantidad ?? ''));
+  const [clasif, setClasif] = useState('Merma-FV — Vencido');
+  const [notas, setNotas] = useState('');
+
+  const n = Number(cantidad) || 0;
+  const pasa = n > (lote.cantidad || 0);
+
+  return (
+    <div className="space-y-4">
+      <ReadOnlyBlock title="Datos del lote">
+        <ReadOnlyField label="Producto" value={lote.producto_nombre} />
+        <ReadOnlyField label="Lote" value={lote.no_lote || '—'} />
+        <ReadOnlyField label="Venció" value={lote.fecha_vencimiento || '—'} />
+        <ReadOnlyField label="En existencia" value={lote.cantidad} />
+      </ReadOnlyBlock>
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="space-y-1 text-xs text-muted-foreground">
+          Cantidad a mermar
+          <Input type="number" min="0" value={cantidad}
+            onChange={(e) => setCantidad(e.target.value)} style={{ borderRadius: '8px' }} />
+        </label>
+        <label className="space-y-1 text-xs text-muted-foreground">
+          Clasificación
+          <Select value={clasif} onValueChange={setClasif}>
+            <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {ALL_CLASIF_MERMA.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </label>
+      </div>
+
+      {pasa && (
+        <p className="text-xs text-[#E24B4A]">
+          {n} supera las {lote.cantidad} que hay en el lote.
+        </p>
+      )}
+
+      <p className="text-xs text-muted-foreground">
+        Pérdida estimada: ${(n * (lote.precio_costo || 0)).toFixed(2)}
+      </p>
+
+      <label className="block space-y-1 text-xs text-muted-foreground">
+        Notas
+        <Textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={2}
+          style={{ borderRadius: '8px' }} />
+      </label>
+
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={onCancelar} style={{ borderRadius: '8px' }}>Cancelar</Button>
+        <Button disabled={guardando || n <= 0 || pasa}
+          onClick={() => onGuardar({ cantidad: n, clasif, notas: notas.trim() })}
+          style={{ borderRadius: '8px' }}>
+          <TrendingDown className="w-4 h-4 mr-1.5" /> Registrar merma
+        </Button>
+      </div>
     </div>
   );
 }
