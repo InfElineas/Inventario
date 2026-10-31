@@ -126,7 +126,7 @@ export default function Anuncios() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-medium">Anuncios desactivados</h1>
+          <h1 className="text-lg sm:text-xl font-medium">Anuncios desactivados</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Gestión de anuncios desactivados y sin ID</p>
         </div>
         <ColPicker cols={ANUNCIO_COL_DEFS} visible={cols}

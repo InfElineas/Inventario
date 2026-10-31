@@ -95,7 +95,7 @@ export default function AdminUsuarios() {
           <UserCog className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-xl font-medium">Gestión de usuarios</h1>
+          <h1 className="text-lg sm:text-xl font-medium">Gestión de usuarios</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {activos.length} activo{activos.length !== 1 ? 's' : ''}
             {pendientes.length > 0 && ` · ${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''}`}

@@ -131,7 +131,7 @@ export default function Auditoria() {
           <ClipboardList className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-xl font-medium">Auditoría de cambios</h1>
+          <h1 className="text-lg sm:text-xl font-medium">Auditoría de cambios</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Historial de modificaciones en productos</p>
         </div>
         <div className="ml-auto">

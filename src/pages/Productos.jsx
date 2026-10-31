@@ -742,7 +742,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
       {/* ── Header ── */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-medium">Catálogo de Productos</h1>
+          <h1 className="text-lg sm:text-xl font-medium">Catálogo de Productos</h1>
           <div className="flex flex-wrap items-center gap-2 mt-0.5">
             {almacen ? (
               <p className="text-sm text-muted-foreground">

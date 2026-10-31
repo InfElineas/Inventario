@@ -284,7 +284,7 @@ export default function Inventario({ ambito = 'inventario' }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-medium">Inventario</h1>
+          <h1 className="text-lg sm:text-xl font-medium">Inventario</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {ambito === 'facturacion'
               ? 'Conteos con diferencia, a la espera de facturación'

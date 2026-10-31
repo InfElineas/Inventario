@@ -251,12 +251,31 @@
 
   html { @apply bg-background; }
 
+  /*
+   * La escala entera baja en el móvil.
+   *
+   * Las clases de Tailwind —`text-sm`, `p-4`, `gap-3`— van en `rem`, así que
+   * cuelgan de esta medida. Cambiarla aquí encoge el texto Y el espaciado a
+   * la vez y en la misma proporción, que es lo que hace que quepa el
+   * contenido; ir clase por clase serían cientos de retoques y cada pantalla
+   * acabaría con su propia escala.
+   *
+   * 14 px es el suelo. Por debajo, los textos secundarios (`text-xs`, que
+   * queda en 10,5 px) dejan de leerse en una pantalla al sol.
+   */
+  @media (max-width: 639px) {
+    html { font-size: 14px; }
+  }
+
   body {
     @apply bg-background text-foreground font-sans;
-    font-size: 14px;
+    font-size: 0.875rem;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* El texto no se reajusta solo al girar el teléfono. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   h1 { letter-spacing: -0.025em; }
@@ -275,4 +294,26 @@
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+}
+
+/*
+ * Campos de formulario a 16 px en los aparatos tactiles.
+ *
+ * Por debajo de 16, Safari en iOS hace zoom al enfocar un campo y la pagina
+ * se queda ampliada y descuadrada. `pointer: coarse` acota la excepcion a los
+ * tactiles: en el escritorio los campos siguen la escala del resto.
+ *
+ * Va FUERA de `@layer base` a proposito. Las capas mandan por encima de la
+ * especificidad: cualquier regla dentro de `base` pierde contra una utilidad
+ * de Tailwind por muy especifica que sea, y estos campos llevan `text-sm`
+ * puesto. Sin capa, gana.
+ *
+ * `:not(.text-xs)` deja fuera los campos deliberadamente diminutos: la
+ * cantidad dentro de una fila de tabla vive en una caja de 24 px y con 16 px
+ * de letra no cabria.
+ */
+@media (pointer: coarse), (hover: none) {
+  input:not(.text-xs),
+  select:not(.text-xs),
+  textarea:not(.text-xs) { font-size: 16px; }
 }

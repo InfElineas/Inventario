@@ -41,7 +41,7 @@ export default function Notificaciones() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-medium">Notificaciones</h1>
+          <h1 className="text-lg sm:text-xl font-medium">Notificaciones</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{notifs.filter(n => !n.leida).length} sin leer</p>
         </div>
         <Button variant="outline" size="sm" onClick={markAllRead} style={{ borderRadius: '8px' }}>

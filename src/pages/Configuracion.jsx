@@ -215,7 +215,7 @@ export default function Configuracion() {
 
       {/* ── Header ── */}
       <div>
-        <h1 className="text-xl font-medium">Configuración</h1>
+        <h1 className="text-lg sm:text-xl font-medium">Configuración</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Preferencias de tu cuenta y módulos</p>
       </div>
 

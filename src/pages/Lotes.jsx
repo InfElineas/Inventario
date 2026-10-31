@@ -185,7 +185,7 @@ export default function Lotes() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-medium">Vencimientos</h1>
+          <h1 className="text-lg sm:text-xl font-medium">Vencimientos</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {almacen
               ? `Lotes de ${warehouseName(almacen)}`

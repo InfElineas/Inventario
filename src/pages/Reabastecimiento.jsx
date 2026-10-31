@@ -223,7 +223,7 @@ export default function Reabastecimiento() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-medium">Reabastecimiento</h1>
+          <h1 className="text-lg sm:text-xl font-medium">Reabastecimiento</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             Qué comprar, por los días que aguanta cada producto al ritmo al que se vende
           </p>

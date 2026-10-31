@@ -184,7 +184,7 @@ export default function Supervision() {
             <Eye className="w-5 h-5" style={{ color: '#6366F1' }} />
           </div>
           <div>
-            <h1 className="text-xl font-medium">Supervisión</h1>
+            <h1 className="text-lg sm:text-xl font-medium">Supervisión</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               {DEPARTAMENTOS[viewDept] || viewDept}
             </p>

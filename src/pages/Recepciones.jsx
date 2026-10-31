@@ -301,7 +301,7 @@ export default function Recepciones() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-medium">Recepciones</h1>
+          <h1 className="text-lg sm:text-xl font-medium">Recepciones</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {almacen ? `Recepción de mercancía en ${warehouseName(almacen)}` : 'Recepción de mercancía'}
           </p>
@@ -778,7 +778,7 @@ function RecepcionDetail({ recepcion, user, onUpdate, onDelete }) {
     <>
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-medium">{recepcion.no_recepcion}</h1>
+        <h1 className="text-lg sm:text-xl font-medium">{recepcion.no_recepcion}</h1>
         {canEdit && (
           <Button
             variant="ghost" size="sm"

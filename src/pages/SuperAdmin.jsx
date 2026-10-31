@@ -1183,7 +1183,7 @@ export default function SuperAdmin() {
             <Crown className="w-5 h-5 text-[#e24b4a]" />
           </div>
           <div>
-            <h1 className="text-xl font-medium">Panel Super Admin</h1>
+            <h1 className="text-lg sm:text-xl font-medium">Panel Super Admin</h1>
             <p className="text-sm text-muted-foreground">Operabilidad · Trazabilidad · Auditoría</p>
           </div>
         </div>

@@ -137,7 +137,7 @@ export default function Reportes() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-medium">Reportes</h1>
+          <h1 className="text-lg sm:text-xl font-medium">Reportes</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Análisis y métricas del almacén</p>
         </div>
         <div className="flex items-center gap-2">

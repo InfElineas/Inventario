@@ -226,7 +226,7 @@ export default function Mermas({ ambito = 'inventario' }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-medium">Mermas</h1>
+          <h1 className="text-lg sm:text-xl font-medium">Mermas</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {ambito === 'facturacion'
               ? 'Mermas ya bajadas de tienda, a la espera de facturación'
