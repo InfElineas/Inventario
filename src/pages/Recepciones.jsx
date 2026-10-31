@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -16,6 +16,7 @@ import { Plus, Search, PackageOpen, Trash2, Pencil, ChevronLeft, Image as ImageI
 import { format } from 'date-fns';
 import { useConfirm } from '@/lib/useConfirm';
 import SortTh from '@/components/shared/SortTh';
+import Pagination from '@/components/shared/Pagination';
 import { useSortable } from '@/lib/useSortable';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import { notifyJefeDepto, notifyRoles } from '@/lib/notificationService';
@@ -38,6 +39,17 @@ const RECEP_COL_DEFS = [
   { key: 'almacen_num',       label: 'Almacén',       defaultOn: false, required: false },
 ]
 const RECEP_COLS_KEY = 'recep_cols'
+
+/** Hoy hay una recepción; con trescientas, la lista sin paginar es un muro. */
+const PAGE_SIZE = 50
+
+/** Los estados de una recepción, para el filtro. */
+const FILTRO_RECEPCION = [
+  { valor: 'todas',           label: 'Todas' },
+  { valor: 'en_curso',        label: 'Recibiendo' },
+  { valor: 'con_diferencias', label: 'Con incidencia' },
+  { valor: 'cerrada',         label: 'Conformes' },
+]
 
 /**
  * Los estados de un pedido de compra, dichos como los dice la gente.
@@ -129,6 +141,8 @@ export default function Recepciones() {
   const [showCreate, setShowCreate] = useState(false);
   const [searchQ, setSearchQ] = useState('');
   const { almacen } = useAlmacen();
+  const [filtroEstado, setFiltroEstado] = useState('todas');
+  const [page, setPage] = useState(1);
   // La recepción abierta va en la URL, no en el estado: así es una pantalla
   // propia y el botón de atrás del móvil vuelve a la lista.
   const { id: selectedId } = useParams();
@@ -155,6 +169,14 @@ export default function Recepciones() {
       .filter((r) => !almacen || !r.almacen_num || r.almacen_num === almacen),
   });
   const recepciones = recepcionesRaw ?? [];
+
+  // Como en el resto del módulo: cambiar de almacén, filtro o búsqueda
+  // devuelve a la primera página.
+  const firmaFiltros = `${almacen}|${filtroEstado}|${searchQ.trim()}`;
+  const firmaPrevia = useRef(firmaFiltros);
+  useEffect(() => {
+    if (firmaPrevia.current !== firmaFiltros) { firmaPrevia.current = firmaFiltros; setPage(1); }
+  }, [firmaFiltros]);
 
   const createMut = useMutation({
     mutationFn: (data) => base44.entities.Recepcion.create(data),
@@ -187,7 +209,18 @@ export default function Recepciones() {
   const selected = recepciones.find(r => r.id === selectedId) ?? suelta ?? null;
 
   const filtered = recepciones.filter(r => {
-    if (searchQ && !r.proveedor?.toLowerCase().includes(searchQ.toLowerCase()) && !r.no_recepcion?.toLowerCase().includes(searchQ.toLowerCase())) return false;
+    if (filtroEstado !== 'todas' && r.estado !== filtroEstado) return false;
+    if (searchQ) {
+      const q = searchQ.toLowerCase();
+      // También por proveedor, número de orden y producto: quien busca una
+      // recepción suele tener delante el albarán o la caja, no su número.
+      const hay = [r.proveedor, r.no_recepcion, r.no_orden]
+        .some((c) => String(c ?? '').toLowerCase().includes(q))
+        || (r.detalles ?? []).some((d) =>
+          String(d.producto_nombre ?? '').toLowerCase().includes(q)
+          || String(d.producto_codigo ?? '').toLowerCase().includes(q));
+      if (!hay) return false;
+    }
     return true;
   });
 
@@ -201,6 +234,8 @@ export default function Recepciones() {
     const bv = b[k] ?? '';
     return av < bv ? -dir : av > bv ? dir : 0;
   });
+
+  const pagina = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const genNoRecepcion = () => {
     const y = new Date().getFullYear();
@@ -318,9 +353,20 @@ export default function Recepciones() {
         />
       ) : (
       <>
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar por proveedor o número..." className="pl-10" style={{ borderRadius: '8px' }} />
+      <div className="flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)}
+            placeholder="Buscar por proveedor, orden o producto..." className="pl-10" style={{ borderRadius: '8px' }} />
+        </div>
+        <Select value={filtroEstado} onValueChange={setFiltroEstado}>
+          <SelectTrigger className="w-44" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {FILTRO_RECEPCION.map((f) => (
+              <SelectItem key={f.valor} value={f.valor}>{f.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div>
@@ -340,7 +386,7 @@ export default function Recepciones() {
                   <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
-                ) : sorted.map(r => (
+                ) : pagina.map(r => (
                   <tr key={r.id}
                     className="border-b hover:bg-accent/50 cursor-pointer transition-colors"
                     onClick={() => abrir(r.id)}>
@@ -360,6 +406,8 @@ export default function Recepciones() {
               </tbody>
             </table>
           </div>
+          <Pagination page={page} total={sorted.length} pageSize={PAGE_SIZE}
+            onPage={(n) => setPage(Math.max(1, n))} />
         </Card>
       </div>
       </>

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AlertBanner from '@/components/shared/AlertBanner';
 import Pagination from '@/components/shared/Pagination';
+import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
@@ -34,6 +35,37 @@ import { Download, Loader2, RefreshCw, Search, ShoppingCart } from 'lucide-react
  */
 
 const PAGE_SIZE = 50;
+
+/**
+ * Las columnas, elegibles como en el resto del modulo.
+ *
+ * Suministrador y minimo nacen apagadas porque son las que ya se escondian
+ * por ancho de pantalla: quien entra desde el movil ve lo mismo de antes y
+ * puede sacarlas si las necesita.
+ */
+const REAB_COL_DEFS = [
+  { key: 'producto',      label: 'Producto',      defaultOn: true,  required: true  },
+  { key: 'suministrador', label: 'Suministrador', defaultOn: false, required: false },
+  { key: 'estadoTienda',  label: 'Tienda',        defaultOn: true,  required: false },
+  { key: 'existencia',    label: 'Existencia',    defaultOn: true,  required: false },
+  { key: 'diaria',        label: 'Venta/dia',     defaultOn: true,  required: false },
+  { key: 'cobertura',     label: 'Dias',          defaultOn: true,  required: false },
+  { key: 'minimo',        label: 'Minimo',        defaultOn: false, required: false },
+  { key: 'pedir',         label: 'A pedir',       defaultOn: true,  required: true  },
+];
+const REAB_COLS_KEY = 'reab_cols';
+
+/** Como se titula, alinea y si se puede ordenar por ella. */
+const COL_TITULO = {
+  producto:      { label: 'Producto', ordenable: true },
+  suministrador: { label: 'Suministrador', ordenable: true },
+  estadoTienda:  { label: 'Tienda', align: 'center' },
+  existencia:    { label: 'Existencia', align: 'right', ordenable: true },
+  diaria:        { label: 'Venta/dia', align: 'right', ordenable: true },
+  cobertura:     { label: 'Dias', align: 'right', ordenable: true },
+  minimo:        { label: 'Minimo', align: 'right', ordenable: true },
+  pedir:         { label: 'A pedir', align: 'right' },
+};
 
 /**
  * Por defecto solo se ofrecen los anuncios activados.
@@ -84,6 +116,9 @@ export default function Reabastecimiento() {
   const [anuncio, setAnuncio] = useState(ANUNCIO_POR_DEFECTO);
   const [cantidades, setCantidades] = useState({});
   const [page, setPage] = useState(1);
+  const [cols, setCols] = useState(() => loadColsWithOrder(REAB_COLS_KEY, REAB_COL_DEFS).visible);
+  const [colOrder, setColOrder] = useState(() => loadColsWithOrder(REAB_COLS_KEY, REAB_COL_DEFS).order);
+  const visibles = colOrder.filter((k) => cols[k]);
   const { sort, onSort } = useSortable('cobertura', 'asc');
 
   const guardarDias = (v) => {
@@ -213,6 +248,10 @@ export default function Reabastecimiento() {
             style={{ borderRadius: '8px' }} title="Volver a pedir el informe de rotación">
             <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
           </Button>
+          <ColPicker cols={REAB_COL_DEFS} visible={cols}
+            onChange={(next) => { setCols(next); saveColsWithOrder(REAB_COLS_KEY, next, colOrder); }}
+            storageKey={REAB_COLS_KEY} order={colOrder}
+            onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(REAB_COLS_KEY, cols, next); }} />
           <Button onClick={exportar} disabled={filtradas.length === 0} style={{ borderRadius: '8px' }}>
             <Download className="w-4 h-4 mr-1.5" /> Exportar
           </Button>
@@ -292,43 +331,57 @@ export default function Reabastecimiento() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-secondary/40">
-                    <SortTh colKey="producto" label="Producto" sort={sort} onSort={onSort} className="p-3 text-xs font-medium text-muted-foreground" />
-                    <SortTh colKey="suministrador" label="Suministrador" sort={sort} onSort={onSort} className="p-3 text-xs font-medium text-muted-foreground hidden lg:table-cell" />
-                    <th className="p-3 text-xs font-medium text-muted-foreground text-center hidden md:table-cell">Tienda</th>
-                    <SortTh colKey="existencia" label="Existencia" sort={sort} onSort={onSort} align="right" className="p-3 text-xs font-medium text-muted-foreground" />
-                    <SortTh colKey="diaria" label="Venta/día" sort={sort} onSort={onSort} align="right" className="p-3 text-xs font-medium text-muted-foreground" />
-                    <SortTh colKey="cobertura" label="Días" sort={sort} onSort={onSort} align="right" className="p-3 text-xs font-medium text-muted-foreground" />
-                    <SortTh colKey="minimo" label="Mínimo" sort={sort} onSort={onSort} align="right" className="p-3 text-xs font-medium text-muted-foreground hidden sm:table-cell" />
-                    <th className="p-3 text-xs font-medium text-muted-foreground text-right">A pedir</th>
+                    {visibles.map((k) => (COL_TITULO[k].ordenable ? (
+                      <SortTh key={k} colKey={k} label={COL_TITULO[k].label} align={COL_TITULO[k].align}
+                        sort={sort} onSort={onSort} className="p-3 text-xs font-medium text-muted-foreground" />
+                    ) : (
+                      <th key={k} className={`p-3 text-xs font-medium text-muted-foreground ${
+                        COL_TITULO[k].align === 'right' ? 'text-right'
+                          : COL_TITULO[k].align === 'center' ? 'text-center' : ''
+                      }`}>{COL_TITULO[k].label}</th>
+                    )))}
                   </tr>
                 </thead>
                 <tbody>
                   {pagina.length === 0 ? (
-                    <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">Nada con estos filtros.</td></tr>
+                    <tr><td colSpan={visibles.length || 8} className="p-8 text-center text-muted-foreground">Nada con estos filtros.</td></tr>
                   ) : pagina.map((f) => (
                     <tr key={f.id} className="border-b last:border-0 hover:bg-accent/40 transition-colors">
-                      <td className="p-3">
-                        <p className="font-medium text-xs line-clamp-1" title={f.nombre}>{f.nombre}</p>
-                        <p className="text-[11px] text-muted-foreground font-mono">{f.codigo}</p>
-                      </td>
-                      <td className="p-3 text-xs text-muted-foreground hidden lg:table-cell">{f.suministrador || '—'}</td>
-                      <td className="p-3 text-center hidden md:table-cell">
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground whitespace-nowrap">
-                          {f.estadoTienda}
-                        </span>
-                      </td>
-                      <td className="p-3 text-right tabular-nums">{f.existencia}</td>
-                      <td className="p-3 text-right tabular-nums text-muted-foreground">{f.diaria.toFixed(2)}</td>
-                      <td className={`p-3 text-right tabular-nums font-medium ${colorCobertura(f.cobertura, dias)}`}>
-                        {f.cobertura.toFixed(1)}
-                      </td>
-                      <td className="p-3 text-right tabular-nums text-muted-foreground hidden sm:table-cell">{f.minimo}</td>
-                      <td className="p-3 text-right">
-                        <Input type="number" min="0" className="w-20 text-right h-7 text-xs"
-                          value={cantidades[f.id] ?? f.faltan}
-                          onChange={(e) => setCantidades((c) => ({ ...c, [f.id]: e.target.value }))}
-                          style={{ borderRadius: '6px' }} />
-                      </td>
+                      {visibles.map((k) => {
+                        const CELDAS = {
+                          producto: (
+                            <td key={k} className="p-3">
+                              <p className="font-medium text-xs line-clamp-1" title={f.nombre}>{f.nombre}</p>
+                              <p className="text-[11px] text-muted-foreground font-mono">{f.codigo}</p>
+                            </td>
+                          ),
+                          suministrador: <td key={k} className="p-3 text-xs text-muted-foreground">{f.suministrador || '—'}</td>,
+                          estadoTienda: (
+                            <td key={k} className="p-3 text-center">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground whitespace-nowrap">
+                                {f.estadoTienda}
+                              </span>
+                            </td>
+                          ),
+                          existencia: <td key={k} className="p-3 text-right tabular-nums">{f.existencia}</td>,
+                          diaria: <td key={k} className="p-3 text-right tabular-nums text-muted-foreground">{f.diaria.toFixed(2)}</td>,
+                          cobertura: (
+                            <td key={k} className={`p-3 text-right tabular-nums font-medium ${colorCobertura(f.cobertura, dias)}`}>
+                              {f.cobertura.toFixed(1)}
+                            </td>
+                          ),
+                          minimo: <td key={k} className="p-3 text-right tabular-nums text-muted-foreground">{f.minimo}</td>,
+                          pedir: (
+                            <td key={k} className="p-3 text-right">
+                              <Input type="number" min="0" className="w-20 text-right h-7 text-xs"
+                                value={cantidades[f.id] ?? f.faltan}
+                                onChange={(e) => setCantidades((c) => ({ ...c, [f.id]: e.target.value }))}
+                                style={{ borderRadius: '6px' }} />
+                            </td>
+                          ),
+                        };
+                        return CELDAS[k] ?? <td key={k} className="p-3" />;
+                      })}
                     </tr>
                   ))}
                 </tbody>

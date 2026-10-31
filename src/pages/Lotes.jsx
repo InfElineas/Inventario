@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -85,6 +85,15 @@ export default function Lotes() {
     [almacenesConfig],
   );
 
+  // Mismo patrón que Inventario, Mermas y Reabastecimiento, y con el ALMACÉN
+  // dentro: antes, al cambiar de almacén te quedabas en la página cuarenta
+  // del nuevo, que casi siempre está vacía.
+  const firmaFiltros = `${almacen}|${estado}|${filterTemp}|${searchQ.trim()}|${sort.key}|${sort.dir}`;
+  const firmaPrevia = useRef(firmaFiltros);
+  useEffect(() => {
+    if (firmaPrevia.current !== firmaFiltros) { firmaPrevia.current = firmaFiltros; setPage(1); }
+  }, [firmaFiltros]);
+
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
 
   // Del informe central, no de `inventario.lotes`: esa tabla no la llenaba
@@ -142,7 +151,13 @@ export default function Lotes() {
   const filtered = lotes.filter(l => {
     if (estado !== 'all' && l.estado_fv !== estado) return false;
     if (filterTemp !== 'all' && l.temperatura !== filterTemp) return false;
-    if (searchQ && !l.producto_nombre?.toLowerCase().includes(searchQ.toLowerCase()) && !l.no_lote?.toLowerCase().includes(searchQ.toLowerCase())) return false;
+    // También por código: es lo que deja el escáner en el buscador.
+    if (searchQ) {
+      const q = searchQ.toLowerCase();
+      const hay = [l.producto_nombre, l.no_lote, l.producto_codigo]
+        .some((c) => String(c ?? '').toLowerCase().includes(q));
+      if (!hay) return false;
+    }
     return true;
   });
 
@@ -159,11 +174,9 @@ export default function Lotes() {
     return av < bv ? -dir : av > bv ? dir : 0;
   });
 
-  // Filtrar o reordenar cambia qué hay: quedarse en la página siete de una
-  // lista que ahora tiene dos deja la tabla vacía sin explicar por qué.
   const pagina = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const irA = (n) => setPage(Math.max(1, n));
-  const reiniciar = (aplicar) => (v) => { aplicar(v); setPage(1); };
+  const reiniciar = (aplicar) => (v) => aplicar(v);
 
   const selected = lotes.find(l => l.id === selectedId);
 
@@ -171,7 +184,7 @@ export default function Lotes() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-medium">Vencimientos LOT</h1>
+          <h1 className="text-xl font-medium">Vencimientos</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {almacen
               ? `Lotes de ${warehouseName(almacen)}`
@@ -244,7 +257,7 @@ export default function Lotes() {
             la pantalla y el buscador quedaba aplastado. */}
         <div className="relative flex-1 min-w-[180px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={searchQ} onChange={(e) => { setSearchQ(e.target.value); setPage(1); }} placeholder="Buscar por producto o lote..." className="pl-10" style={{ borderRadius: '8px' }} />
+          <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar por producto, código o lote..." className="pl-10" style={{ borderRadius: '8px' }} />
         </div>
         <Select value={filterTemp} onValueChange={reiniciar(setFilterTemp)}>
           <SelectTrigger className="w-36" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
@@ -265,7 +278,7 @@ export default function Lotes() {
                   {colOrder.filter(k => cols[k]).map(k => (
                     <SortTh key={k} colKey={k} label={COL_TITULO[k].label}
                       align={COL_TITULO[k].align} sort={sort}
-                      onSort={(c) => { onSort(c); setPage(1); }} />
+                      onSort={onSort} />
                   ))}
                   <th className="text-center p-3 text-xs font-medium text-muted-foreground">Acción</th>
                 </tr>

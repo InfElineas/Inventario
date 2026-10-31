@@ -7,6 +7,12 @@ navegación y los componentes que comparten.
 Está ordenado por lo que cuesta arreglarlo contra lo que duele. Lo de arriba
 son fallos; lo de abajo, decisiones a tomar.
 
+> **Estado al 31 de octubre:** arreglado todo menos el punto 1.6 (las tablas
+> como tarjetas en el móvil), que necesita verse en un teléfono de verdad
+> antes de tocar seis tablas, y el 6 del apartado 4 (partir el Catálogo), que
+> es refactor sin cambio de comportamiento. Lo demás está en los commits
+> `8a983c8`, `869efaf` y los siguientes.
+
 ---
 
 ## 1. Fallos en el móvil
