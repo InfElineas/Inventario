@@ -23,6 +23,8 @@ import { incidenciasDe, hayIncidencia, resumenIncidencias } from '@/lib/incidenc
 import ReporteIncidencia from '@/components/recepciones/ReporteIncidencia';
 import ResolverIncidencia from '@/components/recepciones/ResolverIncidencia';
 import { tieneRol } from '@/lib/roles';
+import { useAlmacen } from '@/lib/useAlmacen';
+import { warehouseName } from '@/services/tkc/warehouses';
 import { fetchPedidos, fetchLineasDePedido } from '@/services/pedidosService';
 import LineaRecibir from '@/components/recepciones/LineaRecibir';
 import { SIN_SONDEO } from '@/lib/query-client';
@@ -33,6 +35,7 @@ const RECEP_COL_DEFS = [
   { key: 'fecha',             label: 'Fecha',         defaultOn: true, required: false },
   { key: 'items_confirmados', label: 'Items',         defaultOn: true, required: false },
   { key: 'estado',            label: 'Estado',        defaultOn: true, required: false },
+  { key: 'almacen_num',       label: 'Almacén',       defaultOn: false, required: false },
 ]
 const RECEP_COLS_KEY = 'recep_cols'
 
@@ -57,14 +60,28 @@ const FILTRO_PEDIDO = [
 ]
 
 /**
+ * La clave de una línea. Las recepciones de antes no la traen, así que para
+ * esas se cae en la posición: no es estable, pero tampoco hay nada mejor.
+ */
+const claveDe = (d, i) => d.clave ?? `${d.producto_codigo ?? ''}#${i}`;
+
+/** Cuántas líneas se contaron ya. Se recalculaba en cuatro sitios. */
+const yaContadas = (detalles) => detalles.filter((d) => d.contada !== false).length;
+
+/**
  * La recepción que nace de un pedido de compra.
  *
  * Las líneas entran ya puestas, con lo que pidió comercial como esperado y lo
  * recibido en blanco: lo que hay que hacer al descargar es contar, no
  * transcribir. `contada: false` las distingue de una línea que llegó a cero.
  */
-function recepcionDePedido({ pedido, lineas, no, user }) {
-  const detalles = lineas.map((l) => ({
+function recepcionDePedido({ pedido, lineas, no, user, almacen }) {
+  const detalles = lineas.map((l, i) => ({
+    // Clave propia de la línea. El mismo producto puede venir dos veces en un
+    // pedido —dos cantidades, dos precios— así que el código no distingue, y
+    // con la posición como clave React mezcla lo escrito entre filas en
+    // cuanto se borra una del medio.
+    clave: `${l.codigo}#${i}`,
     producto_codigo: l.codigo,
     producto_nombre: l.nombre,
     cant_esperada: l.cantidad,
@@ -86,6 +103,7 @@ function recepcionDePedido({ pedido, lineas, no, user }) {
     especialista_nombre: user?.full_name,
     estado: 'en_curso',
     diferencias: [],
+    almacen_num: almacen,
     proveedor: pedido.proveedor,
     no_orden: pedido.numero,
     pedido_id: pedido.id,
@@ -102,6 +120,7 @@ const COL_TITULO = {
   fecha:             { label: 'Fecha' },
   items_confirmados: { label: 'Items', align: 'center' },
   estado:            { label: 'Estado', align: 'center' },
+  almacen_num:       { label: 'Almacén' },
 }
 
 export default function Recepciones() {
@@ -109,6 +128,7 @@ export default function Recepciones() {
   const [colOrder, setColOrder] = useState(() => loadColsWithOrder(RECEP_COLS_KEY, RECEP_COL_DEFS).order);
   const [showCreate, setShowCreate] = useState(false);
   const [searchQ, setSearchQ] = useState('');
+  const { almacen } = useAlmacen();
   // La recepción abierta va en la URL, no en el estado: así es una pantalla
   // propia y el botón de atrás del móvil vuelve a la lista.
   const { id: selectedId } = useParams();
@@ -125,10 +145,14 @@ export default function Recepciones() {
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
 
+  // Acotada al almacén activo, como el resto del módulo. Las de antes de que
+  // existiera la columna no tienen almacén; se muestran igual —marcadas— para
+  // no esconder historial que sí ocurrió.
   const { data: recepcionesRaw, isLoading } = useQuery({
-    queryKey: ['recepciones'],
+    queryKey: ['recepciones', almacen],
     queryFn: () => base44.entities.Recepcion.list('-created_date', 100),
-    select: (d) => Array.isArray(d) ? d : [],
+    select: (d) => (Array.isArray(d) ? d : [])
+      .filter((r) => !almacen || !r.almacen_num || r.almacen_num === almacen),
   });
   const recepciones = recepcionesRaw ?? [];
 
@@ -184,8 +208,6 @@ export default function Recepciones() {
     return `REC-${y}-${String(n).padStart(4, '0')}`;
   };
 
-  const estadoMap = { en_curso: 'en_curso', cerrada: 'completado', con_diferencias: 'devuelto' };
-
   // `tieneRol` y no `user.role`: quien es inventarista y además factura
   // resolvía al rol de más autoridad y perdía lo que solo puede `inv`.
   const puedeRecibir = tieneRol(user, ['inv', 'administrador']);
@@ -204,7 +226,7 @@ export default function Recepciones() {
     try {
       const lineas = await fetchLineasDePedido(pedido.id);
       const creada = await createMut.mutateAsync(
-        recepcionDePedido({ pedido, lineas, no: genNoRecepcion(), user }),
+        recepcionDePedido({ pedido, lineas, no: genNoRecepcion(), user, almacen }),
       );
       if (creada?.id) abrir(creada.id);
     } catch {
@@ -245,7 +267,9 @@ export default function Recepciones() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-medium">Recepciones</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Recepción de mercancía</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {almacen ? `Recepción de mercancía en ${warehouseName(almacen)}` : 'Recepción de mercancía'}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {vista === 'recepciones' && (
@@ -278,6 +302,7 @@ export default function Recepciones() {
           <CreateRecepcionForm
             genNo={genNoRecepcion}
             user={user}
+            almacen={almacen}
             onSubmit={(d) => createMut.mutate(d)}
             onCancel={() => setShowCreate(false)}
           />
@@ -325,7 +350,8 @@ export default function Recepciones() {
                         proveedor: <td key={k} className="p-3">{r.proveedor}</td>,
                         fecha: <td key={k} className="p-3 text-muted-foreground">{r.fecha}</td>,
                         items_confirmados: <td key={k} className="p-3 text-center">{r.items_confirmados || 0}/{r.total_items || 0}</td>,
-                        estado: <td key={k} className="p-3 text-center"><StatusBadge status={estadoMap[r.estado] || 'en_curso'} /></td>,
+                        estado: <td key={k} className="p-3 text-center"><StatusBadge status={r.estado} vocabulario="recepcion" /></td>,
+                        almacen_num: <td key={k} className="p-3 text-muted-foreground">{r.almacen_num || 'sin almacén'}</td>,
                       };
                       return CELDAS[k] ?? <td key={k} className="p-3" />;
                     })}
@@ -455,7 +481,7 @@ function PedidosPorRecibir({ puedeRecibir, recepciones, creando, onRecibir }) {
  * veces llega sin él, o la API de pedidos está caída con el camión en la
  * puerta. Entonces se teclea el proveedor y se van añadiendo los productos.
  */
-function CreateRecepcionForm({ genNo, user, onSubmit, onCancel }) {
+function CreateRecepcionForm({ genNo, user, almacen, onSubmit, onCancel }) {
   const [proveedor, setProveedor] = useState('');
   const [noOrden, setNoOrden] = useState('');
 
@@ -466,6 +492,7 @@ function CreateRecepcionForm({ genNo, user, onSubmit, onCancel }) {
     especialista_nombre: user?.full_name,
     estado: 'en_curso',
     diferencias: [],
+    almacen_num: almacen,
     proveedor,
     no_orden: noOrden,
     detalles: [],
@@ -493,6 +520,9 @@ function CreateRecepcionForm({ genNo, user, onSubmit, onCancel }) {
 
 function RecepcionDetail({ recepcion, user, onUpdate, onDelete }) {
   const [newItem, setNewItem] = useState(null);
+  // Se guarda la CLAVE de la línea que se está contando, no su posición:
+  // borrar otra línea mientras tanto desplazaba el índice y el formulario
+  // pasaba a escribir en un producto distinto.
   const [contando, setContando] = useState(null);
   const [editingProveedor, setEditingProveedor] = useState(false);
   const [proveedorDraft, setProveedorDraft] = useState(recepcion.proveedor || '');
@@ -551,7 +581,9 @@ function RecepcionDetail({ recepcion, user, onUpdate, onDelete }) {
   };
 
   /** Escribe lo contado en una línea que ya venía del pedido. */
-  const contarLinea = async (i, datos) => {
+  const contarLinea = async (clave, datos) => {
+    const i = detalles.findIndex((d, j) => claveDe(d, j) === clave);
+    if (i < 0) return;
     const { foto, ...campos } = datos;
     const fotoId = await guardarFoto(detalles[i]?.producto_codigo, foto);
     const updated = detalles.map((x, j) => (j === i ? {
@@ -566,13 +598,14 @@ function RecepcionDetail({ recepcion, user, onUpdate, onDelete }) {
     } : x));
     onUpdate({
       detalles: updated,
-      items_confirmados: updated.filter((x) => x.contada !== false).length,
+      items_confirmados: yaContadas(updated),
     });
     setContando(null);
   };
 
   const addItem = (producto) => {
     setNewItem({
+      clave: `${producto.codigo_producto}#manual-${Date.now()}`,
       producto_id: producto.id,
       producto_nombre: producto.nombre,
       producto_codigo: producto.codigo_producto,
@@ -598,7 +631,7 @@ function RecepcionDetail({ recepcion, user, onUpdate, onDelete }) {
     const updated = [...detalles, item];
     onUpdate({
       detalles: updated,
-      items_confirmados: updated.filter((x) => x.contada !== false).length,
+      items_confirmados: yaContadas(updated),
       total_items: updated.length,
     });
     setNewItem(null);
@@ -629,7 +662,7 @@ function RecepcionDetail({ recepcion, user, onUpdate, onDelete }) {
     onUpdate({
       estado: 'en_curso',
       detalles: nuevosDetalles,
-      items_confirmados: nuevosDetalles.filter((x) => x.contada !== false).length,
+      items_confirmados: yaContadas(nuevosDetalles),
       diferencias: diferencias.map((d, i) => (indices.includes(i)
         ? { ...d, tipo_diferencia: 'reconteo_solicitado', resuelto_por: user?.email,
             fecha_resolucion: format(new Date(), 'yyyy-MM-dd') }
@@ -767,18 +800,19 @@ function RecepcionDetail({ recepcion, user, onUpdate, onDelete }) {
       <div className="space-y-2">
         {detalles.map((d, i) => {
           // Contando esta: el formulario ocupa el sitio de la fila.
-          if (contando === i && canEdit) {
+          const clave = claveDe(d, i);
+          if (contando === clave && canEdit) {
             return (
-              <LineaRecibir key={i} linea={d}
+              <LineaRecibir key={clave} linea={d}
                 producto={porCodigo.get(String(d.producto_codigo))}
                 nuevo={esNuevo(d.producto_codigo)}
-                onConfirmar={(datos) => contarLinea(i, datos)}
+                onConfirmar={(datos) => contarLinea(clave, datos)}
                 onCancelar={() => setContando(null)} />
             );
           }
 
           return (
-            <div key={i} className={`p-3 rounded-lg flex flex-wrap items-center justify-between gap-2 ${
+            <div key={clave} className={`p-3 rounded-lg flex flex-wrap items-center justify-between gap-2 ${
               d.contada === false ? 'bg-[#BA7517]/[0.06] border border-[#BA7517]/20' : 'bg-secondary/50'
             }`} style={{ borderRadius: '8px' }}>
               <div className="flex-1 min-w-0">
@@ -826,7 +860,7 @@ function RecepcionDetail({ recepcion, user, onUpdate, onDelete }) {
                 )}
                 {canEdit && (
                   <Button size="sm" variant={d.contada === false ? 'default' : 'ghost'}
-                    className="h-9 px-4 text-xs" onClick={() => setContando(i)} style={{ borderRadius: '8px' }}>
+                    className="h-9 px-4 text-xs" onClick={() => setContando(clave)} style={{ borderRadius: '8px' }}>
                     {d.contada === false ? 'Contar' : <Pencil className="w-3 h-3" />}
                   </Button>
                 )}
@@ -837,7 +871,7 @@ function RecepcionDetail({ recepcion, user, onUpdate, onDelete }) {
                       const updated = detalles.filter((_, j) => j !== i)
                       onUpdate({
                         detalles: updated,
-                        items_confirmados: updated.filter((x) => x.contada !== false).length,
+                        items_confirmados: yaContadas(updated),
                         total_items: updated.length,
                       })
                     }}

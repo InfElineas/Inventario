@@ -33,6 +33,22 @@ export const ESTADO_TAREA = {
   reconteo_solicitado: { label: 'Reconteo', bg: 'bg-[#E24B4A14]', text: 'text-[#E24B4A]', dot: 'bg-[#E24B4A]' },
 };
 
+/**
+ * Estados de una recepción.
+ *
+ * Aparte de ESTADO_TAREA a propósito. La recepción se pintaba reusando
+ * aquellos: `cerrada` salía como «Completado» y `con_diferencias` como
+ * «Devuelto», que en el resto del sistema significa que auditoría o
+ * facturación rechazaron una tarea y la mandaron de vuelta. Nadie devolvió
+ * nada: llegó mercancía que no cuadra. Quien leía la lista entendía lo que no
+ * era.
+ */
+export const ESTADO_RECEPCION = {
+  en_curso: { label: 'Recibiendo', bg: 'bg-[#378ADD14]', text: 'text-[#378ADD]', dot: 'bg-[#378ADD]' },
+  cerrada: { label: 'Conforme', bg: 'bg-[#1D9E7514]', text: 'text-[#1D9E75]', dot: 'bg-[#1D9E75]' },
+  con_diferencias: { label: 'Con incidencia', bg: 'bg-[#BA751714]', text: 'text-[#BA7517]', dot: 'bg-[#BA7517]' },
+};
+
 // Lot expiry states
 export const ESTADO_FV = {
   vencido: { label: 'Vencido', bg: 'bg-[#E24B4A18]', text: 'text-[#E24B4A]', dot: 'bg-[#E24B4A]' },
