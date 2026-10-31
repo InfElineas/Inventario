@@ -98,6 +98,10 @@ const SQL = `
          AND ($1::text IS NULL OR pp.almacen_num = $1)
     ) p ON true
    WHERE ($1::text IS NULL OR l.warehouse_key = $1)
+     -- Un lote sin existencia no es una tarea: ya no hay nada que rebajar ni
+     -- que devolver. Eran más de la mitad de las filas y tapaban los pocos
+     -- que de verdad están por vencer.
+     AND l.cantidad > 0
 `
 
 /**

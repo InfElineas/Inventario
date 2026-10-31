@@ -6,80 +6,15 @@ import {
   ChevronsLeft, ChevronsRight, Settings2, Eye, Crown, ChevronDown,
   PackagePlus, PackageMinus, Repeat, ShoppingCart,
 } from 'lucide-react';
-import { ROLES_AJUSTES } from '@/lib/ajustes';
 import { tieneRol } from '@/lib/roles';
-import { ROLES_PROCESAMIENTOS } from '@/lib/procesamientos';
+// Una sola lista para las dos barras: ver src/lib/navegacion.js.
+import { NAV_GROUPS } from '@/lib/navegacion';
 
 const ICONS = {
   LayoutDashboard, ClipboardList, TrendingDown, Clock, PackageOpen,
   Megaphone, BarChart3, Package, ShieldCheck, Users, Settings2, Eye, Crown,
   PackagePlus, PackageMinus, Repeat, ShoppingCart,
 };
-
-const ALL = ['inv', 'fact', 'auditor', 'ca', 'jefe_depto', 'administrador', 'superadmin'];
-
-const NAV_GROUPS = [
-  {
-    items: [
-      { path: '/', label: 'PC General', icon: 'LayoutDashboard', roles: ALL },
-    ],
-  },
-  {
-    items: [
-      { path: '/productos', label: 'Catálogo', icon: 'Package', roles: ALL },
-    ],
-  },
-  {
-    label: 'INVENTARIO',
-    groupIcon: 'ClipboardList',
-    items: [
-      { path: '/inventario',  label: 'Inventario',  icon: 'ClipboardList', roles: ['inv','fact','auditor','jefe_depto','administrador','superadmin'] },
-      { path: '/mermas',      label: 'Mermas',       icon: 'TrendingDown',  roles: ['inv','fact','auditor','jefe_depto','administrador','superadmin'] },
-      { path: '/lotes',       label: 'Vencimientos', icon: 'Clock',         roles: ['inv','ca','auditor','jefe_depto','administrador','superadmin']  },
-      // `fact` entra pero sin poder recibir (eso lo gatea la propia página):
-      // el reporte de incidencia le llega por notificación y tiene que poder
-      // volver a él para cuadrar la factura del proveedor.
-      { path: '/recepciones', label: 'Recepciones',  icon: 'PackageOpen',   roles: ['inv','fact','jefe_depto','administrador','superadmin']          },
-      { path: '/reabastecimiento', label: 'Reabastecimiento', icon: 'ShoppingCart', roles: ['inv','ca','jefe_depto','supervisor','administrador','superadmin'] },
-    ],
-  },
-  {
-    label: 'FACTURACIÓN',
-    groupIcon: 'Megaphone',
-    items: [
-      { path: '/facturacion/inventario', label: 'Conteos por facturar', icon: 'ClipboardList', roles: ROLES_AJUSTES },
-      { path: '/facturacion/mermas',     label: 'Mermas por facturar',  icon: 'TrendingDown',  roles: ROLES_AJUSTES },
-      { path: '/anuncios', label: 'Anuncios', icon: 'Megaphone', roles: ['inv','ca','auditor','jefe_depto','administrador','superadmin'] },
-      { path: '/ajustes/aumento',     label: 'Ajuste de aumento',     icon: 'PackagePlus',  roles: ROLES_AJUSTES },
-      { path: '/ajustes/disminucion', label: 'Ajuste de disminución', icon: 'PackageMinus', roles: ROLES_AJUSTES },
-      { path: '/procesamientos',      label: 'Procesamientos',        icon: 'Repeat',       roles: ROLES_PROCESAMIENTOS },
-    ],
-  },
-  {
-    label: 'ANÁLISIS',
-    groupIcon: 'BarChart3',
-    items: [
-      { path: '/supervision', label: 'Supervisión', icon: 'Eye',         roles: ['jefe_depto','administrador','superadmin'] },
-      { path: '/reportes',    label: 'Reportes',    icon: 'BarChart3',   roles: ['auditor','administrador','superadmin']    },
-      { path: '/auditoria',   label: 'Auditoría',   icon: 'ShieldCheck', roles: ['auditor','administrador','superadmin']    },
-    ],
-  },
-  {
-    label: 'CONFIGURACIÓN',
-    groupIcon: 'Settings2',
-    items: [
-      { path: '/configuracion',  label: 'Configuración', icon: 'Settings2', roles: ALL },
-      { path: '/admin/usuarios', label: 'Usuarios',      icon: 'Users',     roles: ['administrador','superadmin'] },
-    ],
-  },
-  {
-    label: 'SUPERADMIN',
-    groupIcon: 'Crown',
-    items: [
-      { path: '/superadmin', label: 'Panel de Control', icon: 'Crown', roles: ['superadmin'] },
-    ],
-  },
-];
 
 // Devuelve el label del grupo que contiene la ruta activa
 function activeGroupLabel(pathname, groups) {

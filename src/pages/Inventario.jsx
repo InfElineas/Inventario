@@ -334,8 +334,11 @@ export default function Inventario({ ambito = 'inventario' }) {
         onAbrir={(id) => { setSelectedId(id); setShowForm(false); }}
       />
 
-      <div className="flex gap-3">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap gap-3">
+        {/* `flex-wrap` y un ancho mínimo para el buscador: con los
+            selectores a ancho fijo, en 375 px la suma pasaba del ancho de
+            la pantalla y el buscador quedaba aplastado. */}
+        <div className="relative flex-1 min-w-[180px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar..." className="pl-10" style={{ borderRadius: '8px' }} />
         </div>

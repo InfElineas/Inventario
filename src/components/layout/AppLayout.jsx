@@ -458,7 +458,7 @@ export default function AppLayout() {
         </main>
       </div>
 
-      <BottomNav role={role} pendingCounts={pendingCounts} />
+      <BottomNav user={user} pendingCounts={pendingCounts} />
 
       <ProfileModal user={user} open={showProfile} onClose={() => setShowProfile(false)} />
 
