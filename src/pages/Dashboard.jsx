@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen'
+import BloqueMetricas from '@/components/shared/BloqueMetricas'
 import { fetchLotes } from '@/services/lotesService'
 import { isExternaConfigured, fetchAlmacenes } from '@/services/syncService'
 import { ChevronDown, Clock, CalendarDays, X } from 'lucide-react'
@@ -571,15 +572,18 @@ export default function Dashboard() {
       {isGlobalMode && (
         <>
           {/* KPIs — todos clickeables, Total al último */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <DashKPI title="Con stock"    value={stats.conStock}   sub="EF > 0"                color="#4ade80" onClick={() => openModal('conStock')} />
-            <DashKPI title="En tienda"    value={stats.enTienda}   sub="T > 0 · visibles"       color="#60a5fa" onClick={() => openModal('enTienda')} />
-            <DashKPI title="No en Tienda" value={stats.noTienda}   sub="EF>0 · T=0"             color="#fb923c" alert={stats.noTienda > 0}   onClick={() => openModal('sinTienda')} />
-            <DashKPI title="Sin Reserva"  value={stats.sinReserva} sub="urgente · A=0 y T>6"    color="#e24b4a" alert={stats.sinReserva > 0} onClick={() => openModal('sinReserva')} />
-            <DashKPI title="Agotados"     value={stats.agotados}   sub={`con ID · EF=0${stats.sinIdEf0 > 0 ? ` (+${stats.sinIdEf0.toLocaleString()} sin ID)` : ''}`}
-              color="#e24b4a" alert={stats.agotados > 0} onClick={() => openModal('agotados')} />
-            <DashKPI title="Total SKUs"   value={stats.total}      sub="todos los almacenes"   color="#64748b" onClick={() => openModal('total')} />
-          </div>
+          {/* Las tres primeras son las urgentes: lo que no se ve en tienda
+              y lo que se agotó. En el móvil son las únicas que salen sin
+              desplegar. */}
+          <BloqueMetricas metricas={[
+            { clave: 'sinReserva', titulo: 'Sin Reserva',  valor: stats.sinReserva, sub: 'urgente · A=0 y T>6', color: '#e24b4a', alerta: stats.sinReserva > 0, onClick: () => openModal('sinReserva') },
+            { clave: 'noTienda',   titulo: 'No en Tienda', valor: stats.noTienda,   sub: 'EF>0 · T=0',          color: '#fb923c', alerta: stats.noTienda > 0,   onClick: () => openModal('sinTienda') },
+            { clave: 'agotados',   titulo: 'Agotados',     valor: stats.agotados,   color: '#e24b4a', alerta: stats.agotados > 0, onClick: () => openModal('agotados'),
+              sub: `con ID · EF=0${stats.sinIdEf0 > 0 ? ` (+${stats.sinIdEf0.toLocaleString()} sin ID)` : ''}` },
+            { clave: 'conStock',   titulo: 'Con stock',    valor: stats.conStock,   sub: 'EF > 0',              color: '#4ade80', onClick: () => openModal('conStock') },
+            { clave: 'enTienda',   titulo: 'En tienda',    valor: stats.enTienda,   sub: 'T > 0 · visibles',    color: '#60a5fa', onClick: () => openModal('enTienda') },
+            { clave: 'total',      titulo: 'Total SKUs',   valor: stats.total,      sub: 'todos los almacenes', color: '#64748b', onClick: () => openModal('total') },
+          ]} />
 
           {/* Breakdown por almacén */}
           {almacenBreakdown.length > 0 && (
@@ -660,22 +664,26 @@ export default function Dashboard() {
       {almacen && (
         <>
           {/* KPI Row 1 — 6 tarjetas igual que global */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <DashKPI title="Con stock"    value={stats.conStock}   sub={`EF > 0 · ${stats.enTienda.toLocaleString()} en tienda`} color="#4ade80" />
-            <DashKPI title="En tienda"    value={stats.enTienda}   sub={`T > 0 · ${stats.total > 0 ? ((stats.enTienda/stats.total)*100).toFixed(0) : 0}% del catálogo`} color="#60a5fa" />
-            <DashKPI title="No en Tienda" value={stats.noTienda}   sub="EF>0 · T=0"            color="#fb923c" alert={stats.noTienda > 0} />
-            <DashKPI title="Sin Reserva"  value={stats.sinReserva} sub="urgente · A=0 y T>6"   color="#e24b4a" alert={stats.sinReserva > 0} />
-            <DashKPI title="Sin ID c/EF"  value={stats.sinId}      sub="sin anuncio TKC"       color="#ba7517" alert={stats.sinId > 0} />
-            <DashKPI title="Total SKUs"   value={stats.total}      sub={`${stats.agotados.toLocaleString()} agotados · ${stats.sinIdEf0.toLocaleString()} sin ID/EF`} color="#64748b" />
-          </div>
+          <BloqueMetricas metricas={[
+            { clave: 'sinReserva', titulo: 'Sin Reserva',  valor: stats.sinReserva, sub: 'urgente · A=0 y T>6', color: '#e24b4a', alerta: stats.sinReserva > 0 },
+            { clave: 'noTienda',   titulo: 'No en Tienda', valor: stats.noTienda,   sub: 'EF>0 · T=0',          color: '#fb923c', alerta: stats.noTienda > 0 },
+            { clave: 'sinId',      titulo: 'Sin ID c/EF',  valor: stats.sinId,      sub: 'sin anuncio TKC',     color: '#ba7517', alerta: stats.sinId > 0 },
+            { clave: 'conStock',   titulo: 'Con stock',    valor: stats.conStock,   color: '#4ade80',
+              sub: `EF > 0 · ${stats.enTienda.toLocaleString()} en tienda` },
+            { clave: 'enTienda',   titulo: 'En tienda',    valor: stats.enTienda,   color: '#60a5fa',
+              sub: `T > 0 · ${stats.total > 0 ? ((stats.enTienda / stats.total) * 100).toFixed(0) : 0}% del catálogo` },
+            { clave: 'total',      titulo: 'Total SKUs',   valor: stats.total,      color: '#64748b',
+              sub: `${stats.agotados.toLocaleString()} agotados · ${stats.sinIdEf0.toLocaleString()} sin ID/EF` },
+          ]} />
 
           {/* KPI Row 2 — Workflow */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <DashKPI title={`Inventarios (${periodLabel})`}  value={invStats.total}    sub={`${invStats.pendFact} pend. FACT`}   color="#378add" />
-            <DashKPI title="En auditoría"                    value={mermas.filter(m => m.estado_tarea === 'en_auditoria').length + invStats.enAudit} sub="total pendiente" color="#ba7517" />
-            <DashKPI title={`Mermas (${periodLabel})`}       value={mermaStats.total}  sub={`${mermaStats.pendFact} pend. FACT`} color="#fb923c" />
-            <DashKPI title="Monto mermas"                    value={`$${mermaStats.monto.toFixed(2)}`} sub="período completado"  color="#7f77dd" />
-          </div>
+          <BloqueMetricas columnas="sm:grid-cols-4" metricas={[
+            { clave: 'inv',    titulo: `Inventarios (${periodLabel})`, valor: invStats.total,   sub: `${invStats.pendFact} pend. FACT`,   color: '#378add' },
+            { clave: 'audit',  titulo: 'En auditoría', color: '#ba7517', sub: 'total pendiente',
+              valor: mermas.filter(m => m.estado_tarea === 'en_auditoria').length + invStats.enAudit },
+            { clave: 'mermas', titulo: `Mermas (${periodLabel})`,      valor: mermaStats.total, sub: `${mermaStats.pendFact} pend. FACT`, color: '#fb923c' },
+            { clave: 'monto',  titulo: 'Monto mermas', valor: `$${mermaStats.monto.toFixed(2)}`, sub: 'período completado', color: '#7f77dd' },
+          ]} />
 
           {/* Row 2.5 — Qué comprar hoy. Los KPI dicen cómo está el almacén;
               esto dice qué hacer con él. */}

@@ -45,7 +45,8 @@ export default function Notificaciones() {
           <p className="text-sm text-muted-foreground mt-0.5">{notifs.filter(n => !n.leida).length} sin leer</p>
         </div>
         <Button variant="outline" size="sm" onClick={markAllRead} style={{ borderRadius: '8px' }}>
-          <CheckCheck className="w-4 h-4 mr-1.5" /> Marcar todas como leídas
+          <CheckCheck className="w-4 h-4 sm:mr-1.5" />
+          <span className="hidden sm:inline">Marcar todas como leídas</span>
         </Button>
       </div>
 

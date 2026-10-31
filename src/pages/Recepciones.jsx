@@ -29,6 +29,7 @@ import { warehouseName } from '@/services/tkc/warehouses';
 import { fetchPedidos, fetchLineasDePedido } from '@/services/pedidosService';
 import LineaRecibir from '@/components/recepciones/LineaRecibir';
 import { SIN_SONDEO } from '@/lib/query-client';
+import BotonAccion from '@/components/shared/BotonAccion';
 
 const RECEP_COL_DEFS = [
   { key: 'no_recepcion',      label: 'No. Recepción', defaultOn: true, required: true  },
@@ -314,9 +315,9 @@ export default function Recepciones() {
               onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(RECEP_COLS_KEY, cols, next); }} />
           )}
           {puedeRecibir && (
-            <Button variant="outline" onClick={() => setShowCreate(true)} style={{ borderRadius: '8px' }}>
-              <Plus className="w-4 h-4 mr-1.5" /> Recepción sin pedido
-            </Button>
+            <BotonAccion icono={Plus} variant="outline" onClick={() => setShowCreate(true)}>
+              Recepción sin pedido
+            </BotonAccion>
           )}
         </div>
       </div>

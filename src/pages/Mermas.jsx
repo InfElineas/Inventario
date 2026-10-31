@@ -23,6 +23,8 @@ import { logTransicion, logBorrado, notificarTransicion } from '@/lib/workflowSe
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import { tieneRol } from '@/lib/roles';
+import FiltrosPlegables from '@/components/shared/FiltrosPlegables';
+import BotonAccion from '@/components/shared/BotonAccion';
 
 
 /**
@@ -239,9 +241,9 @@ export default function Mermas({ ambito = 'inventario' }) {
             storageKey={MERMA_COLS_KEY} order={colOrder}
             onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(MERMA_COLS_KEY, cols, next); }} />
         {tieneRol(user, ['inv', 'administrador', 'superadmin']) && (
-          <Button onClick={() => { setShowForm(true); setSelectedId(null); }} style={{ borderRadius: '8px' }}>
-            <Plus className="w-4 h-4 mr-1.5" /> Registrar merma
-          </Button>
+          <BotonAccion icono={Plus} onClick={() => { setShowForm(true); setSelectedId(null); }}>
+            Registrar merma
+          </BotonAccion>
         )}
         </div>
       </div>
@@ -255,14 +257,15 @@ export default function Mermas({ ambito = 'inventario' }) {
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-wrap gap-3">
-        {/* `flex-wrap` y un ancho mínimo para el buscador: con los
-            selectores a ancho fijo, en 375 px la suma pasaba del ancho de
-            la pantalla y el buscador quedaba aplastado. */}
-        <div className="relative flex-1 min-w-[180px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar..." className="pl-10" style={{ borderRadius: '8px' }} />
-        </div>
+      {/* El buscador siempre a la vista; el resto, plegado en el móvil. Media
+          docena de desplegables a ancho completo son media docena de líneas
+          que pasar antes de ver un dato. */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar..." className="pl-10" style={{ borderRadius: '8px' }} />
+      </div>
+
+      <FiltrosPlegables activos={filterEstado === 'ambito' ? 0 : 1} onLimpiar={() => setFilterEstado('ambito')}>
         <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />
         <Select value={filterEstado} onValueChange={setFilterEstado}>
           <SelectTrigger className="w-48" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
@@ -277,7 +280,7 @@ export default function Mermas({ ambito = 'inventario' }) {
             <SelectItem value="reconteo_solicitado">Reconteo</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </FiltrosPlegables>
 
       {/* La barra está siempre que haya algo que bajar, no solo al marcar: si
           el botón aparece con la selección, quien no sabe que puede marcar

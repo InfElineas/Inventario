@@ -11,6 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ChevronDown, Download, FileText } from 'lucide-react';
 import ReporteVencimientos from '@/components/reportes/ReporteVencimientos';
+import BotonAccion from '@/components/shared/BotonAccion';
 
 // jsPDF solo se necesita si el usuario realmente genera un PDF — se carga
 // bajo demanda en vez de sumarse al peso inicial de la página de Reportes.
@@ -141,9 +142,9 @@ export default function Reportes() {
           <p className="text-sm text-muted-foreground mt-0.5">Análisis y métricas del almacén</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setShowPDF(v => !v)} style={{ borderRadius: '8px' }}>
-            <FileText className="w-4 h-4 mr-1.5" /> Generar PDF
-          </Button>
+          <BotonAccion icono={FileText} variant="outline" onClick={() => setShowPDF(v => !v)}>
+            Generar PDF
+          </BotonAccion>
           <Select value={periodo} onValueChange={setPeriodo}>
             <SelectTrigger className="w-32" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
             <SelectContent>

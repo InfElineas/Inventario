@@ -31,6 +31,7 @@ import { ESTADO_POR_RESULTADO, estadoContradictorio } from '@/lib/ajusteFact'
 import SortTh from '@/components/shared/SortTh'
 import { useSortable } from '@/lib/useSortable';
 import { tieneRol } from '@/lib/roles';
+import FiltrosPlegables from '@/components/shared/FiltrosPlegables';
 
 const PAGE_SIZE = 50
 
@@ -334,14 +335,15 @@ export default function Inventario({ ambito = 'inventario' }) {
         onAbrir={(id) => { setSelectedId(id); setShowForm(false); }}
       />
 
-      <div className="flex flex-wrap gap-3">
-        {/* `flex-wrap` y un ancho mínimo para el buscador: con los
-            selectores a ancho fijo, en 375 px la suma pasaba del ancho de
-            la pantalla y el buscador quedaba aplastado. */}
-        <div className="relative flex-1 min-w-[180px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar..." className="pl-10" style={{ borderRadius: '8px' }} />
-        </div>
+      {/* El buscador siempre a la vista; el resto, plegado en el móvil. Media
+          docena de desplegables a ancho completo son media docena de líneas
+          que pasar antes de ver un dato. */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar..." className="pl-10" style={{ borderRadius: '8px' }} />
+      </div>
+
+      <FiltrosPlegables activos={filterEstado === 'ambito' ? 0 : 1} onLimpiar={() => setFilterEstado('ambito')}>
         <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />
         <Select value={filterEstado} onValueChange={setFilterEstado}>
           <SelectTrigger className="w-44" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
@@ -355,7 +357,7 @@ export default function Inventario({ ambito = 'inventario' }) {
             <SelectItem value="devuelto">Devuelto</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </FiltrosPlegables>
 
       <div className="space-y-4">
         {/* Table */}

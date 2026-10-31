@@ -26,6 +26,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WAREHOUSES, warehouseName } from '@/services/tkc/warehouses';
 import { filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { notifyJefeDepto } from '@/lib/notificationService';
+import FiltrosPlegables from '@/components/shared/FiltrosPlegables';
 
 const LOTE_COL_DEFS = [
   { key: 'producto_nombre',   label: 'Producto',  defaultOn: true,  required: true  },
@@ -257,14 +258,15 @@ export default function Lotes() {
         </p>
       )}
 
-      <div className="flex flex-wrap gap-3">
-        {/* `flex-wrap` y un ancho mínimo para el buscador: con los
-            selectores a ancho fijo, en 375 px la suma pasaba del ancho de
-            la pantalla y el buscador quedaba aplastado. */}
-        <div className="relative flex-1 min-w-[180px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar por producto, código o lote..." className="pl-10" style={{ borderRadius: '8px' }} />
-        </div>
+      {/* El buscador siempre a la vista; el resto, plegado en el móvil. Media
+          docena de desplegables a ancho completo son media docena de líneas
+          que pasar antes de ver un dato. */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar por producto, código o lote..." className="pl-10" style={{ borderRadius: '8px' }} />
+      </div>
+
+      <FiltrosPlegables activos={filterTemp === 'all' ? 0 : 1} onLimpiar={() => setFilterTemp('all')}>
         <Select value={filterTemp} onValueChange={reiniciar(setFilterTemp)}>
           <SelectTrigger className="w-36" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -273,7 +275,7 @@ export default function Lotes() {
             <SelectItem value="chilled">Chilled</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </FiltrosPlegables>
 
       <ListaResponsive
         columnas={colOrder.filter((k) => cols[k])}

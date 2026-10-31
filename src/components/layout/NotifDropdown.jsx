@@ -111,11 +111,12 @@ export default function NotifDropdown({ notifications: notificationsRaw }) {
         )}
       </button>
 
-      {/* Dropdown */}
+      {/* Dropdown. El ancho fijo de 340 px en una pantalla de 375 dejaba el
+          panel pegado a los dos bordes y desbordando por la izquierda. */}
       {open && (
         <div
-          className="absolute right-0 top-[40px] rounded-xl shadow-2xl z-50 overflow-hidden"
-          style={{ width: '340px', background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+          className="absolute right-0 top-[40px] w-[min(340px,calc(100vw-2rem))] rounded-xl shadow-2xl z-50 overflow-hidden"
+          style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -158,7 +159,7 @@ export default function NotifDropdown({ notifications: notificationsRaw }) {
                     style={{ borderBottom: i < shown.length - 1 ? '1px solid hsl(var(--border))' : 'none' }}
                   >
                     <div
-                      className={`flex items-start gap-3 px-4 py-3 transition-colors ${link ? 'cursor-pointer hover:bg-accent' : ''}`}
+                      className={`flex items-start gap-2.5 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3 transition-colors ${link ? 'cursor-pointer hover:bg-accent' : ''}`}
                       onClick={() => !isReporting && handleClick(n)}
                     >
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
@@ -170,8 +171,12 @@ export default function NotifDropdown({ notifications: notificationsRaw }) {
                           <p className="text-[12px] font-medium text-foreground leading-snug">{n.titulo}</p>
                           {link && <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0 mt-0.5" />}
                         </div>
+                        {/* El detalle solo de `sm` para arriba: en el movil,
+                            dos lineas por aviso y cinco avisos tapaban la
+                            pantalla entera. El titulo ya dice que paso; el
+                            resto esta al abrirlo. */}
                         {n.mensaje && (
-                          <p className="text-[11px] leading-snug mt-0.5 text-muted-foreground line-clamp-2">{n.mensaje}</p>
+                          <p className="hidden sm:block text-[11px] leading-snug mt-0.5 text-muted-foreground line-clamp-2">{n.mensaje}</p>
                         )}
                         <div className="flex items-center justify-between mt-1.5">
                           <p className="text-[10px] text-muted-foreground opacity-70">{timeAgo(n.created_date)}</p>

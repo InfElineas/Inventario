@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AlertBanner from '@/components/shared/AlertBanner';
 import Pagination from '@/components/shared/Pagination';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
+import FiltrosPlegables from '@/components/shared/FiltrosPlegables';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
@@ -15,6 +16,7 @@ import { SIN_SONDEO } from '@/lib/query-client';
 import { fetchCobertura } from '@/services/rotacionService';
 import { WAREHOUSES, warehouseName } from '@/services/tkc/warehouses';
 import { Download, Loader2, RefreshCw, Search, ShoppingCart } from 'lucide-react';
+import BotonAccion from '@/components/shared/BotonAccion';
 
 /**
  * Qué hay que reponer, por días de cobertura.
@@ -224,13 +226,18 @@ export default function Reabastecimiento() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg sm:text-xl font-medium">Reabastecimiento</h1>
+          {/* La frase entera solo donde cabe: en un telefono son tres
+              lineas de texto antes del primer dato. */}
           <p className="text-sm text-muted-foreground mt-0.5">
-            Qué comprar, por los días que aguanta cada producto al ritmo al que se vende
+            <span className="hidden sm:inline">
+              Qué comprar, por los días que aguanta cada producto al ritmo al que se vende
+            </span>
+            <span className="sm:hidden">Qué comprar y cuánto</span>
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <Select value={almacenes.some((w) => w.key === almacen) ? almacen : ''} onValueChange={setAlmacen}>
-            <SelectTrigger className="w-52" style={{ borderRadius: '8px' }}>
+            <SelectTrigger className="w-full sm:w-52" style={{ borderRadius: '8px' }}>
               <SelectValue placeholder="Elige un almacén" />
             </SelectTrigger>
             <SelectContent>
@@ -252,9 +259,9 @@ export default function Reabastecimiento() {
             onChange={(next) => { setCols(next); saveColsWithOrder(REAB_COLS_KEY, next, colOrder); }}
             storageKey={REAB_COLS_KEY} order={colOrder}
             onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(REAB_COLS_KEY, cols, next); }} />
-          <Button onClick={exportar} disabled={filtradas.length === 0} style={{ borderRadius: '8px' }}>
-            <Download className="w-4 h-4 mr-1.5" /> Exportar
-          </Button>
+          <BotonAccion icono={Download} onClick={exportar} disabled={filtradas.length === 0}>
+            Exportar
+          </BotonAccion>
         </div>
       </div>
 
@@ -277,22 +284,26 @@ export default function Reabastecimiento() {
               se compran con la misma urgencia, y en una lista de setecientas
               filas esa diferencia se pierde. */}
           <Tabs value={estado} onValueChange={setEstado}>
-            <TabsList className="flex-wrap h-auto">
-              <TabsTrigger value="TODOS">Todos ({porAnuncio.length})</TabsTrigger>
+            <TabsList className="w-full justify-start overflow-x-auto sm:flex-wrap sm:h-auto"
+              style={{ scrollbarWidth: 'none' }}>
+              <TabsTrigger value="TODOS" className="shrink-0">Todos ({porAnuncio.length})</TabsTrigger>
               {estadosConFilas.map((e) => (
-                <TabsTrigger key={e} value={e}>{e} ({porEstado.get(e)})</TabsTrigger>
+                <TabsTrigger key={e} value={e} className="shrink-0">{e} ({porEstado.get(e)})</TabsTrigger>
               ))}
             </TabsList>
           </Tabs>
 
-          <div className="flex flex-wrap gap-3">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Nombre o código…" className="pl-10" style={{ borderRadius: '8px' }} />
-            </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Nombre o código…" className="pl-10" style={{ borderRadius: '8px' }} />
+          </div>
+
+          <FiltrosPlegables
+            activos={(anuncio === ANUNCIO_POR_DEFECTO ? 0 : 1) + (suministrador ? 1 : 0)}
+            onLimpiar={() => { setAnuncio(ANUNCIO_POR_DEFECTO); setSuministrador(''); }}>
             <Select value={anuncio} onValueChange={setAnuncio}>
-              <SelectTrigger className="w-56" style={{ borderRadius: '8px' }}>
+              <SelectTrigger className="w-full sm:w-56" style={{ borderRadius: '8px' }}>
                 <SelectValue placeholder="Estado del anuncio" />
               </SelectTrigger>
               <SelectContent>
@@ -301,7 +312,7 @@ export default function Reabastecimiento() {
               </SelectContent>
             </Select>
             <Select value={suministrador || 'all'} onValueChange={(v) => setSuministrador(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-60" style={{ borderRadius: '8px' }}>
+              <SelectTrigger className="w-full sm:w-60" style={{ borderRadius: '8px' }}>
                 <SelectValue placeholder="Suministrador" />
               </SelectTrigger>
               <SelectContent>
@@ -309,7 +320,7 @@ export default function Reabastecimiento() {
                 {suministradores.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
+          </FiltrosPlegables>
 
           {anuncio !== 'TODOS' && porAnuncio.length < filas.length && (
             <p className="text-xs text-muted-foreground">
