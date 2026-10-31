@@ -298,7 +298,7 @@ export default function AppLayout() {
       />
 
       <div
-        className={`flex flex-col min-h-screen pb-14 lg:pb-0
+        className={`flex flex-col min-h-[100dvh] pb-[calc(56px+env(safe-area-inset-bottom,0px))] lg:pb-0
           transition-[margin-left] duration-200 ease-in-out
           ${role === 'superadmin' ? 'lg:ml-[52px]' : isCollapsed ? 'lg:ml-[52px]' : 'lg:ml-[220px]'}`}
       >
@@ -445,7 +445,9 @@ export default function AppLayout() {
         </header>
 
         {/* ── Content ─────────────────────────────────── */}
-        <main className="flex-1 p-4 lg:p-6">
+        {/* Hueco extra al final en el movil: el boton flotante vive sobre el
+            contenido y, sin el, tapaba la ultima fila de cada listado. */}
+        <main className="flex-1 p-4 pb-20 lg:p-6 lg:pb-6">
           <div className="max-w-[1400px] mx-auto">
             {/* El fallo de una pantalla queda dentro: el menú, el encabezado y
                 la navegación siguen en pie. La `key` reinicia el límite al

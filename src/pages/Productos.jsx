@@ -20,6 +20,7 @@ import { notifToast } from '@/lib/notifToast';
 import { Card } from '@/components/ui/card';
 import KPICard from '@/components/shared/KPICard';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
+import FiltrosPlegables from '@/components/shared/FiltrosPlegables';
 import ProductHoverCard from '@/components/shared/ProductHoverCard';
 import CatalogoHoverCard from '@/components/productos/CatalogoHoverCard';
 import Pagination from '@/components/shared/Pagination';
@@ -711,11 +712,14 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   });
 
   // ── Shared helpers ─────────────────────────────────────────
-  const FILTER_CLS = "appearance-none pl-3 pr-8 py-2 text-sm rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50";
+  const FILTER_CLS = "appearance-none w-full sm:w-auto pl-3 pr-8 py-2 text-sm rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50";
   const FILTER_INPUT_CLS = "pl-3 pr-3 py-2 text-sm rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 w-24";
   const SET_FILTER = (key) => (e) => { setAdvFilters(f => ({ ...f, [key]: e.target.value })); resetPage(); };
 
   const hayFiltrosEL  = search || Object.values(advFilters).some(v => v && v !== 'all');
+  // Para el boton de «Filtros» del movil: un filtro puesto que no se ve es la
+  // forma mas rapida de no entender por que falta algo en la lista.
+  const filtrosPuestos = Object.values(advFilters).filter(v => v && v !== 'all').length;
   const hayFiltrosTKC = search || tkcSort.key !== 'nombre' || tkcSort.dir !== 'asc'
     || advFilters.estadoTienda !== 'all' || advFilters.estadoAnuncio !== 'all' || advFilters.suministrador
     || tkcExistencia !== TKC_EXISTENCIA_DEFAULT;
@@ -875,7 +879,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   )}
                 </div>
 
-                <div className="flex flex-wrap gap-2 items-center">
+                <FiltrosPlegables activos={filtrosPuestos} onLimpiar={resetFiltros}>
                   <div className="relative">
                     <select value={advFilters.existencia} onChange={SET_FILTER('existencia')} className={FILTER_CLS}>
                       <option value="all">Existencia: todos</option>
@@ -949,7 +953,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                       </button>
                     )}
                   </div>
-                </div>
+                </FiltrosPlegables>
               </div>
 
               {/* HoverCard + Modal */}
@@ -1095,7 +1099,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   )}
                 </div>
 
-                <div className="flex flex-wrap gap-2 items-center">
+                <FiltrosPlegables activos={filtrosPuestos} onLimpiar={resetFiltros}>
                   <div className="relative">
                     <select value={tkcLimit}
                       onChange={e => { setTkcLimit(Number(e.target.value)); resetPage(); }}
@@ -1177,7 +1181,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                       </button>
                     )}
                   </div>
-                </div>
+                </FiltrosPlegables>
               </div>
 
               {/* Tabla TKC — mismas columnas y mismos datos que elineas-vd.

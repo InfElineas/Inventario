@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,7 +9,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import KPICard from '@/components/shared/KPICard';
 import LotBadge from '@/components/shared/LotBadge';
-import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
 import { Search, AlertTriangle, Clock, CheckCircle, HelpCircle, Send, MoreHorizontal,
@@ -22,6 +20,7 @@ import { useAlmacen } from '@/lib/useAlmacen';
 import { fetchLotes } from '@/services/lotesService';
 import AlertBanner from '@/components/shared/AlertBanner';
 import Pagination from '@/components/shared/Pagination';
+import ListaResponsive from '@/components/shared/ListaResponsive';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WAREHOUSES, warehouseName } from '@/services/tkc/warehouses';
@@ -35,6 +34,7 @@ const LOTE_COL_DEFS = [
   { key: 'fecha_vencimiento', label: 'FV',        defaultOn: true,  required: false },
   { key: 'cantidad',          label: 'Cant.',     defaultOn: true,  required: false },
   { key: 'estado_fv',         label: 'Estado',    defaultOn: true,  required: false },
+  { key: 'accion',            label: 'Accion',    defaultOn: true,  required: true  },
 ]
 const LOTE_COLS_KEY = 'lote_cols'
 
@@ -64,6 +64,7 @@ const COL_TITULO = {
   fecha_vencimiento: { label: 'FV' },
   cantidad:          { label: 'Cant.', align: 'right' },
   estado_fv:         { label: 'Estado', align: 'center' },
+  accion:            { label: 'Accion', align: 'center' },
 }
 
 export default function Lotes() {
@@ -221,8 +222,10 @@ export default function Lotes() {
         <AlertBanner variant="warning" message={`No se pudieron cargar los vencimientos: ${error.message}`} />
       )}
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      {/* En el movil no van: las pestanas de abajo dicen los mismos cinco
+          numeros, y cinco tarjetas a dos columnas se comian la pantalla
+          entera antes de que apareciera un solo lote. */}
+      <div className="hidden sm:grid grid-cols-2 sm:grid-cols-5 gap-3">
         <KPICard title="Vencidos" value={counts.vencido} icon={AlertTriangle} color="text-[#E24B4A]" bgColor="bg-[#E24B4A]/10" />
         <KPICard title="Críticos" value={counts.critico} icon={AlertTriangle} color="text-[#E24B4A]" bgColor="bg-[#E24B4A]/5" />
         <KPICard title="Por vencer" value={counts.por_vencer} icon={Clock} color="text-[#BA7517]" bgColor="bg-[#BA7517]/10" />
@@ -232,11 +235,14 @@ export default function Lotes() {
 
       {/* Pestañas y no un desplegable: con un desplegable hay que abrirlo
           para saber en qué filtro estás, y los números no se ven. */}
+      {/* Una sola fila que se desliza, en vez de envolver en tres: asi la
+          pestana activa no cambia de sitio al elegir otra. */}
       <Tabs value={estado} onValueChange={reiniciar(setEstado)}>
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="all">Todos ({lotes.length})</TabsTrigger>
+        <TabsList className="w-full justify-start overflow-x-auto sm:flex-wrap sm:h-auto"
+          style={{ scrollbarWidth: 'none' }}>
+          <TabsTrigger value="all" className="shrink-0">Todos ({lotes.length})</TabsTrigger>
           {ESTADOS.map((e) => (
-            <TabsTrigger key={e.clave} value={e.clave}
+            <TabsTrigger key={e.clave} value={e.clave} className="shrink-0"
               title={e.rango ? `Vence en ${e.rango}` : undefined}>
               {e.label} ({counts[e.clave]})
             </TabsTrigger>
@@ -269,63 +275,24 @@ export default function Lotes() {
         </Select>
       </div>
 
-      <div>
-        <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  {colOrder.filter(k => cols[k]).map(k => (
-                    <SortTh key={k} colKey={k} label={COL_TITULO[k].label}
-                      align={COL_TITULO[k].align} sort={sort}
-                      onSort={onSort} />
-                  ))}
-                  <th className="text-center p-3 text-xs font-medium text-muted-foreground">Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr><td colSpan={colOrder.filter(k => cols[k]).length + 1} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
-                ) : filtered.length === 0 ? (
-                  <tr><td colSpan={colOrder.filter(k => cols[k]).length + 1} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
-                ) : pagina.map(l => (
-                  <tr key={l.id} className={`border-b hover:bg-accent/50 cursor-pointer transition-colors ${selectedId === l.id ? 'bg-accent' : ''}`}
-                    onClick={() => { setSelectedId(l.id); setAccion('editar'); }}>
-                    {colOrder.filter(k => cols[k]).map(k => {
-                      const CELDAS = {
-                        producto_nombre: (
-                          <td key={k} className="p-3">
-                            <p className="font-medium">{l.producto_nombre}</p>
-                            <p className="text-xs text-muted-foreground">{l.producto_codigo}</p>
-                          </td>
-                        ),
-                        no_lote: <td key={k} className="p-3 text-xs">{l.no_lote || '—'}</td>,
-                        temperatura: (
-                          <td key={k} className="p-3 text-center">
-                            <span className={`text-[10px] px-2 py-0.5 rounded ${l.temperatura === 'chilled' ? 'bg-[#378ADD]/10 text-[#378ADD]' : 'bg-secondary text-muted-foreground'}`} style={{ borderRadius: '4px' }}>
-                              {l.temperatura === 'chilled' ? '❄ Frío' : '☀ Amb'}
-                            </span>
-                          </td>
-                        ),
-                        fecha_vencimiento: <td key={k} className="p-3 text-xs">{l.fecha_vencimiento || '—'}</td>,
-                        cantidad: <td key={k} className="p-3 text-right font-medium">{l.cantidad}</td>,
-                        estado_fv: <td key={k} className="p-3 text-center"><LotBadge estado={l.estado_fv} dias={l.vigencia_dias} /></td>,
-                      };
-                      return CELDAS[k] ?? <td key={k} className="p-3" />;
-                    })}
-                    <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
-                      <MenuLote lote={l} puedeGestionar={tieneRol(user, ['inv', 'ca', 'administrador'])}
-                        onAccion={(a) => { setSelectedId(l.id); setAccion(a); }} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <Pagination page={page} total={sorted.length} pageSize={PAGE_SIZE} onPage={irA} />
-        </Card>
+      <ListaResponsive
+        columnas={colOrder.filter((k) => cols[k])}
+        titulos={COL_TITULO}
+        filas={pagina}
+        cargando={isLoading}
+        vacio={almacen ? 'Ningun lote con estos filtros.' : 'Elige un almacen para ver sus lotes.'}
+        claveDe={(l) => l.id}
+        encabezado="producto_nombre"
+        accion="accion"
+        orden={{ sort, onSort }}
+        alPulsar={(l) => { setSelectedId(l.id); setAccion('editar'); }}
+        celda={(l, k, enTabla) => celdaLote({
+          lote: l, clave: k, enTabla, user,
+          onAccion: (a) => { setSelectedId(l.id); setAccion(a); },
+        })}
+      />
 
-      </div>
+      <Pagination page={page} total={sorted.length} pageSize={PAGE_SIZE} onPage={irA} />
 
       {/* Corregir el lote: la fecha del envase y una nota. Vale para
           cualquier estado, porque la fecha también puede venir mal. */}
@@ -620,4 +587,52 @@ function MermaDeLote({ lote, guardando, onGuardar, onCancelar }) {
       </div>
     </div>
   );
+}
+
+/**
+ * Una celda del listado de lotes.
+ *
+ * La misma para la tabla y para la ficha del movil: con `enTabla` se envuelve
+ * en `<td>` y sin el va suelta dentro de la ficha. Asi no hay dos
+ * maquetaciones que mantener en paralelo, que es como se desincronizan.
+ */
+function celdaLote({ lote: l, clave, enTabla, user, onAccion }) {
+  const env = (contenido, clases = '') => (enTabla
+    ? <td key={clave} className={`p-3 ${clases}`}>{contenido}</td>
+    : contenido);
+
+  switch (clave) {
+    case 'producto_nombre':
+      return env(
+        <>
+          <p className="font-medium leading-snug">{l.producto_nombre}</p>
+          <p className="text-xs text-muted-foreground font-mono">{l.producto_codigo}</p>
+        </>,
+      );
+    case 'no_lote':
+      return env(<span className="text-xs">{l.no_lote || '\u2014'}</span>);
+    case 'temperatura':
+      return env(
+        <span className={`inline-block text-[10px] px-2 py-0.5 rounded ${
+          l.temperatura === 'chilled' ? 'bg-[#378ADD]/10 text-[#378ADD]' : 'bg-secondary text-muted-foreground'
+        }`} style={{ borderRadius: '4px' }}>
+          {l.temperatura === 'chilled' ? 'Frio' : 'Ambiente'}
+        </span>,
+        'text-center',
+      );
+    case 'fecha_vencimiento':
+      return env(<span className="text-xs tabular-nums">{l.fecha_vencimiento || '\u2014'}</span>);
+    case 'cantidad':
+      return env(<span className="font-medium tabular-nums">{l.cantidad}</span>, 'text-right');
+    case 'estado_fv':
+      return env(<LotBadge estado={l.estado_fv} dias={l.vigencia_dias} />, 'text-center');
+    case 'accion':
+      return env(
+        <MenuLote lote={l} puedeGestionar={tieneRol(user, ['inv', 'ca', 'administrador'])}
+          onAccion={onAccion} />,
+        'text-center',
+      );
+    default:
+      return env(null);
+  }
 }

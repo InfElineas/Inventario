@@ -285,7 +285,11 @@ export default function Mermas({ ambito = 'inventario' }) {
       {puedeBajar && bajables.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-[#BA7517]/30 bg-[#BA7517]/5"
           style={{ borderRadius: '12px' }}>
-          <p className="text-sm flex-1 min-w-0">
+          {/* `basis-full` hasta `sm`: con `flex-1 min-w-0` el texto podia
+              encogerse por debajo de su palabra mas corta, asi que en el movil
+              no bajaba de linea y quedaba una columna de una palabra por fila
+              con los botones al lado. */}
+          <p className="text-sm basis-full sm:basis-0 sm:flex-1 min-w-0">
             {marcadas.length === 0 ? (
               <span className="text-muted-foreground">
                 {bajables.length} {bajables.length === 1 ? 'merma sin bajar' : 'mermas sin bajar'} de tienda.
@@ -304,10 +308,10 @@ export default function Mermas({ ambito = 'inventario' }) {
               </span>
             )}
           </p>
-          <Button variant="ghost" size="sm" onClick={alternarTodas}>
+          <Button variant="ghost" size="sm" className="shrink-0" onClick={alternarTodas}>
             {todasMarcadas ? 'Quitar selección' : 'Seleccionar todas'}
           </Button>
-          <Button size="sm" disabled={marcadas.length === 0 || mezclaAlmacenes}
+          <Button size="sm" className="shrink-0" disabled={marcadas.length === 0 || mezclaAlmacenes}
             onClick={() => abrirBajada(marcadas)} style={{ borderRadius: '8px' }}>
             <ArrowDownToLine className="w-3.5 h-3.5 mr-1.5" />
             Bajar de tienda

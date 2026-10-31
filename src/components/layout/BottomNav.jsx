@@ -33,7 +33,11 @@ export default function BottomNav({ user, pendingCounts: pendingCountsRaw }) {
   const pendingCounts = pendingCountsRaw ?? {};
   const location = useLocation();
   const [abierto, setAbierto] = useState(false);
+  // El boton se esconde al bajar y vuelve al subir. Flota sobre el contenido
+  // y, quieto, tapaba justo la cabecera de la tabla mientras se lee.
+  const [oculto, setOculto] = useState(false);
   const hoja = useRef(null);
+  const ultimoY = useRef(0);
 
   const { enBarra, enMenu } = destinosDeMovil(user, EN_LA_BARRA);
 
@@ -43,6 +47,20 @@ export default function BottomNav({ user, pendingCounts: pendingCountsRaw }) {
 
   // Tocar fuera también lo cierra, que es lo que hace todo el mundo antes de
   // buscar el botón de cerrar.
+  useEffect(() => {
+    if (abierto) return undefined;
+    const alDesplazar = () => {
+      const y = window.scrollY;
+      // Un umbral corto evita que parpadee con el rebote del navegador.
+      if (Math.abs(y - ultimoY.current) > 12) {
+        setOculto(y > ultimoY.current && y > 80);
+        ultimoY.current = y;
+      }
+    };
+    window.addEventListener('scroll', alDesplazar, { passive: true });
+    return () => window.removeEventListener('scroll', alDesplazar);
+  }, [abierto]);
+
   useEffect(() => {
     if (!abierto) return undefined;
     const fuera = (e) => { if (!hoja.current?.contains(e.target)) setAbierto(false); };
@@ -65,11 +83,15 @@ export default function BottomNav({ user, pendingCounts: pendingCountsRaw }) {
           aria-label={abierto ? 'Cerrar más opciones' : 'Más opciones'}
           aria-expanded={abierto}
           data-testid="btn-mas-opciones"
-          className="lg:hidden fixed right-4 z-50 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95"
+          className="lg:hidden fixed right-4 z-50 w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-95"
           style={{
             bottom: 'calc(56px + env(safe-area-inset-bottom, 0px) + 12px)',
             background: '#4ade80',
             color: '#000',
+            transition: 'transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 180ms ease',
+            transform: oculto ? 'translateY(90px) scale(0.8)' : 'none',
+            opacity: oculto ? 0 : 1,
+            pointerEvents: oculto ? 'none' : 'auto',
           }}
         >
           {abierto ? <X className="w-5 h-5" /> : <MoreHorizontal className="w-5 h-5" />}
