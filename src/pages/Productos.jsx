@@ -336,8 +336,14 @@ function SearchableSelect({ value, onChange, options, placeholder, maxWidth: max
         )}
       </button>
       {open && (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-50 rounded-xl shadow-2xl overflow-hidden"
-          style={{ width: '240px', background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
+        <div className={`absolute top-[calc(100%+4px)] z-50 rounded-xl shadow-2xl overflow-hidden ${
+          Icono ? 'right-0' : 'left-0'}`}
+          style={{
+            width: '240px',
+            maxWidth: 'calc(100vw - 2rem)',
+            background: 'hsl(var(--card))',
+            border: '1px solid hsl(var(--border))',
+          }}>
           <div className="p-2 border-b border-border">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -791,6 +797,136 @@ export default function Productos({ initialSource: initialSourceRaw }) {
             ]}
           />
 
+          {/* Los filtros, al lado del almacén y no debajo: es el orden
+              que sigue todo el sitio. Cada vista trae los suyos. */}
+          {source === 'tkc' ? (
+                <>
+                  <FiltroIcono icono={Rows3} etiqueta="Filas por página"
+                    valor={String(tkcLimit)} porDefecto={String(TKC_PAGE_SIZES[0])}
+                    onChange={(v) => { setTkcLimit(Number(v)); resetPage(); }}
+                    opciones={TKC_PAGE_SIZES.map(n => ({ valor: String(n), label: `${n} por página` }))} />
+
+                  <FiltroIcono icono={Boxes} etiqueta="Existencia"
+                    valor={tkcExistencia} porDefecto={TKC_EXISTENCIA_OPTIONS[0].value}
+                    onChange={(v) => { setTkcExistencia(v); resetPage(); }}
+                    opciones={TKC_EXISTENCIA_OPTIONS.map(o => ({ valor: o.value, label: o.label }))} />
+
+                  {/* Estado de tienda: los siete que calcula la columna
+                      generada `estado_tienda`. TKC no sabe filtrar por esto —su
+                      filtro es un binario almacén/tienda—, por eso el catálogo
+                      se sirve de nuestra base. */}
+                  <FiltroIcono icono={Store} etiqueta="Estado en tienda"
+                    valor={advFilters.estadoTienda} porDefecto="all"
+                    onChange={(v) => { setAdvFilters(f => ({ ...f, estadoTienda: v })); resetPage(); }}
+                    opciones={[
+                      { valor: 'all', label: 'Estado tienda: todos' },
+                      { valor: 'SIN RESERVA', label: 'Sin Reserva' },
+                      { valor: 'NO TIENDA', label: 'No Tienda' },
+                      { valor: 'ULTIMAS PIEZAS', label: 'Últimas Piezas' },
+                      { valor: 'PROXIMO', label: 'Próximo' },
+                      { valor: 'DISPONIBLE', label: 'Disponible' },
+                      { valor: 'AGOTADO', label: 'Agotado' },
+                      { valor: 'SIN ID', label: 'Sin ID' },
+                    ]} />
+
+                  {/* Estado de anuncio: el de TKC (is_dead / status_provider),
+                      no el que deducíamos del stock. Son cosas distintas. */}
+                  <FiltroIcono icono={Megaphone} etiqueta="Estado del anuncio"
+                    valor={advFilters.estadoAnuncio} porDefecto="all"
+                    onChange={(v) => { setAdvFilters(f => ({ ...f, estadoAnuncio: v })); resetPage(); }}
+                    opciones={[
+                      { valor: 'all', label: 'Anuncio: todos' },
+                      ...ESTADOS_ANUNCIO_TKC.map(e => ({ valor: e, label: e })),
+                    ]} />
+
+                  <SearchableSelect
+                    value={advFilters.suministrador} icono={Factory}
+                    activo={Boolean(advFilters.suministrador)}
+                    onChange={v => { setAdvFilters(f => ({ ...f, suministrador: v })); resetPage(); }}
+                    placeholder="Suministrador"
+                    maxWidth="max-w-[200px]"
+                    options={[
+                      { value: '', label: 'Suministrador: todos' },
+                      ...suministradores.map(sx => ({ value: sx, label: sx })),
+                    ]}
+                  />
+
+                  <ColPicker cols={TKC_COLUMN_DEFS} visible={tkcCols}
+                    onChange={(next) => { setTkcCols(next); saveColsWithOrder(TKC_COLS_KEY, next, tkcColOrder); }}
+                    storageKey={TKC_COLS_KEY} order={tkcColOrder}
+                    onOrderChange={(next) => { setTkcColOrder(next); saveColsWithOrder(TKC_COLS_KEY, tkcCols, next); }} />
+
+                </>
+          ) : (
+                <>
+                  <FiltroIcono icono={Boxes} etiqueta="Existencia"
+                    valor={advFilters.existencia} porDefecto="all"
+                    onChange={(v) => { setAdvFilters(f => ({ ...f, existencia: v })); resetPage(); }}
+                    opciones={[
+                      { valor: 'all', label: 'Existencia: todos' },
+                      { valor: 'con_ef', label: 'Con stock (EF > 0)' },
+                      { valor: 'sin_ef', label: 'Sin stock (EF = 0)' },
+                      { valor: 'critico', label: 'Bajo stock (EF < 5)' },
+                    ]} />
+
+                  <FiltroIcono icono={Store} etiqueta="Estado en tienda"
+                    valor={advFilters.estadoTienda} porDefecto="all"
+                    onChange={(v) => { setAdvFilters(f => ({ ...f, estadoTienda: v })); resetPage(); }}
+                    opciones={[
+                      { valor: 'all', label: 'Estado tienda: todos' },
+                      { valor: 'SIN RESERVA', label: 'Sin Reserva' },
+                      { valor: 'NO TIENDA', label: 'No Tienda' },
+                      { valor: 'ULTIMAS PIEZAS', label: 'Últimas Piezas' },
+                      { valor: 'PROXIMO', label: 'Próximo' },
+                      { valor: 'DISPONIBLE', label: 'Disponible' },
+                      { valor: 'AGOTADO', label: 'Agotado' },
+                      { valor: 'SIN ID', label: 'Sin ID TKC' },
+                    ]} />
+
+                  <FiltroIcono icono={Megaphone} etiqueta="Estado del anuncio"
+                    valor={advFilters.estadoAnuncio} porDefecto="all"
+                    onChange={(v) => { setAdvFilters(f => ({ ...f, estadoAnuncio: v })); resetPage(); }}
+                    opciones={[
+                      { valor: 'all', label: 'Anuncio: todos' },
+                      { valor: 'ACTIVADO', label: 'Activado' },
+                      { valor: 'DESACTIVADO', label: 'Desactivado' },
+                      { valor: 'MUERTO', label: 'Muerto' },
+                      { valor: 'SIN ID', label: 'Sin ID' },
+                    ]} />
+
+                  <SearchableSelect value={advFilters.suministrador} icono={Factory}
+                    activo={Boolean(advFilters.suministrador)}
+                    onChange={v => { setAdvFilters(f => ({ ...f, suministrador: v })); resetPage(); }}
+                    placeholder="Suministrador: todos"
+                    options={[
+                      { value: '', label: 'Suministrador: todos' },
+                      ...suministradores.map(s => ({ value: s, label: s.replace('SEL ', '') })),
+                    ]} />
+
+                  <SearchableSelect value={advFilters.categoria} icono={Tag}
+                    activo={Boolean(advFilters.categoria)}
+                    onChange={v => { setAdvFilters(f => ({ ...f, categoria: v })); resetPage(); }}
+                    placeholder="Categoría: todas"
+                    options={[
+                      { value: '', label: 'Categoría: todas' },
+                      ...categorias.map(c => ({ value: c, label: c })),
+                    ]} />
+
+                  <div className="flex items-center gap-1">
+                    <input type="number" min="0" placeholder="$ Min"
+                      value={advFilters.precioMin} onChange={SET_FILTER('precioMin')} className={FILTER_INPUT_CLS} />
+                    <span className="text-muted-foreground text-xs">–</span>
+                    <input type="number" min="0" placeholder="$ Max"
+                      value={advFilters.precioMax} onChange={SET_FILTER('precioMax')} className={FILTER_INPUT_CLS} />
+                  </div>
+
+                  <ColPicker cols={PROD_COL_DEFS} visible={cols}
+                    onChange={(next) => { setCols(next); saveColsWithOrder(PROD_COLS_KEY, next, colOrder); }}
+                    storageKey={PROD_COLS_KEY} order={colOrder}
+                    onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(PROD_COLS_KEY, cols, next); }} />
+                </>
+          )}
+
           {/* Import (ELíneas view) */}
           {source === 'elineas' && tieneRol(user, ['administrador', 'inv']) && (
             <button onClick={() => setShowImport(v => !v)}
@@ -868,79 +1004,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
 
               {/* Filtros */}
               <div className="rounded-xl border border-border bg-card p-3 space-y-2.5">
-              {/* El orden de toda la web: primero los filtros, debajo el
-                  buscador y al final el recuento. */}
-                <div className="flex flex-wrap gap-2 items-center">
-                  <FiltroIcono icono={Boxes} etiqueta="Existencia"
-                    valor={advFilters.existencia} porDefecto="all"
-                    onChange={(v) => { setAdvFilters(f => ({ ...f, existencia: v })); resetPage(); }}
-                    opciones={[
-                      { valor: 'all', label: 'Existencia: todos' },
-                      { valor: 'con_ef', label: 'Con stock (EF > 0)' },
-                      { valor: 'sin_ef', label: 'Sin stock (EF = 0)' },
-                      { valor: 'critico', label: 'Bajo stock (EF < 5)' },
-                    ]} />
 
-                  <FiltroIcono icono={Store} etiqueta="Estado en tienda"
-                    valor={advFilters.estadoTienda} porDefecto="all"
-                    onChange={(v) => { setAdvFilters(f => ({ ...f, estadoTienda: v })); resetPage(); }}
-                    opciones={[
-                      { valor: 'all', label: 'Estado tienda: todos' },
-                      { valor: 'SIN RESERVA', label: 'Sin Reserva' },
-                      { valor: 'NO TIENDA', label: 'No Tienda' },
-                      { valor: 'ULTIMAS PIEZAS', label: 'Últimas Piezas' },
-                      { valor: 'PROXIMO', label: 'Próximo' },
-                      { valor: 'DISPONIBLE', label: 'Disponible' },
-                      { valor: 'AGOTADO', label: 'Agotado' },
-                      { valor: 'SIN ID', label: 'Sin ID TKC' },
-                    ]} />
-
-                  <FiltroIcono icono={Megaphone} etiqueta="Estado del anuncio"
-                    valor={advFilters.estadoAnuncio} porDefecto="all"
-                    onChange={(v) => { setAdvFilters(f => ({ ...f, estadoAnuncio: v })); resetPage(); }}
-                    opciones={[
-                      { valor: 'all', label: 'Anuncio: todos' },
-                      { valor: 'ACTIVADO', label: 'Activado' },
-                      { valor: 'DESACTIVADO', label: 'Desactivado' },
-                      { valor: 'MUERTO', label: 'Muerto' },
-                      { valor: 'SIN ID', label: 'Sin ID' },
-                    ]} />
-
-                  <SearchableSelect value={advFilters.suministrador} icono={Factory}
-                    activo={Boolean(advFilters.suministrador)}
-                    onChange={v => { setAdvFilters(f => ({ ...f, suministrador: v })); resetPage(); }}
-                    placeholder="Suministrador: todos"
-                    options={[
-                      { value: '', label: 'Suministrador: todos' },
-                      ...suministradores.map(s => ({ value: s, label: s.replace('SEL ', '') })),
-                    ]} />
-
-                  <SearchableSelect value={advFilters.categoria} icono={Tag}
-                    activo={Boolean(advFilters.categoria)}
-                    onChange={v => { setAdvFilters(f => ({ ...f, categoria: v })); resetPage(); }}
-                    placeholder="Categoría: todas"
-                    options={[
-                      { value: '', label: 'Categoría: todas' },
-                      ...categorias.map(c => ({ value: c, label: c })),
-                    ]} />
-
-                  <div className="flex items-center gap-1">
-                    <input type="number" min="0" placeholder="$ Min"
-                      value={advFilters.precioMin} onChange={SET_FILTER('precioMin')} className={FILTER_INPUT_CLS} />
-                    <span className="text-muted-foreground text-xs">–</span>
-                    <input type="number" min="0" placeholder="$ Max"
-                      value={advFilters.precioMax} onChange={SET_FILTER('precioMax')} className={FILTER_INPUT_CLS} />
-                  </div>
-
-                  <ColPicker cols={PROD_COL_DEFS} visible={cols}
-                    onChange={(next) => { setCols(next); saveColsWithOrder(PROD_COLS_KEY, next, colOrder); }}
-                    storageKey={PROD_COLS_KEY} order={colOrder}
-                    onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(PROD_COLS_KEY, cols, next); }} />
-
-                </div>
-
-                {/* El recuento, en su propia linea y siempre a la vista:
-                    cuantos resultados hay no es un filtro. */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input value={search} onChange={e => { setSearch(e.target.value); resetPage(); }}
@@ -954,6 +1018,8 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   )}
                 </div>
 
+                {/* El recuento, en su propia línea: cuántos resultados hay
+                    es dato de la lista, no un control. */}
                 <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
                   <span className="text-xs text-muted-foreground">
                     {filtered.length} de {productos.length}
@@ -1097,68 +1163,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   Todo va al servidor: la búsqueda es `search[value]` del DataTables
                   de TKC, no un filtro en memoria. Por eso lleva debounce. */}
               <div className="rounded-xl border border-border bg-card p-3 space-y-2.5">
-              {/* El orden de toda la web: primero los filtros, debajo el
-                  buscador y al final el recuento. */}
-                <div className="flex flex-wrap gap-2 items-center">
-                  <FiltroIcono icono={Rows3} etiqueta="Filas por página"
-                    valor={String(tkcLimit)} porDefecto={String(TKC_PAGE_SIZES[0])}
-                    onChange={(v) => { setTkcLimit(Number(v)); resetPage(); }}
-                    opciones={TKC_PAGE_SIZES.map(n => ({ valor: String(n), label: `${n} por página` }))} />
 
-                  <FiltroIcono icono={Boxes} etiqueta="Existencia"
-                    valor={tkcExistencia} porDefecto={TKC_EXISTENCIA_OPTIONS[0].value}
-                    onChange={(v) => { setTkcExistencia(v); resetPage(); }}
-                    opciones={TKC_EXISTENCIA_OPTIONS.map(o => ({ valor: o.value, label: o.label }))} />
-
-                  {/* Estado de tienda: los siete que calcula la columna
-                      generada `estado_tienda`. TKC no sabe filtrar por esto —su
-                      filtro es un binario almacén/tienda—, por eso el catálogo
-                      se sirve de nuestra base. */}
-                  <FiltroIcono icono={Store} etiqueta="Estado en tienda"
-                    valor={advFilters.estadoTienda} porDefecto="all"
-                    onChange={(v) => { setAdvFilters(f => ({ ...f, estadoTienda: v })); resetPage(); }}
-                    opciones={[
-                      { valor: 'all', label: 'Estado tienda: todos' },
-                      { valor: 'SIN RESERVA', label: 'Sin Reserva' },
-                      { valor: 'NO TIENDA', label: 'No Tienda' },
-                      { valor: 'ULTIMAS PIEZAS', label: 'Últimas Piezas' },
-                      { valor: 'PROXIMO', label: 'Próximo' },
-                      { valor: 'DISPONIBLE', label: 'Disponible' },
-                      { valor: 'AGOTADO', label: 'Agotado' },
-                      { valor: 'SIN ID', label: 'Sin ID' },
-                    ]} />
-
-                  {/* Estado de anuncio: el de TKC (is_dead / status_provider),
-                      no el que deducíamos del stock. Son cosas distintas. */}
-                  <FiltroIcono icono={Megaphone} etiqueta="Estado del anuncio"
-                    valor={advFilters.estadoAnuncio} porDefecto="all"
-                    onChange={(v) => { setAdvFilters(f => ({ ...f, estadoAnuncio: v })); resetPage(); }}
-                    opciones={[
-                      { valor: 'all', label: 'Anuncio: todos' },
-                      ...ESTADOS_ANUNCIO_TKC.map(e => ({ valor: e, label: e })),
-                    ]} />
-
-                  <SearchableSelect
-                    value={advFilters.suministrador} icono={Factory}
-                    activo={Boolean(advFilters.suministrador)}
-                    onChange={v => { setAdvFilters(f => ({ ...f, suministrador: v })); resetPage(); }}
-                    placeholder="Suministrador"
-                    maxWidth="max-w-[200px]"
-                    options={[
-                      { value: '', label: 'Suministrador: todos' },
-                      ...suministradores.map(sx => ({ value: sx, label: sx })),
-                    ]}
-                  />
-
-                  <ColPicker cols={TKC_COLUMN_DEFS} visible={tkcCols}
-                    onChange={(next) => { setTkcCols(next); saveColsWithOrder(TKC_COLS_KEY, next, tkcColOrder); }}
-                    storageKey={TKC_COLS_KEY} order={tkcColOrder}
-                    onOrderChange={(next) => { setTkcColOrder(next); saveColsWithOrder(TKC_COLS_KEY, tkcCols, next); }} />
-
-                </div>
-
-                {/* Igual que en la otra vista: el recuento fuera de los
-                    filtros, que es dato de la lista y no un control. */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input value={search} onChange={e => { setSearch(e.target.value); resetPage(); }}
@@ -1172,6 +1177,8 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   )}
                 </div>
 
+                {/* El recuento, en su propia línea: cuántos resultados hay
+                    es dato de la lista, no un control. */}
                 <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
                   {fetchingTKC && <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />}
                   {tkcPagination && (
