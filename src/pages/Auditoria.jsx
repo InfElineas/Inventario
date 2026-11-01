@@ -5,12 +5,13 @@ import { useAuth } from '@/lib/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, ClipboardList, Layers, User,
+  CalendarDays } from 'lucide-react';
 import { format } from 'date-fns';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
+import { FiltroIcono } from '@/components/shared/ControlesLista';
 
 const TIPOS = [
   { value: 'all', label: 'Todos los tipos' },
@@ -145,53 +146,37 @@ export default function Auditoria() {
       {/* Filters */}
       <Card className="p-4" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
         <div className="flex flex-col gap-3">
-          {/* El orden de toda la web: primero los filtros, debajo el
-              buscador y al final el recuento. */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Select value={filterTipo} onValueChange={(v) => { setFilterTipo(v); resetPage(); }}>
-              <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {TIPOS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          {/* Los filtros, cuadrados y con su icono, como en el resto del
+              modulo. Las fechas no caben en uno —son dos campos que hay que
+              escribir— asi que se quedan en su fila, estrechas. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <FiltroIcono icono={Layers} etiqueta="Tipo de cambio"
+              valor={filterTipo} porDefecto={TIPOS[0].value}
+              onChange={(v) => { setFilterTipo(v); resetPage(); }}
+              opciones={TIPOS.map(t => ({ valor: t.value, label: t.label }))} />
 
-            <Select value={filterUsuario} onValueChange={(v) => { setFilterUsuario(v); resetPage(); }}>
-              <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Todos los usuarios" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los usuarios</SelectItem>
-                {usuarios.map(u => <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+            <FiltroIcono icono={User} etiqueta="Usuario"
+              valor={filterUsuario} porDefecto="all"
+              onChange={(v) => { setFilterUsuario(v); resetPage(); }}
+              opciones={[
+                { valor: 'all', label: 'Todos los usuarios' },
+                ...usuarios.map(u => ({ valor: u.id, label: u.nombre })),
+              ]} />
 
-          {/* Row 2: date range */}
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground font-medium">Desde</label>
-              <Input
-                type="date"
-                value={fechaDesde}
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CalendarDays className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <span className="sr-only">Desde</span>
+              <Input type="date" value={fechaDesde} aria-label="Desde"
                 onChange={(e) => { setFechaDesde(e.target.value); resetPage(); }}
-                style={{ borderRadius: '8px', width: '160px' }}
-                className="text-sm"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground font-medium">Hasta</label>
-              <Input
-                type="date"
-                value={fechaHasta}
+                style={{ borderRadius: '8px' }} className="h-9 w-[135px] text-xs" />
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span aria-hidden="true">—</span>
+              <span className="sr-only">Hasta</span>
+              <Input type="date" value={fechaHasta} aria-label="Hasta"
                 onChange={(e) => { setFechaHasta(e.target.value); resetPage(); }}
-                style={{ borderRadius: '8px', width: '160px' }}
-                className="text-sm"
-              />
-            </div>
-            {(fechaDesde || fechaHasta) && (
-              <Button variant="ghost" size="sm" className="text-xs mb-0.5"
-                onClick={() => { setFechaDesde(''); setFechaHasta(''); resetPage(); }}>
-                Limpiar fechas
-              </Button>
-            )}
+                style={{ borderRadius: '8px' }} className="h-9 w-[135px] text-xs" />
+            </label>
           </div>
 
           <div className="relative">

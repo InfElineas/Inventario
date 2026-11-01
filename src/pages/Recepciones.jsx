@@ -5,14 +5,13 @@ import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StatusBadge from '@/components/shared/StatusBadge';
 import ProductSearch from '@/components/shared/ProductSearch';
 import AlertBanner from '@/components/shared/AlertBanner';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Search, PackageOpen, Trash2, Pencil, ChevronLeft, ListFilter,
+import { Plus, Search, PackageOpen, Trash2, Pencil, ChevronLeft, ListFilter, Truck,
   Image as ImageIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { useConfirm } from '@/lib/useConfirm';
@@ -471,14 +470,9 @@ function PedidosPorRecibir({ puedeRecibir, recepciones, creando, onRecibir }) {
           <Input value={busca} onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar por proveedor, número u oferta..." className="pl-10" style={{ borderRadius: '8px' }} />
         </div>
-        <Select value={filtro} onValueChange={setFiltro}>
-          <SelectTrigger className="w-[220px]" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {FILTRO_PEDIDO.map((f) => (
-              <SelectItem key={f.valor} value={f.valor}>{f.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <FiltroIcono icono={Truck} etiqueta="Estado del pedido"
+          valor={filtro} porDefecto="en_camino" onChange={setFiltro}
+          opciones={FILTRO_PEDIDO} />
       </div>
 
       {isLoading ? (

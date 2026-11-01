@@ -29,6 +29,7 @@ const ImportarProductos = lazy(() => import('@/components/productos/ImportarProd
 import {
   Search, Package, AlertTriangle, Hash, ToggleLeft, Upload, ChevronDown, X,
   Database, RefreshCw, Clock, ArrowUpFromLine, ArrowDownToLine, MoreHorizontal, History, ClipboardList,
+  Rows3, Boxes, Store, Megaphone, Factory, Tag,
 } from 'lucide-react';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
@@ -36,6 +37,7 @@ import { base44 } from '@/api/base44Client';
 import { SIN_SONDEO } from '@/lib/query-client';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { tieneRol } from '@/lib/roles';
+import { FiltroIcono } from '@/components/shared/ControlesLista';
 
 // ── Constants ─────────────────────────────────────────────────
 const PAGE_SIZE = 50;
@@ -292,7 +294,13 @@ function useDebounced(value, delay = 400) {
   return debounced;
 }
 
-function SearchableSelect({ value, onChange, options, placeholder, maxWidth: maxWidthRaw }) {
+/**
+ * @param {object} props
+ * @param {React.ElementType} [props.icono]  Con icono se pinta como los demas
+ *   filtros: un cuadrado y nada mas. Sin el, con su etiqueta, como antes.
+ * @param {boolean} [props.activo]  Si esta filtrando, para marcarlo en verde.
+ */
+function SearchableSelect({ value, onChange, options, placeholder, maxWidth: maxWidthRaw, icono: Icono, activo }) {
   const maxWidth = maxWidthRaw ?? 'max-w-[160px]';
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -314,11 +322,18 @@ function SearchableSelect({ value, onChange, options, placeholder, maxWidth: max
 
   return (
     <div className="relative" ref={ref}>
-      <button type="button" title={label}
+      <button type="button" title={label} aria-label={label}
         onClick={() => { setOpen(v => !v); setQuery(''); }}
-        className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 ${maxWidth}`}>
-        <span className="truncate flex-1 min-w-0 text-left">{label}</span>
-        <ChevronDown className="w-3.5 h-3.5 shrink-0 opacity-60" />
+        className={Icono
+          ? `h-9 w-9 flex items-center justify-center rounded-lg bg-card border transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 ${
+            activo ? 'border-[#4ade80]/40 text-[#4ade80] bg-[#4ade80]/10' : 'border-border text-muted-foreground hover:text-foreground'}`
+          : `flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 ${maxWidth}`}>
+        {Icono ? <Icono className="w-4 h-4" /> : (
+          <>
+            <span className="truncate flex-1 min-w-0 text-left">{label}</span>
+            <ChevronDown className="w-3.5 h-3.5 shrink-0 opacity-60" />
+          </>
+        )}
       </button>
       {open && (
         <div className="absolute left-0 top-[calc(100%+4px)] z-50 rounded-xl shadow-2xl overflow-hidden"
@@ -711,8 +726,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   });
 
   // ── Shared helpers ─────────────────────────────────────────
-  const FILTER_CLS = "appearance-none pl-3 pr-8 py-2 text-sm rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50";
-  const FILTER_INPUT_CLS = "pl-3 pr-3 py-2 text-sm rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 w-24";
+  const FILTER_INPUT_CLS = "pl-3 pr-3 py-2 text-sm rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 h-9 w-20";
   const SET_FILTER = (key) => (e) => { setAdvFilters(f => ({ ...f, [key]: e.target.value })); resetPage(); };
 
   const hayFiltrosEL  = search || Object.values(advFilters).some(v => v && v !== 'all');
@@ -857,42 +871,43 @@ export default function Productos({ initialSource: initialSourceRaw }) {
               {/* El orden de toda la web: primero los filtros, debajo el
                   buscador y al final el recuento. */}
                 <div className="flex flex-wrap gap-2 items-center">
-                  <div className="relative">
-                    <select value={advFilters.existencia} onChange={SET_FILTER('existencia')} className={FILTER_CLS}>
-                      <option value="all">Existencia: todos</option>
-                      <option value="con_ef">Con stock (EF &gt; 0)</option>
-                      <option value="sin_ef">Sin stock (EF = 0)</option>
-                      <option value="critico">Bajo stock (EF &lt; 5)</option>
-                    </select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                  </div>
+                  <FiltroIcono icono={Boxes} etiqueta="Existencia"
+                    valor={advFilters.existencia} porDefecto="all"
+                    onChange={(v) => { setAdvFilters(f => ({ ...f, existencia: v })); resetPage(); }}
+                    opciones={[
+                      { valor: 'all', label: 'Existencia: todos' },
+                      { valor: 'con_ef', label: 'Con stock (EF > 0)' },
+                      { valor: 'sin_ef', label: 'Sin stock (EF = 0)' },
+                      { valor: 'critico', label: 'Bajo stock (EF < 5)' },
+                    ]} />
 
-                  <div className="relative">
-                    <select value={advFilters.estadoTienda} onChange={SET_FILTER('estadoTienda')} className={FILTER_CLS}>
-                      <option value="all">Estado tienda: todos</option>
-                      <option value="SIN RESERVA">Sin Reserva</option>
-                      <option value="NO TIENDA">No Tienda</option>
-                      <option value="ULTIMAS PIEZAS">Últimas Piezas</option>
-                      <option value="PROXIMO">Próximo</option>
-                      <option value="DISPONIBLE">Disponible</option>
-                      <option value="AGOTADO">Agotado</option>
-                      <option value="SIN ID">Sin ID TKC</option>
-                    </select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                  </div>
+                  <FiltroIcono icono={Store} etiqueta="Estado en tienda"
+                    valor={advFilters.estadoTienda} porDefecto="all"
+                    onChange={(v) => { setAdvFilters(f => ({ ...f, estadoTienda: v })); resetPage(); }}
+                    opciones={[
+                      { valor: 'all', label: 'Estado tienda: todos' },
+                      { valor: 'SIN RESERVA', label: 'Sin Reserva' },
+                      { valor: 'NO TIENDA', label: 'No Tienda' },
+                      { valor: 'ULTIMAS PIEZAS', label: 'Últimas Piezas' },
+                      { valor: 'PROXIMO', label: 'Próximo' },
+                      { valor: 'DISPONIBLE', label: 'Disponible' },
+                      { valor: 'AGOTADO', label: 'Agotado' },
+                      { valor: 'SIN ID', label: 'Sin ID TKC' },
+                    ]} />
 
-                  <div className="relative">
-                    <select value={advFilters.estadoAnuncio} onChange={SET_FILTER('estadoAnuncio')} className={FILTER_CLS}>
-                      <option value="all">Anuncio: todos</option>
-                      <option value="ACTIVADO">Activado</option>
-                      <option value="DESACTIVADO">Desactivado</option>
-                      <option value="MUERTO">Muerto</option>
-                      <option value="SIN ID">Sin ID</option>
-                    </select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                  </div>
+                  <FiltroIcono icono={Megaphone} etiqueta="Estado del anuncio"
+                    valor={advFilters.estadoAnuncio} porDefecto="all"
+                    onChange={(v) => { setAdvFilters(f => ({ ...f, estadoAnuncio: v })); resetPage(); }}
+                    opciones={[
+                      { valor: 'all', label: 'Anuncio: todos' },
+                      { valor: 'ACTIVADO', label: 'Activado' },
+                      { valor: 'DESACTIVADO', label: 'Desactivado' },
+                      { valor: 'MUERTO', label: 'Muerto' },
+                      { valor: 'SIN ID', label: 'Sin ID' },
+                    ]} />
 
-                  <SearchableSelect value={advFilters.suministrador}
+                  <SearchableSelect value={advFilters.suministrador} icono={Factory}
+                    activo={Boolean(advFilters.suministrador)}
                     onChange={v => { setAdvFilters(f => ({ ...f, suministrador: v })); resetPage(); }}
                     placeholder="Suministrador: todos"
                     options={[
@@ -900,7 +915,8 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                       ...suministradores.map(s => ({ value: s, label: s.replace('SEL ', '') })),
                     ]} />
 
-                  <SearchableSelect value={advFilters.categoria}
+                  <SearchableSelect value={advFilters.categoria} icono={Tag}
+                    activo={Boolean(advFilters.categoria)}
                     onChange={v => { setAdvFilters(f => ({ ...f, categoria: v })); resetPage(); }}
                     placeholder="Categoría: todas"
                     options={[
@@ -1084,59 +1100,47 @@ export default function Productos({ initialSource: initialSourceRaw }) {
               {/* El orden de toda la web: primero los filtros, debajo el
                   buscador y al final el recuento. */}
                 <div className="flex flex-wrap gap-2 items-center">
-                  <div className="relative">
-                    <select value={tkcLimit}
-                      onChange={e => { setTkcLimit(Number(e.target.value)); resetPage(); }}
-                      className={FILTER_CLS}>
-                      {TKC_PAGE_SIZES.map(n => <option key={n} value={n}>{n} / página</option>)}
-                    </select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                  </div>
+                  <FiltroIcono icono={Rows3} etiqueta="Filas por página"
+                    valor={String(tkcLimit)} porDefecto={String(TKC_PAGE_SIZES[0])}
+                    onChange={(v) => { setTkcLimit(Number(v)); resetPage(); }}
+                    opciones={TKC_PAGE_SIZES.map(n => ({ valor: String(n), label: `${n} por página` }))} />
 
-                  <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
-                    {TKC_EXISTENCIA_OPTIONS.map(option => (
-                      <button key={option.value} type="button"
-                        onClick={() => { setTkcExistencia(option.value); resetPage(); }}
-                        className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
-                          tkcExistencia === option.value
-                            ? 'bg-[#4ade80]/10 text-[#4ade80]'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}>
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
+                  <FiltroIcono icono={Boxes} etiqueta="Existencia"
+                    valor={tkcExistencia} porDefecto={TKC_EXISTENCIA_OPTIONS[0].value}
+                    onChange={(v) => { setTkcExistencia(v); resetPage(); }}
+                    opciones={TKC_EXISTENCIA_OPTIONS.map(o => ({ valor: o.value, label: o.label }))} />
 
                   {/* Estado de tienda: los siete que calcula la columna
                       generada `estado_tienda`. TKC no sabe filtrar por esto —su
                       filtro es un binario almacén/tienda—, por eso el catálogo
                       se sirve de nuestra base. */}
-                  <div className="relative">
-                    <select value={advFilters.estadoTienda} onChange={SET_FILTER('estadoTienda')} className={FILTER_CLS}>
-                      <option value="all">Estado tienda: todos</option>
-                      <option value="SIN RESERVA">Sin Reserva</option>
-                      <option value="NO TIENDA">No Tienda</option>
-                      <option value="ULTIMAS PIEZAS">Últimas Piezas</option>
-                      <option value="PROXIMO">Próximo</option>
-                      <option value="DISPONIBLE">Disponible</option>
-                      <option value="AGOTADO">Agotado</option>
-                      <option value="SIN ID">Sin ID</option>
-                    </select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                  </div>
+                  <FiltroIcono icono={Store} etiqueta="Estado en tienda"
+                    valor={advFilters.estadoTienda} porDefecto="all"
+                    onChange={(v) => { setAdvFilters(f => ({ ...f, estadoTienda: v })); resetPage(); }}
+                    opciones={[
+                      { valor: 'all', label: 'Estado tienda: todos' },
+                      { valor: 'SIN RESERVA', label: 'Sin Reserva' },
+                      { valor: 'NO TIENDA', label: 'No Tienda' },
+                      { valor: 'ULTIMAS PIEZAS', label: 'Últimas Piezas' },
+                      { valor: 'PROXIMO', label: 'Próximo' },
+                      { valor: 'DISPONIBLE', label: 'Disponible' },
+                      { valor: 'AGOTADO', label: 'Agotado' },
+                      { valor: 'SIN ID', label: 'Sin ID' },
+                    ]} />
 
                   {/* Estado de anuncio: el de TKC (is_dead / status_provider),
                       no el que deducíamos del stock. Son cosas distintas. */}
-                  <div className="relative">
-                    <select value={advFilters.estadoAnuncio} onChange={SET_FILTER('estadoAnuncio')} className={FILTER_CLS}>
-                      <option value="all">Anuncio: todos</option>
-                      {ESTADOS_ANUNCIO_TKC.map(e => <option key={e} value={e}>{e}</option>)}
-                    </select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                  </div>
+                  <FiltroIcono icono={Megaphone} etiqueta="Estado del anuncio"
+                    valor={advFilters.estadoAnuncio} porDefecto="all"
+                    onChange={(v) => { setAdvFilters(f => ({ ...f, estadoAnuncio: v })); resetPage(); }}
+                    opciones={[
+                      { valor: 'all', label: 'Anuncio: todos' },
+                      ...ESTADOS_ANUNCIO_TKC.map(e => ({ valor: e, label: e })),
+                    ]} />
 
                   <SearchableSelect
-                    value={advFilters.suministrador}
+                    value={advFilters.suministrador} icono={Factory}
+                    activo={Boolean(advFilters.suministrador)}
                     onChange={v => { setAdvFilters(f => ({ ...f, suministrador: v })); resetPage(); }}
                     placeholder="Suministrador"
                     maxWidth="max-w-[200px]"

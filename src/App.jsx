@@ -13,6 +13,7 @@ import Login from '@/pages/Login';
 import { ROLES_PROCESAMIENTOS } from '@/lib/procesamientos';
 import { ROLES_AJUSTES } from '@/lib/ajustes';
 import TkcCredencialesDialog from '@/components/shared/TkcCredencialesDialog';
+import EsqueletoApp, { EsqueletoContenido } from '@/components/shared/Esqueleto';
 
 // Páginas autenticadas cargadas bajo demanda — cada una queda en su propio
 // chunk, así el login inicial no descarga el código de Reportes, Productos,
@@ -37,10 +38,17 @@ const Configuracion = lazy(() => import('@/pages/Configuracion'));
 const Supervision   = lazy(() => import('@/pages/Supervision'));
 const PageNotFound  = lazy(() => import('./lib/PageNotFound'));
 
+/**
+ * Mientras llega el codigo de una pantalla.
+ *
+ * El armazon ya esta pintado, asi que solo falta el contenido: se dibuja su
+ * forma —titulo, filtros, buscador, lista— y cuando entra no salta nada.
+ */
 function RouteLoading() {
   return (
-    <div className="flex items-center justify-center py-24">
-      <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" />
+    <div role="status">
+      <span className="sr-only">Cargando la pantalla</span>
+      <EsqueletoContenido />
     </div>
   );
 }
@@ -67,13 +75,11 @@ const AuthenticatedApp = () => {
     }
   }, [isLoadingAuth, isAuthenticated, authError, navigate]);
 
-  if (isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
-      </div>
-    );
-  }
+  // Aqui no hay nada pintado todavia, asi que el esqueleto dibuja tambien el
+  // armazon: cabecera, menu y barra de abajo. Antes era una rueda sobre una
+  // pantalla en blanco, con los grises de `slate` metidos a mano, que en modo
+  // oscuro quedaba como un agujero.
+  if (isLoadingAuth) return <EsqueletoApp />;
 
   if (!isAuthenticated) return null;
 

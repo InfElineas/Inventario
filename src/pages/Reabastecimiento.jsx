@@ -311,18 +311,26 @@ export default function Reabastecimiento() {
 
           {anuncio !== 'TODOS' && porAnuncio.length < filas.length && (
             <p className="text-xs text-muted-foreground">
-              Se muestran los de anuncio «{anuncio}». Hay {filas.length - porAnuncio.length} más con otro
-              estado de anuncio —desactivados o muertos—: no se compran, pero alguno puede merecer reactivarse.
+              Solo los de anuncio «{anuncio}». Hay {filas.length - porAnuncio.length} con otro estado que no
+              se compran, pero alguno puede merecer reactivarse.
             </p>
           )}
 
-          <p className="text-xs text-muted-foreground">
-            {filtradas.length} {filtradas.length === 1 ? 'producto' : 'productos'} · {unidades} unidades a pedir.
-            «Días» es cuánto dura la existencia al ritmo al que se vende; «mínimo», lo que haría falta para {dias} días.
-            La venta diaria se calcula sobre los días en que hubo venta, no sobre el calendario: un día sin existencia
-            vende cero y contarlo haría parecer que el producto se pide menos de lo que se pide. No entra lo que lleve
-            más de noventa días sin venderse.
-          </p>
+          {/* El dato siempre; la explicación, detrás de un resumen. Eran
+              cinco líneas de texto antes de la primera fila, y lo que hace
+              falta leer a diario es la primera frase. */}
+          <details className="text-xs text-muted-foreground">
+            <summary className="cursor-pointer list-none marker:hidden">
+              {unidades} unidades a pedir
+              <span className="ml-1.5 underline underline-offset-2 opacity-70">cómo se calcula</span>
+            </summary>
+            <p className="mt-1.5 leading-relaxed">
+              «Días» es cuánto dura la existencia al ritmo al que se vende; «mínimo», lo que haría falta
+              para {dias} días. La venta diaria se calcula sobre los días en que hubo venta, no sobre el
+              calendario: un día sin existencia vende cero y contarlo haría parecer que el producto se pide
+              menos de lo que se pide. No entra lo que lleve más de noventa días sin venderse.
+            </p>
+          </details>
 
           <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
             <div className="overflow-x-auto">

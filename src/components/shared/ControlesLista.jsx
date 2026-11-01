@@ -62,8 +62,14 @@ export function FiltroIcono({ icono: Icono, etiqueta, valor, porDefecto, opcione
       <SelectTrigger
         aria-label={puesto ? `${etiqueta}: ${elegida?.label ?? valor}` : etiqueta}
         title={puesto ? `${etiqueta}: ${elegida?.label ?? valor}` : etiqueta}
-        className={`${ALTO} w-9 justify-center p-0 [&>svg]:hidden ${
-          puesto ? 'border-[#4ade80]/40 text-[#4ade80] bg-[#4ade80]/10' : ''
+        // `:last-child` y no `[&>svg]`: el disparador pinta el icono que le
+        // damos Y su propia flechita detras, asi que ocultando todos los svg
+        // se iba tambien el icono y quedaban cuadrados en blanco. La flecha
+        // es siempre el ultimo.
+        className={`${ALTO} w-9 justify-center p-0 [&>svg:last-child]:hidden ${
+          puesto
+            ? 'border-[#4ade80]/40 text-[#4ade80] bg-[#4ade80]/10'
+            : 'text-muted-foreground'
         }`}
         style={{ borderRadius: '8px' }}
       >
