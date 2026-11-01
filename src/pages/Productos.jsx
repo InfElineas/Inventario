@@ -327,7 +327,7 @@ function SearchableSelect({ value, onChange, options, placeholder, maxWidth: max
         className={Icono
           ? `h-9 w-9 flex items-center justify-center rounded-lg bg-card border transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 ${
             activo ? 'border-[#4ade80]/40 text-[#4ade80] bg-[#4ade80]/10' : 'border-border text-muted-foreground hover:text-foreground'}`
-          : `flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 ${maxWidth}`}>
+          : `h-9 flex items-center gap-1.5 px-3 text-xs rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 ${maxWidth}`}>
         {Icono ? <Icono className="w-4 h-4" /> : (
           <>
             <span className="truncate flex-1 min-w-0 text-left">{label}</span>
@@ -786,11 +786,15 @@ export default function Productos({ initialSource: initialSourceRaw }) {
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Almacén selector */}
+          {/* Las mismas medidas que el selector de almacen del resto del
+              modulo: 36 px de alto, 150 de ancho y texto pequeno. Aqui se
+              veia mas grande y con otra tipografia, y dejaba la fila
+              descuadrada. */}
           <SearchableSelect
             value={almacen}
             onChange={v => { setAlmacen(v); setSelectedId(null); resetPage(); }}
             placeholder="— Almacén —"
-            maxWidth="max-w-[180px]"
+            maxWidth="w-[150px]"
             options={[
               { value: '', label: '— Almacén —' },
               ...almacenes.map(a => ({ value: a, label: warehouseName(a) })),

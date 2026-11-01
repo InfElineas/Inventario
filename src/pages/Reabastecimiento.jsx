@@ -13,7 +13,8 @@ import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { SIN_SONDEO } from '@/lib/query-client';
 import { fetchCobertura } from '@/services/rotacionService';
 import { WAREHOUSES, warehouseName } from '@/services/tkc/warehouses';
-import { Download, Factory, Loader2, Megaphone, RefreshCw, Search, ShoppingCart } from 'lucide-react';
+import { CalendarRange, Download, Factory, Loader2, Megaphone, RefreshCw, Search,
+  ShoppingCart } from 'lucide-react';
 import BotonAccion from '@/components/shared/BotonAccion';
 import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
 import CabeceraLista from '@/components/shared/CabeceraLista';
@@ -259,12 +260,18 @@ export default function Reabastecimiento() {
               ...suministradores.map((x) => ({ valor: x, label: x })),
             ]}
           />
-          <label className="flex items-center gap-2 text-xs text-muted-foreground">
-            Cubrir
-            <Input type="number" min="1" max="365" value={dias} className="w-16 h-9 text-right text-xs"
-              onChange={(e) => guardarDias(Number(e.target.value) || DIAS_POR_DEFECTO)}
-              style={{ borderRadius: '8px' }} />
-            días
+          {/* Un solo campo, no tres piezas: «Cubrir», la caja y «días»
+              ocupaban media fila para pedir un numero. El icono y la «d»
+              dicen lo mismo en la cuarta parte del sitio. */}
+          <label title="Días de cobertura a comprar"
+            className="h-9 flex items-center gap-1 px-2 rounded-lg border border-border bg-card text-xs text-muted-foreground"
+            style={{ borderRadius: '8px' }}>
+            <CalendarRange className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span className="sr-only">Días de cobertura</span>
+            <Input type="number" min="1" max="365" value={dias} aria-label="Días de cobertura"
+              className="w-10 h-7 px-1 text-right text-xs border-0 bg-transparent shadow-none focus-visible:ring-0"
+              onChange={(e) => guardarDias(Number(e.target.value) || DIAS_POR_DEFECTO)} />
+            d
           </label>
           <Button variant="outline" onClick={() => refetch()} disabled={isFetching || !almacen}
             style={{ borderRadius: '8px' }} title="Volver a pedir el informe de rotación">

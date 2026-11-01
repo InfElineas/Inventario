@@ -157,6 +157,11 @@ export default function Recepciones() {
   // otra pestaña está vacía por definición.
   const [vista, setVista] = useState('pedidos');
   const [creando, setCreando] = useState(null);
+  // El filtro y la busqueda de la pestana de pedidos viven aqui y no dentro
+  // de `PedidosPorRecibir`: la cabecera es la misma para las dos pestanas y
+  // todos los mandos van en su fila, como en el resto del sitio.
+  const [filtroPedido, setFiltroPedido] = useState('en_camino');
+  const [buscaPedido, setBuscaPedido] = useState('');
   const { sort, onSort } = useSortable('fecha', 'desc');
   const queryClient = useQueryClient();
 
@@ -249,6 +254,7 @@ export default function Recepciones() {
   // `tieneRol` y no `user.role`: quien es inventarista y además factura
   // resolvía al rol de más autoridad y perdía lo que solo puede `inv`.
   const puedeRecibir = tieneRol(user, ['inv', 'administrador']);
+  const enPedidos = vista === 'pedidos';
 
   /**
    * Empezar a recibir un pedido.
@@ -305,33 +311,35 @@ export default function Recepciones() {
       <CabeceraLista
         titulo="Recepciones"
         subtitulo={almacen ? `Recepción de mercancía en ${warehouseName(almacen)}` : 'Recepción de mercancía'}
-        recuento={vista === 'recepciones'
-          ? `${filtered.length} de ${recepciones.length}`
-          : null}
-        buscador={vista === 'recepciones' ? (
+        recuento={enPedidos ? null : `${filtered.length} de ${recepciones.length}`}
+        buscador={(
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)}
-              placeholder="Buscar por proveedor, orden o producto..." className="pl-10" style={{ borderRadius: '8px' }} />
+            <Input
+              value={enPedidos ? buscaPedido : searchQ}
+              onChange={(e) => (enPedidos ? setBuscaPedido(e.target.value) : setSearchQ(e.target.value))}
+              placeholder={enPedidos
+                ? 'Buscar por proveedor, número u oferta...'
+                : 'Buscar por proveedor, orden o producto...'}
+              className="pl-10" style={{ borderRadius: '8px' }} />
           </div>
-        ) : null}
+        )}
         filtros={(
           <>
-          {vista === 'recepciones' && (
-            <FiltroIcono
-              icono={ListFilter}
-              etiqueta="Estado de la recepción"
-              valor={filtroEstado}
-              porDefecto="todas"
-              onChange={setFiltroEstado}
-              opciones={FILTRO_RECEPCION}
-            />
-          )}
-          {vista === 'recepciones' && (
-            <ColPicker cols={RECEP_COL_DEFS} visible={cols}
-              onChange={(next) => { setCols(next); saveColsWithOrder(RECEP_COLS_KEY, next, colOrder); }}
-              storageKey={RECEP_COLS_KEY} order={colOrder}
-              onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(RECEP_COLS_KEY, cols, next); }} />
+          {enPedidos ? (
+            <FiltroIcono icono={Truck} etiqueta="Estado del pedido"
+              valor={filtroPedido} porDefecto="en_camino" onChange={setFiltroPedido}
+              opciones={FILTRO_PEDIDO} />
+          ) : (
+            <>
+              <FiltroIcono icono={ListFilter} etiqueta="Estado de la recepción"
+                valor={filtroEstado} porDefecto="todas" onChange={setFiltroEstado}
+                opciones={FILTRO_RECEPCION} />
+              <ColPicker cols={RECEP_COL_DEFS} visible={cols}
+                onChange={(next) => { setCols(next); saveColsWithOrder(RECEP_COLS_KEY, next, colOrder); }}
+                storageKey={RECEP_COLS_KEY} order={colOrder}
+                onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(RECEP_COLS_KEY, cols, next); }} />
+            </>
           )}
           {puedeRecibir && (
             <BotonAccion icono={Plus} onClick={() => setShowCreate(true)}>
@@ -371,6 +379,8 @@ export default function Recepciones() {
           recepciones={recepciones}
           creando={creando}
           onRecibir={recibirPedido}
+          filtro={filtroPedido}
+          busca={buscaPedido}
         />
       ) : (
       <>
@@ -434,9 +444,7 @@ export default function Recepciones() {
  * cualquier estado: en la práctica llega mercancía de pedidos que se quedaron
  * en `confirmado`.
  */
-function PedidosPorRecibir({ puedeRecibir, recepciones, creando, onRecibir }) {
-  const [filtro, setFiltro] = useState('en_camino');
-  const [busca, setBusca] = useState('');
+function PedidosPorRecibir({ puedeRecibir, recepciones, creando, onRecibir, filtro, busca }) {
 
   const { data: pedidos, isLoading, error } = useQuery({
     queryKey: ['pedidos', filtro],
@@ -464,17 +472,6 @@ function PedidosPorRecibir({ puedeRecibir, recepciones, creando, onRecibir }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={busca} onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar por proveedor, número u oferta..." className="pl-10" style={{ borderRadius: '8px' }} />
-        </div>
-        <FiltroIcono icono={Truck} etiqueta="Estado del pedido"
-          valor={filtro} porDefecto="en_camino" onChange={setFiltro}
-          opciones={FILTRO_PEDIDO} />
-      </div>
-
       {isLoading ? (
         <Card className="p-8 text-center text-muted-foreground" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
           Cargando pedidos…

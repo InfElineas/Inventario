@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { SlidersHorizontal, Check, ChevronUp, ChevronDown, GripVertical } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export function loadColsWithOrder(storageKey, colDefs) {
   const defaultOrder   = colDefs.map(c => c.key)
@@ -35,13 +36,7 @@ export default function ColPicker({ cols, visible, onChange, storageKey, order, 
   const [open, setOpen]         = useState(false)
   const [dragKey, setDragKey]   = useState(null)
   const [dragOver, setDragOver] = useState(null)
-  const ref = useRef(null)
-
-  useEffect(() => {
-    const fn = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    document.addEventListener('mousedown', fn)
-    return () => document.removeEventListener('mousedown', fn)
-  }, [])
+  // Cerrar al tocar fuera lo lleva el propio Popover.
 
   const handleDragStart = (e, key) => {
     setDragKey(key)
@@ -93,21 +88,27 @@ export default function ColPicker({ cols, visible, onChange, storageKey, order, 
     ? order.map(k => cols.find(c => c.key === k)).filter(Boolean)
     : cols
 
+  // El panel va en un Popover y no en un `absolute` propio: anclado a la
+  // derecha del boton, cuando el boton cae a la izquierda de la fila los
+  // 210 px de panel se salian por el borde izquierdo —medido: empezaba en
+  // -159 px— y las etiquetas quedaban cortadas fuera de la pantalla. El
+  // Popover detecta el borde y lo coloca donde cabe.
   return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors"
-      >
-        <SlidersHorizontal className="w-4 h-4" />
-        <span className="hidden sm:inline">Columnas</span>
-      </button>
-
-      {open && (
-        <div
-          className="absolute right-0 top-[42px] rounded-xl shadow-2xl z-50 overflow-hidden py-2"
-          style={{ minWidth: '210px', background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          aria-label="Elegir columnas"
+          title="Elegir columnas"
+          className="h-9 flex items-center gap-1.5 px-3 text-xs rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors"
         >
+          <SlidersHorizontal className="w-4 h-4" />
+          <span className="hidden sm:inline">Columnas</span>
+        </button>
+      </PopoverTrigger>
+
+      <PopoverContent align="end" sideOffset={6} className="w-[230px] max-w-[calc(100vw-2rem)] p-0 py-2 overflow-hidden"
+        style={{ borderRadius: '12px' }}>
+        <div>
           {displayCols.map((c, idx) => (
             <div
               key={c.key}
@@ -154,7 +155,7 @@ export default function ColPicker({ cols, visible, onChange, storageKey, order, 
             </div>
           ))}
         </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   )
 }
