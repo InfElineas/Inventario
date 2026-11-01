@@ -20,6 +20,7 @@ import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import { SIN_SONDEO } from '@/lib/query-client';
 import { CLASIF_AJUSTE } from '@/lib/constants';
 import SugerenciasNota from '@/components/shared/SugerenciasNota';
+import SelectorIntercambio, { CLASIF_INTERCAMBIO } from '@/components/inventario/SelectorIntercambio';
 
 
 // Extraída del formulario para poder probarla sin renderizar el componente.
@@ -52,6 +53,8 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
   const [producto, setProducto] = useState(null);
   const [detalles, setDetalles] = useState([{ fecha_vencimiento: '', no_lote: '', cantidad: 0 }]);
   const [clasifAjuste, setClasifAjuste] = useState('');
+  // El conteo con el que se intercambió, cuando la clasificación lo pide.
+  const [intercambio, setIntercambio] = useState(null);
   const [notas, setNotas] = useState('');
   const [fechaInv, setFechaInv] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [showScanner, setShowScanner] = useState(false);
@@ -148,6 +151,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
       diferencia,
       resultado: diferencia === 0 ? 'ok' : diferencia > 0 ? 'sobrante' : 'faltante',
       clasif_ajuste: diferencia !== 0 ? clasifAjuste : '',
+      intercambio_id: clasifAjuste === CLASIF_INTERCAMBIO ? (intercambio?.id ?? null) : null,
       notas_inv: notas,
       estado_tarea: estado,
       detalles: detalles.filter(d => Number(d.cantidad) > 0),
@@ -158,6 +162,10 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
       onSubmit(data);
     }
   };
+
+  // Un intercambio sin su par es media verdad: deja a facturación con dos
+  // ajustes que no cuadran y sin saber que eran el mismo caso.
+  const faltaIntercambio = clasifAjuste === CLASIF_INTERCAMBIO && !intercambio;
 
   const difColor = diferencia === 0 ? 'text-[#1D9E75]' : diferencia > 0 ? 'text-[#BA7517]' : 'text-[#E24B4A]';
 
@@ -393,12 +401,22 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
           {diferencia !== 0 && (
             <>
               <AlertBanner variant={diferencia > 0 ? 'warning' : 'danger'} message={`Diferencia detectada: ${diferencia > 0 ? 'sobrante' : 'faltante'} de ${Math.abs(diferencia)} unidades. Se requiere clasificación.`} />
-              <Select value={clasifAjuste} onValueChange={setClasifAjuste}>
+              <Select value={clasifAjuste}
+                onValueChange={(v) => { setClasifAjuste(v); setIntercambio(null); }}>
                 <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Clasificación de ajuste" /></SelectTrigger>
                 <SelectContent>
                   {CLASIF_AJUSTE.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
+
+              {clasifAjuste === CLASIF_INTERCAMBIO && (
+                <SelectorIntercambio
+                  diferencia={diferencia}
+                  almacen={producto?.almacen_num}
+                  valor={intercambio?.id}
+                  onElegir={setIntercambio}
+                />
+              )}
             </>
           )}
 
@@ -419,7 +437,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
           <div className="flex justify-end gap-2">
             <Button onClick={handleSubmit}
               disabled={!producto || sinSubmayor || Boolean(conteoPrevio) || cargandoSubmayor
-                || (diferencia !== 0 && !clasifAjuste) || isPending}
+                || (diferencia !== 0 && !clasifAjuste) || faltaIntercambio || isPending}
               style={{ borderRadius: '8px' }}>
               <Save className="w-4 h-4 mr-1.5" /> {isPending ? 'Guardando...' : 'Confirmar conteo'}
             </Button>

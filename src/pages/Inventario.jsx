@@ -32,6 +32,7 @@ import { tieneRol } from '@/lib/roles';
 import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
 import CabeceraLista from '@/components/shared/CabeceraLista';
 import ListaResponsive from '@/components/shared/ListaResponsive';
+import SelectorIntercambio, { CLASIF_INTERCAMBIO } from '@/components/inventario/SelectorIntercambio';
 
 const PAGE_SIZE = 50
 
@@ -161,6 +162,14 @@ export default function Inventario({ ambito = 'inventario' }) {
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['inventarios'] });
       setShowForm(false);
+      // El enlace del intercambio va en los dos conteos: abrir cualquiera de
+      // ellos tiene que llevar al otro. El id de este no existía hasta
+      // ahora, así que la otra mitad se escribe aquí.
+      if (variables.intercambio_id && result?.id) {
+        base44.entities.Inventario
+          .update(variables.intercambio_id, { intercambio_id: result.id })
+          .catch(() => {});
+      }
       const registro = { ...variables, id: result?.id, estado_tarea: null }
       logTransicion('inventarios', registro, variables.estado_tarea, user, variables).catch(() => {})
       notificarTransicion('inventarios', registro, variables.estado_tarea, user).catch(() => {})
@@ -188,6 +197,15 @@ export default function Inventario({ ambito = 'inventario' }) {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data, hermanos = [] }) => {
       const r = await base44.entities.Inventario.update(id, data);
+
+      // La otra mitad del intercambio. Se escribe aquí y no en el formulario
+      // porque el enlace vale en los dos sentidos: abrir cualquiera de los
+      // dos conteos tiene que llevar al otro.
+      if (data.intercambio_id) {
+        await base44.entities.Inventario
+          .update(data.intercambio_id, { intercambio_id: id })
+          .catch(() => {});
+      }
 
       // Los conteos anteriores del mismo producto se cierran sin ajuste: su
       // diferencia se midió contra la existencia de otro día. Se les deja
@@ -497,6 +515,7 @@ function BloqueCorreccion({ inv, devuelto, isUpdating, onGuardar, confirmDialog 
   const [clasif, setClasif] = useState(inv.clasif_ajuste ?? '');
   const [fecha, setFecha] = useState(inv.fecha_inv?.slice(0, 10) ?? HOY());
   const [notas, setNotas] = useState(inv.notas_inv ?? '');
+  const [intercambio, setIntercambio] = useState(null);
 
   const n = Number(conteo);
   const conteoValido = conteo !== '' && !isNaN(n) && n >= 0;
@@ -504,7 +523,12 @@ function BloqueCorreccion({ inv, devuelto, isUpdating, onGuardar, confirmDialog 
   const resultado = diferencia === 0 ? 'ok' : diferencia > 0 ? 'sobrante' : 'faltante';
   // La clasificación solo hace falta si hay algo que clasificar.
   const faltaClasif = diferencia !== 0 && !clasif;
-  const valido = conteoValido && !faltaClasif;
+  // Un intercambio sin su par deja a facturación con dos ajustes que no
+  // cuadran y sin saber que eran el mismo caso. Si ya venía emparejado, vale.
+  const esIntercambio = diferencia !== 0 && clasif === CLASIF_INTERCAMBIO;
+  const parYaPuesto = Boolean(inv.intercambio_id) && clasif === inv.clasif_ajuste;
+  const faltaIntercambio = esIntercambio && !intercambio && !parYaPuesto;
+  const valido = conteoValido && !faltaClasif && !faltaIntercambio;
 
   const cambios = {
     conteo_real: n,
@@ -513,6 +537,9 @@ function BloqueCorreccion({ inv, devuelto, isUpdating, onGuardar, confirmDialog 
     clasif_ajuste: diferencia === 0 ? '' : clasif,
     fecha_inv: fecha,
     notas_inv: notas,
+    ...(esIntercambio
+      ? (intercambio ? { intercambio_id: intercambio.id } : {})
+      : { intercambio_id: null }),
   };
 
   const enviar = async () => {
@@ -567,11 +594,23 @@ function BloqueCorreccion({ inv, devuelto, isUpdating, onGuardar, confirmDialog 
       )}
 
       {diferencia !== 0 && (
-        <Select value={clasif} onValueChange={setClasif}>
+        <Select value={clasif} onValueChange={(v) => { setClasif(v); setIntercambio(null); }}>
           <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Clasificación de ajuste" /></SelectTrigger>
           <SelectContent>{conValorActual(CLASIF_AJUSTE, inv.clasif_ajuste).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
         </Select>
       )}
+
+      {esIntercambio && (parYaPuesto ? (
+        <p className="text-xs text-[#1D9E75]">Ya emparejado con otro conteo.</p>
+      ) : (
+        <SelectorIntercambio
+          diferencia={diferencia}
+          almacen={inv.almacen_num}
+          excluirId={inv.id}
+          valor={intercambio?.id}
+          onElegir={setIntercambio}
+        />
+      ))}
 
       <Textarea value={notas} maxLength={500} onChange={(e) => setNotas(e.target.value)}
         placeholder="Notas del conteo…" style={{ borderRadius: '8px' }} />
@@ -677,6 +716,8 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
       {/* Solo cuando ya no es de inventario: es quien procesa días después
           el que necesita saber de cuándo es el número. */}
       {inv.estado_tarea !== 'en_curso' && <ExistenciaAhora inv={inv} />}
+
+      {inv.intercambio_id && <ParIntercambio id={inv.intercambio_id} />}
 
       {(inv.fact_no_factura || inv.fact_clasif || inv.fact_notas || inv.fact_estado || inv.fact_fecha) && (
         <ReadOnlyBlock title="Registro FACT">
@@ -845,4 +886,47 @@ function celdaConteo(inv, clave, enTabla, difColor) {
     default:
       return env(null);
   }
+}
+
+
+/**
+ * La otra mitad de un intercambio.
+ *
+ * Son un solo hecho contado dos veces, así que desde cualquiera de los dos
+ * conteos hay que poder ver el otro: sus cantidades tienen que ser opuestas
+ * y, si no lo son, algo se emparejó mal y conviene que se note.
+ */
+function ParIntercambio({ id }) {
+  const { data: par, isLoading } = useQuery({
+    queryKey: ['intercambio-par', id],
+    queryFn: async () => (await base44.entities.Inventario.filter({ id }, null, 1))[0] ?? null,
+    enabled: Boolean(id),
+  });
+
+  if (isLoading) return null;
+
+  if (!par) {
+    return (
+      <AlertBanner variant="warning"
+        message="Este conteo estaba emparejado con otro que ya no existe." />
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-secondary/40 p-3 space-y-1"
+      style={{ borderRadius: '8px' }}>
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        Intercambiado con
+      </p>
+      <p className="text-sm">{par.producto_nombre || '—'}</p>
+      <p className="text-xs text-muted-foreground font-mono">{par.producto_codigo}</p>
+      <p className="text-xs text-muted-foreground">
+        Diferencia{' '}
+        <span className={`font-medium ${(par.diferencia ?? 0) > 0 ? 'text-[#BA7517]' : 'text-[#E24B4A]'}`}>
+          {(par.diferencia ?? 0) > 0 ? '+' : ''}{par.diferencia}
+        </span>
+        {' · '}{par.fecha_inv?.slice(0, 10)}
+      </p>
+    </div>
+  );
 }

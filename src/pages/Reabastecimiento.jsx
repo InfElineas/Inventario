@@ -39,6 +39,13 @@ import CabeceraLista from '@/components/shared/CabeceraLista';
 
 const PAGE_SIZE = 50;
 
+/** Cómo se leen «días» y «mínimo». Lo mismo en las dos versiones. */
+const EXPLICACION = (dias) => `«Días» es cuánto dura la existencia al ritmo al que se vende; `
+  + `«mínimo», lo que haría falta para ${dias} días. La venta diaria se calcula sobre los días `
+  + `en que hubo venta, no sobre el calendario: un día sin existencia vende cero y contarlo `
+  + `haría parecer que el producto se pide menos de lo que se pide. No entra lo que lleve más `
+  + `de noventa días sin venderse.`;
+
 /**
  * Las columnas, elegibles como en el resto del modulo.
  *
@@ -226,7 +233,7 @@ export default function Reabastecimiento() {
     <div className="space-y-6">
       <CabeceraLista
         titulo="Reabastecimiento"
-        subtitulo="Qué comprar y cuánto, por los días que aguanta cada producto"
+        subtitulo="Qué comprar y cuánto, por los días que aguanta cada producto al ritmo al que se vende"
         recuento={almacen ? `${filtradas.length} de ${filas.length}` : null}
         buscador={almacen ? (
           <div className="relative">
@@ -323,21 +330,20 @@ export default function Reabastecimiento() {
             </p>
           )}
 
-          {/* El dato siempre; la explicación, detrás de un resumen. Eran
-              cinco líneas de texto antes de la primera fila, y lo que hace
-              falta leer a diario es la primera frase. */}
-          <details className="text-xs text-muted-foreground">
+          {/* En el móvil eran cinco líneas antes de la primera fila, así que
+              se pliega y queda a la vista el dato que se lee a diario. En un
+              monitor cabe entera y esconderla no ahorra nada. */}
+          <details className="sm:hidden text-xs text-muted-foreground">
             <summary className="cursor-pointer list-none marker:hidden">
               {unidades} unidades a pedir
               <span className="ml-1.5 underline underline-offset-2 opacity-70">cómo se calcula</span>
             </summary>
-            <p className="mt-1.5 leading-relaxed">
-              «Días» es cuánto dura la existencia al ritmo al que se vende; «mínimo», lo que haría falta
-              para {dias} días. La venta diaria se calcula sobre los días en que hubo venta, no sobre el
-              calendario: un día sin existencia vende cero y contarlo haría parecer que el producto se pide
-              menos de lo que se pide. No entra lo que lleve más de noventa días sin venderse.
-            </p>
+            <p className="mt-1.5 leading-relaxed">{EXPLICACION(dias)}</p>
           </details>
+          <p className="hidden sm:block text-xs text-muted-foreground">
+            {filtradas.length} {filtradas.length === 1 ? 'producto' : 'productos'} · {unidades} unidades
+            a pedir. {EXPLICACION(dias)}
+          </p>
 
           <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
             <div className="overflow-x-auto">

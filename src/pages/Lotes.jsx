@@ -427,12 +427,34 @@ function MenuLote({ lote, puedeGestionar, onAccion }) {
   const [abierto, setAbierto] = useState(false);
   if (!puedeGestionar) return <span className="text-muted-foreground/40 text-xs">—</span>;
 
+  /*
+   * Las tres salidas, siempre a la vista.
+   *
+   * Antes se escondian las que «no tocaban» segun el estado, y en la pestana
+   * de «sin fecha» eso dejaba el menu con una sola opcion: la de poner la
+   * fecha. Pero sin fecha no significa que el lote este bien, significa que
+   * no se sabe — y quien lo tiene delante puede ver perfectamente que esta
+   * pasado y querer darle salida, o que queda poco y querer rebajarlo.
+   * Esconder la accion no evita el error, solo obliga a inventarse una fecha
+   * para desbloquear el menu.
+   *
+   * Lo unico que se deja fuera es lo que no tiene sentido: mandar a merma un
+   * lote con dos anos por delante, o pedir rebaja de uno ya vencido.
+   */
+  const sinFecha = lote.estado_fv === 'sin_fecha';
   const acciones = [];
-  if (lote.estado_fv === 'vencido' && lote.cantidad > 0) {
-    acciones.push({ clave: 'merma', etiqueta: 'Mandar a merma', Icono: TrendingDown, color: 'text-[#E24B4A]' });
+
+  if (lote.estado_fv === 'vencido' || sinFecha) {
+    acciones.push({
+      clave: 'merma', etiqueta: 'Mandar a merma', Icono: TrendingDown, color: 'text-[#E24B4A]',
+      nota: sinFecha ? 'si lo ves vencido' : null,
+    });
   }
-  if (['critico', 'por_vencer'].includes(lote.estado_fv)) {
-    acciones.push({ clave: 'ic', etiqueta: 'Enviar a intervención comercial', Icono: Send, color: 'text-[#BA7517]' });
+  if (['critico', 'por_vencer'].includes(lote.estado_fv) || sinFecha) {
+    acciones.push({
+      clave: 'ic', etiqueta: 'Enviar a intervención comercial', Icono: Send, color: 'text-[#BA7517]',
+      nota: sinFecha ? 'si le queda poco' : null,
+    });
   }
   acciones.push({
     clave: 'editar',
@@ -449,12 +471,15 @@ function MenuLote({ lote, puedeGestionar, onAccion }) {
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-60 p-1">
-        {acciones.map(({ clave, etiqueta, Icono, color }) => (
+        {acciones.map(({ clave, etiqueta, Icono, color, nota }) => (
           <button key={clave} type="button"
             onClick={() => { setAbierto(false); onAccion(clave); }}
             className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-left hover:bg-secondary transition-colors">
-            <Icono className={`w-3.5 h-3.5 ${color}`} />
-            {etiqueta}
+            <Icono className={`w-3.5 h-3.5 shrink-0 ${color}`} />
+            <span className="min-w-0">
+              {etiqueta}
+              {nota && <span className="block text-[11px] text-muted-foreground">{nota}</span>}
+            </span>
           </button>
         ))}
       </PopoverContent>

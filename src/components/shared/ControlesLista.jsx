@@ -62,18 +62,30 @@ export function FiltroIcono({ icono: Icono, etiqueta, valor, porDefecto, opcione
       <SelectTrigger
         aria-label={puesto ? `${etiqueta}: ${elegida?.label ?? valor}` : etiqueta}
         title={puesto ? `${etiqueta}: ${elegida?.label ?? valor}` : etiqueta}
+        // Cuadrado en pantalla estrecha, con su valor escrito a partir de
+        // `lg`. Reducirlo a un icono era la solucion al movil, donde media
+        // fila por filtro es cara; en un monitor el sitio sobra y obligar a
+        // abrir el desplegable para saber por que esta filtrada la lista es
+        // peor interfaz, no mejor.
+        //
         // `:last-child` y no `[&>svg]`: el disparador pinta el icono que le
         // damos Y su propia flechita detras, asi que ocultando todos los svg
         // se iba tambien el icono y quedaban cuadrados en blanco. La flecha
-        // es siempre el ultimo.
-        className={`${ALTO} w-9 justify-center p-0 [&>svg:last-child]:hidden ${
+        // solo estorba cuando no hay texto.
+        className={`${ALTO} w-9 justify-center p-0 [&>svg:last-child]:hidden text-xs
+          lg:w-auto lg:justify-between lg:gap-1.5 lg:px-3 lg:[&>svg:last-child]:block ${
           puesto
             ? 'border-[#4ade80]/40 text-[#4ade80] bg-[#4ade80]/10'
             : 'text-muted-foreground'
         }`}
         style={{ borderRadius: '8px' }}
       >
-        <Icono className="w-4 h-4" />
+        <span className="flex items-center gap-1.5 min-w-0">
+          <Icono className="w-4 h-4 shrink-0" />
+          <span className="hidden lg:inline truncate max-w-[160px]">
+            {elegida?.label ?? etiqueta}
+          </span>
+        </span>
       </SelectTrigger>
       <SelectContent>
         {opciones.map((o) => <SelectItem key={o.valor} value={o.valor}>{o.label}</SelectItem>)}
