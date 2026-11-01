@@ -25,7 +25,16 @@ consola del IS; aquí no hay registro ni restablecimiento.
 - Login con Google (opcional): flujo por redirect con PKCE a través del IS. El
   usuario debe existir ya en el IS con ese correo.
 
-Más contexto y decisiones: [`docs/migracion-supabase.md`](docs/migracion-supabase.md).
+## Documentación
+
+| | |
+|---|---|
+| [`docs/arquitectura.md`](docs/arquitectura.md) | Qué habla con qué y por qué el navegador no sale solo |
+| [`docs/modulos.md`](docs/modulos.md) | Qué hace cada pantalla y cómo van los flujos |
+| [`docs/base-de-datos.md`](docs/base-de-datos.md) | Tablas, permisos y cómo se aplican las migraciones |
+| [`docs/despliegue.md`](docs/despliegue.md) | Variables, el comando de despliegue y sus trampas |
+| [`docs/revision-inventario.md`](docs/revision-inventario.md) | Repaso del módulo: qué se arregló y qué queda |
+| [`docs/migracion-supabase.md`](docs/migracion-supabase.md) | El salto desde Supabase, decisión a decisión |
 
 ## Variables de entorno
 
