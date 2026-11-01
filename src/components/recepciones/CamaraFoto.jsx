@@ -91,7 +91,7 @@ export default function CamaraFoto({ abierta, onCerrar, onTomar }) {
           </div>
         )}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <Button variant="outline" onClick={onCerrar} style={{ borderRadius: '8px' }}>Cancelar</Button>
           {previa ? (
             <>

@@ -150,7 +150,7 @@ export default function LineaRecibir({ linea, producto, nuevo, onConfirmar, onCa
           onChange={(e) => setNotaCalidad(e.target.value)} style={{ borderRadius: '8px' }} />
       )}
 
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         {onCancelar && (
           <Button variant="ghost" size="sm" onClick={onCancelar} style={{ borderRadius: '8px' }}>
             <X className="w-4 h-4 mr-1.5" /> Cancelar

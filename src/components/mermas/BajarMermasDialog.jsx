@@ -191,7 +191,7 @@ export default function BajarMermasDialog({ mermas, almacen, onHecho, onClose })
                   + 'El auditor las verá sin la rebaja confirmada.'} />
             )}
 
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <Button variant="outline" onClick={onClose} style={{ borderRadius: '8px' }}>
                 {resultado ? 'Cerrar' : 'Cancelar'}
               </Button>

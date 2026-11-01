@@ -505,7 +505,7 @@ function EditarLote({ lote, guardando, onGuardar, onCancelar }) {
           style={{ borderRadius: '8px' }} />
       </label>
 
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button variant="outline" onClick={onCancelar} style={{ borderRadius: '8px' }}>Cancelar</Button>
         <Button disabled={guardando || (!fecha && !nota.trim())}
           onClick={() => onGuardar({ fecha_vencimiento: fecha || null, nota: nota.trim() })}
@@ -568,7 +568,7 @@ function MermaDeLote({ lote, guardando, onGuardar, onCancelar }) {
           style={{ borderRadius: '8px' }} />
       </label>
 
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button variant="outline" onClick={onCancelar} style={{ borderRadius: '8px' }}>Cancelar</Button>
         <Button disabled={guardando || n <= 0 || pasa}
           onClick={() => onGuardar({ cantidad: n, clasif, notas: notas.trim() })}

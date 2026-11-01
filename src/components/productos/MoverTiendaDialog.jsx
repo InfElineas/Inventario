@@ -298,7 +298,7 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
                 message={resultado.detail ?? `Movimiento ejecutado en ${warehouseName(almacen)}.`} />
             )}
 
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <Button variant="outline" onClick={onClose} style={{ borderRadius: '8px' }}>
                 {resultado ? 'Cerrar' : 'Cancelar'}
               </Button>

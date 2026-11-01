@@ -562,7 +562,7 @@ function CreateRecepcionForm({ genNo, user, almacen, onSubmit, onCancel }) {
         <Input value={noOrden} onChange={(e) => setNoOrden(e.target.value)} placeholder="No. orden (opcional)" style={{ borderRadius: '8px' }} />
       </div>
 
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button variant="outline" onClick={onCancel} style={{ borderRadius: '8px' }}>Cancelar</Button>
         <Button onClick={crear} disabled={!proveedor.trim()} style={{ borderRadius: '8px' }}>
           <PackageOpen className="w-4 h-4 mr-1.5" /> Crear recepción
