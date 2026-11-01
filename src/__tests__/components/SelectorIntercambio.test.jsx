@@ -14,7 +14,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 const filter = vi.hoisted(() => vi.fn());
 vi.mock('@/api/base44Client', () => ({ base44: { entities: { Inventario: { filter } } } }));
 
-const { default: SelectorIntercambio } = await import('@/components/inventario/SelectorIntercambio');
+const { default: SelectorIntercambio, cambiosDelPar, CLASIF_INTERCAMBIO } =
+  await import('@/components/inventario/SelectorIntercambio');
 
 const BORRADOR = (extra = {}) => ({
   id: 'a1', producto_nombre: 'Champú Dove 370ml', producto_codigo: '7501',
@@ -89,5 +90,25 @@ describe('SelectorIntercambio', () => {
     const { container } = pintar({ diferencia: 0 });
     expect(container.textContent).toBe('');
     expect(filter).not.toHaveBeenCalled();
+  });
+});
+
+describe('cambiosDelPar', () => {
+  it('enlaza de vuelta y le pone la clasificación de intercambio', () => {
+    // El par se quedaba en borrador con su clasificación anterior: facturación
+    // recibía medio caso y el borrador esperaba a alguien que ya lo cerró.
+    expect(cambiosDelPar('a1')).toEqual({
+      intercambio_id: 'a1',
+      clasif_ajuste: CLASIF_INTERCAMBIO,
+    });
+  });
+
+  it('se lo lleva al mismo estado cuando el conteo cambia de estado', () => {
+    expect(cambiosDelPar('a1', 'pend_fact').estado_tarea).toBe('pend_fact');
+  });
+
+  it('guardar un borrador no arrastra al otro a ningún sitio', () => {
+    expect(cambiosDelPar('a1')).not.toHaveProperty('estado_tarea');
+    expect(cambiosDelPar('a1', undefined)).not.toHaveProperty('estado_tarea');
   });
 });

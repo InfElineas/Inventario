@@ -7,6 +7,29 @@ import { Check, Loader2 } from 'lucide-react';
 export const CLASIF_INTERCAMBIO = 'Intercambio de Producto';
 
 /**
+ * Lo que hay que escribirle a la otra mitad cuando se declara el intercambio.
+ *
+ * Las dos mitades son el mismo hecho, así que tienen que viajar juntas. Si
+ * una se clasifica como intercambio y se manda a facturación, la otra no
+ * puede quedarse en borrador con otra clasificación: facturación recibiría
+ * un ajuste suelto que no cuadra con nada y el borrador se quedaría ahí
+ * esperando a alguien que ya dio el caso por cerrado.
+ *
+ * El estado solo se propaga si el conteo que declara el par cambia de
+ * estado. Guardar un borrador no arrastra al otro a ningún sitio.
+ *
+ * @param {string} idPropio  El conteo que declara el intercambio.
+ * @param {string} [estado]  El estado al que acaba de pasar ese conteo.
+ */
+export function cambiosDelPar(idPropio, estado) {
+  return {
+    intercambio_id: idPropio,
+    clasif_ajuste: CLASIF_INTERCAMBIO,
+    ...(estado ? { estado_tarea: estado } : {}),
+  };
+}
+
+/**
  * Con qué conteo se intercambió este producto.
  *
  * Un intercambio es un solo hecho contado dos veces: se vendió un producto

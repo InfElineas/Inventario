@@ -97,6 +97,29 @@ export async function avisarConteoReemplazado(conteo, actor) {
 }
 
 /**
+ * Avisa a quien contó que su conteo se fue con el intercambio de otro.
+ *
+ * Las dos mitades de un intercambio son el mismo hecho y viajan juntas: al
+ * mandar una a facturación, la otra va detrás. Si el borrador era de otra
+ * persona, se le va de las manos sin que haya tocado nada, así que tiene que
+ * enterarse por un aviso y no por una bandeja que se vació sola.
+ */
+export async function avisarIntercambioEmparejado(conteo, actor, otroProducto) {
+  if (!conteo?.especialista_id) return
+  try {
+    await insertNotif(
+      conteo.especialista_id,
+      'inventario',
+      'Un conteo tuyo se envió como parte de un intercambio',
+      `${conteo.producto_nombre || conteo.producto_codigo || 'Un producto'}: `
+      + `${actor?.full_name || actor?.email || 'alguien'} lo emparejó con el conteo de `
+      + `${otroProducto || 'otro producto'} y los dos fueron a facturación juntos.`,
+      '/inventario',
+    )
+  } catch { /* el aviso no puede impedir el emparejado */ }
+}
+
+/**
  * Deja constancia de un borrado.
  *
  * Borrar un conteo o una merma hace desaparecer la fila, y con ella el motivo

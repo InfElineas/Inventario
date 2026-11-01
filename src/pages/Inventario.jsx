@@ -23,7 +23,7 @@ import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/sh
 import Pagination from '@/components/shared/Pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { notifyJefeDepto } from '@/lib/notificationService';
-import { logTransicion, logBorrado, notificarTransicion, avisarConteoReemplazado } from '@/lib/workflowService';
+import { logTransicion, logBorrado, notificarTransicion, avisarConteoReemplazado, avisarIntercambioEmparejado } from '@/lib/workflowService';
 import { useConfirm } from '@/lib/useConfirm';
 import { CLASIF_AJUSTE, CLASIF_FACT, ESTADO_FACT, conValorActual } from '@/lib/constants'
 import { ESTADO_POR_RESULTADO, estadoContradictorio } from '@/lib/ajusteFact'
@@ -32,7 +32,7 @@ import { tieneRol } from '@/lib/roles';
 import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
 import CabeceraLista from '@/components/shared/CabeceraLista';
 import ListaResponsive from '@/components/shared/ListaResponsive';
-import SelectorIntercambio, { CLASIF_INTERCAMBIO } from '@/components/inventario/SelectorIntercambio';
+import SelectorIntercambio, { CLASIF_INTERCAMBIO, cambiosDelPar } from '@/components/inventario/SelectorIntercambio';
 
 const PAGE_SIZE = 50
 
@@ -66,6 +66,28 @@ const ORDEN_COLUMNA = {
  * gente; facturación y auditoría los procesan, así que tienen que verlos.
  */
 const VISTA_GLOBAL_INV = ['jefe_depto', 'fact', 'auditor', 'administrador', 'superadmin'];
+
+/**
+ * Deja atado el otro conteo del intercambio.
+ *
+ * Las dos mitades son el mismo hecho contado dos veces, así que al declarar
+ * una hay que dejar la otra igual: enlazada de vuelta, con la clasificación
+ * de intercambio y en el mismo estado. Antes solo se escribía el enlace, y
+ * el otro conteo se quedaba en borrador con la clasificación que tuviera:
+ * facturación veía llegar medio caso y el borrador esperaba a alguien que ya
+ * lo daba por cerrado.
+ *
+ * Si el par era de otra persona, se le avisa: su conteo se le fue de las
+ * manos sin que ella tocara nada.
+ */
+async function enlazarPar({ parId, propio, estado, producto, user }) {
+  const par = await base44.entities.Inventario.update(parId, cambiosDelPar(propio, estado));
+  const seFue = estado && estado !== 'en_curso';
+  if (seFue && par?.especialista_id && par.especialista_id !== user?.email) {
+    await avisarIntercambioEmparejado(par, user, producto);
+  }
+  return par;
+}
 
 const INV_COL_DEFS = [
   { key: 'producto',      label: 'Producto',       defaultOn: true,  required: true  },
@@ -162,13 +184,21 @@ export default function Inventario({ ambito = 'inventario' }) {
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['inventarios'] });
       setShowForm(false);
-      // El enlace del intercambio va en los dos conteos: abrir cualquiera de
-      // ellos tiene que llevar al otro. El id de este no existía hasta
-      // ahora, así que la otra mitad se escribe aquí.
+      // La otra mitad del intercambio. El id de este conteo no existía hasta
+      // ahora, así que el enlace de vuelta se escribe aquí.
       if (variables.intercambio_id && result?.id) {
-        base44.entities.Inventario
-          .update(variables.intercambio_id, { intercambio_id: result.id })
-          .catch(() => {});
+        enlazarPar({
+          parId: variables.intercambio_id,
+          propio: result.id,
+          estado: variables.estado_tarea,
+          producto: variables.producto_nombre,
+          user,
+        })
+          .catch((e) => alert(
+            'El conteo se guardó, pero no se pudo enlazar con el otro conteo del '
+            + `intercambio: ${e.message}. Ábrelo y vuelve a emparejarlo.`,
+          ))
+          .finally(() => queryClient.invalidateQueries({ queryKey: ['inventarios'] }));
       }
       const registro = { ...variables, id: result?.id, estado_tarea: null }
       logTransicion('inventarios', registro, variables.estado_tarea, user, variables).catch(() => {})
@@ -202,9 +232,20 @@ export default function Inventario({ ambito = 'inventario' }) {
       // porque el enlace vale en los dos sentidos: abrir cualquiera de los
       // dos conteos tiene que llevar al otro.
       if (data.intercambio_id) {
-        await base44.entities.Inventario
-          .update(data.intercambio_id, { intercambio_id: id })
-          .catch(() => {});
+        try {
+          await enlazarPar({
+            parId: data.intercambio_id,
+            propio: id,
+            estado: data.estado_tarea,
+            producto: data.producto_nombre ?? inventarios.find((x) => x.id === id)?.producto_nombre,
+            user,
+          });
+        } catch (e) {
+          // El conteo ya quedó guardado; fallar aquí no lo deshace. Pero
+          // callarlo deja un intercambio a medias sin que nadie lo sepa.
+          alert('El conteo se guardó, pero no se pudo enlazar con el otro conteo del '
+            + `intercambio: ${e.message}. Ábrelo y vuelve a emparejarlo.`);
+        }
       }
 
       // Los conteos anteriores del mismo producto se cierran sin ajuste: su
@@ -601,7 +642,9 @@ function BloqueCorreccion({ inv, devuelto, isUpdating, onGuardar, confirmDialog 
       )}
 
       {esIntercambio && (parYaPuesto ? (
-        <p className="text-xs text-[#1D9E75]">Ya emparejado con otro conteo.</p>
+        // Decir «ya emparejado» y no decir con qué obliga a cerrar el conteo
+        // y abrir el otro para comprobarlo.
+        <ParIntercambio id={inv.intercambio_id} />
       ) : (
         <SelectorIntercambio
           diferencia={diferencia}
