@@ -28,23 +28,21 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 const DialogContent = React.forwardRef(({ className, children, style, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
+    {/*
+      El ancho sale de dos reglas que se complementan: `w-[calc(100%-2rem)]`
+      —el 100% es el de la pantalla, porque el dialogo es `fixed`— deja un
+      margen de 1rem a cada lado en el telefono, y el `max-w-*` manda en
+      cuanto la pantalla es mas ancha que el tope. No pongas aqui un
+      `maxWidth` en `style`: tapa el `max-w-*` de cada dialogo y los deja
+      todos a pantalla completa tambien en el escritorio.
+    */}
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg max-h-[90dvh] overflow-y-auto translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-4 sm:p-6 shadow-lg [&>*]:min-w-0 duration-200 rounded-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
         className
       )}
-      style={{
-        // Tope duro al ancho de la pantalla. El `max-w-*` que pone cada
-        // dialogo —`2xl`, `4xl`— manda en el escritorio, pero en un telefono
-        // se pasaba: el contenido es una rejilla y sus hijos, con
-        // `min-width: auto`, la estiraban mas alla del ancho fijado en cuanto
-        // una fila de botones no cabia. Va en `style` y no en una clase
-        // porque dos `max-w-*` no pueden convivir: la ultima gana y tapa a
-        // la otra.
-        maxWidth: 'calc(100vw - 2rem)',
-        ...style,
-      }}
+      style={style}
       {...props}>
       {children}
       <DialogPrimitive.Close

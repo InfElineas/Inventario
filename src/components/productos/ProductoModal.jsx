@@ -10,7 +10,7 @@ export default function ProductoModal({ producto, role, open, onClose, onUpdate 
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
-      <DialogContent className="max-w-2xl w-full p-0 gap-0 overflow-hidden bg-card border-border">
+      <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden bg-card border-border">
         <DialogHeader className="px-5 py-4 border-b border-border">
           <DialogTitle className="text-sm font-medium text-foreground">
             {producto.nombre}

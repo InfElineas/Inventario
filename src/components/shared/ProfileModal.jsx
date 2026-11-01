@@ -37,7 +37,7 @@ export default function ProfileModal({ user, open, onClose }) {
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose() }}>
       <DialogContent
-        className="max-w-sm w-full p-0 gap-0 overflow-hidden"
+        className="max-w-sm p-0 gap-0 overflow-hidden"
         style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
       >
         <DialogHeader className="px-5 pt-5 pb-0">
