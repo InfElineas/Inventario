@@ -12,7 +12,8 @@ import ProductSearch from '@/components/shared/ProductSearch';
 import AlertBanner from '@/components/shared/AlertBanner';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Search, PackageOpen, Trash2, Pencil, ChevronLeft, Image as ImageIcon } from 'lucide-react';
+import { Plus, Search, PackageOpen, Trash2, Pencil, ChevronLeft, ListFilter,
+  Image as ImageIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { useConfirm } from '@/lib/useConfirm';
 import SortTh from '@/components/shared/SortTh';
@@ -30,6 +31,7 @@ import { fetchPedidos, fetchLineasDePedido } from '@/services/pedidosService';
 import LineaRecibir from '@/components/recepciones/LineaRecibir';
 import { SIN_SONDEO } from '@/lib/query-client';
 import BotonAccion from '@/components/shared/BotonAccion';
+import { FiltroIcono } from '@/components/shared/ControlesLista';
 
 const RECEP_COL_DEFS = [
   { key: 'no_recepcion',      label: 'No. Recepción', defaultOn: true, required: true  },
@@ -307,7 +309,17 @@ export default function Recepciones() {
             {almacen ? `Recepción de mercancía en ${warehouseName(almacen)}` : 'Recepción de mercancía'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {vista === 'recepciones' && (
+            <FiltroIcono
+              icono={ListFilter}
+              etiqueta="Estado de la recepción"
+              valor={filtroEstado}
+              porDefecto="todas"
+              onChange={setFiltroEstado}
+              opciones={FILTRO_RECEPCION}
+            />
+          )}
           {vista === 'recepciones' && (
             <ColPicker cols={RECEP_COL_DEFS} visible={cols}
               onChange={(next) => { setCols(next); saveColsWithOrder(RECEP_COLS_KEY, next, colOrder); }}
@@ -315,7 +327,7 @@ export default function Recepciones() {
               onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(RECEP_COLS_KEY, cols, next); }} />
           )}
           {puedeRecibir && (
-            <BotonAccion icono={Plus} variant="outline" onClick={() => setShowCreate(true)}>
+            <BotonAccion icono={Plus} onClick={() => setShowCreate(true)}>
               Recepción sin pedido
             </BotonAccion>
           )}
@@ -360,14 +372,6 @@ export default function Recepciones() {
           <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)}
             placeholder="Buscar por proveedor, orden o producto..." className="pl-10" style={{ borderRadius: '8px' }} />
         </div>
-        <Select value={filtroEstado} onValueChange={setFiltroEstado}>
-          <SelectTrigger className="w-44" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {FILTRO_RECEPCION.map((f) => (
-              <SelectItem key={f.valor} value={f.valor}>{f.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       <div>

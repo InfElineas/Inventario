@@ -14,7 +14,7 @@ import StatusBadge from '@/components/shared/StatusBadge';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
 import Timeline from '@/components/shared/Timeline';
 import { TIPO_CASO_LABELS, MOTIVOS_TKC, MOTIVOS_ELINEAS } from '@/lib/constants';
-import { Search, AlertTriangle, Hash, Eye } from 'lucide-react';
+import { Search, AlertTriangle, Hash, Eye, Layers, ListFilter } from 'lucide-react';
 import { notifyJefeDepto } from '@/lib/notificationService';
 import { logTransicion, notificarTransicion } from '@/lib/workflowService';
 import { useConfirm } from '@/lib/useConfirm';
@@ -23,7 +23,7 @@ import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import { tieneRol } from '@/lib/roles';
-import FiltrosPlegables from '@/components/shared/FiltrosPlegables';
+import { FiltroIcono } from '@/components/shared/ControlesLista';
 
 /** Casos por página. 1.185 no caben, y 50 es lo que usan las demás tablas. */
 const PAGE_SIZE = 50;
@@ -130,6 +130,34 @@ export default function Anuncios() {
           <h1 className="text-lg sm:text-xl font-medium">Anuncios desactivados</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Gestión de anuncios desactivados y sin ID</p>
         </div>
+        <FiltroIcono
+          icono={Layers}
+          etiqueta="Tipo de caso"
+          valor={filterTipo}
+          porDefecto="all"
+          onChange={(v) => { setFilterTipo(v); setPage(1); }}
+          opciones={[
+            { valor: 'all', label: 'Todos los tipos' },
+            { valor: 'muerto_ef_positivo', label: 'MUERTO EF>0' },
+            { valor: 'desact_ef_positivo', label: 'DESACT EF>0' },
+            { valor: 'sin_id', label: 'Sin ID' },
+            { valor: 'activo_ef_cero', label: 'Activo EF=0' },
+          ]}
+        />
+        <FiltroIcono
+          icono={ListFilter}
+          etiqueta="Estado"
+          valor={filterEstado}
+          porDefecto="all"
+          onChange={(v) => { setFilterEstado(v); setPage(1); }}
+          opciones={[
+            { valor: 'all', label: 'Todos los estados' },
+            { valor: 'pendiente', label: 'Pendiente' },
+            { valor: 'pend_ca', label: 'Pend. CA' },
+            { valor: 'en_auditoria', label: 'En auditoría' },
+            { valor: 'completado', label: 'Completado' },
+          ]}
+        />
         <ColPicker cols={ANUNCIO_COL_DEFS} visible={cols}
           onChange={(next) => { setCols(next); saveColsWithOrder(ANUNCIO_COLS_KEY, next, colOrder); }}
           storageKey={ANUNCIO_COLS_KEY} order={colOrder}
@@ -151,28 +179,6 @@ export default function Anuncios() {
         <Input value={searchQ} onChange={(e) => { setSearchQ(e.target.value); setPage(1); }} placeholder="Buscar producto..." className="pl-10" style={{ borderRadius: '8px' }} />
       </div>
 
-      <FiltrosPlegables activos={(filterTipo === 'all' ? 0 : 1) + (filterEstado === 'all' ? 0 : 1)} onLimpiar={() => { setFilterTipo('all'); setFilterEstado('all'); setPage(1); }}>
-        <Select value={filterTipo} onValueChange={(v) => { setFilterTipo(v); setPage(1); }}>
-          <SelectTrigger className="w-40" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos tipos</SelectItem>
-            <SelectItem value="muerto_ef_positivo">{"MUERTO EF>0"}</SelectItem>
-            <SelectItem value="desact_ef_positivo">{"DESACT EF>0"}</SelectItem>
-            <SelectItem value="sin_id">Sin ID</SelectItem>
-            <SelectItem value="activo_ef_cero">{"Activo EF=0"}</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={filterEstado} onValueChange={(v) => { setFilterEstado(v); setPage(1); }}>
-          <SelectTrigger className="w-40" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos estados</SelectItem>
-            <SelectItem value="pendiente">Pendiente</SelectItem>
-            <SelectItem value="pend_ca">Pend. CA</SelectItem>
-            <SelectItem value="en_auditoria">En auditoría</SelectItem>
-            <SelectItem value="completado">Completado</SelectItem>
-          </SelectContent>
-        </Select>
-      </FiltrosPlegables>
 
       <div>
         <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>

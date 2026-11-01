@@ -1,21 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import StatusBadge from '@/components/shared/StatusBadge';
 import MermaForm from '@/components/mermas/MermaForm';
 import MermaDetail from '@/components/mermas/MermaDetail';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowDownToLine, Check, Plus, Search } from 'lucide-react';
+import { ArrowDownToLine, Check, ListFilter, Plus, Search } from 'lucide-react';
 import { ESTADOS_AMBITO, ETIQUETA_AMBITO } from '@/lib/ambito';
 import { useTablaPaginada } from '@/lib/useTablaPaginada';
 import Pagination from '@/components/shared/Pagination';
 import BajarMermasDialog from '@/components/mermas/BajarMermasDialog';
-import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
-import { WAREHOUSES, warehouseName } from '@/services/tkc/warehouses';
+import { useAlmacen } from '@/lib/useAlmacen';
+import { warehouseName } from '@/services/tkc/warehouses';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import { ROLES_TIENDA } from '@/lib/ajustes';
 import { notifyJefeDepto } from '@/lib/notificationService';
@@ -23,8 +22,8 @@ import { logTransicion, logBorrado, notificarTransicion } from '@/lib/workflowSe
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import { tieneRol } from '@/lib/roles';
-import FiltrosPlegables from '@/components/shared/FiltrosPlegables';
 import BotonAccion from '@/components/shared/BotonAccion';
+import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
 
 
 /**
@@ -76,24 +75,6 @@ const ORDEN_COLUMNA = {
 /** Quién ve las mermas de los demás. Mismo criterio que en inventario. */
 const VISTA_GLOBAL_MERMAS = ['jefe_depto', 'fact', 'auditor', 'administrador', 'superadmin'];
 
-function SelectorAlmacen({ almacen, setAlmacen, almacenesConfig }) {
-  const almacenes = useMemo(
-    () => WAREHOUSES.filter((w) => filterAlmacenesByConfig([w.key], almacenesConfig).length > 0),
-    [almacenesConfig],
-  );
-  const valido = almacenes.some((w) => w.key === almacen);
-
-  return (
-    <Select value={valido ? almacen : ''} onValueChange={setAlmacen}>
-      <SelectTrigger className="w-52" style={{ borderRadius: '8px' }}>
-        <SelectValue placeholder="Elige un almacén" />
-      </SelectTrigger>
-      <SelectContent>
-        {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
-      </SelectContent>
-    </Select>
-  );
-}
 
 export default function Mermas({ ambito = 'inventario' }) {
   const [showForm, setShowForm] = useState(false);
@@ -236,6 +217,24 @@ export default function Mermas({ ambito = 'inventario' }) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />
+          <FiltroIcono
+            icono={ListFilter}
+            etiqueta="Estado"
+            valor={filterEstado}
+            porDefecto="ambito"
+            onChange={setFilterEstado}
+            opciones={[
+              { valor: 'ambito', label: ETIQUETA_AMBITO[ambito] },
+              { valor: 'all', label: 'Todos los estados' },
+              { valor: 'en_curso', label: 'En curso' },
+              { valor: 'pend_fact', label: 'Pend. FACT' },
+              { valor: 'en_auditoria', label: 'En auditoría' },
+              { valor: 'completado', label: 'Completado' },
+              { valor: 'devuelto', label: 'Devuelto' },
+              { valor: 'reconteo_solicitado', label: 'Reconteo' },
+            ]}
+          />
           <ColPicker cols={MERMA_COL_DEFS} visible={cols}
             onChange={(next) => { setCols(next); saveColsWithOrder(MERMA_COLS_KEY, next, colOrder); }}
             storageKey={MERMA_COLS_KEY} order={colOrder}
@@ -264,23 +263,6 @@ export default function Mermas({ ambito = 'inventario' }) {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar..." className="pl-10" style={{ borderRadius: '8px' }} />
       </div>
-
-      <FiltrosPlegables activos={filterEstado === 'ambito' ? 0 : 1} onLimpiar={() => setFilterEstado('ambito')}>
-        <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />
-        <Select value={filterEstado} onValueChange={setFilterEstado}>
-          <SelectTrigger className="w-48" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ambito">{ETIQUETA_AMBITO[ambito]}</SelectItem>
-            <SelectItem value="all">Todos los estados</SelectItem>
-            <SelectItem value="en_curso">En curso</SelectItem>
-            <SelectItem value="pend_fact">Pend. FACT</SelectItem>
-            <SelectItem value="en_auditoria">En auditoría</SelectItem>
-            <SelectItem value="completado">Completado</SelectItem>
-            <SelectItem value="devuelto">Devuelto</SelectItem>
-            <SelectItem value="reconteo_solicitado">Reconteo</SelectItem>
-          </SelectContent>
-        </Select>
-      </FiltrosPlegables>
 
       {/* La barra está siempre que haya algo que bajar, no solo al marcar: si
           el botón aparece con la selección, quien no sabe que puede marcar

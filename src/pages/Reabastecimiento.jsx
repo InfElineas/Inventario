@@ -3,20 +3,19 @@ import { useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AlertBanner from '@/components/shared/AlertBanner';
 import Pagination from '@/components/shared/Pagination';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
-import FiltrosPlegables from '@/components/shared/FiltrosPlegables';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { SIN_SONDEO } from '@/lib/query-client';
 import { fetchCobertura } from '@/services/rotacionService';
 import { WAREHOUSES, warehouseName } from '@/services/tkc/warehouses';
-import { Download, Loader2, RefreshCw, Search, ShoppingCart } from 'lucide-react';
+import { Download, Factory, Loader2, Megaphone, RefreshCw, Search, ShoppingCart } from 'lucide-react';
 import BotonAccion from '@/components/shared/BotonAccion';
+import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
 
 /**
  * Qué hay que reponer, por días de cobertura.
@@ -236,14 +235,29 @@ export default function Reabastecimiento() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <Select value={almacenes.some((w) => w.key === almacen) ? almacen : ''} onValueChange={setAlmacen}>
-            <SelectTrigger className="w-full sm:w-52" style={{ borderRadius: '8px' }}>
-              <SelectValue placeholder="Elige un almacén" />
-            </SelectTrigger>
-            <SelectContent>
-              {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />
+          <FiltroIcono
+            icono={Megaphone}
+            etiqueta="Estado del anuncio"
+            valor={anuncio}
+            porDefecto={ANUNCIO_POR_DEFECTO}
+            onChange={setAnuncio}
+            opciones={[
+              { valor: 'TODOS', label: 'Todos los anuncios' },
+              ...anuncios.map((a) => ({ valor: a, label: a })),
+            ]}
+          />
+          <FiltroIcono
+            icono={Factory}
+            etiqueta="Suministrador"
+            valor={suministrador || 'all'}
+            porDefecto="all"
+            onChange={(v) => setSuministrador(v === 'all' ? '' : v)}
+            opciones={[
+              { valor: 'all', label: 'Todos los suministradores' },
+              ...suministradores.map((x) => ({ valor: x, label: x })),
+            ]}
+          />
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
             Cubrir
             <Input type="number" min="1" max="365" value={dias} className="w-16 h-9 text-right text-xs"
@@ -299,28 +313,6 @@ export default function Reabastecimiento() {
               placeholder="Nombre o código…" className="pl-10" style={{ borderRadius: '8px' }} />
           </div>
 
-          <FiltrosPlegables
-            activos={(anuncio === ANUNCIO_POR_DEFECTO ? 0 : 1) + (suministrador ? 1 : 0)}
-            onLimpiar={() => { setAnuncio(ANUNCIO_POR_DEFECTO); setSuministrador(''); }}>
-            <Select value={anuncio} onValueChange={setAnuncio}>
-              <SelectTrigger className="w-full sm:w-56" style={{ borderRadius: '8px' }}>
-                <SelectValue placeholder="Estado del anuncio" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TODOS">Todos los anuncios</SelectItem>
-                {anuncios.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={suministrador || 'all'} onValueChange={(v) => setSuministrador(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-full sm:w-60" style={{ borderRadius: '8px' }}>
-                <SelectValue placeholder="Suministrador" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los suministradores</SelectItem>
-                {suministradores.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </FiltrosPlegables>
 
           {anuncio !== 'TODOS' && porAnuncio.length < filas.length && (
             <p className="text-xs text-muted-foreground">

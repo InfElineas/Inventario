@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen'
 import BloqueMetricas from '@/components/shared/BloqueMetricas'
+import AvisosPendientes from '@/components/shared/AvisosPendientes'
 import { fetchLotes } from '@/services/lotesService'
 import { isExternaConfigured, fetchAlmacenes } from '@/services/syncService'
-import { ChevronDown, Clock, CalendarDays, X } from 'lucide-react'
+import { ChevronDown, Clock, CalendarDays, X, Undo2, AlertTriangle, ClipboardList,
+  FileText, ShieldCheck } from 'lucide-react'
 import { base44 } from '@/api/base44Client';
 import CriticosReabastecimiento from '@/components/dashboard/CriticosReabastecimiento'
 
@@ -521,6 +523,43 @@ export default function Dashboard() {
     pendFact: inventarios.filter(i => i.estado_tarea === 'pend_fact').length,
   }), [inventarios])
 
+  /**
+   * Lo que te esta esperando.
+   *
+   * No son cifras del catalogo —cuantos SKU hay, cuantos agotados— que desde
+   * aqui no se pueden tocar: son tareas, con a donde ir a resolverlas. Lo que
+   * esta en cero no se pinta, que una lista de «0 pendientes» repetida cinco
+   * veces esconde al unico que si tiene algo.
+   */
+  const pendientes = useMemo(() => {
+    const porVencer = lotes.filter(l => ['critico', 'por_vencer'].includes(l.estado_fv)).length
+    const vencidos = lotes.filter(l => l.estado_fv === 'vencido').length
+    const devueltos = inventarios.filter(i => i.estado_tarea === 'devuelto').length
+                    + mermas.filter(m => m.estado_tarea === 'devuelto').length
+    const enCurso = inventarios.filter(i => i.estado_tarea === 'en_curso').length
+
+    return [
+      { clave: 'devueltos', cantidad: devueltos, color: TAREA_COLOR.devuelto, Icono: Undo2,
+        texto: devueltos === 1 ? 'caso te lo devolvieron' : 'casos te los devolvieron',
+        accion: 'Corregir y volver a enviar', enlace: '/inventario' },
+      { clave: 'vencidos', cantidad: vencidos, color: '#e24b4a', Icono: AlertTriangle,
+        texto: vencidos === 1 ? 'lote ya vencido con existencia' : 'lotes ya vencidos con existencia',
+        accion: 'Darles salida como merma', enlace: '/lotes' },
+      { clave: 'porVencer', cantidad: porVencer, color: '#ba7517', Icono: Clock,
+        texto: porVencer === 1 ? 'lote se vence en menos de 30 dias' : 'lotes se vencen en menos de 30 dias',
+        accion: 'Revisar vencimientos', enlace: '/lotes' },
+      { clave: 'enCurso', cantidad: enCurso, color: '#378add', Icono: ClipboardList,
+        texto: enCurso === 1 ? 'conteo sin enviar a facturacion' : 'conteos sin enviar a facturacion',
+        accion: 'Terminarlos y enviarlos', enlace: '/inventario' },
+      { clave: 'pendFact', cantidad: invStats.pendFact + mermaStats.pendFact, color: '#fb923c', Icono: FileText,
+        texto: 'esperando a facturacion',
+        accion: 'Ver que falta', enlace: '/facturacion/inventario' },
+      { clave: 'enAudit', cantidad: invStats.enAudit, color: '#7f77dd', Icono: ShieldCheck,
+        texto: invStats.enAudit === 1 ? 'caso en auditoria' : 'casos en auditoria',
+        accion: 'Seguir su estado', enlace: '/auditoria' },
+    ]
+  }, [lotes, inventarios, mermas, invStats, mermaStats])
+
   const syncLabel = fmtDate(lastSync?.fecha)
   const openModal = key => setKpiModal(key)
 
@@ -663,6 +702,13 @@ export default function Dashboard() {
       {/* ══════════════════ VISTA POR ALMACÉN ══════════════════ */}
       {almacen && (
         <>
+          {/* Primero lo que hay que hacer, despues como esta el almacen. Las
+              cifras del catalogo no se pueden tocar desde aqui; estas si. */}
+          <div className="space-y-2">
+            <h2 className="text-sm font-medium">Te esta esperando</h2>
+            <AvisosPendientes avisos={pendientes} />
+          </div>
+
           {/* KPI Row 1 — 6 tarjetas igual que global */}
           <BloqueMetricas metricas={[
             { clave: 'sinReserva', titulo: 'Sin Reserva',  valor: stats.sinReserva, sub: 'urgente · A=0 y T>6', color: '#e24b4a', alerta: stats.sinReserva > 0 },

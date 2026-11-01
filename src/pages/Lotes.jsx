@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -12,7 +12,7 @@ import LotBadge from '@/components/shared/LotBadge';
 import { useSortable } from '@/lib/useSortable';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
 import { Search, AlertTriangle, Clock, CheckCircle, HelpCircle, Send, MoreHorizontal,
-  CalendarPlus, TrendingDown, RefreshCw } from 'lucide-react';
+  CalendarPlus, TrendingDown, RefreshCw, Thermometer } from 'lucide-react';
 import { format } from 'date-fns';
 import { tieneRol } from '@/lib/roles';
 import { ALL_CLASIF_MERMA } from '@/lib/constants';
@@ -23,10 +23,9 @@ import Pagination from '@/components/shared/Pagination';
 import ListaResponsive from '@/components/shared/ListaResponsive';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { WAREHOUSES, warehouseName } from '@/services/tkc/warehouses';
-import { filterAlmacenesByConfig } from '@/lib/useAlmacen';
+import { warehouseName } from '@/services/tkc/warehouses';
 import { notifyJefeDepto } from '@/lib/notificationService';
-import FiltrosPlegables from '@/components/shared/FiltrosPlegables';
+import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
 
 const LOTE_COL_DEFS = [
   { key: 'producto_nombre',   label: 'Producto',  defaultOn: true,  required: true  },
@@ -82,10 +81,6 @@ export default function Lotes() {
   const queryClient = useQueryClient();
 
   const { almacen, setAlmacen, almacenesConfig } = useAlmacen();
-  const almacenes = useMemo(
-    () => WAREHOUSES.filter((w) => filterAlmacenesByConfig([w.key], almacenesConfig).length > 0),
-    [almacenesConfig],
-  );
 
   // Mismo patrón que Inventario, Mermas y Reabastecimiento, y con el ALMACÉN
   // dentro: antes, al cambiar de almacén te quedabas en la página cuarenta
@@ -196,18 +191,25 @@ export default function Lotes() {
         <div className="flex flex-wrap items-center gap-2">
           {/* Qué almacén se está mirando, a la vista y cambiable aquí: los
               lotes vienen por almacén y antes no se decía cuál. */}
-          <Select value={almacenes.some((w) => w.key === almacen) ? almacen : ''} onValueChange={setAlmacen}>
-            <SelectTrigger className="w-52" style={{ borderRadius: '8px' }}>
-              <SelectValue placeholder="Elige un almacén" />
-            </SelectTrigger>
-            <SelectContent>
-              {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />
           <Button variant="outline" onClick={() => refetch()} disabled={isFetching || !almacen}
             style={{ borderRadius: '8px' }} title="Volver a pedir el informe de lotes">
             <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
           </Button>
+          {/* El unico filtro de la pantalla, junto al de columnas: un
+              plegable para un solo desplegable era mas clic que filtro. */}
+          <FiltroIcono
+            icono={Thermometer}
+            etiqueta="Temperatura"
+            valor={filterTemp}
+            porDefecto="all"
+            onChange={setFilterTemp}
+            opciones={[
+              { valor: 'all', label: 'Todas las temperaturas' },
+              { valor: 'ambient', label: 'Ambiente' },
+              { valor: 'chilled', label: 'Frio' },
+            ]}
+          />
           <ColPicker cols={LOTE_COL_DEFS} visible={cols}
             onChange={(next) => { setCols(next); saveColsWithOrder(LOTE_COLS_KEY, next, colOrder); }}
             storageKey={LOTE_COLS_KEY} order={colOrder}
@@ -266,16 +268,6 @@ export default function Lotes() {
         <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar por producto, código o lote..." className="pl-10" style={{ borderRadius: '8px' }} />
       </div>
 
-      <FiltrosPlegables activos={filterTemp === 'all' ? 0 : 1} onLimpiar={() => setFilterTemp('all')}>
-        <Select value={filterTemp} onValueChange={reiniciar(setFilterTemp)}>
-          <SelectTrigger className="w-36" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas temp.</SelectItem>
-            <SelectItem value="ambient">Ambient</SelectItem>
-            <SelectItem value="chilled">Chilled</SelectItem>
-          </SelectContent>
-        </Select>
-      </FiltrosPlegables>
 
       <ListaResponsive
         columnas={colOrder.filter((k) => cols[k])}

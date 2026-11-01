@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useDeferredValue, lazy, Suspense 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
-import { isExternaConfigured, syncFromExternal } from '@/services/syncService';
+import { syncFromExternal } from '@/services/syncService';
 import { fetchExistenciaTkc, refrescarSubmayor, TKC_ALMACENES } from '@/services/tkcService';
 import { useAccesoTkc } from '@/lib/useAccesoTkc';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
@@ -20,7 +20,6 @@ import { notifToast } from '@/lib/notifToast';
 import { Card } from '@/components/ui/card';
 import KPICard from '@/components/shared/KPICard';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
-import FiltrosPlegables from '@/components/shared/FiltrosPlegables';
 import ProductHoverCard from '@/components/shared/ProductHoverCard';
 import CatalogoHoverCard from '@/components/productos/CatalogoHoverCard';
 import Pagination from '@/components/shared/Pagination';
@@ -712,7 +711,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   });
 
   // ── Shared helpers ─────────────────────────────────────────
-  const FILTER_CLS = "appearance-none w-full sm:w-auto pl-3 pr-8 py-2 text-sm rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50";
+  const FILTER_CLS = "appearance-none pl-3 pr-8 py-2 text-sm rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50";
   const FILTER_INPUT_CLS = "pl-3 pr-3 py-2 text-sm rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 w-24";
   const SET_FILTER = (key) => (e) => { setAdvFilters(f => ({ ...f, [key]: e.target.value })); resetPage(); };
 
@@ -766,17 +765,6 @@ export default function Productos({ initialSource: initialSourceRaw }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Fuente: solo TKC */}
-          {isExternaConfigured && (
-            <div className="flex rounded-lg border border-border overflow-hidden text-sm">
-              <button onClick={() => switchSource('tkc')}
-                className={`px-3 py-1.5 flex items-center gap-1.5 transition-colors ${source === 'tkc' ? 'bg-[#4ade80]/10 text-[#4ade80]' : 'bg-card text-muted-foreground hover:text-foreground'}`}>
-                <Database className="w-3.5 h-3.5" />
-                TKC
-              </button>
-            </div>
-          )}
-
           {/* Almacén selector */}
           <SearchableSelect
             value={almacen}
@@ -879,7 +867,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   )}
                 </div>
 
-                <FiltrosPlegables activos={filtrosPuestos} onLimpiar={resetFiltros}>
+                <div className="flex flex-wrap gap-2 items-center">
                   <div className="relative">
                     <select value={advFilters.existencia} onChange={SET_FILTER('existencia')} className={FILTER_CLS}>
                       <option value="all">Existencia: todos</option>
@@ -944,16 +932,21 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                     storageKey={PROD_COLS_KEY} order={colOrder}
                     onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(PROD_COLS_KEY, cols, next); }} />
 
-                  <div className="flex items-center gap-2 ml-auto">
-                    <span className="text-xs text-muted-foreground">{filtered.length}/{productos.length}</span>
-                    {(hayFiltrosEL || sort.key !== 'nombre' || sort.dir !== 'asc') && (
-                      <button onClick={resetFiltros}
-                        className="flex items-center gap-1 text-xs text-[#e24b4a] hover:text-[#e24b4a]/80 transition-colors">
-                        <X className="w-3 h-3" /> Limpiar
-                      </button>
-                    )}
-                  </div>
-                </FiltrosPlegables>
+                </div>
+
+                {/* El recuento, en su propia linea y siempre a la vista:
+                    cuantos resultados hay no es un filtro. */}
+                <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
+                  <span className="text-xs text-muted-foreground">
+                    {filtered.length} de {productos.length}
+                  </span>
+                  {(hayFiltrosEL || sort.key !== 'nombre' || sort.dir !== 'asc') && (
+                    <button onClick={resetFiltros}
+                      className="flex items-center gap-1 text-xs text-[#e24b4a] hover:text-[#e24b4a]/80 transition-colors">
+                      <X className="w-3 h-3" /> Limpiar
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* HoverCard + Modal */}
@@ -1099,7 +1092,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   )}
                 </div>
 
-                <FiltrosPlegables activos={filtrosPuestos} onLimpiar={resetFiltros}>
+                <div className="flex flex-wrap gap-2 items-center">
                   <div className="relative">
                     <select value={tkcLimit}
                       onChange={e => { setTkcLimit(Number(e.target.value)); resetPage(); }}
@@ -1167,21 +1160,24 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                     storageKey={TKC_COLS_KEY} order={tkcColOrder}
                     onOrderChange={(next) => { setTkcColOrder(next); saveColsWithOrder(TKC_COLS_KEY, tkcCols, next); }} />
 
-                  <div className="flex items-center gap-2 ml-auto">
-                    {fetchingTKC && <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />}
-                    {tkcPagination && (
-                      <span className="text-xs text-muted-foreground">
-                        {tkcPagination.total} resultados · pág. {tkcPagination.page}/{tkcPagination.pages}
-                      </span>
-                    )}
-                    {hayFiltrosTKC && (
-                      <button onClick={resetFiltros}
-                        className="flex items-center gap-1 text-xs text-[#e24b4a] hover:text-[#e24b4a]/80 transition-colors">
-                        <X className="w-3 h-3" /> Limpiar
-                      </button>
-                    )}
-                  </div>
-                </FiltrosPlegables>
+                </div>
+
+                {/* Igual que en la otra vista: el recuento fuera de los
+                    filtros, que es dato de la lista y no un control. */}
+                <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
+                  {fetchingTKC && <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />}
+                  {tkcPagination && (
+                    <span className="text-xs text-muted-foreground">
+                      {tkcPagination.total} resultados · pág. {tkcPagination.page}/{tkcPagination.pages}
+                    </span>
+                  )}
+                  {hayFiltrosTKC && (
+                    <button onClick={resetFiltros}
+                      className="flex items-center gap-1 text-xs text-[#e24b4a] hover:text-[#e24b4a]/80 transition-colors">
+                      <X className="w-3 h-3" /> Limpiar
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Tabla TKC — mismas columnas y mismos datos que elineas-vd.

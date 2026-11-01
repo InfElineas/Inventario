@@ -12,11 +12,11 @@ import SugerenciasNota from '@/components/shared/SugerenciasNota';
 import InventarioForm from '@/components/inventario/InventarioForm';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
 import Timeline from '@/components/shared/Timeline';
-import { ClipboardList, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
+import { ChevronRight, ClipboardList, ListFilter, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
 import { ESTADOS_AMBITO, ETIQUETA_AMBITO } from '@/lib/ambito';
 import { useTablaPaginada } from '@/lib/useTablaPaginada';
-import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
-import { warehouseName, WAREHOUSES } from '@/services/tkc/warehouses';
+import { useAlmacen } from '@/lib/useAlmacen';
+import { warehouseName } from '@/services/tkc/warehouses';
 import { fetchExistenciaTkc } from '@/services/tkcService';
 import { SIN_SONDEO } from '@/lib/query-client';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,7 +31,7 @@ import { ESTADO_POR_RESULTADO, estadoContradictorio } from '@/lib/ajusteFact'
 import SortTh from '@/components/shared/SortTh'
 import { useSortable } from '@/lib/useSortable';
 import { tieneRol } from '@/lib/roles';
-import FiltrosPlegables from '@/components/shared/FiltrosPlegables';
+import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
 
 const PAGE_SIZE = 50
 
@@ -57,24 +57,6 @@ const ORDEN_COLUMNA = {
  * el almacén equivocado —o sin ninguno— veía una lista vacía y nada que
  * tocar para arreglarlo.
  */
-function SelectorAlmacen({ almacen, setAlmacen, almacenesConfig }) {
-  const almacenes = useMemo(
-    () => WAREHOUSES.filter((w) => filterAlmacenesByConfig([w.key], almacenesConfig).length > 0),
-    [almacenesConfig],
-  );
-  const valido = almacenes.some((w) => w.key === almacen);
-
-  return (
-    <Select value={valido ? almacen : ''} onValueChange={setAlmacen}>
-      <SelectTrigger className="w-52" style={{ borderRadius: '8px' }}>
-        <SelectValue placeholder="Elige un almacén" />
-      </SelectTrigger>
-      <SelectContent>
-        {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
-      </SelectContent>
-    </Select>
-  );
-}
 
 /**
  * Quién ve los conteos de los demás.
@@ -292,7 +274,27 @@ export default function Inventario({ ambito = 'inventario' }) {
               : 'Conteos y ajustes de inventario'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        {/* Todos los mandos en la misma fila: el almacen con su nombre
+            —es el que manda— y los filtros de dentro como cuadrados con su
+            icono, que su valor ya se ve en lo que la lista ensena. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />
+          <FiltroIcono
+            icono={ListFilter}
+            etiqueta="Estado"
+            valor={filterEstado}
+            porDefecto="ambito"
+            onChange={setFilterEstado}
+            opciones={[
+              { valor: 'ambito', label: ETIQUETA_AMBITO[ambito] },
+              { valor: 'all', label: 'Todos los estados' },
+              { valor: 'en_curso', label: 'En curso' },
+              { valor: 'pend_fact', label: 'Pend. FACT' },
+              { valor: 'en_auditoria', label: 'En auditoría' },
+              { valor: 'completado', label: 'Completado' },
+              { valor: 'devuelto', label: 'Devuelto' },
+            ]}
+          />
           <ColPicker cols={INV_COL_DEFS} visible={cols}
             onChange={(next) => { setCols(next); saveColsWithOrder(INV_COLS_KEY, next, colOrder); }}
             storageKey={INV_COLS_KEY} order={colOrder}
@@ -333,6 +335,7 @@ export default function Inventario({ ambito = 'inventario' }) {
         inventarios={inventarios}
         email={user?.email}
         onAbrir={(id) => { setSelectedId(id); setShowForm(false); }}
+        onVerTodos={() => { setFilterEstado('en_curso'); setSearchQ(''); }}
       />
 
       {/* El buscador siempre a la vista; el resto, plegado en el móvil. Media
@@ -342,22 +345,6 @@ export default function Inventario({ ambito = 'inventario' }) {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar..." className="pl-10" style={{ borderRadius: '8px' }} />
       </div>
-
-      <FiltrosPlegables activos={filterEstado === 'ambito' ? 0 : 1} onLimpiar={() => setFilterEstado('ambito')}>
-        <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />
-        <Select value={filterEstado} onValueChange={setFilterEstado}>
-          <SelectTrigger className="w-44" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ambito">{ETIQUETA_AMBITO[ambito]}</SelectItem>
-            <SelectItem value="all">Todos los estados</SelectItem>
-            <SelectItem value="en_curso">En curso</SelectItem>
-            <SelectItem value="pend_fact">Pend. FACT</SelectItem>
-            <SelectItem value="en_auditoria">En auditoría</SelectItem>
-            <SelectItem value="completado">Completado</SelectItem>
-            <SelectItem value="devuelto">Devuelto</SelectItem>
-          </SelectContent>
-        </Select>
-      </FiltrosPlegables>
 
       <div className="space-y-4">
         {/* Table */}
@@ -446,43 +433,41 @@ export default function Inventario({ ambito = 'inventario' }) {
  * lo recuerda, se queda ahí para siempre y la diferencia nunca llega a
  * facturación. Por eso sale primero y solo a quien lo tiene que terminar.
  */
-function MisPendientes({ inventarios, email, onAbrir }) {
+function MisPendientes({ inventarios, email, onAbrir, onVerTodos }) {
   const mios = email
     ? inventarios.filter((i) => i.estado_tarea === 'en_curso' && i.especialista_id === email)
     : [];
   if (mios.length === 0) return null;
 
+  /*
+   * Un aviso, no una segunda lista.
+   *
+   * Antes repetia aqui cada conteo con su producto, su fecha y su diferencia
+   * —los mismos que estan en la tabla de abajo— y en un telefono eso era
+   * media pantalla de duplicado antes de llegar al listado. Lo que hace
+   * falta saber es que hay algo sin enviar y donde: si es uno, se abre; si
+   * son varios, el filtro los deja a la vista.
+   */
+  const uno = mios.length === 1;
+
   return (
-    <div className="rounded-xl border border-[#BA7517]/30 bg-[#BA7517]/5 overflow-hidden" style={{ borderRadius: '12px' }}>
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-[#BA7517]/20">
-        <ClipboardList className="w-4 h-4 text-[#BA7517]" />
-        <p className="text-sm font-medium">
-          Tienes {mios.length} {mios.length === 1 ? 'conteo sin enviar' : 'conteos sin enviar'}
-        </p>
-        <span className="text-xs text-muted-foreground">
-          — nadie más los ve hasta que los mandes a facturación
+    <button
+      type="button"
+      onClick={() => (uno ? onAbrir(mios[0].id) : onVerTodos())}
+      className="w-full flex items-center gap-3 px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl border border-[#BA7517]/30 bg-[#BA7517]/5 text-left transition-transform active:scale-[0.995]"
+      style={{ borderRadius: '12px' }}
+    >
+      <ClipboardList className="w-4 h-4 text-[#BA7517] shrink-0" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium">
+          Tienes {mios.length} {uno ? 'conteo sin enviar' : 'conteos sin enviar'}
         </span>
-      </div>
-      <div className="max-h-56 overflow-y-auto divide-y divide-[#BA7517]/15">
-        {mios.map((i) => (
-          <button
-            key={i.id} type="button" onClick={() => onAbrir(i.id)}
-            className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-[#BA7517]/10 transition-colors"
-          >
-            <span className="flex-1 min-w-0">
-              <span className="block text-sm line-clamp-1">{i.producto_nombre || '—'}</span>
-              <span className="block text-[11px] text-muted-foreground font-mono">{i.producto_codigo || '—'}</span>
-            </span>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">{i.fecha_inv || '—'}</span>
-            <span className={`text-sm font-medium tabular-nums whitespace-nowrap ${
-              (i.diferencia ?? 0) === 0 ? 'text-[#1D9E75]' : (i.diferencia ?? 0) > 0 ? 'text-[#BA7517]' : 'text-[#E24B4A]'
-            }`}>
-              {(i.diferencia ?? 0) > 0 ? '+' : ''}{i.diferencia ?? 0}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
+        <span className="block text-[11px] text-muted-foreground">
+          Nadie mas los ve hasta que los mandes a facturacion
+        </span>
+      </span>
+      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+    </button>
   );
 }
 
