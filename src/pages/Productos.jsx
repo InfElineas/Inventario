@@ -854,19 +854,8 @@ export default function Productos({ initialSource: initialSourceRaw }) {
 
               {/* Filtros */}
               <div className="rounded-xl border border-border bg-card p-3 space-y-2.5">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input value={search} onChange={e => { setSearch(e.target.value); resetPage(); }}
-                    placeholder="Buscar por nombre, código o suministrador…"
-                    className="w-full pl-9 pr-9 py-2 text-sm rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground hover:border-[#4ade80]/30 transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50" />
-                  {search && (
-                    <button onClick={() => { setSearch(''); resetPage(); }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-
+              {/* El orden de toda la web: primero los filtros, debajo el
+                  buscador y al final el recuento. */}
                 <div className="flex flex-wrap gap-2 items-center">
                   <div className="relative">
                     <select value={advFilters.existencia} onChange={SET_FILTER('existencia')} className={FILTER_CLS}>
@@ -936,6 +925,19 @@ export default function Productos({ initialSource: initialSourceRaw }) {
 
                 {/* El recuento, en su propia linea y siempre a la vista:
                     cuantos resultados hay no es un filtro. */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input value={search} onChange={e => { setSearch(e.target.value); resetPage(); }}
+                    placeholder="Buscar por nombre, código o suministrador…"
+                    className="w-full pl-9 pr-9 py-2 text-sm rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground hover:border-[#4ade80]/30 transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50" />
+                  {search && (
+                    <button onClick={() => { setSearch(''); resetPage(); }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
                 <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
                   <span className="text-xs text-muted-foreground">
                     {filtered.length} de {productos.length}
@@ -1079,19 +1081,8 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   Todo va al servidor: la búsqueda es `search[value]` del DataTables
                   de TKC, no un filtro en memoria. Por eso lleva debounce. */}
               <div className="rounded-xl border border-border bg-card p-3 space-y-2.5">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input value={search} onChange={e => { setSearch(e.target.value); resetPage(); }}
-                    placeholder="Buscar por nombre, código, proveedor…"
-                    className="w-full pl-9 pr-9 py-2 text-sm rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground hover:border-[#4ade80]/30 transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50" />
-                  {search && (
-                    <button onClick={() => { setSearch(''); resetPage(); }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-
+              {/* El orden de toda la web: primero los filtros, debajo el
+                  buscador y al final el recuento. */}
                 <div className="flex flex-wrap gap-2 items-center">
                   <div className="relative">
                     <select value={tkcLimit}
@@ -1164,6 +1155,19 @@ export default function Productos({ initialSource: initialSourceRaw }) {
 
                 {/* Igual que en la otra vista: el recuento fuera de los
                     filtros, que es dato de la lista y no un control. */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input value={search} onChange={e => { setSearch(e.target.value); resetPage(); }}
+                    placeholder="Buscar por nombre, código, proveedor…"
+                    className="w-full pl-9 pr-9 py-2 text-sm rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground hover:border-[#4ade80]/30 transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50" />
+                  {search && (
+                    <button onClick={() => { setSearch(''); resetPage(); }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
                 <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
                   {fetchingTKC && <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />}
                   {tkcPagination && (

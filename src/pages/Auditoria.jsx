@@ -145,19 +145,9 @@ export default function Auditoria() {
       {/* Filters */}
       <Card className="p-4" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
         <div className="flex flex-col gap-3">
-          {/* Row 1: search + tipo + usuario */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="relative lg:col-span-2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                value={searchQ}
-                onChange={(e) => { setSearchQ(e.target.value); resetPage(); }}
-                placeholder="Buscar producto o usuario..."
-                className="pl-10"
-                style={{ borderRadius: '8px' }}
-              />
-            </div>
-
+          {/* El orden de toda la web: primero los filtros, debajo el
+              buscador y al final el recuento. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select value={filterTipo} onValueChange={(v) => { setFilterTipo(v); resetPage(); }}>
               <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -202,14 +192,28 @@ export default function Auditoria() {
                 Limpiar fechas
               </Button>
             )}
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={searchQ}
+              onChange={(e) => { setSearchQ(e.target.value); resetPage(); }}
+              placeholder="Buscar producto o usuario..."
+              className="pl-10"
+              style={{ borderRadius: '8px' }}
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3">
+            <span className="text-xs text-muted-foreground">
+              {sorted.length} resultado{sorted.length !== 1 ? 's' : ''}
+            </span>
             {(searchQ || filterTipo !== 'all' || filterUsuario !== 'all' || fechaDesde || fechaHasta) && (
-              <div className="flex items-center gap-2 ml-auto">
-                <span className="text-xs text-muted-foreground">{sorted.length} resultado{sorted.length !== 1 ? 's' : ''}</span>
-                <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={() => {
-                  setSearchQ(''); setFilterTipo('all'); setFilterUsuario('all');
-                  setFechaDesde(''); setFechaHasta(''); resetPage();
-                }}>Limpiar todo</Button>
-              </div>
+              <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={() => {
+                setSearchQ(''); setFilterTipo('all'); setFilterUsuario('all');
+                setFechaDesde(''); setFechaHasta(''); resetPage();
+              }}>Limpiar todo</Button>
             )}
           </div>
         </div>

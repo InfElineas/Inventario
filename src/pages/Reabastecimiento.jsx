@@ -16,6 +16,7 @@ import { WAREHOUSES, warehouseName } from '@/services/tkc/warehouses';
 import { Download, Factory, Loader2, Megaphone, RefreshCw, Search, ShoppingCart } from 'lucide-react';
 import BotonAccion from '@/components/shared/BotonAccion';
 import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
+import CabeceraLista from '@/components/shared/CabeceraLista';
 
 /**
  * Qué hay que reponer, por días de cobertura.
@@ -222,19 +223,19 @@ export default function Reabastecimiento() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg sm:text-xl font-medium">Reabastecimiento</h1>
-          {/* La frase entera solo donde cabe: en un telefono son tres
-              lineas de texto antes del primer dato. */}
-          <p className="text-sm text-muted-foreground mt-0.5">
-            <span className="hidden sm:inline">
-              Qué comprar, por los días que aguanta cada producto al ritmo al que se vende
-            </span>
-            <span className="sm:hidden">Qué comprar y cuánto</span>
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+      <CabeceraLista
+        titulo="Reabastecimiento"
+        subtitulo="Qué comprar y cuánto, por los días que aguanta cada producto"
+        recuento={almacen ? `${filtradas.length} de ${filas.length}` : null}
+        buscador={almacen ? (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Nombre o código…" className="pl-10" style={{ borderRadius: '8px' }} />
+          </div>
+        ) : null}
+        filtros={(
+          <>
           <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />
           <FiltroIcono
             icono={Megaphone}
@@ -276,8 +277,9 @@ export default function Reabastecimiento() {
           <BotonAccion icono={Download} onClick={exportar} disabled={filtradas.length === 0}>
             Exportar
           </BotonAccion>
-        </div>
-      </div>
+          </>
+        )}
+      />
 
       {!almacen && <AlertBanner variant="warning" message="Elige un almacén para ver qué hay que reponer." />}
       {error && <AlertBanner variant="danger" message={error.message} />}
@@ -305,12 +307,6 @@ export default function Reabastecimiento() {
               ))}
             </TabsList>
           </Tabs>
-
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Nombre o código…" className="pl-10" style={{ borderRadius: '8px' }} />
-          </div>
 
 
           {anuncio !== 'TODOS' && porAnuncio.length < filas.length && (

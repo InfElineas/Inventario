@@ -24,6 +24,7 @@ import { useSortable } from '@/lib/useSortable';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import { tieneRol } from '@/lib/roles';
 import { FiltroIcono } from '@/components/shared/ControlesLista';
+import CabeceraLista from '@/components/shared/CabeceraLista';
 
 /** Casos por página. 1.185 no caben, y 50 es lo que usan las demás tablas. */
 const PAGE_SIZE = 50;
@@ -125,11 +126,19 @@ export default function Anuncios() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg sm:text-xl font-medium">Anuncios desactivados</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Gestión de anuncios desactivados y sin ID</p>
-        </div>
+      <CabeceraLista
+        titulo="Anuncios desactivados"
+        subtitulo="Gestión de anuncios desactivados y sin ID"
+        recuento={`${filtered.length} de ${anuncios.length}`}
+        buscador={(
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input value={searchQ} onChange={(e) => { setSearchQ(e.target.value); setPage(1); }}
+              placeholder="Buscar producto..." className="pl-10" style={{ borderRadius: '8px' }} />
+          </div>
+        )}
+        filtros={(
+          <>
         <FiltroIcono
           icono={Layers}
           etiqueta="Tipo de caso"
@@ -162,7 +171,9 @@ export default function Anuncios() {
           onChange={(next) => { setCols(next); saveColsWithOrder(ANUNCIO_COLS_KEY, next, colOrder); }}
           storageKey={ANUNCIO_COLS_KEY} order={colOrder}
           onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(ANUNCIO_COLS_KEY, cols, next); }} />
-      </div>
+          </>
+        )}
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard title={"MUERTO EF>0"} value={counts.muerto_ef} icon={AlertTriangle} color="text-[#E24B4A]" bgColor="bg-[#E24B4A]/10" />
@@ -171,13 +182,6 @@ export default function Anuncios() {
         <KPICard title={"Activo EF=0"} value={counts.activo_ef0} icon={Eye} color="text-[#888780]" bgColor="bg-[#888780]/10" />
       </div>
 
-      {/* El buscador siempre a la vista; el resto, plegado en el móvil. Media
-          docena de desplegables a ancho completo son media docena de líneas
-          que pasar antes de ver un dato. */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input value={searchQ} onChange={(e) => { setSearchQ(e.target.value); setPage(1); }} placeholder="Buscar producto..." className="pl-10" style={{ borderRadius: '8px' }} />
-      </div>
 
 
       <div>

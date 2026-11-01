@@ -32,6 +32,7 @@ import SortTh from '@/components/shared/SortTh'
 import { useSortable } from '@/lib/useSortable';
 import { tieneRol } from '@/lib/roles';
 import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
+import CabeceraLista from '@/components/shared/CabeceraLista';
 
 const PAGE_SIZE = 50
 
@@ -265,19 +266,21 @@ export default function Inventario({ ambito = 'inventario' }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg sm:text-xl font-medium">Inventario</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {ambito === 'facturacion'
-              ? 'Conteos con diferencia, a la espera de facturación'
-              : 'Conteos y ajustes de inventario'}
-          </p>
-        </div>
-        {/* Todos los mandos en la misma fila: el almacen con su nombre
-            —es el que manda— y los filtros de dentro como cuadrados con su
-            icono, que su valor ya se ve en lo que la lista ensena. */}
-        <div className="flex flex-wrap items-center gap-2">
+      <CabeceraLista
+        titulo="Inventario"
+        subtitulo={ambito === 'facturacion'
+          ? 'Conteos con diferencia, a la espera de facturación'
+          : 'Conteos y ajustes de inventario'}
+        recuento={`${total} ${total === 1 ? 'resultado' : 'resultados'}`}
+        buscador={(
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)}
+              placeholder="Buscar..." className="pl-10" style={{ borderRadius: '8px' }} />
+          </div>
+        )}
+        filtros={(
+          <>
           <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />
           <FiltroIcono
             icono={ListFilter}
@@ -312,8 +315,9 @@ export default function Inventario({ ambito = 'inventario' }) {
               <Plus className="w-4 h-4 lg:mr-1.5" /><span className="hidden lg:inline"> Nuevo conteo</span>
             </Button>
           )}
-        </div>
-      </div>
+          </>
+        )}
+      />
 
       <Dialog open={showForm} onOpenChange={(o) => { if (!o && !createMutation.isPending) setShowForm(false) }}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
@@ -338,13 +342,6 @@ export default function Inventario({ ambito = 'inventario' }) {
         onVerTodos={() => { setFilterEstado('en_curso'); setSearchQ(''); }}
       />
 
-      {/* El buscador siempre a la vista; el resto, plegado en el móvil. Media
-          docena de desplegables a ancho completo son media docena de líneas
-          que pasar antes de ver un dato. */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar..." className="pl-10" style={{ borderRadius: '8px' }} />
-      </div>
 
       <div className="space-y-4">
         {/* Table */}

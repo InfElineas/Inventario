@@ -26,6 +26,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { warehouseName } from '@/services/tkc/warehouses';
 import { notifyJefeDepto } from '@/lib/notificationService';
 import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
+import CabeceraLista from '@/components/shared/CabeceraLista';
 
 const LOTE_COL_DEFS = [
   { key: 'producto_nombre',   label: 'Producto',  defaultOn: true,  required: true  },
@@ -179,16 +180,19 @@ export default function Lotes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg sm:text-xl font-medium">Vencimientos</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {almacen
-              ? `Lotes de ${warehouseName(almacen)}`
-              : 'Control de fechas de vencimiento por lote'}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+      <CabeceraLista
+        titulo="Vencimientos"
+        subtitulo={almacen ? `Lotes de ${warehouseName(almacen)}` : 'Control de fechas de vencimiento por lote'}
+        recuento={`${sorted.length} ${sorted.length === 1 ? 'lote' : 'lotes'}`}
+        buscador={(
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)}
+              placeholder="Buscar por producto, código o lote..." className="pl-10" style={{ borderRadius: '8px' }} />
+          </div>
+        )}
+        filtros={(
+          <>
           {/* Qué almacén se está mirando, a la vista y cambiable aquí: los
               lotes vienen por almacén y antes no se decía cuál. */}
           <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />
@@ -214,8 +218,9 @@ export default function Lotes() {
             onChange={(next) => { setCols(next); saveColsWithOrder(LOTE_COLS_KEY, next, colOrder); }}
             storageKey={LOTE_COLS_KEY} order={colOrder}
             onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(LOTE_COLS_KEY, cols, next); }} />
-        </div>
-      </div>
+          </>
+        )}
+      />
 
       {!almacen && (
         <AlertBanner variant="info"
@@ -259,13 +264,6 @@ export default function Lotes() {
         </p>
       )}
 
-      {/* El buscador siempre a la vista; el resto, plegado en el móvil. Media
-          docena de desplegables a ancho completo son media docena de líneas
-          que pasar antes de ver un dato. */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar por producto, código o lote..." className="pl-10" style={{ borderRadius: '8px' }} />
-      </div>
 
 
       <ListaResponsive

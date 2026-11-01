@@ -24,6 +24,7 @@ import { useSortable } from '@/lib/useSortable';
 import { tieneRol } from '@/lib/roles';
 import BotonAccion from '@/components/shared/BotonAccion';
 import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
+import CabeceraLista from '@/components/shared/CabeceraLista';
 
 
 /**
@@ -207,16 +208,21 @@ export default function Mermas({ ambito = 'inventario' }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg sm:text-xl font-medium">Mermas</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {ambito === 'facturacion'
-              ? 'Mermas ya bajadas de tienda, a la espera de facturación'
-              : 'Registro y seguimiento de mermas'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <CabeceraLista
+        titulo="Mermas"
+        subtitulo={ambito === 'facturacion'
+          ? 'Mermas ya bajadas de tienda, a la espera de facturación'
+          : 'Registro y seguimiento de mermas'}
+        recuento={`${total} ${total === 1 ? 'resultado' : 'resultados'}`}
+        buscador={(
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)}
+              placeholder="Buscar..." className="pl-10" style={{ borderRadius: '8px' }} />
+          </div>
+        )}
+        filtros={(
+          <>
           <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />
           <FiltroIcono
             icono={ListFilter}
@@ -239,13 +245,14 @@ export default function Mermas({ ambito = 'inventario' }) {
             onChange={(next) => { setCols(next); saveColsWithOrder(MERMA_COLS_KEY, next, colOrder); }}
             storageKey={MERMA_COLS_KEY} order={colOrder}
             onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(MERMA_COLS_KEY, cols, next); }} />
-        {tieneRol(user, ['inv', 'administrador', 'superadmin']) && (
-          <BotonAccion icono={Plus} onClick={() => { setShowForm(true); setSelectedId(null); }}>
-            Registrar merma
-          </BotonAccion>
+          {tieneRol(user, ['inv', 'administrador', 'superadmin']) && (
+            <BotonAccion icono={Plus} onClick={() => { setShowForm(true); setSelectedId(null); }}>
+              Registrar merma
+            </BotonAccion>
+          )}
+          </>
         )}
-        </div>
-      </div>
+      />
 
       <Dialog open={showForm} onOpenChange={(o) => { if (!o && !createMut.isPending) setShowForm(false) }}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
@@ -256,13 +263,6 @@ export default function Mermas({ ambito = 'inventario' }) {
         </DialogContent>
       </Dialog>
 
-      {/* El buscador siempre a la vista; el resto, plegado en el móvil. Media
-          docena de desplegables a ancho completo son media docena de líneas
-          que pasar antes de ver un dato. */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Buscar..." className="pl-10" style={{ borderRadius: '8px' }} />
-      </div>
 
       {/* La barra está siempre que haya algo que bajar, no solo al marcar: si
           el botón aparece con la selección, quien no sabe que puede marcar

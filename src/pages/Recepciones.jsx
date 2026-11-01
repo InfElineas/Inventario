@@ -32,6 +32,7 @@ import LineaRecibir from '@/components/recepciones/LineaRecibir';
 import { SIN_SONDEO } from '@/lib/query-client';
 import BotonAccion from '@/components/shared/BotonAccion';
 import { FiltroIcono } from '@/components/shared/ControlesLista';
+import CabeceraLista from '@/components/shared/CabeceraLista';
 
 const RECEP_COL_DEFS = [
   { key: 'no_recepcion',      label: 'No. Recepción', defaultOn: true, required: true  },
@@ -302,14 +303,21 @@ export default function Recepciones() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg sm:text-xl font-medium">Recepciones</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {almacen ? `Recepción de mercancía en ${warehouseName(almacen)}` : 'Recepción de mercancía'}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+      <CabeceraLista
+        titulo="Recepciones"
+        subtitulo={almacen ? `Recepción de mercancía en ${warehouseName(almacen)}` : 'Recepción de mercancía'}
+        recuento={vista === 'recepciones'
+          ? `${filtered.length} de ${recepciones.length}`
+          : null}
+        buscador={vista === 'recepciones' ? (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)}
+              placeholder="Buscar por proveedor, orden o producto..." className="pl-10" style={{ borderRadius: '8px' }} />
+          </div>
+        ) : null}
+        filtros={(
+          <>
           {vista === 'recepciones' && (
             <FiltroIcono
               icono={ListFilter}
@@ -331,8 +339,9 @@ export default function Recepciones() {
               Recepción sin pedido
             </BotonAccion>
           )}
-        </div>
-      </div>
+          </>
+        )}
+      />
 
       <Tabs value={vista} onValueChange={setVista}>
         <TabsList>
@@ -366,14 +375,6 @@ export default function Recepciones() {
         />
       ) : (
       <>
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[180px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)}
-            placeholder="Buscar por proveedor, orden o producto..." className="pl-10" style={{ borderRadius: '8px' }} />
-        </div>
-      </div>
-
       <div>
         <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
           <div className="overflow-x-auto">
