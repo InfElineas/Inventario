@@ -26,10 +26,15 @@ import SortTh from '@/components/shared/SortTh';
  * @param {object}   [props.orden]       { sort, onSort } si se puede ordenar.
  * @param {string}   [props.vacio]       Qué decir cuando no hay nada.
  * @param {boolean}  [props.cargando]
+ * @param {Function} [props.marca]       fila => nodo. Va delante de todo: la
+ *   casilla de seleccionar. En la ficha, arriba junto al encabezado.
+ * @param {React.ReactNode} [props.cabeceraMarca]  Su cabecera en la tabla.
+ * @param {React.ReactNode} [props.pie]  Un total al final, si lo hay.
  */
 export default function ListaResponsive({
   columnas, titulos, filas, claveDe, celda,
   encabezado, accion, alPulsar, orden, vacio = 'Sin registros', cargando = false,
+  marca, cabeceraMarca, pie,
 }) {
   const datos = columnas.filter((k) => k !== encabezado && k !== accion);
 
@@ -60,7 +65,14 @@ export default function ListaResponsive({
             }`}
             style={{ borderRadius: '12px' }}
           >
-            {encabezado && <div className="mb-2">{celda(fila, encabezado)}</div>}
+            <div className="flex items-start gap-2.5 mb-2">
+              {marca && (
+                <span className="shrink-0 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                  {marca(fila)}
+                </span>
+              )}
+              {encabezado && <span className="min-w-0 flex-1">{celda(fila, encabezado)}</span>}
+            </div>
 
             {datos.length > 0 && (
               <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5">
@@ -91,6 +103,7 @@ export default function ListaResponsive({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
+                {cabeceraMarca && <th className="p-3 w-9">{cabeceraMarca}</th>}
                 {columnas.map((k) => (orden ? (
                   <SortTh key={k} colKey={k} label={titulos[k]?.label ?? k}
                     align={titulos[k]?.align} sort={orden.sort} onSort={orden.onSort} />
@@ -109,10 +122,14 @@ export default function ListaResponsive({
                   className={`border-b last:border-0 transition-colors ${
                     alPulsar ? 'hover:bg-accent/50 cursor-pointer' : ''
                   }`}>
+                  {marca && (
+                    <td className="p-3" onClick={(e) => e.stopPropagation()}>{marca(fila)}</td>
+                  )}
                   {columnas.map((k) => celda(fila, k, true))}
                 </tr>
               ))}
             </tbody>
+            {pie}
           </table>
         </div>
       </Card>

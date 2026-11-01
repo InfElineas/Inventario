@@ -15,7 +15,6 @@ import { Plus, Search, PackageOpen, Trash2, Pencil, ChevronLeft, ListFilter, Tru
   Image as ImageIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { useConfirm } from '@/lib/useConfirm';
-import SortTh from '@/components/shared/SortTh';
 import Pagination from '@/components/shared/Pagination';
 import { useSortable } from '@/lib/useSortable';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
@@ -32,6 +31,7 @@ import { SIN_SONDEO } from '@/lib/query-client';
 import BotonAccion from '@/components/shared/BotonAccion';
 import { FiltroIcono } from '@/components/shared/ControlesLista';
 import CabeceraLista from '@/components/shared/CabeceraLista';
+import ListaResponsive from '@/components/shared/ListaResponsive';
 
 const RECEP_COL_DEFS = [
   { key: 'no_recepcion',      label: 'No. Recepción', defaultOn: true, required: true  },
@@ -384,47 +384,22 @@ export default function Recepciones() {
         />
       ) : (
       <>
-      <div>
-        <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  {colOrder.filter(k => cols[k]).map(k => (
-                    <SortTh key={k} colKey={k} label={COL_TITULO[k].label}
-                      align={COL_TITULO[k].align} sort={sort} onSort={onSort} />
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
-                ) : filtered.length === 0 ? (
-                  <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
-                ) : pagina.map(r => (
-                  <tr key={r.id}
-                    className="border-b hover:bg-accent/50 cursor-pointer transition-colors"
-                    onClick={() => abrir(r.id)}>
-                    {colOrder.filter(k => cols[k]).map(k => {
-                      const CELDAS = {
-                        no_recepcion: <td key={k} className="p-3 font-medium">{r.no_recepcion}</td>,
-                        proveedor: <td key={k} className="p-3">{r.proveedor}</td>,
-                        fecha: <td key={k} className="p-3 text-muted-foreground">{r.fecha}</td>,
-                        items_confirmados: <td key={k} className="p-3 text-center">{r.items_confirmados || 0}/{r.total_items || 0}</td>,
-                        estado: <td key={k} className="p-3 text-center"><StatusBadge status={r.estado} vocabulario="recepcion" /></td>,
-                        almacen_num: <td key={k} className="p-3 text-muted-foreground">{r.almacen_num || 'sin almacén'}</td>,
-                      };
-                      return CELDAS[k] ?? <td key={k} className="p-3" />;
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <Pagination page={page} total={sorted.length} pageSize={PAGE_SIZE}
-            onPage={(n) => setPage(Math.max(1, n))} />
-        </Card>
-      </div>
+      <ListaResponsive
+        columnas={colOrder.filter((k) => cols[k])}
+        titulos={COL_TITULO}
+        filas={pagina}
+        cargando={isLoading}
+        vacio="Ninguna recepción con estos filtros."
+        claveDe={(r) => r.id}
+        encabezado="no_recepcion"
+        orden={{ sort, onSort }}
+        alPulsar={(r) => abrir(r.id)}
+        celda={celdaRecepcion}
+      />
+
+      <Pagination page={page} total={sorted.length} pageSize={PAGE_SIZE}
+        onPage={(n) => setPage(Math.max(1, n))} />
+
       </>
       )}
 
@@ -1005,4 +980,36 @@ function VerFoto({ id }) {
       </Dialog>
     </>
   );
+}
+
+/** Una celda del listado de recepciones, la misma para tabla y ficha. */
+function celdaRecepcion(r, clave, enTabla) {
+  const env = (contenido, clases = '') => (enTabla
+    ? <td key={clave} className={`p-3 ${clases}`}>{contenido}</td>
+    : contenido);
+
+  switch (clave) {
+    case 'no_recepcion':
+      return env(
+        <>
+          <p className="font-medium leading-snug">{r.no_recepcion}</p>
+          <p className="text-xs text-muted-foreground">{r.no_orden ? `Orden ${r.no_orden}` : 'Sin pedido'}</p>
+        </>,
+      );
+    case 'proveedor':
+      return env(<span>{r.proveedor}</span>);
+    case 'fecha':
+      return env(<span className="text-muted-foreground">{r.fecha}</span>);
+    case 'items_confirmados':
+      return env(
+        <span className="tabular-nums">{r.items_confirmados || 0}/{r.total_items || 0}</span>,
+        'text-center',
+      );
+    case 'estado':
+      return env(<StatusBadge status={r.estado} vocabulario="recepcion" />, 'text-center');
+    case 'almacen_num':
+      return env(<span className="text-muted-foreground">{r.almacen_num || 'sin almacén'}</span>);
+    default:
+      return env(null);
+  }
 }

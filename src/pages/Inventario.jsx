@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,11 +27,11 @@ import { logTransicion, logBorrado, notificarTransicion, avisarConteoReemplazado
 import { useConfirm } from '@/lib/useConfirm';
 import { CLASIF_AJUSTE, CLASIF_FACT, ESTADO_FACT, conValorActual } from '@/lib/constants'
 import { ESTADO_POR_RESULTADO, estadoContradictorio } from '@/lib/ajusteFact'
-import SortTh from '@/components/shared/SortTh'
 import { useSortable } from '@/lib/useSortable';
 import { tieneRol } from '@/lib/roles';
 import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
 import CabeceraLista from '@/components/shared/CabeceraLista';
+import ListaResponsive from '@/components/shared/ListaResponsive';
 
 const PAGE_SIZE = 50
 
@@ -343,64 +342,20 @@ export default function Inventario({ ambito = 'inventario' }) {
       />
 
 
-      <div className="space-y-4">
-        {/* Table */}
-        <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                {/* En el orden que haya elegido la persona, como en el
-                    catálogo. Producto va siempre y va primero: sin él la fila
-                    no se identifica. */}
-                <tr className="border-b">
-                  {colOrder.filter(k => cols[k]).map(k => (
-                    <SortTh key={k} colKey={k} label={COL_TITULO[k].label}
-                      align={COL_TITULO[k].align} className={COL_TITULO[k].className}
-                      sort={sort} onSort={onSort} />
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
-                ) : sorted.length === 0 ? (
-                  <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
-                ) : sorted.map(inv => {
-                  return (
-                  <tr key={inv.id}
-                    className={`border-b hover:bg-accent/50 cursor-pointer transition-colors
-                      ${selectedId === inv.id ? 'bg-accent' : ''}
-                    `}
-                    onClick={() => { setSelectedId(inv.id); setShowForm(false); }}>
-                    {colOrder.filter(k => cols[k]).map(k => {
-                      const CELDAS = {
-                        producto: (
-                          <td key={k} className="p-3">
-                            <p className="font-medium">{inv.producto_nombre}</p>
-                            <p className="text-xs text-muted-foreground">{inv.producto_codigo}</p>
-                          </td>
-                        ),
-                        almacen: <td key={k} className="p-3 text-xs text-muted-foreground hidden md:table-cell">{warehouseName(inv.almacen_num) || inv.almacen_num || '—'}</td>,
-                        ef_tkc: <td key={k} className="p-3 text-right hidden sm:table-cell">{inv.exist_fisica_tkc ?? '—'}</td>,
-                        conteo: <td key={k} className="p-3 text-right font-medium hidden sm:table-cell">{inv.conteo_real}</td>,
-                        diferencia: <td key={k} className={`p-3 text-right font-medium ${difColor(inv.diferencia)}`}>{inv.diferencia > 0 ? '+' : ''}{inv.diferencia}</td>,
-                        clasificacion: <td key={k} className="p-3 text-xs text-muted-foreground hidden lg:table-cell">{inv.clasif_ajuste || '—'}</td>,
-                        especialista: <td key={k} className="p-3 text-xs text-muted-foreground hidden lg:table-cell">{inv.especialista_nombre || '—'}</td>,
-                        estado: <td key={k} className="p-3 text-center"><StatusBadge status={inv.estado_tarea} /></td>,
-                        fecha: <td key={k} className="p-3 text-muted-foreground hidden md:table-cell">{inv.fecha_inv?.slice(0, 10)}</td>,
-                      };
-                      return CELDAS[k] ?? <td key={k} className="p-3" />;
-                    })}
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+      <ListaResponsive
+        columnas={colOrder.filter((k) => cols[k])}
+        titulos={COL_TITULO}
+        filas={sorted}
+        cargando={isLoading}
+        vacio="Ningún conteo con estos filtros."
+        claveDe={(inv) => inv.id}
+        encabezado="producto"
+        orden={{ sort, onSort }}
+        alPulsar={(inv) => { setSelectedId(inv.id); setShowForm(false); }}
+        celda={(inv, k, enTabla) => celdaConteo(inv, k, enTabla, difColor)}
+      />
 
-        <Pagination page={page} total={total} pageSize={PAGE_SIZE} onPage={setPage} />
-      </div>
+      <Pagination page={page} total={total} pageSize={PAGE_SIZE} onPage={setPage} />
 
       {/* Detail modal */}
       <Dialog open={!!selectedId} onOpenChange={(o) => { if (!o) setSelectedId(null) }}>
@@ -846,4 +801,48 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
     </div>
     </>
   );
+}
+
+/** Una celda del listado de conteos, la misma para tabla y ficha. */
+function celdaConteo(inv, clave, enTabla, difColor) {
+  const env = (contenido, clases = '') => (enTabla
+    ? <td key={clave} className={`p-3 ${clases}`}>{contenido}</td>
+    : contenido);
+
+  switch (clave) {
+    case 'producto':
+      return env(
+        <>
+          <p className="font-medium leading-snug">{inv.producto_nombre}</p>
+          <p className="text-xs text-muted-foreground font-mono">{inv.producto_codigo}</p>
+        </>,
+      );
+    case 'almacen':
+      return env(
+        <span className="text-xs text-muted-foreground">
+          {warehouseName(inv.almacen_num) || inv.almacen_num || '—'}
+        </span>,
+      );
+    case 'ef_tkc':
+      return env(<span className="tabular-nums">{inv.exist_fisica_tkc ?? '—'}</span>, 'text-right');
+    case 'conteo':
+      return env(<span className="font-medium tabular-nums">{inv.conteo_real}</span>, 'text-right');
+    case 'diferencia':
+      return env(
+        <span className={`font-medium tabular-nums ${difColor(inv.diferencia)}`}>
+          {inv.diferencia > 0 ? '+' : ''}{inv.diferencia}
+        </span>,
+        'text-right',
+      );
+    case 'clasificacion':
+      return env(<span className="text-xs text-muted-foreground">{inv.clasif_ajuste || '—'}</span>);
+    case 'especialista':
+      return env(<span className="text-xs text-muted-foreground">{inv.especialista_nombre || '—'}</span>);
+    case 'estado':
+      return env(<StatusBadge status={inv.estado_tarea} />, 'text-center');
+    case 'fecha':
+      return env(<span className="text-muted-foreground">{inv.fecha_inv?.slice(0, 10)}</span>);
+    default:
+      return env(null);
+  }
 }

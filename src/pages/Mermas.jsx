@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import StatusBadge from '@/components/shared/StatusBadge';
@@ -19,12 +18,12 @@ import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/sh
 import { ROLES_TIENDA } from '@/lib/ajustes';
 import { notifyJefeDepto } from '@/lib/notificationService';
 import { logTransicion, logBorrado, notificarTransicion } from '@/lib/workflowService';
-import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import { tieneRol } from '@/lib/roles';
 import BotonAccion from '@/components/shared/BotonAccion';
 import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
 import CabeceraLista from '@/components/shared/CabeceraLista';
+import ListaResponsive from '@/components/shared/ListaResponsive';
 
 
 /**
@@ -304,107 +303,52 @@ export default function Mermas({ ambito = 'inventario' }) {
         </div>
       )}
 
-      <div>
-        <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  {puedeBajar && (
-                    <th className="p-3 w-9">
-                      <input type="checkbox" aria-label="Seleccionar todas"
-                        checked={todasMarcadas} onChange={alternarTodas}
-                        disabled={bajables.length === 0}
-                        className="w-3.5 h-3.5 accent-[#BA7517] cursor-pointer" />
-                    </th>
-                  )}
-                  {colOrder.filter(k => cols[k]).map(k => (
-                    <SortTh key={k} colKey={k} label={COL_TITULO[k].label}
-                      align={COL_TITULO[k].align} sort={sort} onSort={onSort}
-                      className={`p-3 text-xs font-medium text-muted-foreground ${COL_TITULO[k].className ?? ''}`} />
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr><td colSpan={colOrder.filter(k => cols[k]).length + (puedeBajar ? 2 : 0) || 5} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
-                ) : sorted.length === 0 ? (
-                  <tr><td colSpan={colOrder.filter(k => cols[k]).length + (puedeBajar ? 2 : 0) || 5} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
-                ) : sorted.map(m => (
-                  <tr key={m.id}
-                    className={`border-b hover:bg-accent/50 cursor-pointer transition-colors ${selectedId === m.id ? 'bg-accent' : ''}`}
-                    onClick={() => { setSelectedId(m.id); setShowForm(false); }}>
-                    {puedeBajar && (
-                      <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                        {m.producto_codigo && Number(m.cantidad) > 0 && !m.rebaja_confirmada && (
-                          <input type="checkbox" aria-label={`Seleccionar ${m.producto_nombre}`}
-                            checked={seleccion.has(m.id)} onChange={() => alternar(m.id)}
-                            className="w-3.5 h-3.5 accent-[#BA7517] cursor-pointer" />
-                        )}
-                      </td>
-                    )}
-                    {colOrder.filter(k => cols[k]).map(k => {
-                      const CELDAS = {
-                        producto_nombre: (
-                          <td key={k} className="p-3">
-                            <p className="font-medium">{m.producto_nombre}</p>
-                            <p className="text-xs text-muted-foreground">{m.producto_codigo}</p>
-                          </td>
-                        ),
-                        almacen: <td key={k} className="p-3 text-xs text-muted-foreground hidden md:table-cell">{warehouseName(m.almacen_num) || m.almacen_num || '—'}</td>,
-                        cantidad: <td key={k} className="p-3 text-right font-medium">{m.cantidad}</td>,
-                        clasif_merma: <td key={k} className="p-3 text-xs">{m.clasif_merma}</td>,
-                        total_perdida: <td key={k} className="p-3 text-right font-medium text-[#E24B4A]">${m.total_perdida?.toFixed(2) || '0.00'}</td>,
-                        estado_tarea: <td key={k} className="p-3 text-center"><StatusBadge status={m.estado_tarea} /></td>,
-                        rebaja_confirmada: (
-                          <td key={k} className="p-3 text-center">
-                            {m.rebaja_confirmada ? (
-                              <span className="inline-flex items-center gap-1 text-xs text-[#1D9E75] bg-[#1D9E75]/10 px-2 py-1 rounded-md whitespace-nowrap"
-                                title={m.fecha_rebaja_tienda ? `Bajado el ${m.fecha_rebaja_tienda}` : 'Bajado de tienda'}>
-                                <Check className="w-3 h-3" /> Bajado
-                              </span>
-                            ) : m.producto_codigo && Number(m.cantidad) > 0 ? (
-                              <span className="inline-flex items-center gap-1 text-xs text-[#BA7517] bg-[#BA7517]/10 px-2 py-1 rounded-md whitespace-nowrap">
-                                Sin bajar
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground/40">—</span>
-                            )}
-                          </td>
-                        ),
-                        fecha_inv: <td key={k} className="p-3 text-muted-foreground">{m.fecha_inv?.slice(0, 10)}</td>,
-                      };
-                      return CELDAS[k] ?? <td key={k} className="p-3" />;
-                    })}
-                    {puedeBajar && (
-                      <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
-                        {m.producto_codigo && Number(m.cantidad) > 0 && !m.rebaja_confirmada && (
-                          <button type="button" title="Bajar esta merma de tienda"
-                            aria-label={`Bajar de tienda: ${m.producto_nombre}`}
-                            onClick={() => abrirBajada([m])}
-                            className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-[#BA7517] transition-colors">
-                            <ArrowDownToLine className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t bg-secondary/30">
-                  <td colSpan={colOrder.filter(k => cols[k]).indexOf('total_perdida') + (puedeBajar ? 1 : 0) || 1} className="p-3 text-xs font-medium text-muted-foreground">Pérdida en esta página</td>
-                  <td className="p-3 text-right font-medium text-[#E24B4A]">${perdidaPagina.toFixed(2)}</td>
-                  <td colSpan={colOrder.filter(k => cols[k]).length + (puedeBajar ? 2 : 0)}></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </Card>
+      <ListaResponsive
+        columnas={colOrder.filter((k) => cols[k])}
+        titulos={COL_TITULO}
+        filas={sorted}
+        cargando={isLoading}
+        vacio="Ninguna merma con estos filtros."
+        claveDe={(m) => m.id}
+        encabezado="producto_nombre"
+        accion={puedeBajar ? 'bajar' : undefined}
+        orden={{ sort, onSort }}
+        alPulsar={(m) => { setSelectedId(m.id); setShowForm(false); }}
+        cabeceraMarca={puedeBajar ? (
+          <input type="checkbox" aria-label="Seleccionar todas"
+            checked={todasMarcadas} onChange={alternarTodas}
+            disabled={bajables.length === 0}
+            className="w-3.5 h-3.5 accent-[#BA7517] cursor-pointer" />
+        ) : null}
+        marca={puedeBajar ? ((m) => (
+          m.producto_codigo && Number(m.cantidad) > 0 && !m.rebaja_confirmada ? (
+            <input type="checkbox" aria-label={`Seleccionar ${m.producto_nombre}`}
+              checked={seleccion.has(m.id)} onChange={() => alternar(m.id)}
+              className="w-3.5 h-3.5 accent-[#BA7517] cursor-pointer" />
+          ) : null
+        )) : undefined}
+        pie={(
+          <tfoot>
+            <tr className="border-t bg-secondary/30">
+              <td colSpan={colOrder.filter((k) => cols[k]).length + (puedeBajar ? 2 : 0)}
+                className="p-3 text-xs font-medium text-muted-foreground">
+                Pérdida en esta página
+                <span className="ml-2 text-sm text-[#E24B4A]">${perdidaPagina.toFixed(2)}</span>
+              </td>
+            </tr>
+          </tfoot>
+        )}
+        celda={(m, k, enTabla) => celdaMerma({ merma: m, clave: k, enTabla, onBajar: () => abrirBajada([m]) })}
+      />
 
-        <Pagination page={page} total={total} pageSize={PAGE_SIZE} onPage={setPage} />
+      {/* La pérdida de la página también en el móvil, donde no hay pie de
+          tabla que la lleve. */}
+      <p className="sm:hidden flex justify-between text-xs text-muted-foreground px-1">
+        Pérdida en esta página
+        <span className="font-medium text-[#E24B4A]">${perdidaPagina.toFixed(2)}</span>
+      </p>
 
-      </div>
+      <Pagination page={page} total={total} pageSize={PAGE_SIZE} onPage={setPage} />
 
       {bajando && (
         <BajarMermasDialog
@@ -431,4 +375,78 @@ export default function Mermas({ ambito = 'inventario' }) {
       </Dialog>
     </div>
   );
+}
+
+/**
+ * Una celda del listado de mermas.
+ *
+ * La misma para la tabla y para la ficha del móvil: con `enTabla` se envuelve
+ * en `<td>` y sin él va suelta dentro de la ficha.
+ */
+function celdaMerma({ merma: m, clave, enTabla, onBajar }) {
+  const env = (contenido, clases = '') => (enTabla
+    ? <td key={clave} className={`p-3 ${clases}`}>{contenido}</td>
+    : contenido);
+
+  switch (clave) {
+    case 'producto_nombre':
+      return env(
+        <>
+          <p className="font-medium leading-snug">{m.producto_nombre}</p>
+          <p className="text-xs text-muted-foreground font-mono">{m.producto_codigo}</p>
+        </>,
+      );
+    case 'almacen':
+      return env(
+        <span className="text-xs text-muted-foreground">
+          {warehouseName(m.almacen_num) || m.almacen_num || '\u2014'}
+        </span>,
+      );
+    case 'cantidad':
+      return env(<span className="font-medium tabular-nums">{m.cantidad}</span>, 'text-right');
+    case 'clasif_merma':
+      return env(<span className="text-xs">{m.clasif_merma}</span>);
+    case 'total_perdida':
+      return env(
+        <span className="font-medium tabular-nums text-[#E24B4A]">
+          ${m.total_perdida?.toFixed(2) || '0.00'}
+        </span>,
+        'text-right',
+      );
+    case 'estado_tarea':
+      return env(<StatusBadge status={m.estado_tarea} />, 'text-center');
+    case 'rebaja_confirmada':
+      return env(
+        m.rebaja_confirmada ? (
+          <span className="inline-flex items-center gap-1 text-xs text-[#1D9E75] bg-[#1D9E75]/10 px-2 py-1 rounded-md whitespace-nowrap"
+            title={m.fecha_rebaja_tienda ? `Bajado el ${m.fecha_rebaja_tienda}` : 'Bajado de tienda'}>
+            <Check className="w-3 h-3" /> Bajado
+          </span>
+        ) : m.producto_codigo && Number(m.cantidad) > 0 ? (
+          <span className="inline-flex items-center gap-1 text-xs text-[#BA7517] bg-[#BA7517]/10 px-2 py-1 rounded-md whitespace-nowrap">
+            Sin bajar
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground/40">\u2014</span>
+        ),
+        'text-center',
+      );
+    case 'fecha_inv':
+      return env(<span className="text-muted-foreground">{m.fecha_inv?.slice(0, 10)}</span>);
+    case 'bajar':
+      return env(
+        m.producto_codigo && Number(m.cantidad) > 0 && !m.rebaja_confirmada ? (
+          <button type="button" title="Bajar esta merma de tienda"
+            aria-label={`Bajar de tienda: ${m.producto_nombre}`}
+            onClick={onBajar}
+            className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted-foreground hover:text-[#BA7517] hover:bg-secondary transition-colors">
+            <ArrowDownToLine className="w-3.5 h-3.5" />
+            <span className="sm:hidden">Bajar de tienda</span>
+          </button>
+        ) : null,
+        'text-right',
+      );
+    default:
+      return env(null);
+  }
 }

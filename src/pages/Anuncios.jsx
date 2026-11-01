@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAlmacen } from '@/lib/useAlmacen';
 import Pagination from '@/components/shared/Pagination';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,12 +18,12 @@ import { notifyJefeDepto } from '@/lib/notificationService';
 import { logTransicion, notificarTransicion } from '@/lib/workflowService';
 import { useConfirm } from '@/lib/useConfirm';
 import { format } from 'date-fns';
-import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import { tieneRol } from '@/lib/roles';
 import { FiltroIcono } from '@/components/shared/ControlesLista';
 import CabeceraLista from '@/components/shared/CabeceraLista';
+import ListaResponsive from '@/components/shared/ListaResponsive';
 
 /** Casos por página. 1.185 no caben, y 50 es lo que usan las demás tablas. */
 const PAGE_SIZE = 50;
@@ -184,60 +183,20 @@ export default function Anuncios() {
 
 
 
-      <div>
-        <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  {colOrder.filter(k => cols[k]).map(k => (
-                    <SortTh key={k} colKey={k} label={COL_TITULO[k].label}
-                      align={COL_TITULO[k].align} sort={sort} onSort={onSort} />
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Cargando...</td></tr>
-                ) : filtered.length === 0 ? (
-                  <tr><td colSpan={colOrder.filter(k => cols[k]).length || 5} className="p-8 text-center text-muted-foreground">Sin registros</td></tr>
-                ) : pagina.map(a => {
-                  const tc = TIPO_CASO_LABELS[a.tipo_caso] || {};
-                  return (
-                    <tr key={a.id}
-                      className={`border-b hover:bg-accent/50 cursor-pointer transition-colors ${selectedId === a.id ? 'bg-accent' : ''}`}
-                      onClick={() => setSelectedId(a.id)}>
-                      {colOrder.filter(k => cols[k]).map(k => {
-                        const CELDAS = {
-                          producto: (
-                            <td key={k} className="p-3">
-                              <p className="font-medium">{a.producto_nombre}</p>
-                              <p className="text-xs text-muted-foreground">{a.suministrador}</p>
-                            </td>
-                          ),
-                          tipo: (
-                            <td key={k} className="p-3 text-center">
-                              <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${tc.bg} ${tc.text}`} style={{ borderRadius: '4px' }}>
-                                {tc.label}
-                              </span>
-                            </td>
-                          ),
-                          ef: <td key={k} className="p-3 text-right font-medium">{a.ef_al_detectar}</td>,
-                          estado: <td key={k} className="p-3 text-center"><StatusBadge status={a.estado_tarea} /></td>,
-                          fecha: <td key={k} className="p-3 text-muted-foreground">{a.fecha_deteccion}</td>,
-                        };
-                        return CELDAS[k] ?? <td key={k} className="p-3" />;
-                      })}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+      <ListaResponsive
+        columnas={colOrder.filter((k) => cols[k])}
+        titulos={COL_TITULO}
+        filas={pagina}
+        cargando={isLoading}
+        vacio="Ningún caso con estos filtros."
+        claveDe={(a) => a.id}
+        encabezado="producto"
+        orden={{ sort, onSort }}
+        alPulsar={(a) => setSelectedId(a.id)}
+        celda={celdaAnuncio}
+      />
 
-        <Pagination page={page} total={sorted.length} pageSize={PAGE_SIZE} onPage={setPage} />
-      </div>
+      <Pagination page={page} total={sorted.length} pageSize={PAGE_SIZE} onPage={setPage} />
 
       <Dialog open={!!selectedId} onOpenChange={(o) => { if (!o) setSelectedId(null); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
@@ -456,4 +415,36 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
     {ConfirmDialogNode}
     </>
   );
+}
+
+/** Una celda del listado de anuncios, la misma para tabla y ficha. */
+function celdaAnuncio(a, clave, enTabla) {
+  const env = (contenido, clases = '') => (enTabla
+    ? <td key={clave} className={`p-3 ${clases}`}>{contenido}</td>
+    : contenido);
+  const tc = TIPO_CASO_LABELS[a.tipo_caso] || {};
+
+  switch (clave) {
+    case 'producto':
+      return env(
+        <>
+          <p className="font-medium leading-snug">{a.producto_nombre}</p>
+          <p className="text-xs text-muted-foreground">{a.suministrador}</p>
+        </>,
+      );
+    case 'tipo':
+      return env(
+        <span className={`inline-block text-[10px] px-2 py-0.5 rounded font-medium ${tc.bg} ${tc.text}`}
+          style={{ borderRadius: '4px' }}>{tc.label}</span>,
+        'text-center',
+      );
+    case 'ef':
+      return env(<span className="font-medium tabular-nums">{a.ef_al_detectar}</span>, 'text-right');
+    case 'estado':
+      return env(<StatusBadge status={a.estado_tarea} />, 'text-center');
+    case 'fecha':
+      return env(<span className="text-muted-foreground">{a.fecha_deteccion}</span>);
+    default:
+      return env(null);
+  }
 }
