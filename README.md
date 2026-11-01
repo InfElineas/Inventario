@@ -34,6 +34,7 @@ consola del IS; aquí no hay registro ni restablecimiento.
 | [`docs/base-de-datos.md`](docs/base-de-datos.md) | Tablas, permisos y cómo se aplican las migraciones |
 | [`docs/despliegue.md`](docs/despliegue.md) | Variables, el comando de despliegue y sus trampas |
 | [`docs/revision-inventario.md`](docs/revision-inventario.md) | Repaso del módulo: qué se arregló y qué queda |
+| [`docs/importar-historico.md`](docs/importar-historico.md) | Propuesta para traer los conteos de los Excel |
 | [`docs/migracion-supabase.md`](docs/migracion-supabase.md) | El salto desde Supabase, decisión a decisión |
 
 ## Variables de entorno
