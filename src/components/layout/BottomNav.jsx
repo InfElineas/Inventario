@@ -83,11 +83,14 @@ export default function BottomNav({ user, pendingCounts: pendingCountsRaw }) {
           aria-label={abierto ? 'Cerrar más opciones' : 'Más opciones'}
           aria-expanded={abierto}
           data-testid="btn-mas-opciones"
-          className="lg:hidden fixed right-4 z-50 w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-95"
+          className="lg:hidden fixed right-4 z-50 w-11 h-11 flex items-center justify-center shadow-lg active:scale-95"
           style={{
             bottom: 'calc(56px + env(safe-area-inset-bottom, 0px) + 12px)',
             background: '#4ade80',
             color: '#000',
+            // Cuadrado con las esquinas del sitio, no un circulo: todo lo
+            // demas —tarjetas, botones, campos— usa este mismo radio.
+            borderRadius: '12px',
             transition: 'transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 180ms ease',
             transform: oculto ? 'translateY(90px) scale(0.8)' : 'none',
             opacity: oculto ? 0 : 1,
@@ -96,7 +99,7 @@ export default function BottomNav({ user, pendingCounts: pendingCountsRaw }) {
         >
           {abierto ? <X className="w-5 h-5" /> : <MoreHorizontal className="w-5 h-5" />}
           {!abierto && pendientesOcultas > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white"
+            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white"
               style={{ background: '#E24B4A' }}>
               {pendientesOcultas > 9 ? '9+' : pendientesOcultas}
             </span>

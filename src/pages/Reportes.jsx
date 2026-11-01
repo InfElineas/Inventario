@@ -141,7 +141,7 @@ export default function Reportes() {
           <h1 className="text-lg sm:text-xl font-medium">Reportes</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Análisis y métricas del almacén</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <BotonAccion icono={FileText} variant="outline" onClick={() => setShowPDF(v => !v)}>
             Generar PDF
           </BotonAccion>

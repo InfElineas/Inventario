@@ -298,8 +298,7 @@ export default function Reabastecimiento() {
               se compran con la misma urgencia, y en una lista de setecientas
               filas esa diferencia se pierde. */}
           <Tabs value={estado} onValueChange={setEstado}>
-            <TabsList className="w-full justify-start overflow-x-auto sm:flex-wrap sm:h-auto"
-              style={{ scrollbarWidth: 'none' }}>
+            <TabsList className="w-full">
               <TabsTrigger value="TODOS" className="shrink-0">Todos ({porAnuncio.length})</TabsTrigger>
               {estadosConFilas.map((e) => (
                 <TabsTrigger key={e} value={e} className="shrink-0">{e} ({porEstado.get(e)})</TabsTrigger>

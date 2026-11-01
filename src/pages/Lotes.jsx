@@ -241,8 +241,7 @@ export default function Lotes() {
       {/* Una sola fila que se desliza, en vez de envolver en tres: asi la
           pestana activa no cambia de sitio al elegir otra. */}
       <Tabs value={estado} onValueChange={reiniciar(setEstado)}>
-        <TabsList className="w-full justify-start overflow-x-auto sm:flex-wrap sm:h-auto"
-          style={{ scrollbarWidth: 'none' }}>
+        <TabsList className="w-full">
           <TabsTrigger value="all" className="shrink-0">Todos ({lotes.length})</TabsTrigger>
           {ESTADOS.map((e) => (
             <TabsTrigger key={e.clave} value={e.clave} className="shrink-0"

@@ -88,12 +88,12 @@ function TabSistema() {
           <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? 'animate-spin' : ''}`} /> Actualizar
         </Button>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3">
         {isLoading ? Array(7).fill(0).map((_, i) => <div key={i} className="h-20 rounded-xl border border-border bg-card animate-pulse" />) :
           kpis.map(k => (
-            <div key={k.label} className="p-3 rounded-xl border border-border bg-card space-y-1.5">
-              <p className="text-[10px] text-muted-foreground">{k.label}</p>
-              <p className="text-xl font-bold" style={{ color: k.color }}>{k.value?.toLocaleString() ?? '—'}</p>
+            <div key={k.label} className="p-2.5 sm:p-3 rounded-xl border border-border bg-card space-y-1">
+              <p className="text-[10px] text-muted-foreground leading-tight">{k.label}</p>
+              <p className="text-base sm:text-xl font-bold tabular-nums" style={{ color: k.color }}>{k.value?.toLocaleString() ?? '—'}</p>
             </div>
           ))}
       </div>
@@ -1188,12 +1188,15 @@ export default function SuperAdmin() {
           </div>
         </div>
 
-        <div className="flex gap-1 flex-wrap bg-secondary/50 p-1 rounded-lg w-fit">
+        {/* Una fila que se desliza, como el resto del sitio: ocho
+            pestanas envolvian en tres filas en un telefono. */}
+        <div className="flex gap-1 overflow-x-auto bg-secondary/50 p-1 rounded-lg max-w-full"
+          style={{ scrollbarWidth: 'none' }}>
           {TABS.map(t => {
             const Icon = t.icon;
             return (
               <button key={t.key} onClick={() => setTab(t.key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${tab === t.key ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}>
+                className={`flex shrink-0 items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${tab === t.key ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}>
                 <Icon className="w-3.5 h-3.5" />{t.label}
               </button>
             );
