@@ -252,7 +252,10 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
         <BarcodeScanner onResult={handleScanResult} onClose={() => setShowScanner(false)} />
       ) : (
         <div className="flex gap-2">
-          <div className="flex-1">
+          {/* `min-w-0`: sin él, el hueco del buscador crece hasta que cabe el
+              nombre más largo de la lista de resultados y el modal entero se
+              va de ancho, con barra horizontal incluida. */}
+          <div className="flex-1 min-w-0">
             <ProductSearch onSelect={setProducto} />
           </div>
           <Button

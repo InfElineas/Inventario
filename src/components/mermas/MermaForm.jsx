@@ -116,7 +116,9 @@ export default function MermaForm({ user, onSubmit, onCancel, isPending: isPendi
         <BarcodeScanner onResult={handleScanResult} onClose={() => setShowScanner(false)} />
       ) : (
         <div className="flex gap-2">
-          <div className="flex-1">
+          {/* `min-w-0`: sin él, el hueco crece hasta que cabe el nombre más
+              largo de los resultados y el modal se va de ancho. */}
+          <div className="flex-1 min-w-0">
             <ProductSearch onSelect={setProducto} />
           </div>
           <Button type="button" variant="outline" onClick={() => setShowScanner(true)} title="Escanear código de barras" style={{ borderRadius: '8px' }}>

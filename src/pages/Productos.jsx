@@ -37,7 +37,7 @@ import { base44 } from '@/api/base44Client';
 import { SIN_SONDEO } from '@/lib/query-client';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { tieneRol } from '@/lib/roles';
-import { FiltroIcono } from '@/components/shared/ControlesLista';
+import { ALTO, FiltroIcono } from '@/components/shared/ControlesLista';
 
 // ── Constants ─────────────────────────────────────────────────
 const PAGE_SIZE = 50;
@@ -322,13 +322,26 @@ function SearchableSelect({ value, onChange, options, placeholder, maxWidth: max
 
   return (
     <div className="relative" ref={ref}>
+      {/* Cuadrado en pantalla estrecha y con su valor escrito a partir de
+          `lg`, igual que FiltroIcono: en el teléfono media fila por filtro es
+          cara, pero en un monitor un icono suelto no dice qué filtra ni si
+          está puesto, y este se quedaba cuadrado en todas las pantallas. */}
       <button type="button" title={label} aria-label={label}
         onClick={() => { setOpen(v => !v); setQuery(''); }}
         className={Icono
-          ? `h-9 w-9 flex items-center justify-center rounded-lg bg-card border transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 ${
+          ? `${ALTO} w-9 justify-center lg:w-auto lg:justify-between lg:gap-1.5 lg:px-3 ${maxWidth}
+            flex items-center text-xs rounded-lg bg-card border transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 ${
             activo ? 'border-[#4ade80]/40 text-[#4ade80] bg-[#4ade80]/10' : 'border-border text-muted-foreground hover:text-foreground'}`
           : `h-9 flex items-center gap-1.5 px-3 text-xs rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 ${maxWidth}`}>
-        {Icono ? <Icono className="w-4 h-4" /> : (
+        {Icono ? (
+          <>
+            <span className="flex items-center gap-1.5 min-w-0">
+              <Icono className="w-4 h-4 shrink-0" />
+              <span className="hidden lg:inline truncate">{label}</span>
+            </span>
+            <ChevronDown className="hidden lg:block w-3.5 h-3.5 shrink-0 opacity-60" />
+          </>
+        ) : (
           <>
             <span className="truncate flex-1 min-w-0 text-left">{label}</span>
             <ChevronDown className="w-3.5 h-3.5 shrink-0 opacity-60" />

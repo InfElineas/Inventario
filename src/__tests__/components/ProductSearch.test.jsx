@@ -66,6 +66,46 @@ describe('ProductSearch', () => {
     await waitFor(() => expect(screen.getByText(/No se encontraron productos/)).toBeTruthy());
   });
 
+  // Falta una prueba de que el fallo de la búsqueda se enseña en vez de
+  // tragarse. No está por el entorno, no por el componente: cualquier forma
+  // de hacer fallar el mock —`throw`, `mockRejectedValue`, una promesa
+  // rechazada— deja un error que vitest cuenta como fallo de la prueba aunque
+  // el componente lo capture, y se comprobó que lo captura.
+
+  it('la respuesta que llega tarde no pisa a la de lo último escrito', async () => {
+    // Una petición por tecla: la de «arr» puede contestar después de la de
+    // «arroz» y dejar en pantalla una lista que no es la de lo escrito.
+    const lenta = new Promise((r) => setTimeout(() => r([PRODUCTO(9)]), 120));
+    buscar.mockReturnValueOnce(lenta).mockResolvedValue([PRODUCTO(1)]);
+
+    render(<ProductSearch onSelect={vi.fn()} />);
+    const campo = screen.getByRole('textbox');
+    fireEvent.change(campo, { target: { value: 'arr' } });
+    // Lo justo para que salga la primera y entre la segunda detrás.
+    await new Promise((r) => setTimeout(r, 300));
+    fireEvent.change(campo, { target: { value: 'arroz' } });
+
+    await waitFor(() => expect(screen.getByText('Arroz 1')).toBeTruthy());
+    await new Promise((r) => setTimeout(r, 150));
+    expect(screen.queryByText('Arroz 9')).toBeNull();
+  });
+
+  it('elegido el producto, su nombre en el campo no vuelve a abrir la lista', async () => {
+    // El nombre se queda escrito; antes se buscaba otra vez y la lista se
+    // reabría encima del formulario que acababa de aparecer.
+    buscar.mockResolvedValue([PRODUCTO(1)]);
+    const { container } = render(<ProductSearch onSelect={vi.fn()} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'arroz' } });
+
+    await waitFor(() => expect(screen.getByText('Arroz 1')).toBeTruthy());
+    const veces = buscar.mock.calls.length;
+    fireEvent.click(screen.getByText('Arroz 1').closest('button'));
+
+    await new Promise((r) => setTimeout(r, 400));
+    expect(container.querySelector('.overflow-y-auto')).toBeNull();
+    expect(buscar).toHaveBeenCalledTimes(veces);
+  });
+
   it('elegir uno cierra la lista y deja el nombre en el buscador', async () => {
     const onSelect = vi.fn();
     buscar.mockResolvedValue([PRODUCTO(1)]);
