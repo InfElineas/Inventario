@@ -107,6 +107,30 @@ diaria (`runSmartNotifications`). El botón *Exportar* baja a CSV los lotes que
 se están viendo —en la pestaña *Por vencer*, ese es el reporte—, con costo y
 valor en riesgo.
 
+## Casos de IC (`/ic`)
+
+Lo que inventario manda desde Vencimientos con *Enviar a intervención comercial*
+llega aquí: un lote por vencer, la cantidad y una propuesta de rebaja. Se
+guarda en `lotes_ic` y comercial (`ca`, y los administradores) lo responde:
+
+| Estado | Qué significa |
+|---|---|
+| Pendiente | Esperando a comercial |
+| Rebaja aprobada | Comercial aprobó la rebaja (con nota opcional) |
+| No procede | Comercial lo rechazó; la nota es obligatoria |
+
+- El inventarista ve **solo lo que mandó**; comercial, jefe de departamento,
+  auditor y administradores ven todo.
+- Al mandar, se avisa a comercial; al responder, a quien lo mandó. Comercial ve
+  en el menú cuántos hay pendientes.
+- Quien lo mandó puede retirarlo mientras esté pendiente; el superadministrador,
+  siempre.
+- *Exportar* baja a CSV los casos que cumplen los filtros, con la respuesta.
+- Un caso respondido ya no se vuelve a mover.
+
+Antes el caso se guardaba y solo lo veía un jefe en Supervisión, que sigue
+mostrándolo en su pestaña *Lotes IC*.
+
 ## Recepciones (`/recepciones`)
 
 Dos pestañas. Se abre en **Pedidos de compra**, porque descargar un camión

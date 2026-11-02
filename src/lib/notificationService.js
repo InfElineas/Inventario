@@ -26,6 +26,12 @@ export async function notifyRoles(roles, tipo, titulo, mensaje, link) {
   } catch {}
 }
 
+/** Avisar a una persona concreta, por su correo. Por ejemplo, a quien mandó un caso. */
+export async function notifyUsuario(email, tipo, titulo, mensaje, link) {
+  if (!email) return;
+  await avisar([{ email }], tipo, titulo, mensaje, link);
+}
+
 async function avisar(gente, tipo, titulo, mensaje, link) {
   if (!gente?.length) return;
   // Alguien puede salir por dos vías —jefe de facturación y rol fact—; una

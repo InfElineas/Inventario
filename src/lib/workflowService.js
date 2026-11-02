@@ -12,7 +12,7 @@ const TABLA_LINK = {
   mermas:          '/mermas',
   inventarios:     '/inventario',
   anuncios_desact: '/anuncios',
-  lotes_ic:        '/lotes',
+  lotes_ic:        '/ic',
 }
 
 const ESTADO_LABEL = {

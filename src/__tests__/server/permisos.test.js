@@ -318,3 +318,36 @@ describe('varios roles: los permisos se suman', () => {
     expect(puedeLeer({ roles: [] }, 'mermas')).toBe(false);
   });
 });
+
+describe('casos de IC (lotes_ic)', () => {
+  const caso = (estado, dueño = 'yo@mercadoelineas.com') =>
+    ({ estado_tarea: estado, especialista_inv_id: dueño });
+
+  it('comercial aprueba o rechaza un caso pendiente', () => {
+    expect(puedeActualizar(ctx('ca'), 'lotes_ic', caso('pendiente'), { estado_tarea: 'aprobado' })).toBe(true);
+    expect(puedeActualizar(ctx('ca'), 'lotes_ic', caso('pendiente'), { estado_tarea: 'rechazado' })).toBe(true);
+  });
+
+  it('un caso ya respondido no se vuelve a mover', () => {
+    expect(puedeActualizar(ctx('ca'), 'lotes_ic', caso('aprobado'), { estado_tarea: 'rechazado' })).toBe(false);
+  });
+
+  it('ni comercial se salta a estados que no existen', () => {
+    expect(puedeActualizar(ctx('ca'), 'lotes_ic', caso('pendiente'), { estado_tarea: 'completado' })).toBe(false);
+  });
+
+  it('inventario no responde sus propios casos', () => {
+    expect(puedeActualizar(ctx('inv'), 'lotes_ic', caso('pendiente'), { estado_tarea: 'aprobado' })).toBe(false);
+  });
+
+  it('quien lo mandó lo retira mientras está pendiente; el de otro no, ni uno respondido', () => {
+    expect(puedeBorrar(ctx('inv'), 'lotes_ic', caso('pendiente'))).toBe(true);
+    expect(puedeBorrar(ctx('inv'), 'lotes_ic', caso('pendiente', 'otro@mercadoelineas.com'))).toBe(false);
+    expect(puedeBorrar(ctx('inv'), 'lotes_ic', caso('aprobado'))).toBe(false);
+  });
+
+  it('el superadministrador retira cualquiera', () => {
+    expect(puedeBorrar(ctx('superadmin'), 'lotes_ic', caso('aprobado', 'otro@mercadoelineas.com'))).toBe(true);
+  });
+});
+

@@ -15,6 +15,8 @@ import { fetchResumenLotes } from '@/services/lotesService';
 import { SIN_SONDEO } from '@/lib/query-client';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import { ROLES } from '@/lib/constants';
+import { tieneRol } from '@/lib/roles';
+import { ROLES_RESPONDE_IC } from '@/lib/ic';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import NotifDropdown from './NotifDropdown';
@@ -87,6 +89,7 @@ const ROUTE_TITLES = {
   '/facturacion/inventario': 'Conteos por facturar',
   '/facturacion/mermas':     'Mermas por facturar',
   '/lotes':          'Vencimientos',
+  '/ic':             'Casos de IC',
   '/recepciones':    'Recepciones',
   '/anuncios':       'Anuncios',
   '/reportes':       'Reportes',
@@ -231,6 +234,11 @@ export default function AppLayout() {
     'anuncios', 'AnuncioDesact',
     { estado_tarea: estadoPendiente.anuncios, ...(almacen ? { almacen_num: almacen } : {}) },
   ));
+  // Los casos de IC esperando respuesta: solo le dicen algo a quien responde.
+  const { data: icPending } = useQuery({
+    ...contador('ic', 'LoteIC', { estado_tarea: 'pendiente' }),
+    enabled: !!user?.email && tieneRol(user, ROLES_RESPONDE_IC),
+  });
   // Del resumen y no de la tabla `lotes`, que ya no llena nadie y contaba cero siempre.
   const lotesCriticos = conteosLotes ? (conteosLotes.critico ?? 0) + (conteosLotes.vencido ?? 0) : 0;
 
@@ -288,6 +296,7 @@ export default function AppLayout() {
   if (invPending      > 0) pendingCounts['/inventario'] = invPending;
   if (anunciosPending > 0) pendingCounts['/anuncios']   = anunciosPending;
   if (lotesCriticos   > 0) pendingCounts['/lotes']      = lotesCriticos;
+  if (icPending       > 0) pendingCounts['/ic']         = icPending;
   if (mermasFact      > 0) pendingCounts['/facturacion/mermas']     = mermasFact;
   if (invFact         > 0) pendingCounts['/facturacion/inventario'] = invFact;
 

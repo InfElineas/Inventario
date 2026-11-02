@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -28,7 +29,7 @@ import Pagination from '@/components/shared/Pagination';
 import ListaResponsive from '@/components/shared/ListaResponsive';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { warehouseName } from '@/services/tkc/warehouses';
-import { notifyJefeDepto } from '@/lib/notificationService';
+import { notifyJefeDepto, notifyRoles } from '@/lib/notificationService';
 import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
 import CabeceraLista from '@/components/shared/CabeceraLista';
 
@@ -113,7 +114,18 @@ export default function Lotes() {
 
   const createIcMut = useMutation({
     mutationFn: (data) => base44.entities.LoteIC.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['lotes'] }); cerrar(); },
+    onSuccess: (_r, v) => {
+      queryClient.invalidateQueries({ queryKey: ['lotes'] });
+      // Antes el caso se guardaba y no se enteraba nadie: comercial no mira
+      // una tabla, mira sus avisos. Y quien lo manda lo ve luego en «Casos de IC».
+      notifyRoles(
+        ['ca'], 'lote', 'Nuevo caso de IC',
+        `${v.producto_nombre}: ${v.cant_x_vencer} u. por vencer, propuesta $${Number(v.propuesta_precio_ic || 0).toFixed(2)}`
+          + ` — ${user?.full_name || user?.email || '—'}`,
+        '/ic',
+      ).catch(() => {});
+      cerrar();
+    },
     onError: (e) => alert(e.message),
   });
 
@@ -231,6 +243,13 @@ export default function Lotes() {
           </Button>
           {/* El unico filtro de la pantalla, junto al de columnas: un
               plegable para un solo desplegable era mas clic que filtro. */}
+          {/* Dónde queda lo que se manda a IC y qué respondió comercial. */}
+          <Button variant="outline" asChild style={{ borderRadius: 'var(--r-ctl)' }}>
+            <Link to="/ic" title="Los casos mandados a intervención comercial">
+              <Send className="w-4 h-4 lg:mr-1.5" />
+              <span className="hidden lg:inline">Casos de IC</span>
+            </Link>
+          </Button>
           <Button variant="outline" onClick={exportar} disabled={sorted.length === 0}
             style={{ borderRadius: 'var(--r-ctl)' }} title="Exportar a CSV los lotes que se ven">
             <Download className="w-4 h-4 lg:mr-1.5" />

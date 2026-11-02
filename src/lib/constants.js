@@ -30,6 +30,9 @@ export const ESTADO_TAREA = {
   en_auditoria: { label: 'En auditoría', bg: 'bg-[var(--c-warn)]/8', text: 'text-[var(--c-warn)]', dot: 'bg-[var(--c-warn)]' },
   completado: { label: 'Completado', bg: 'bg-[var(--c-ok-dim)]/8', text: 'text-[var(--c-ok-dim)]', dot: 'bg-[var(--c-ok-dim)]' },
   devuelto: { label: 'Devuelto', bg: 'bg-[var(--c-bad)]/8', text: 'text-[var(--c-bad)]', dot: 'bg-[var(--c-bad)]' },
+  // Casos de intervención comercial: comercial aprueba la rebaja o dice que no procede.
+  aprobado: { label: 'Rebaja aprobada', bg: 'bg-[var(--c-ok-dim)]/8', text: 'text-[var(--c-ok-dim)]', dot: 'bg-[var(--c-ok-dim)]' },
+  rechazado: { label: 'No procede', bg: 'bg-[var(--c-bad)]/8', text: 'text-[var(--c-bad)]', dot: 'bg-[var(--c-bad)]' },
   reconteo_solicitado: { label: 'Reconteo', bg: 'bg-[var(--c-bad)]/8', text: 'text-[var(--c-bad)]', dot: 'bg-[var(--c-bad)]' },
 };
 

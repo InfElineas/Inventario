@@ -50,6 +50,10 @@ export const NAV_GROUPS = [
         roles: ['inv','fact','auditor','jefe_depto','administrador','superadmin'] },
       { path: '/lotes',       label: 'Vencimientos', corto: 'Vencim.', icon: 'Clock', prioridad: 12,
         roles: ['inv','ca','auditor','jefe_depto','administrador','superadmin'] },
+      // Lo que inventario manda a comercial desde Vencimientos y lo que
+      // comercial responde. Cada uno ve lo suyo; comercial ve todo.
+      { path: '/ic', label: 'Casos de IC', corto: 'IC', icon: 'Clock', prioridad: 12.5,
+        roles: ['inv','ca','auditor','jefe_depto','administrador','superadmin'] },
       // `fact` entra pero sin poder recibir (eso lo gatea la propia página):
       // el reporte de incidencia le llega por notificación y tiene que poder
       // volver a él para cuadrar la factura del proveedor.

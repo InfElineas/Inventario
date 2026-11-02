@@ -65,6 +65,15 @@ const FLUJOS = {
     },
   },
 
+  // Casos de intervención comercial. Comercial responde: aprueba la rebaja o
+  // dice que no procede. Antes ningún rol no administrador podía tocarlos.
+  lotes_ic: {
+    campoEstado: 'estado_tarea',
+    transiciones: {
+      ca: { desde: ['pendiente'], hacia: ['pendiente', 'aprobado', 'rechazado'] },
+    },
+  },
+
   recepciones: {
     campoEstado: 'estado',
     transiciones: {
@@ -145,6 +154,12 @@ const BORRADO = {
   ],
 
   anuncios_desact: [{ rol: 'superadmin' }],
+  // Un envío equivocado se retira sin pedir favores, mientras nadie lo haya
+  // respondido.
+  lotes_ic: [
+    { rol: 'superadmin' },
+    { rol: 'inv', dueño: 'especialista_inv_id', estadoEn: { campo: 'estado_tarea', valores: ['pendiente'] } },
+  ],
   usuarios: [{ rol: 'administrador' }, { rol: 'superadmin' }],
 
   // Repetir la foto es lo normal: sale movida y se vuelve a tirar. Quien

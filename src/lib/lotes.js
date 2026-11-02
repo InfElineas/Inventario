@@ -76,7 +76,7 @@ const ESTADO_TEXTO = {
  * pone un apóstrofo delante. Los números van tal cual, que los negativos
  * (días que lleva vencido) son datos y no fórmulas.
  */
-function celdaCsv(valor) {
+export function celdaCsv(valor) {
   if (valor === null || valor === undefined) return '';
   if (typeof valor === 'number') return String(valor);
   let t = String(valor);
