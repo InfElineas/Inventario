@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowUpFromLine, ArrowDownToLine, MoreHorizontal, History, ClipboardList } from 'lucide-react';
+import { ArrowUpFromLine, ArrowDownToLine, MoreHorizontal, History, ClipboardList, Trash2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 /**
@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
  *
  * Lo que una persona no puede hacer no se le enseña apagado: se le quita.
  */
-export default function MenuAcciones({ producto, puedeMoverTienda, onMover, onHistorial, onConteos }) {
+export default function MenuAcciones({ producto, puedeMoverTienda, onMover, onHistorial, onConteos, onEliminar }) {
   const [abierto, setAbierto] = useState(false);
 
   const acciones = [];
@@ -33,6 +33,15 @@ export default function MenuAcciones({ producto, puedeMoverTienda, onMover, onHi
     clave: 'conteos', etiqueta: 'Conteos de inventario', Icono: ClipboardList,
     color: 'text-[var(--c-purple)]', al: onConteos,
   });
+
+  // Solo donde quien llama la ofrece, y solo a quien puede: borrar no se
+  // enseña apagado, se quita.
+  if (onEliminar) {
+    acciones.push({
+      clave: 'eliminar', etiqueta: 'Eliminar conteo', Icono: Trash2,
+      color: 'text-[var(--c-bad)]', al: onEliminar,
+    });
+  }
 
   if (acciones.length === 0) return <span className="text-muted-foreground/40 text-xs">—</span>;
 

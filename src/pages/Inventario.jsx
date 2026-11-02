@@ -30,6 +30,7 @@ import { ESTADO_POR_RESULTADO, estadoContradictorio } from '@/lib/ajusteFact'
 import { useSortable } from '@/lib/useSortable';
 import { tieneRol } from '@/lib/roles';
 import { ROLES_TIENDA } from '@/lib/ajustes';
+import { puedeEliminarConteo, revisionesDeConteo } from '@/lib/conteos';
 import DialogosConteo, { CeldaAcciones } from '@/components/inventario/AccionesConteo';
 import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
 import CabeceraLista from '@/components/shared/CabeceraLista';
@@ -206,6 +207,17 @@ export default function Inventario({ ambito = 'inventario' }) {
           ))
           .finally(() => queryClient.invalidateQueries({ queryKey: ['inventarios'] }));
       }
+      // La fecha de vencimiento que trae el conteo corrige el lote: sin esto
+      // quedaba en el conteo y el estado de vigencia seguía con la del informe.
+      const revisiones = revisionesDeConteo(variables, user);
+      if (revisiones.length > 0) {
+        Promise.all(revisiones.map((r) => base44.entities.LoteRevision.create(r)))
+          .catch((e) => alert(
+            'El conteo se guardó, pero no se pudo actualizar la fecha de vencimiento del lote: '
+            + `${e.message}. Corrígela desde Vencimientos.`,
+          ))
+          .finally(() => queryClient.invalidateQueries({ queryKey: ['lotes'] }));
+      }
       const registro = { ...variables, id: result?.id, estado_tarea: null }
       logTransicion('inventarios', registro, variables.estado_tarea, user, variables).catch(() => {})
       notificarTransicion('inventarios', registro, variables.estado_tarea, user).catch(() => {})
@@ -287,6 +299,18 @@ export default function Inventario({ ambito = 'inventario' }) {
     onError: (error) => alert(error.message),
   });
 
+  const { confirmDialog, ConfirmDialogNode } = useConfirm();
+
+  // Eliminar no abre un diálogo propio: se confirma y se borra, con la misma
+  // traza que el botón del detalle.
+  const alElegirAccion = async (accion) => {
+    if (accion.tipo !== 'eliminar') { setAccionFila(accion); return; }
+    const ok = await confirmDialog('Esta acción no se puede deshacer.', {
+      title: `¿Eliminar el conteo de «${accion.inv.producto_nombre}»?`, destructive: true,
+    });
+    if (ok) deleteMutation.mutate(accion.inv.id);
+  };
+
   const selected = inventarios.find(i => i.id === selectedId);
 
   // Conteos ANTERIORES del mismo producto que siguen esperando a facturación.
@@ -330,6 +354,7 @@ export default function Inventario({ ambito = 'inventario' }) {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialogNode}
       <CabeceraLista
         titulo="Inventario"
         subtitulo={ambito === 'facturacion'
@@ -419,7 +444,7 @@ export default function Inventario({ ambito = 'inventario' }) {
         accion="acciones"
         alPulsar={(inv) => { setSelectedId(inv.id); setShowForm(false); }}
         celda={(inv, k, enTabla) => celdaConteo(inv, k, enTabla, difColor, (f) => (
-          <CeldaAcciones inv={f} puedeMoverTienda={puedeMoverTienda} onAccion={setAccionFila} />
+          <CeldaAcciones inv={f} user={user} puedeMoverTienda={puedeMoverTienda} onAccion={alElegirAccion} />
         ))}
       />
 
@@ -718,9 +743,7 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
   // bloque no le salía y su propio conteo se quedaba congelado.
   const canEditarBorrador = inv.estado_tarea === 'en_curso'
     && (tieneRol(user, ['administrador', 'superadmin']) || inv.especialista_id === user?.email);
-  const canDelete = tieneRol(user, ['superadmin'])
-    || (tieneRol(user, ['administrador']) && inv.estado_tarea !== 'completado')
-    || (tieneRol(user, ['inv']) && inv.estado_tarea === 'en_curso' && inv.especialista_id === user?.email);
+  const canDelete = puedeEliminarConteo(inv, user);
 
   // Mensaje contextual según estado + rol
   const statusHint = (() => {

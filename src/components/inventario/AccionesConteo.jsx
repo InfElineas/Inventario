@@ -9,6 +9,7 @@ import HistorialInventarioDialog from '@/components/productos/HistorialInventari
 import { fetchExistenciaTkc } from '@/services/tkcService';
 import { SIN_SONDEO } from '@/lib/query-client';
 import { warehouseName } from '@/services/tkc/warehouses';
+import { puedeEliminarConteo } from '@/lib/conteos';
 import { Loader2 } from 'lucide-react';
 
 /**
@@ -21,7 +22,7 @@ import { Loader2 } from 'lucide-react';
  */
 
 /** La celda: el menú, sin que pulsarlo abra el detalle de la fila. */
-export function CeldaAcciones({ inv, puedeMoverTienda, onAccion }) {
+export function CeldaAcciones({ inv, user, puedeMoverTienda, onAccion }) {
   return (
     <div onClick={(e) => e.stopPropagation()}>
       <MenuAcciones
@@ -30,6 +31,7 @@ export function CeldaAcciones({ inv, puedeMoverTienda, onAccion }) {
         onMover={(modulo) => onAccion({ tipo: modulo, inv })}
         onHistorial={() => onAccion({ tipo: 'historial', inv })}
         onConteos={() => onAccion({ tipo: 'conteos', inv })}
+        onEliminar={puedeEliminarConteo(inv, user) ? () => onAccion({ tipo: 'eliminar', inv }) : undefined}
       />
     </div>
   );
