@@ -15,8 +15,8 @@ import { ETIQUETA_INCIDENCIA, incidenciasDe } from '@/lib/incidenciasRecepcion';
  */
 
 const COLOR = {
-  alta:  'bg-[#E24B4A14] text-[#E24B4A]',
-  media: 'bg-[#BA751714] text-[#BA7517]',
+  alta:  'bg-[var(--c-bad)]/8 text-[var(--c-bad)]',
+  media: 'bg-[var(--c-warn)]/8 text-[var(--c-warn)]',
   baja:  'bg-secondary text-muted-foreground',
 };
 
@@ -37,20 +37,20 @@ export default function ReporteIncidencia({ recepcion }) {
   };
 
   return (
-    <Card className="p-4 space-y-3" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+    <Card className="p-4 space-y-3" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-[#BA7517]" />
+          <AlertTriangle className="w-4 h-4 text-[var(--c-warn)]" />
           <h2 className="text-sm font-medium">Reporte de incidencia</h2>
           <span className="text-xs text-muted-foreground">
             {incidencias.length} {incidencias.length === 1 ? 'incidencia' : 'incidencias'}
           </span>
         </div>
         <div className="flex gap-2 print:hidden">
-          <Button variant="outline" size="sm" onClick={copiar} style={{ borderRadius: '8px' }}>
+          <Button variant="outline" size="sm" onClick={copiar} style={{ borderRadius: 'var(--r-ctl)' }}>
             <Copy className="w-3.5 h-3.5 mr-1.5" /> {copiado ? 'Copiado' : 'Copiar'}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()} style={{ borderRadius: '8px' }}>
+          <Button variant="outline" size="sm" onClick={() => window.print()} style={{ borderRadius: 'var(--r-ctl)' }}>
             <Printer className="w-3.5 h-3.5 mr-1.5" /> Imprimir
           </Button>
         </div>
@@ -66,9 +66,9 @@ export default function ReporteIncidencia({ recepcion }) {
       <div className="space-y-2">
         {incidencias.map((i, n) => (
           <div key={n} className="flex flex-wrap items-start gap-2 p-2.5 rounded bg-secondary/40"
-            style={{ borderRadius: '8px' }}>
+            style={{ borderRadius: 'var(--r-ctl)' }}>
             <span className={`text-xs px-2 py-0.5 rounded font-medium shrink-0 ${COLOR[i.gravedad]}`}
-              style={{ borderRadius: '4px' }}>
+              style={{ borderRadius: 'var(--r-chip)' }}>
               {ETIQUETA_INCIDENCIA[i.tipo]}
             </span>
             <div className="min-w-0 flex-1">

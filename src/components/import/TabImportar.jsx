@@ -295,7 +295,7 @@ export default function TabImportar() {
       {(status === 'idle' || !file) && (
         <Card
           className="border-dashed cursor-pointer hover:bg-accent/30 transition-colors"
-          style={{ borderRadius: '12px', borderWidth: '1.5px' }}
+          style={{ borderRadius: 'var(--r-card)', borderWidth: '1.5px' }}
           onClick={() => fileRef.current?.click()}
         >
           <div className="p-10 flex flex-col items-center gap-3">
@@ -304,7 +304,7 @@ export default function TabImportar() {
               <p className="font-medium text-sm">Seleccionar archivo Excel</p>
               <p className="text-xs text-muted-foreground mt-1">Archivos .xlsx únicamente</p>
             </div>
-            <Button variant="outline" size="sm" style={{ borderRadius: '8px' }}
+            <Button variant="outline" size="sm" style={{ borderRadius: 'var(--r-ctl)' }}
               onClick={e => { e.stopPropagation(); fileRef.current?.click() }}>
               <Upload className="w-3.5 h-3.5 mr-1.5" /> Elegir archivo
             </Button>
@@ -314,22 +314,22 @@ export default function TabImportar() {
       )}
 
       {status === 'parsing' && (
-        <Card className="p-5 flex items-center gap-3" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+        <Card className="p-5 flex items-center gap-3" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
           <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
           <span className="text-sm">Analizando archivo y buscando productos...</span>
         </Card>
       )}
 
       {status === 'pick_sheet' && (
-        <Card className="p-5 space-y-3" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+        <Card className="p-5 space-y-3" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
           <p className="text-sm font-medium">Selecciona la hoja a importar</p>
           <div className="flex flex-wrap gap-2">
             {sheets.map(name => (
-              <Button key={name} variant="outline" size="sm" style={{ borderRadius: '8px' }}
+              <Button key={name} variant="outline" size="sm" style={{ borderRadius: 'var(--r-ctl)' }}
                 onClick={() => parseSheet(buf, name)}>{name}</Button>
             ))}
           </div>
-          <Button variant="ghost" size="sm" onClick={reset} style={{ borderRadius: '8px' }}>
+          <Button variant="ghost" size="sm" onClick={reset} style={{ borderRadius: 'var(--r-ctl)' }}>
             <X className="w-3.5 h-3.5 mr-1" /> Cancelar
           </Button>
         </Card>
@@ -338,7 +338,7 @@ export default function TabImportar() {
       {(status === 'ready' || status === 'importing' || status === 'done') && matchStats && (
         <div className="space-y-4">
           {/* File header */}
-          <Card className="p-4" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+          <Card className="p-4" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <FileSpreadsheet className="w-5 h-5 text-muted-foreground shrink-0" />
@@ -365,16 +365,16 @@ export default function TabImportar() {
 
           {/* KPI cards */}
           <div className="grid grid-cols-3 gap-3">
-            <Card className="p-4 text-center" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+            <Card className="p-4 text-center" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
               <p className="text-2xl font-bold">{matchStats.total}</p>
               <p className="text-xs text-muted-foreground mt-1">Filas totales</p>
             </Card>
-            <Card className="p-4 text-center" style={{ borderRadius: '12px', borderWidth: '0.5px', background:'rgba(74,222,128,0.05)' }}>
-              <p className="text-2xl font-bold text-[#4ade80]">{matchStats.matched}</p>
+            <Card className="p-4 text-center" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px', background:'rgba(74,222,128,0.05)' }}>
+              <p className="text-2xl font-bold text-[var(--c-ok)]">{matchStats.matched}</p>
               <p className="text-xs text-muted-foreground mt-1">Con producto</p>
             </Card>
-            <Card className="p-4 text-center" style={{ borderRadius: '12px', borderWidth: '0.5px', background:'rgba(245,158,11,0.05)' }}>
-              <p className="text-2xl font-bold text-[#f59e0b]">{matchStats.unmatched}</p>
+            <Card className="p-4 text-center" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px', background:'rgba(245,158,11,0.05)' }}>
+              <p className="text-2xl font-bold text-[var(--c-warn)]">{matchStats.unmatched}</p>
               <p className="text-xs text-muted-foreground mt-1">Sin match</p>
             </Card>
           </div>
@@ -383,7 +383,7 @@ export default function TabImportar() {
           {detectedCols.length > 0 && status !== 'done' && (
             <button
               className="w-full flex items-center justify-between text-xs text-muted-foreground px-3 py-2 rounded-lg border hover:bg-accent/30 transition-colors"
-              style={{ borderRadius: '8px' }}
+              style={{ borderRadius: 'var(--r-ctl)' }}
               onClick={() => setShowCols(v => !v)}
             >
               <span>Columnas detectadas en el Excel ({detectedCols.length})</span>
@@ -391,7 +391,7 @@ export default function TabImportar() {
             </button>
           )}
           {showCols && (
-            <Card className="p-3" style={{ borderRadius: '8px', borderWidth: '0.5px' }}>
+            <Card className="p-3" style={{ borderRadius: 'var(--r-ctl)', borderWidth: '0.5px' }}>
               <div className="flex flex-wrap gap-1.5">
                 {detectedCols.map(c => (
                   <span key={c} className="text-xs bg-secondary px-2 py-0.5 rounded font-mono">{c}</span>
@@ -401,7 +401,7 @@ export default function TabImportar() {
           )}
 
           {/* Preview */}
-          <Card style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+          <Card style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
             <div className="p-3 border-b">
               <p className="text-xs font-medium text-muted-foreground">Vista previa — primeras 5 filas</p>
             </div>
@@ -428,8 +428,8 @@ export default function TabImportar() {
                       ))}
                       <td className="p-2 text-center">
                         {row._matched
-                          ? <CheckCircle className="w-3.5 h-3.5 text-[#4ade80] mx-auto" />
-                          : <AlertTriangle className="w-3.5 h-3.5 text-[#f59e0b] mx-auto" />}
+                          ? <CheckCircle className="w-3.5 h-3.5 text-[var(--c-ok)] mx-auto" />
+                          : <AlertTriangle className="w-3.5 h-3.5 text-[var(--c-warn)] mx-auto" />}
                       </td>
                       <td className="p-2 text-[10px] text-muted-foreground font-mono">
                         {row._idTienda || '—'} / {row._codigo || '—'}
@@ -443,7 +443,7 @@ export default function TabImportar() {
 
           {/* Warning unmatched */}
           {matchStats.unmatched > 0 && (
-            <div className="flex items-start gap-2 text-xs text-[#f59e0b] bg-[#f59e0b]/10 rounded-lg p-3">
+            <div className="flex items-start gap-2 text-xs text-[var(--c-warn)] bg-[var(--c-warn)]/10 rounded-lg p-3">
               <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
               <span>
                 {matchStats.unmatched} fila(s) sin producto coincidente serán omitidas.
@@ -454,14 +454,14 @@ export default function TabImportar() {
 
           {status === 'ready' && (
             <Button onClick={handleImport} disabled={matchStats.matched === 0}
-              className="w-full" style={{ borderRadius: '8px' }}>
+              className="w-full" style={{ borderRadius: 'var(--r-ctl)' }}>
               <Upload className="w-4 h-4 mr-2" />
               Importar {matchStats.matched} registros en {isAjuste ? 'inventarios' : 'mermas'}
             </Button>
           )}
 
           {status === 'importing' && (
-            <Card className="p-4 space-y-3" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+            <Card className="p-4 space-y-3" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
               <div className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span className="text-sm">Importando... {progress}%</span>
@@ -474,19 +474,19 @@ export default function TabImportar() {
           )}
 
           {status === 'done' && result && (
-            <Card className="p-5 space-y-4" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+            <Card className="p-5 space-y-4" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
               <div className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-[#4ade80]" />
+                <CheckCircle className="w-5 h-5 text-[var(--c-ok)]" />
                 <span className="text-sm font-medium">Importación completada</span>
                 <span className="text-xs text-muted-foreground ml-1">→ tabla <code className="text-xs">{result.table}</code></span>
               </div>
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div>
-                  <p className="text-2xl font-bold text-[#4ade80]">{result.done}</p>
+                  <p className="text-2xl font-bold text-[var(--c-ok)]">{result.done}</p>
                   <p className="text-xs text-muted-foreground">Insertados</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-[#e24b4a]">{result.errors}</p>
+                  <p className="text-2xl font-bold text-[var(--c-bad)]">{result.errors}</p>
                   <p className="text-xs text-muted-foreground">Errores</p>
                 </div>
                 <div>
@@ -494,7 +494,7 @@ export default function TabImportar() {
                   <p className="text-xs text-muted-foreground">Omitidos</p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={reset} className="w-full" style={{ borderRadius: '8px' }}>
+              <Button variant="outline" size="sm" onClick={reset} className="w-full" style={{ borderRadius: 'var(--r-ctl)' }}>
                 <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Importar otro archivo
               </Button>
             </Card>
@@ -503,13 +503,13 @@ export default function TabImportar() {
       )}
 
       {status === 'error' && (
-        <Card className="p-4 flex items-center gap-3 border-[#e24b4a]/30" style={{ borderRadius: '12px' }}>
-          <AlertTriangle className="w-5 h-5 text-[#e24b4a] shrink-0" />
+        <Card className="p-4 flex items-center gap-3 border-[var(--c-bad)]/30" style={{ borderRadius: 'var(--r-card)' }}>
+          <AlertTriangle className="w-5 h-5 text-[var(--c-bad)] shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-medium text-[#e24b4a]">Error al leer el archivo</p>
+            <p className="text-sm font-medium text-[var(--c-bad)]">Error al leer el archivo</p>
             <p className="text-xs text-muted-foreground mt-0.5">Verifica que sea un .xlsx válido</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={reset} style={{ borderRadius: '8px' }}>Reintentar</Button>
+          <Button variant="ghost" size="sm" onClick={reset} style={{ borderRadius: 'var(--r-ctl)' }}>Reintentar</Button>
         </Card>
       )}
     </div>

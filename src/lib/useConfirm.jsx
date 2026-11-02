@@ -37,7 +37,7 @@ export function useConfirm() {
 
   const ConfirmDialogNode = (
     <AlertDialog open={state.open}>
-      <AlertDialogContent style={{ borderRadius: '12px' }}>
+      <AlertDialogContent style={{ borderRadius: 'var(--r-card)' }}>
         <AlertDialogHeader>
           <AlertDialogTitle>{state.title}</AlertDialogTitle>
           {state.message && (
@@ -48,7 +48,7 @@ export function useConfirm() {
           <AlertDialogCancel onClick={handleCancel}>Cancelar</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
-            className={state.destructive ? 'bg-[#E24B4A] hover:bg-[#E24B4A]/90 text-white' : ''}
+            className={state.destructive ? 'bg-[var(--c-bad)] hover:bg-[var(--c-bad)]/90 text-white' : ''}
           >
             Confirmar
           </AlertDialogAction>

@@ -217,7 +217,7 @@ export default function Mermas({ ambito = 'inventario' }) {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)}
-              placeholder="Buscar..." className="pl-10" style={{ borderRadius: '8px' }} />
+              placeholder="Buscar..." className="pl-10" style={{ borderRadius: 'var(--r-ctl)' }} />
           </div>
         )}
         filtros={(
@@ -267,8 +267,8 @@ export default function Mermas({ ambito = 'inventario' }) {
           el botón aparece con la selección, quien no sabe que puede marcar
           tampoco descubre que puede bajarlas. */}
       {puedeBajar && bajables.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-[#BA7517]/30 bg-[#BA7517]/5"
-          style={{ borderRadius: '12px' }}>
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-[var(--c-warn)]/30 bg-[var(--c-warn)]/5"
+          style={{ borderRadius: 'var(--r-card)' }}>
           {/* `basis-full` hasta `sm`: con `flex-1 min-w-0` el texto podia
               encogerse por debajo de su palabra mas corta, asi que en el movil
               no bajaba de linea y quedaba una columna de una palabra por fila
@@ -287,7 +287,7 @@ export default function Mermas({ ambito = 'inventario' }) {
               </>
             )}
             {mezclaAlmacenes && (
-              <span className="block text-xs text-[#E24B4A] mt-0.5">
+              <span className="block text-xs text-[var(--c-bad)] mt-0.5">
                 Son de {almacenes.length} almacenes distintos y cada envío va a uno solo. Deja marcadas las de un almacén.
               </span>
             )}
@@ -296,7 +296,7 @@ export default function Mermas({ ambito = 'inventario' }) {
             {todasMarcadas ? 'Quitar selección' : 'Seleccionar todas'}
           </Button>
           <Button size="sm" className="shrink-0" disabled={marcadas.length === 0 || mezclaAlmacenes}
-            onClick={() => abrirBajada(marcadas)} style={{ borderRadius: '8px' }}>
+            onClick={() => abrirBajada(marcadas)} style={{ borderRadius: 'var(--r-ctl)' }}>
             <ArrowDownToLine className="w-3.5 h-3.5 mr-1.5" />
             Bajar de tienda
           </Button>
@@ -318,13 +318,13 @@ export default function Mermas({ ambito = 'inventario' }) {
           <input type="checkbox" aria-label="Seleccionar todas"
             checked={todasMarcadas} onChange={alternarTodas}
             disabled={bajables.length === 0}
-            className="w-3.5 h-3.5 accent-[#BA7517] cursor-pointer" />
+            className="w-3.5 h-3.5 accent-[var(--c-warn)] cursor-pointer" />
         ) : null}
         marca={puedeBajar ? ((m) => (
           m.producto_codigo && Number(m.cantidad) > 0 && !m.rebaja_confirmada ? (
             <input type="checkbox" aria-label={`Seleccionar ${m.producto_nombre}`}
               checked={seleccion.has(m.id)} onChange={() => alternar(m.id)}
-              className="w-3.5 h-3.5 accent-[#BA7517] cursor-pointer" />
+              className="w-3.5 h-3.5 accent-[var(--c-warn)] cursor-pointer" />
           ) : null
         )) : undefined}
         pie={(
@@ -333,7 +333,7 @@ export default function Mermas({ ambito = 'inventario' }) {
               <td colSpan={colOrder.filter((k) => cols[k]).length + (puedeBajar ? 2 : 0)}
                 className="p-3 text-xs font-medium text-muted-foreground">
                 Pérdida en esta página
-                <span className="ml-2 text-sm text-[#E24B4A]">${perdidaPagina.toFixed(2)}</span>
+                <span className="ml-2 text-sm text-[var(--c-bad)]">${perdidaPagina.toFixed(2)}</span>
               </td>
             </tr>
           </tfoot>
@@ -345,7 +345,7 @@ export default function Mermas({ ambito = 'inventario' }) {
           tabla que la lleve. */}
       <p className="sm:hidden flex justify-between text-xs text-muted-foreground px-1">
         Pérdida en esta página
-        <span className="font-medium text-[#E24B4A]">${perdidaPagina.toFixed(2)}</span>
+        <span className="font-medium text-[var(--c-bad)]">${perdidaPagina.toFixed(2)}</span>
       </p>
 
       <Pagination page={page} total={total} pageSize={PAGE_SIZE} onPage={setPage} />
@@ -384,8 +384,11 @@ export default function Mermas({ ambito = 'inventario' }) {
  * en `<td>` y sin él va suelta dentro de la ficha.
  */
 function celdaMerma({ merma: m, clave, enTabla, onBajar }) {
+  // `py-1.5`: la fila baja de 44 px a 32. En una pantalla de portátil eso
+  // son seis filas más sin desplazar, que es de lo que va un listado de
+  // trabajo. La ficha del teléfono no cambia: ahí el dedo manda.
   const env = (contenido, clases = '') => (enTabla
-    ? <td key={clave} className={`p-3 ${clases}`}>{contenido}</td>
+    ? <td key={clave} className={`px-2.5 py-1.5 ${clases}`}>{contenido}</td>
     : contenido);
 
   switch (clave) {
@@ -408,7 +411,7 @@ function celdaMerma({ merma: m, clave, enTabla, onBajar }) {
       return env(<span className="text-xs">{m.clasif_merma}</span>);
     case 'total_perdida':
       return env(
-        <span className="font-medium tabular-nums text-[#E24B4A]">
+        <span className="font-medium tabular-nums text-[var(--c-bad)]">
           ${m.total_perdida?.toFixed(2) || '0.00'}
         </span>,
         'text-right',
@@ -418,12 +421,12 @@ function celdaMerma({ merma: m, clave, enTabla, onBajar }) {
     case 'rebaja_confirmada':
       return env(
         m.rebaja_confirmada ? (
-          <span className="inline-flex items-center gap-1 text-xs text-[#1D9E75] bg-[#1D9E75]/10 px-2 py-1 rounded-md whitespace-nowrap"
+          <span className="inline-flex items-center gap-1 text-xs text-[var(--c-ok-dim)] bg-[var(--c-ok-dim)]/10 px-2 py-1 rounded-md whitespace-nowrap"
             title={m.fecha_rebaja_tienda ? `Bajado el ${m.fecha_rebaja_tienda}` : 'Bajado de tienda'}>
             <Check className="w-3 h-3" /> Bajado
           </span>
         ) : m.producto_codigo && Number(m.cantidad) > 0 ? (
-          <span className="inline-flex items-center gap-1 text-xs text-[#BA7517] bg-[#BA7517]/10 px-2 py-1 rounded-md whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 text-xs text-[var(--c-warn)] bg-[var(--c-warn)]/10 px-2 py-1 rounded-md whitespace-nowrap">
             Sin bajar
           </span>
         ) : (
@@ -439,7 +442,7 @@ function celdaMerma({ merma: m, clave, enTabla, onBajar }) {
           <button type="button" title="Bajar esta merma de tienda"
             aria-label={`Bajar de tienda: ${m.producto_nombre}`}
             onClick={onBajar}
-            className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted-foreground hover:text-[#BA7517] hover:bg-secondary transition-colors">
+            className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted-foreground hover:text-[var(--c-warn)] hover:bg-secondary transition-colors">
             <ArrowDownToLine className="w-3.5 h-3.5" />
             <span className="sm:hidden">Bajar de tienda</span>
           </button>

@@ -8,7 +8,7 @@ export const ROLES = {
   supervisor:   { label: 'Supervisor',      color: 'bg-neutral text-neutral-foreground' },
   jefe_depto:   { label: 'Jefe de Depto.', color: 'bg-[#6366F1] text-white' },
   administrador:{ label: 'Administrador',   color: 'bg-purple text-purple-foreground' },
-  superadmin:   { label: 'Super Admin',     color: 'bg-[#e24b4a] text-white' },
+  superadmin:   { label: 'Super Admin',     color: 'bg-[var(--c-bad)] text-white' },
 };
 
 /** true si el rol tiene dominio total sobre el sistema */
@@ -23,14 +23,14 @@ export const DEPARTAMENTOS = {
 
 // Task state badges
 export const ESTADO_TAREA = {
-  pendiente: { label: 'Pendiente', bg: 'bg-[#88878014]', text: 'text-[#888780]', dot: 'bg-[#888780]' },
-  en_curso: { label: 'En curso', bg: 'bg-[#378ADD14]', text: 'text-[#378ADD]', dot: 'bg-[#378ADD]' },
-  pend_fact: { label: 'Pend. FACT', bg: 'bg-[#BA751714]', text: 'text-[#BA7517]', dot: 'bg-[#BA7517]' },
-  pend_ca: { label: 'Pend. CA', bg: 'bg-[#BA751714]', text: 'text-[#BA7517]', dot: 'bg-[#BA7517]' },
-  en_auditoria: { label: 'En auditoría', bg: 'bg-[#BA751714]', text: 'text-[#BA7517]', dot: 'bg-[#BA7517]' },
-  completado: { label: 'Completado', bg: 'bg-[#1D9E7514]', text: 'text-[#1D9E75]', dot: 'bg-[#1D9E75]' },
-  devuelto: { label: 'Devuelto', bg: 'bg-[#E24B4A14]', text: 'text-[#E24B4A]', dot: 'bg-[#E24B4A]' },
-  reconteo_solicitado: { label: 'Reconteo', bg: 'bg-[#E24B4A14]', text: 'text-[#E24B4A]', dot: 'bg-[#E24B4A]' },
+  pendiente: { label: 'Pendiente', bg: 'bg-[var(--c-gray)]/8', text: 'text-[var(--c-gray)]', dot: 'bg-[var(--c-gray)]' },
+  en_curso: { label: 'En curso', bg: 'bg-[var(--c-info)]/8', text: 'text-[var(--c-info)]', dot: 'bg-[var(--c-info)]' },
+  pend_fact: { label: 'Pend. FACT', bg: 'bg-[var(--c-warn)]/8', text: 'text-[var(--c-warn)]', dot: 'bg-[var(--c-warn)]' },
+  pend_ca: { label: 'Pend. CA', bg: 'bg-[var(--c-warn)]/8', text: 'text-[var(--c-warn)]', dot: 'bg-[var(--c-warn)]' },
+  en_auditoria: { label: 'En auditoría', bg: 'bg-[var(--c-warn)]/8', text: 'text-[var(--c-warn)]', dot: 'bg-[var(--c-warn)]' },
+  completado: { label: 'Completado', bg: 'bg-[var(--c-ok-dim)]/8', text: 'text-[var(--c-ok-dim)]', dot: 'bg-[var(--c-ok-dim)]' },
+  devuelto: { label: 'Devuelto', bg: 'bg-[var(--c-bad)]/8', text: 'text-[var(--c-bad)]', dot: 'bg-[var(--c-bad)]' },
+  reconteo_solicitado: { label: 'Reconteo', bg: 'bg-[var(--c-bad)]/8', text: 'text-[var(--c-bad)]', dot: 'bg-[var(--c-bad)]' },
 };
 
 /**
@@ -44,18 +44,18 @@ export const ESTADO_TAREA = {
  * era.
  */
 export const ESTADO_RECEPCION = {
-  en_curso: { label: 'Recibiendo', bg: 'bg-[#378ADD14]', text: 'text-[#378ADD]', dot: 'bg-[#378ADD]' },
-  cerrada: { label: 'Conforme', bg: 'bg-[#1D9E7514]', text: 'text-[#1D9E75]', dot: 'bg-[#1D9E75]' },
-  con_diferencias: { label: 'Con incidencia', bg: 'bg-[#BA751714]', text: 'text-[#BA7517]', dot: 'bg-[#BA7517]' },
+  en_curso: { label: 'Recibiendo', bg: 'bg-[var(--c-info)]/8', text: 'text-[var(--c-info)]', dot: 'bg-[var(--c-info)]' },
+  cerrada: { label: 'Conforme', bg: 'bg-[var(--c-ok-dim)]/8', text: 'text-[var(--c-ok-dim)]', dot: 'bg-[var(--c-ok-dim)]' },
+  con_diferencias: { label: 'Con incidencia', bg: 'bg-[var(--c-warn)]/8', text: 'text-[var(--c-warn)]', dot: 'bg-[var(--c-warn)]' },
 };
 
 // Lot expiry states
 export const ESTADO_FV = {
-  vencido: { label: 'Vencido', bg: 'bg-[#E24B4A18]', text: 'text-[#E24B4A]', dot: 'bg-[#E24B4A]' },
-  critico: { label: 'Crítico', bg: 'bg-[#E24B4A10]', text: 'text-[#E24B4A]', dot: 'bg-[#E24B4A]' },
-  por_vencer: { label: 'Por vencer', bg: 'bg-[#BA751714]', text: 'text-[#BA7517]', dot: 'bg-[#BA7517]' },
-  vigente: { label: 'Vigente', bg: 'bg-[#1D9E7514]', text: 'text-[#1D9E75]', dot: 'bg-[#1D9E75]' },
-  sin_fecha: { label: 'Sin fecha', bg: 'bg-[#88878014]', text: 'text-[#888780]', dot: 'bg-[#888780]' },
+  vencido: { label: 'Vencido', bg: 'bg-[var(--c-bad)]/9', text: 'text-[var(--c-bad)]', dot: 'bg-[var(--c-bad)]' },
+  critico: { label: 'Crítico', bg: 'bg-[var(--c-bad)]/6', text: 'text-[var(--c-bad)]', dot: 'bg-[var(--c-bad)]' },
+  por_vencer: { label: 'Por vencer', bg: 'bg-[var(--c-warn)]/8', text: 'text-[var(--c-warn)]', dot: 'bg-[var(--c-warn)]' },
+  vigente: { label: 'Vigente', bg: 'bg-[var(--c-ok-dim)]/8', text: 'text-[var(--c-ok-dim)]', dot: 'bg-[var(--c-ok-dim)]' },
+  sin_fecha: { label: 'Sin fecha', bg: 'bg-[var(--c-gray)]/8', text: 'text-[var(--c-gray)]', dot: 'bg-[var(--c-gray)]' },
 };
 
 // Merma classifications
@@ -260,8 +260,8 @@ export const ESTADO_FACT = [
  * distintos aquí.
  */
 export const TIPO_CASO_LABELS = {
-  muerto_ef_positivo: { label: 'MUERTO EF>0', bg: 'bg-[#E24B4A14]', text: 'text-[#E24B4A]' },
-  desact_ef_positivo: { label: 'DESACT EF>0', bg: 'bg-[#fb923c14]', text: 'text-[#fb923c]' },
-  sin_id: { label: 'Sin ID', bg: 'bg-[#BA751714]', text: 'text-[#BA7517]' },
-  activo_ef_cero: { label: 'Activo EF=0', bg: 'bg-[#88878014]', text: 'text-[#888780]' },
+  muerto_ef_positivo: { label: 'MUERTO EF>0', bg: 'bg-[var(--c-bad)]/8', text: 'text-[var(--c-bad)]' },
+  desact_ef_positivo: { label: 'DESACT EF>0', bg: 'bg-[var(--c-orange)]/8', text: 'text-[var(--c-orange)]' },
+  sin_id: { label: 'Sin ID', bg: 'bg-[var(--c-warn)]/8', text: 'text-[var(--c-warn)]' },
+  activo_ef_cero: { label: 'Activo EF=0', bg: 'bg-[var(--c-gray)]/8', text: 'text-[var(--c-gray)]' },
 };

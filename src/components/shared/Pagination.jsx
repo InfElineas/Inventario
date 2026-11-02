@@ -24,7 +24,7 @@ export default function Pagination({ page, total, pageSize, onPage }) {
   const btnCls = (isActive) =>
     `min-w-[32px] h-8 px-2 rounded-md text-xs font-medium transition-colors ${
       isActive
-        ? 'bg-[#4ade80]/15 text-[#4ade80] border border-[#4ade80]/30'
+        ? 'bg-[var(--c-ok)]/15 text-[var(--c-ok)] border border-[var(--c-ok)]/30'
         : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.05] disabled:opacity-30 disabled:cursor-default'
     }`
 

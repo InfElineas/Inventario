@@ -321,7 +321,7 @@ export default function Recepciones() {
               placeholder={enPedidos
                 ? 'Buscar por proveedor, número u oferta...'
                 : 'Buscar por proveedor, orden o producto...'}
-              className="pl-10" style={{ borderRadius: '8px' }} />
+              className="pl-10" style={{ borderRadius: 'var(--r-ctl)' }} />
           </div>
         )}
         filtros={(
@@ -448,7 +448,7 @@ function PedidosPorRecibir({ puedeRecibir, recepciones, creando, onRecibir, filt
   return (
     <div className="space-y-4">
       {isLoading ? (
-        <Card className="p-8 text-center text-muted-foreground" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+        <Card className="p-8 text-center text-muted-foreground" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
           Cargando pedidos…
         </Card>
       ) : lista.length === 0 ? (
@@ -460,15 +460,15 @@ function PedidosPorRecibir({ puedeRecibir, recepciones, creando, onRecibir, filt
         const ya = recepcionDe(p.id);
         return (
           <Card key={p.id} className="p-4 flex flex-wrap items-center gap-3"
-            style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+            style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
             <div className="flex-1 min-w-[220px] space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-medium">{p.numero}</span>
                 <span className="text-xs px-2 py-0.5 rounded bg-secondary text-muted-foreground"
-                  style={{ borderRadius: '4px' }}>{p.estado.replace(/_/g, ' ')}</span>
+                  style={{ borderRadius: 'var(--r-chip)' }}>{p.estado.replace(/_/g, ' ')}</span>
                 {ya && (
-                  <span className="text-xs px-2 py-0.5 rounded bg-[#3E9B4F14] text-[#3E9B4F]"
-                    style={{ borderRadius: '4px' }}>Recepción {ya.no_recepcion}</span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-[var(--c-ok-dim)]/8 text-[var(--c-ok-dim)]"
+                    style={{ borderRadius: 'var(--r-chip)' }}>Recepción {ya.no_recepcion}</span>
                 )}
               </div>
               <p className="text-sm">{p.proveedor || 'Sin proveedor'}</p>
@@ -481,7 +481,7 @@ function PedidosPorRecibir({ puedeRecibir, recepciones, creando, onRecibir, filt
             </div>
             {puedeRecibir && (
               <Button variant={ya ? 'outline' : 'default'} onClick={() => onRecibir(p)}
-                disabled={creando === p.id} style={{ borderRadius: '8px' }}>
+                disabled={creando === p.id} style={{ borderRadius: 'var(--r-ctl)' }}>
                 <PackageOpen className="w-4 h-4 mr-1.5" />
                 {creando === p.id ? 'Preparando…' : ya ? 'Abrir recepción' : 'Recibir'}
               </Button>
@@ -524,13 +524,13 @@ function CreateRecepcionForm({ genNo, user, almacen, onSubmit, onCancel }) {
         message="Si la mercancía viene de un pedido, recíbela desde la pestaña «Pedidos de compra»: las cantidades esperadas vienen puestas." />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Input value={proveedor} onChange={(e) => setProveedor(e.target.value)} placeholder="Proveedor *" style={{ borderRadius: '8px' }} />
-        <Input value={noOrden} onChange={(e) => setNoOrden(e.target.value)} placeholder="No. orden (opcional)" style={{ borderRadius: '8px' }} />
+        <Input value={proveedor} onChange={(e) => setProveedor(e.target.value)} placeholder="Proveedor *" style={{ borderRadius: 'var(--r-ctl)' }} />
+        <Input value={noOrden} onChange={(e) => setNoOrden(e.target.value)} placeholder="No. orden (opcional)" style={{ borderRadius: 'var(--r-ctl)' }} />
       </div>
 
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="outline" onClick={onCancel} style={{ borderRadius: '8px' }}>Cancelar</Button>
-        <Button onClick={crear} disabled={!proveedor.trim()} style={{ borderRadius: '8px' }}>
+        <Button variant="outline" onClick={onCancel} style={{ borderRadius: 'var(--r-ctl)' }}>Cancelar</Button>
+        <Button onClick={crear} disabled={!proveedor.trim()} style={{ borderRadius: 'var(--r-ctl)' }}>
           <PackageOpen className="w-4 h-4 mr-1.5" /> Crear recepción
         </Button>
       </div>
@@ -754,7 +754,7 @@ function RecepcionDetail({ recepcion, user, onUpdate, onDelete }) {
         {canEdit && (
           <Button
             variant="ghost" size="sm"
-            className="text-[#E24B4A] hover:text-[#E24B4A] hover:bg-[#E24B4A]/10"
+            className="text-[var(--c-bad)] hover:text-[var(--c-bad)] hover:bg-[var(--c-bad)]/10"
             onClick={async () => {
               if (await confirmDialog('Se eliminará permanentemente con todos sus ítems.', { title: '¿Eliminar esta recepción?', destructive: true })) onDelete()
             }}
@@ -772,7 +772,7 @@ function RecepcionDetail({ recepcion, user, onUpdate, onDelete }) {
               value={proveedorDraft}
               onChange={(e) => setProveedorDraft(e.target.value)}
               className="h-7 text-xs flex-1"
-              style={{ borderRadius: '6px' }}
+              style={{ borderRadius: 'var(--r-ctl)' }}
               autoFocus
             />
             <Button size="sm" className="h-7 px-2 text-xs" onClick={() => {
@@ -833,14 +833,14 @@ function RecepcionDetail({ recepcion, user, onUpdate, onDelete }) {
 
           return (
             <div key={clave} className={`p-3 rounded-lg flex flex-wrap items-center justify-between gap-2 ${
-              d.contada === false ? 'bg-[#BA7517]/[0.06] border border-[#BA7517]/20' : 'bg-secondary/50'
-            }`} style={{ borderRadius: '8px' }}>
+              d.contada === false ? 'bg-[var(--c-warn)]/[0.06] border border-[var(--c-warn)]/20' : 'bg-secondary/50'
+            }`} style={{ borderRadius: 'var(--r-ctl)' }}>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-medium truncate">{d.producto_nombre}</p>
                   {esNuevo(d.producto_codigo) && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-[#BA751714] text-[#BA7517] shrink-0"
-                      style={{ borderRadius: '4px' }}>Nuevo en TKC</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-[var(--c-warn)]/8 text-[var(--c-warn)] shrink-0"
+                      style={{ borderRadius: 'var(--r-chip)' }}>Nuevo en TKC</span>
                   )}
                 </div>
                 {/* Sin contar: no se dice cuántas se pidieron. Con el número
@@ -859,34 +859,34 @@ function RecepcionDetail({ recepcion, user, onUpdate, onDelete }) {
                   </p>
                 )}
                 {d.recomienda_devolucion && (
-                  <p className="text-xs font-medium text-[#E24B4A] mt-0.5">Recomendado: devolver al proveedor</p>
+                  <p className="text-xs font-medium text-[var(--c-bad)] mt-0.5">Recomendado: devolver al proveedor</p>
                 )}
                 {!d.calidad_ok && d.nota_calidad && (
-                  <p className="text-xs text-[#E24B4A] mt-0.5">Calidad: {d.nota_calidad}</p>
+                  <p className="text-xs text-[var(--c-bad)] mt-0.5">Calidad: {d.nota_calidad}</p>
                 )}
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 {d.foto_id && <VerFoto id={d.foto_id} />}
                 {d.contada !== false && d.diferencia !== 0 && (
                   veCantidades ? (
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded ${d.diferencia > 0 ? 'bg-[#BA751714] text-[#BA7517]' : 'bg-[#E24B4A14] text-[#E24B4A]'}`} style={{ borderRadius: '4px' }}>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded ${d.diferencia > 0 ? 'bg-[var(--c-warn)]/8 text-[var(--c-warn)]' : 'bg-[var(--c-bad)]/8 text-[var(--c-bad)]'}`} style={{ borderRadius: 'var(--r-chip)' }}>
                       {d.diferencia > 0 ? '+' : ''}{d.diferencia}
                     </span>
                   ) : (
-                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-[#E24B4A14] text-[#E24B4A]" style={{ borderRadius: '4px' }}>
+                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-[var(--c-bad)]/8 text-[var(--c-bad)]" style={{ borderRadius: 'var(--r-chip)' }}>
                       No cuadra
                     </span>
                   )
                 )}
                 {canEdit && (
                   <Button size="sm" variant={d.contada === false ? 'default' : 'ghost'}
-                    className="h-9 px-4 text-xs" onClick={() => setContando(clave)} style={{ borderRadius: '8px' }}>
+                    className="h-9 px-4 text-xs" onClick={() => setContando(clave)} style={{ borderRadius: 'var(--r-ctl)' }}>
                     {d.contada === false ? 'Contar' : <Pencil className="w-3 h-3" />}
                   </Button>
                 )}
                 {canEdit && (
                   <button
-                    className="text-muted-foreground hover:text-[#E24B4A] transition-colors text-xs font-bold leading-none"
+                    className="text-muted-foreground hover:text-[var(--c-bad)] transition-colors text-xs font-bold leading-none"
                     onClick={() => {
                       const updated = detalles.filter((_, j) => j !== i)
                       onUpdate({
@@ -907,13 +907,13 @@ function RecepcionDetail({ recepcion, user, onUpdate, onDelete }) {
       {recepcion.estado === 'en_curso' && detalles.length > 0 && (
         <>
           {sinContar.length > 0 && (
-            <p className="text-xs text-[#BA7517]">
+            <p className="text-xs text-[var(--c-warn)]">
               Faltan {sinContar.length} {sinContar.length === 1 ? 'producto por contar' : 'productos por contar'}.
               Un producto sin contar no es lo mismo que uno que llegó a cero: escribe 0 si no vino.
             </p>
           )}
           <Button className="w-full" variant="outline" onClick={cerrarRecepcion}
-            disabled={sinContar.length > 0} style={{ borderRadius: '8px' }}>
+            disabled={sinContar.length > 0} style={{ borderRadius: 'var(--r-ctl)' }}>
             Cerrar recepción
           </Button>
         </>
@@ -972,7 +972,7 @@ function VerFoto({ id }) {
             <p className="text-sm text-muted-foreground p-8 text-center">Cargando…</p>
           ) : data?.datos ? (
             <img src={data.datos} alt="Presentación del producto" className="w-full rounded"
-              style={{ borderRadius: '8px' }} />
+              style={{ borderRadius: 'var(--r-ctl)' }} />
           ) : (
             <p className="text-sm text-muted-foreground p-8 text-center">La foto ya no está.</p>
           )}
@@ -984,8 +984,11 @@ function VerFoto({ id }) {
 
 /** Una celda del listado de recepciones, la misma para tabla y ficha. */
 function celdaRecepcion(r, clave, enTabla) {
+  // `py-1.5`: la fila baja de 44 px a 32. En una pantalla de portátil eso
+  // son seis filas más sin desplazar, que es de lo que va un listado de
+  // trabajo. La ficha del teléfono no cambia: ahí el dedo manda.
   const env = (contenido, clases = '') => (enTabla
-    ? <td key={clave} className={`p-3 ${clases}`}>{contenido}</td>
+    ? <td key={clave} className={`px-2.5 py-1.5 ${clases}`}>{contenido}</td>
     : contenido);
 
   switch (clave) {

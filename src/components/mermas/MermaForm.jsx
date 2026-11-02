@@ -109,7 +109,7 @@ export default function MermaForm({ user, onSubmit, onCancel, isPending: isPendi
       )}
 
       {avisoEscaneo && (
-        <p className="text-xs text-[#BA7517] bg-[#BA7517]/10 px-3 py-2 rounded-md">{avisoEscaneo}</p>
+        <p className="text-xs text-[var(--c-warn)] bg-[var(--c-warn)]/10 px-3 py-2 rounded-md">{avisoEscaneo}</p>
       )}
 
       {showScanner ? (
@@ -121,7 +121,7 @@ export default function MermaForm({ user, onSubmit, onCancel, isPending: isPendi
           <div className="flex-1 min-w-0">
             <ProductSearch onSelect={setProducto} />
           </div>
-          <Button type="button" variant="outline" onClick={() => setShowScanner(true)} title="Escanear código de barras" style={{ borderRadius: '8px' }}>
+          <Button type="button" variant="outline" onClick={() => setShowScanner(true)} title="Escanear código de barras" style={{ borderRadius: 'var(--r-ctl)' }}>
             <ScanLine className="w-4 h-4" />
           </Button>
         </div>
@@ -129,7 +129,7 @@ export default function MermaForm({ user, onSubmit, onCancel, isPending: isPendi
 
       {producto && (
         <>
-          <div className="bg-secondary/50 rounded-lg p-4 grid grid-cols-4 gap-4" style={{ borderRadius: '8px' }}>
+          <div className="bg-secondary/50 rounded-lg p-4 grid grid-cols-4 gap-4" style={{ borderRadius: 'var(--r-ctl)' }}>
             <div><p className="text-[10px] text-muted-foreground uppercase">Producto</p><p className="text-sm font-medium">{producto.nombre}</p></div>
             <div><p className="text-[10px] text-muted-foreground uppercase">Código</p><p className="text-sm font-medium">{producto.codigo_producto}</p></div>
             <div><p className="text-[10px] text-muted-foreground uppercase">EF</p><p className="text-sm font-medium">{producto.exist_fisica}</p></div>
@@ -139,18 +139,18 @@ export default function MermaForm({ user, onSubmit, onCancel, isPending: isPendi
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[11px] text-muted-foreground">Cantidad</label>
-              <Input type="number" min="1" value={cantidad} onChange={(e) => setCantidad(e.target.value)} style={{ borderRadius: '8px' }} />
+              <Input type="number" min="1" value={cantidad} onChange={(e) => setCantidad(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
             </div>
             <div>
               <label className="text-[11px] text-muted-foreground">FV del lote (opcional)</label>
-              <Input type="date" value={fvLote} onChange={(e) => setFvLote(e.target.value)} style={{ borderRadius: '8px' }} />
+              <Input type="date" value={fvLote} onChange={(e) => setFvLote(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
             </div>
           </div>
 
           <div>
             <label className="text-[11px] text-muted-foreground">Clasificación de merma</label>
             <Select value={clasif} onValueChange={setClasif}>
-              <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Seleccionar clasificación" /></SelectTrigger>
+              <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Seleccionar clasificación" /></SelectTrigger>
               <SelectContent className="max-h-60">
                 {ALL_CLASIF_MERMA.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
@@ -169,7 +169,7 @@ export default function MermaForm({ user, onSubmit, onCancel, isPending: isPendi
           <div>
             <label className="text-[11px] text-muted-foreground">Destino final</label>
             <Select value={destino} onValueChange={setDestino}>
-              <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Seleccionar destino" /></SelectTrigger>
+              <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Seleccionar destino" /></SelectTrigger>
               <SelectContent>
                 {DESTINOS_MERMA.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
               </SelectContent>
@@ -179,23 +179,23 @@ export default function MermaForm({ user, onSubmit, onCancel, isPending: isPendi
           {Number(cantidad) > 200 && <AlertBanner variant="danger" message={`Cantidad alta: ${cantidad} unidades. Verificar antes de continuar.`} />}
           {totalPerdida > 500 && <AlertBanner variant="danger" message={`Valor alto: $${totalPerdida.toFixed(2)}. Verificar antes de continuar.`} />}
 
-          <div className="p-3 bg-secondary/50 rounded-lg flex items-center gap-4" style={{ borderRadius: '8px' }}>
+          <div className="p-3 bg-secondary/50 rounded-lg flex items-center gap-4" style={{ borderRadius: 'var(--r-ctl)' }}>
             <span className="text-xs text-muted-foreground">Pérdida estimada:</span>
-            <span className="text-lg font-medium text-[#E24B4A]">${totalPerdida.toFixed(2)}</span>
+            <span className="text-lg font-medium text-[var(--c-bad)]">${totalPerdida.toFixed(2)}</span>
           </div>
 
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground font-medium">Fecha del registro *</label>
-            <Input type="date" value={fechaInv} onChange={(e) => setFechaInv(e.target.value)} required style={{ borderRadius: '8px' }} />
+            <Input type="date" value={fechaInv} onChange={(e) => setFechaInv(e.target.value)} required style={{ borderRadius: 'var(--r-ctl)' }} />
           </div>
-          <Textarea value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Notas..." maxLength={500} style={{ borderRadius: '8px' }} />
+          <Textarea value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Notas..." maxLength={500} style={{ borderRadius: 'var(--r-ctl)' }} />
 
           {validError && (
-            <p className="text-xs text-[#E24B4A] bg-[#E24B4A]/10 px-3 py-2 rounded-md">{validError}</p>
+            <p className="text-xs text-[var(--c-bad)] bg-[var(--c-bad)]/10 px-3 py-2 rounded-md">{validError}</p>
           )}
 
           <div className="flex justify-end gap-2">
-            <Button onClick={handleSubmit} disabled={!producto || isPending} style={{ borderRadius: '8px' }}>
+            <Button onClick={handleSubmit} disabled={!producto || isPending} style={{ borderRadius: 'var(--r-ctl)' }}>
               <Save className="w-4 h-4 mr-1.5" /> {isPending ? 'Registrando...' : 'Registrar merma'}
             </Button>
           </div>

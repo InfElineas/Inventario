@@ -84,11 +84,11 @@ export default function Login() {
 
         {/* Wordmark */}
         <div className="space-y-1">
-          <p className="text-[11px] font-mono uppercase tracking-widest text-[#6798ff]">
+          <p className="text-[11px] font-mono uppercase tracking-widest text-primary">
             Sistema de almacén
           </p>
           <h1 className="text-2xl font-bold text-white tracking-wide">ELÍNEAS</h1>
-          <p className="text-sm text-[#7c7c7c]">Sistema de inventario · Almacenes</p>
+          <p className="text-sm text-muted-foreground">Sistema de inventario · Almacenes</p>
         </div>
 
         {/* Card */}
@@ -96,21 +96,21 @@ export default function Login() {
           <p className="text-[13px] font-medium text-muted-foreground">Iniciar sesión</p>
 
           {error && (
-            <p className="text-[12px] text-[#E24B4A] bg-[#E24B4A]/10 px-3 py-2 rounded-md">{error}</p>
+            <p className="text-[12px] text-[var(--c-bad)] bg-[var(--c-bad)]/10 px-3 py-2 rounded-md">{error}</p>
           )}
 
           <form onSubmit={entrar} className="space-y-3">
             <input
               type="email" placeholder="correo" value={email} required autoComplete="username"
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 text-[13px] bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-[#6798ff]"
+              className="w-full px-3 py-2 text-[13px] bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
             />
             <div className="relative">
               <input
                 type={showPwd ? 'text' : 'password'} placeholder="Contraseña" value={password} required
                 autoComplete="current-password"
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 pr-9 text-[13px] bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-[#6798ff]"
+                className="w-full px-3 py-2 pr-9 text-[13px] bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
               />
               <button type="button" onClick={() => setShowPwd(v => !v)}
                 aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
@@ -120,7 +120,7 @@ export default function Login() {
             </div>
             <button
               type="submit" disabled={loading}
-              className="w-full py-2.5 text-[13px] font-medium bg-[#6798ff] hover:bg-[#6798ff]/90 text-white rounded-lg disabled:opacity-50 transition-colors"
+              className="w-full py-2.5 text-[13px] font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg disabled:opacity-50 transition-colors"
             >
               {loading ? 'Ingresando…' : 'Ingresar'}
             </button>
@@ -128,7 +128,7 @@ export default function Login() {
 
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
-            <span className="text-[11px] text-[#7c7c7c]">o</span>
+            <span className="text-[11px] text-muted-foreground">o</span>
             <div className="h-px flex-1 bg-border" />
           </div>
 
@@ -140,19 +140,19 @@ export default function Login() {
             Continuar con Google
           </a>
 
-          <p className="text-[11px] text-[#7c7c7c]">
+          <p className="text-[11px] text-muted-foreground">
             ¿Olvidaste tu contraseña o necesitas una cuenta? Contacta con el administrador:
             las cuentas se gestionan desde el servidor de identidad de ELíneas.
           </p>
 
-          <div style={{ borderTop: '1px solid #313131', paddingTop: '12px' }}>
-            <p className="text-[11px] font-mono text-[#7c7c7c]" style={{ letterSpacing: '0.071em' }}>
+          <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '12px' }}>
+            <p className="text-[11px] font-mono text-muted-foreground" style={{ letterSpacing: '0.071em' }}>
               ACCESO RESTRINGIDO — Solo usuarios autorizados
             </p>
           </div>
         </div>
 
-        <p className="text-[11px] text-center text-[#454545]">
+        <p className="text-[11px] text-center text-muted-foreground/60">
           Almacén ELíneas &copy; {new Date().getFullYear()}
         </p>
       </div>

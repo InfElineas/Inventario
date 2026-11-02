@@ -88,7 +88,7 @@ export default function Sidebar({ user, pendingCounts: pendingCountsRaw, isColla
         className={`flex items-center py-4 ${collapsed ? 'justify-center px-0' : 'px-4 gap-2.5'}`}
         style={{ borderBottom: '1px solid hsl(var(--sidebar-border))', flexShrink: 0 }}
       >
-        <div className="w-7 h-7 rounded-lg bg-[#4ade80] flex items-center justify-center shrink-0">
+        <div className="w-7 h-7 rounded-lg bg-[var(--c-ok)] flex items-center justify-center shrink-0">
           <Warehouse className="w-3.5 h-3.5 text-black" />
         </div>
         {!collapsed && (
@@ -115,20 +115,20 @@ export default function Sidebar({ user, pendingCounts: pendingCountsRaw, isColla
                   const count    = pendingCounts[item.path] || 0;
                   return (
                     <div key={item.path} className="relative">
-                      {isActive && <span className="absolute left-0 top-[5px] bottom-[5px] w-[3px] bg-[#4ade80] rounded-r-full" />}
+                      {isActive && <span className="absolute left-0 top-[5px] bottom-[5px] w-[3px] bg-[var(--c-ok)] rounded-r-full" />}
                       <Link
                         to={item.path}
                         title={collapsed ? item.label : undefined}
                         className={`flex items-center py-[7px] rounded-md transition-colors whitespace-nowrap
                           ${collapsed ? 'justify-center mx-1.5 px-0' : 'gap-2.5 ml-3 mr-2 px-3'}
-                          ${isActive ? 'bg-[#4ade80]/[0.08] text-[#4ade80]' : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground'}`}
+                          ${isActive ? 'bg-[var(--c-ok)]/[0.08] text-[var(--c-ok)]' : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground'}`}
                       >
                         {Icon && <Icon className="w-[15px] h-[15px] shrink-0" />}
                         {!collapsed && <span className="flex-1 text-[13px] font-medium">{item.label}</span>}
                         {!collapsed && count > 0 && (
-                          <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold bg-[#4ade80]/15 text-[#4ade80] px-1">{count}</span>
+                          <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold bg-[var(--c-ok)]/15 text-[var(--c-ok)] px-1">{count}</span>
                         )}
-                        {collapsed && count > 0 && <span className="absolute top-[4px] right-[6px] w-[7px] h-[7px] rounded-full bg-[#4ade80]" />}
+                        {collapsed && count > 0 && <span className="absolute top-[4px] right-[6px] w-[7px] h-[7px] rounded-full bg-[var(--c-ok)]" />}
                       </Link>
                     </div>
                   );
@@ -152,16 +152,16 @@ export default function Sidebar({ user, pendingCounts: pendingCountsRaw, isColla
                 // 52px: icono del grupo centrado, clicable (abre el hover externamente)
                 <div className="relative">
                   {hasActive && (
-                    <span className="absolute left-0 top-[5px] bottom-[5px] w-[3px] bg-[#4ade80] rounded-r-full" />
+                    <span className="absolute left-0 top-[5px] bottom-[5px] w-[3px] bg-[var(--c-ok)] rounded-r-full" />
                   )}
                   <div
                     title={group.label}
                     className={`flex items-center justify-center mx-1 py-2.5 w-[44px] rounded-md
-                      ${hasActive ? 'text-[#4ade80] bg-[#4ade80]/10' : 'text-muted-foreground'}`}
+                      ${hasActive ? 'text-[var(--c-ok)] bg-[var(--c-ok)]/10' : 'text-muted-foreground'}`}
                   >
                     {GroupIcon && <GroupIcon className="w-5 h-5 shrink-0" />}
                     {groupCount > 0 && (
-                      <span className="absolute top-[4px] right-[4px] w-[7px] h-[7px] rounded-full bg-[#4ade80]" />
+                      <span className="absolute top-[4px] right-[4px] w-[7px] h-[7px] rounded-full bg-[var(--c-ok)]" />
                     )}
                   </div>
                 </div>
@@ -170,12 +170,12 @@ export default function Sidebar({ user, pendingCounts: pendingCountsRaw, isColla
                 <button
                   onClick={() => toggleAccordionGroup(group.label)}
                   className={`w-full flex items-center gap-2 px-4 pt-2.5 pb-1.5 transition-colors hover:bg-white/[0.03]
-                    ${hasActive && !isExpanded ? 'text-[#4ade80]' : 'text-muted-foreground'}`}
+                    ${hasActive && !isExpanded ? 'text-[var(--c-ok)]' : 'text-muted-foreground'}`}
                 >
                   {GroupIcon && <GroupIcon className="w-3.5 h-3.5 shrink-0" />}
                   <span className="flex-1 text-[9px] font-semibold tracking-widest text-left">{group.label}</span>
                   {groupCount > 0 && !isExpanded && (
-                    <span className="w-[7px] h-[7px] rounded-full bg-[#4ade80] shrink-0" />
+                    <span className="w-[7px] h-[7px] rounded-full bg-[var(--c-ok)] shrink-0" />
                   )}
                   <ChevronDown
                     className="w-3 h-3 shrink-0 transition-transform duration-150"
@@ -199,20 +199,20 @@ export default function Sidebar({ user, pendingCounts: pendingCountsRaw, isColla
                     const count    = pendingCounts[item.path] || 0;
                     return (
                       <div key={item.path} className="relative">
-                        {isActive && <span className="absolute left-0 top-[5px] bottom-[5px] w-[3px] bg-[#4ade80] rounded-r-full" />}
+                        {isActive && <span className="absolute left-0 top-[5px] bottom-[5px] w-[3px] bg-[var(--c-ok)] rounded-r-full" />}
                         <Link
                           to={item.path}
                           title={collapsed ? item.label : undefined}
                           className={`flex items-center py-[7px] rounded-md transition-colors whitespace-nowrap
                             ${collapsed ? 'justify-center mx-1.5 px-0' : 'gap-2.5 ml-3 mr-2 px-3'}
-                            ${isActive ? 'bg-[#4ade80]/[0.08] text-[#4ade80]' : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground'}`}
+                            ${isActive ? 'bg-[var(--c-ok)]/[0.08] text-[var(--c-ok)]' : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground'}`}
                         >
                           {Icon && <Icon className="w-[15px] h-[15px] shrink-0" />}
                           {!collapsed && <span className="flex-1 text-[13px] font-medium">{item.label}</span>}
                           {!collapsed && count > 0 && (
-                            <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold bg-[#4ade80]/15 text-[#4ade80] px-1">{count}</span>
+                            <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold bg-[var(--c-ok)]/15 text-[var(--c-ok)] px-1">{count}</span>
                           )}
-                          {collapsed && count > 0 && <span className="absolute top-[4px] right-[6px] w-[7px] h-[7px] rounded-full bg-[#4ade80]" />}
+                          {collapsed && count > 0 && <span className="absolute top-[4px] right-[6px] w-[7px] h-[7px] rounded-full bg-[var(--c-ok)]" />}
                         </Link>
                       </div>
                     );

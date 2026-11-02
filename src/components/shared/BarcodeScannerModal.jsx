@@ -182,7 +182,7 @@ export default function BarcodeScannerModal({ onSelect, onClose }) {
           {/* Camera selector — shown only if multiple cameras */}
           {cameras.length > 1 && (
             <Select value={selectedCamera} onValueChange={v => { setSelectedCamera(v); stopCamera(); setTimeout(() => startCamera(v), 150); }}>
-              <SelectTrigger style={{ borderRadius: '8px' }}>
+              <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}>
                 <SelectValue placeholder="Seleccionar cámara" />
               </SelectTrigger>
               <SelectContent>
@@ -193,7 +193,7 @@ export default function BarcodeScannerModal({ onSelect, onClose }) {
 
           {/* Status feedback */}
           {status && (
-            <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${status.type === 'success' ? 'bg-green-500/10 text-green-700' : 'bg-destructive/10 text-destructive'}`} style={{ borderRadius: '8px' }}>
+            <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${status.type === 'success' ? 'bg-green-500/10 text-green-700' : 'bg-destructive/10 text-destructive'}`} style={{ borderRadius: 'var(--r-ctl)' }}>
               {status.type === 'success' ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <AlertCircle className="w-3.5 h-3.5 shrink-0" />}
               {status.message}
             </div>
@@ -204,7 +204,7 @@ export default function BarcodeScannerModal({ onSelect, onClose }) {
             onClick={cameraActive ? stopCamera : startCamera}
             variant={cameraActive ? 'outline' : 'default'}
             className="w-full"
-            style={{ borderRadius: '8px' }}
+            style={{ borderRadius: 'var(--r-ctl)' }}
           >
             {cameraActive
               ? <><CameraOff className="w-4 h-4 mr-1.5" /> Detener cámara</>
@@ -225,9 +225,9 @@ export default function BarcodeScannerModal({ onSelect, onClose }) {
               value={manualCode}
               onChange={e => setManualCode(e.target.value)}
               placeholder="Código de barras / código producto"
-              style={{ borderRadius: '8px' }}
+              style={{ borderRadius: 'var(--r-ctl)' }}
             />
-            <Button type="submit" variant="outline" style={{ borderRadius: '8px' }}>
+            <Button type="submit" variant="outline" style={{ borderRadius: 'var(--r-ctl)' }}>
               <Search className="w-4 h-4" />
             </Button>
           </form>

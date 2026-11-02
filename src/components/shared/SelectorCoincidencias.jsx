@@ -14,7 +14,7 @@ import { ScanLine, X } from 'lucide-react';
  */
 export default function SelectorCoincidencias({ codigo, productos, onSelect, onCancel }) {
   return (
-    <div className="border border-border rounded-lg overflow-hidden" style={{ borderRadius: '8px' }}>
+    <div className="border border-border rounded-lg overflow-hidden" style={{ borderRadius: 'var(--r-ctl)' }}>
       <div className="flex items-center justify-between gap-2 px-3 py-2 bg-secondary/60 border-b border-border">
         <p className="text-xs font-medium flex items-center gap-1.5 min-w-0">
           <ScanLine className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />

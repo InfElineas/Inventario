@@ -53,12 +53,12 @@ export default function HistorialSubmayorDialog({ producto, almacen, onClose }) 
             <label className="block space-y-1.5 text-xs text-muted-foreground">
               Desde
               <Input type="date" value={desde} max={hasta}
-                onChange={(e) => setDesde(e.target.value)} style={{ borderRadius: '8px' }} />
+                onChange={(e) => setDesde(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
             </label>
             <label className="block space-y-1.5 text-xs text-muted-foreground">
               Hasta
               <Input type="date" value={hasta} min={desde}
-                onChange={(e) => setHasta(e.target.value)} style={{ borderRadius: '8px' }} />
+                onChange={(e) => setHasta(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
             </label>
             {isLoading && (
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground pb-2">
@@ -102,8 +102,8 @@ export default function HistorialSubmayorDialog({ producto, almacen, onClose }) 
                       <td className="py-1.5 pr-3 whitespace-nowrap">{m.fecha}</td>
                       <td className="py-1.5 pr-3">{m.documento}</td>
                       <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">{m.saldoInicial ?? '—'}</td>
-                      <td className="py-1.5 pr-3 text-right tabular-nums text-[#1D9E75]">{m.entrada ?? ''}</td>
-                      <td className="py-1.5 pr-3 text-right tabular-nums text-[#E24B4A]">{m.salida ?? ''}</td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums text-[var(--c-ok-dim)]">{m.entrada ?? ''}</td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums text-[var(--c-bad)]">{m.salida ?? ''}</td>
                       <td className="py-1.5 pr-3 text-right tabular-nums font-medium">{m.saldoFinal ?? '—'}</td>
                       <td className="py-1.5 text-muted-foreground">{m.usuario}</td>
                     </tr>

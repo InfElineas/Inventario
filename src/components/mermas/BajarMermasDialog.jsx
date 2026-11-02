@@ -155,7 +155,7 @@ export default function BajarMermasDialog({ mermas, almacen, onHecho, onClose })
           </DialogDescription>
 
           <div className="space-y-4">
-            <div className="bg-secondary/50 rounded-lg p-3 text-xs space-y-1" style={{ borderRadius: '8px' }}>
+            <div className="bg-secondary/50 rounded-lg p-3 text-xs space-y-1" style={{ borderRadius: 'var(--r-ctl)' }}>
               <p className="text-sm font-medium">
                 {lineas.length} {lineas.length === 1 ? 'producto' : 'productos'} · {unidades} unidades
               </p>
@@ -192,20 +192,20 @@ export default function BajarMermasDialog({ mermas, almacen, onHecho, onClose })
             )}
 
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <Button variant="outline" onClick={onClose} style={{ borderRadius: '8px' }}>
+              <Button variant="outline" onClick={onClose} style={{ borderRadius: 'var(--r-ctl)' }}>
                 {resultado ? 'Cerrar' : 'Cancelar'}
               </Button>
               {!resultado && (
                 <>
                   <Button variant="outline" disabled={lineas.length === 0 || ocupado}
-                    onClick={() => setIntento((i) => i + 1)} style={{ borderRadius: '8px' }}>
+                    onClick={() => setIntento((i) => i + 1)} style={{ borderRadius: 'var(--r-ctl)' }}>
                     <RefreshCw className={`w-4 h-4 mr-1.5 ${ocupado === 'analizar' ? 'animate-spin' : ''}`} />
                     Volver a analizar
                   </Button>
                   {/* Como en el catálogo: solo tras ver el plan, y solo si
                       concede algo. */}
                   <Button disabled={!plan || analisis.concedido === 0 || ocupado} onClick={ejecutar}
-                    style={{ borderRadius: '8px' }}>
+                    style={{ borderRadius: 'var(--r-ctl)' }}>
                     {ocupado === 'ejecutar' && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
                     Bajar de tienda
                   </Button>

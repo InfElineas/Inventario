@@ -192,7 +192,7 @@ export default function Supervision() {
         </div>
         {role === 'administrador' && (
           <Select value={viewDept} onValueChange={handleDeptChange}>
-            <SelectTrigger className="w-[150px] h-9 text-xs" style={{ borderRadius: '8px' }}>
+            <SelectTrigger className="w-[150px] h-9 text-xs" style={{ borderRadius: 'var(--r-ctl)' }}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -208,11 +208,11 @@ export default function Supervision() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Total',      value: stats.total,      color: 'text-foreground' },
-          { label: 'En curso',   value: stats.en_curso,   color: 'text-[#378ADD]' },
-          { label: 'Pendientes', value: stats.pendientes, color: 'text-[#BA7517]' },
-          { label: 'Devueltos',  value: stats.devueltos,  color: 'text-[#E24B4A]' },
+          { label: 'En curso',   value: stats.en_curso,   color: 'text-[var(--c-info)]' },
+          { label: 'Pendientes', value: stats.pendientes, color: 'text-[var(--c-warn)]' },
+          { label: 'Devueltos',  value: stats.devueltos,  color: 'text-[var(--c-bad)]' },
         ].map(s => (
-          <Card key={s.label} className="px-4 py-3" style={{ borderRadius: '10px', borderWidth: '0.5px' }}>
+          <Card key={s.label} className="px-4 py-3" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</p>
             <p className={`text-2xl font-semibold mt-1 ${s.color}`}>{s.value}</p>
           </Card>
@@ -238,7 +238,7 @@ export default function Supervision() {
       <div className={selected ? 'grid gap-4 lg:grid-cols-[1fr_380px]' : ''}>
 
         {/* Lista de tareas */}
-        <Card style={{ borderRadius: '12px', borderWidth: '0.5px' }} className="overflow-hidden">
+        <Card style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }} className="overflow-hidden">
           {isLoading ? (
             <div className="flex justify-center py-14">
               <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -290,7 +290,7 @@ export default function Supervision() {
           <div className="space-y-4">
 
             {/* Campos del registro */}
-            <Card style={{ borderRadius: '12px', borderWidth: '0.5px' }} className="overflow-hidden">
+            <Card style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }} className="overflow-hidden">
               <div className="px-4 py-3 flex items-center justify-between"
                    style={{ borderBottom: '0.5px solid hsl(var(--border))' }}>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -318,7 +318,7 @@ export default function Supervision() {
             </Card>
 
             {/* Comentarios */}
-            <Card style={{ borderRadius: '12px', borderWidth: '0.5px' }} className="overflow-hidden">
+            <Card style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }} className="overflow-hidden">
               <div className="px-4 py-3 flex items-center gap-2"
                    style={{ borderBottom: '0.5px solid hsl(var(--border))' }}>
                 <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
@@ -349,7 +349,7 @@ export default function Supervision() {
                     onChange={e => setComment(e.target.value)}
                     placeholder="Escribe un comentario para tu equipo..."
                     className="text-sm resize-none flex-1"
-                    style={{ borderRadius: '8px', minHeight: '68px' }}
+                    style={{ borderRadius: 'var(--r-ctl)', minHeight: '68px' }}
                     onKeyDown={e => {
                       if (e.key === 'Enter' && e.ctrlKey && comment.trim()) {
                         addCommentMut.mutate(comment.trim());
@@ -361,7 +361,7 @@ export default function Supervision() {
                     disabled={!comment.trim() || addCommentMut.isPending}
                     onClick={() => addCommentMut.mutate(comment.trim())}
                     className="self-end"
-                    style={{ borderRadius: '8px' }}
+                    style={{ borderRadius: 'var(--r-ctl)' }}
                   >
                     <Send className="w-3.5 h-3.5" />
                   </Button>

@@ -105,10 +105,10 @@ export default function AdminUsuarios() {
 
       {/* Pendientes */}
       {pendientes.length > 0 && (
-        <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px', borderColor: 'color-mix(in srgb, #BA7517 30%, transparent)' }}>
-          <div className="px-4 py-3 flex items-center gap-2.5" style={{ borderBottom: '0.5px solid color-mix(in srgb, #BA7517 20%, transparent)', background: 'color-mix(in srgb, #BA7517 5%, transparent)' }}>
-            <span className="w-2 h-2 rounded-full bg-[#BA7517] animate-pulse shrink-0" />
-            <span className="text-xs font-medium text-[#BA7517]">
+        <Card className="overflow-hidden" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px', borderColor: 'color-mix(in srgb, var(--c-warn) 30%, transparent)' }}>
+          <div className="px-4 py-3 flex items-center gap-2.5" style={{ borderBottom: '0.5px solid color-mix(in srgb, var(--c-warn) 20%, transparent)', background: 'color-mix(in srgb, var(--c-warn) 5%, transparent)' }}>
+            <span className="w-2 h-2 rounded-full bg-[var(--c-warn)] animate-pulse shrink-0" />
+            <span className="text-xs font-medium text-[var(--c-warn)]">
               {pendientes.length} solicitud{pendientes.length !== 1 ? 'es' : ''} pendiente{pendientes.length !== 1 ? 's' : ''} de aprobación
             </span>
           </div>
@@ -137,14 +137,14 @@ export default function AdminUsuarios() {
 
       {/* Sin solicitudes */}
       {pendientes.length === 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-[#1D9E75]/5 rounded-lg text-xs text-[#1D9E75]" style={{ borderRadius: '8px' }}>
+        <div className="flex items-center gap-3 px-4 py-3 bg-[var(--c-ok-dim)]/5 rounded-lg text-xs text-[var(--c-ok-dim)]" style={{ borderRadius: 'var(--r-ctl)' }}>
           <UserCheck className="w-4 h-4 shrink-0" />
           No hay solicitudes pendientes
         </div>
       )}
 
       {/* Activos */}
-      <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+      <Card className="overflow-hidden" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
         <div className="px-4 py-3" style={{ borderBottom: '0.5px solid hsl(var(--border))' }}>
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Usuarios activos — {activos.length}
@@ -227,7 +227,7 @@ function UsuarioRow({ usuario, isPending, onApprove, onReject, onRoleChange, onD
 
       {/* Rol */}
       <Select value={role} onValueChange={handleRoleChange}>
-        <SelectTrigger className="w-36 h-8 text-xs shrink-0" style={{ borderRadius: '6px' }}>
+        <SelectTrigger className="w-36 h-8 text-xs shrink-0" style={{ borderRadius: 'var(--r-ctl)' }}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -242,7 +242,7 @@ function UsuarioRow({ usuario, isPending, onApprove, onReject, onRoleChange, onD
       {/* Departamento — solo visible cuando rol = jefe_depto */}
       {role === 'jefe_depto' && (
         <Select value={departamento} onValueChange={handleDeptChange}>
-          <SelectTrigger className="w-40 h-8 text-xs shrink-0" style={{ borderRadius: '6px' }}>
+          <SelectTrigger className="w-40 h-8 text-xs shrink-0" style={{ borderRadius: 'var(--r-ctl)' }}>
             <SelectValue placeholder="Departamento..." />
           </SelectTrigger>
           <SelectContent>
@@ -259,7 +259,7 @@ function UsuarioRow({ usuario, isPending, onApprove, onReject, onRoleChange, onD
             <Button
               size="sm"
               className="h-8 px-3 text-xs gap-1.5"
-              style={{ borderRadius: '6px', background: '#1D9E75', color: '#fff', border: 'none' }}
+              style={{ borderRadius: 'var(--r-ctl)', background: 'var(--c-ok-dim)', color: '#fff', border: 'none' }}
               onClick={() => onApprove({ role, departamento: role === 'jefe_depto' ? departamento : null })}
             >
               <UserCheck className="w-3.5 h-3.5" />
@@ -269,7 +269,7 @@ function UsuarioRow({ usuario, isPending, onApprove, onReject, onRoleChange, onD
               size="sm"
               variant="outline"
               className="h-8 px-3 text-xs gap-1.5"
-              style={{ borderRadius: '6px', color: '#E24B4A', borderColor: 'color-mix(in srgb, #E24B4A 30%, transparent)' }}
+              style={{ borderRadius: 'var(--r-ctl)', color: 'var(--c-bad)', borderColor: 'color-mix(in srgb, var(--c-bad) 30%, transparent)' }}
               onClick={onReject}
             >
               <UserX className="w-3.5 h-3.5" />
@@ -281,7 +281,7 @@ function UsuarioRow({ usuario, isPending, onApprove, onReject, onRoleChange, onD
             size="sm"
             variant="outline"
             className="h-8 px-3 text-xs"
-            style={{ borderRadius: '6px' }}
+            style={{ borderRadius: 'var(--r-ctl)' }}
             onClick={onDeactivate}
           >
             Desactivar

@@ -188,7 +188,7 @@ export default function Lotes() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)}
-              placeholder="Buscar por producto, código o lote..." className="pl-10" style={{ borderRadius: '8px' }} />
+              placeholder="Buscar por producto, código o lote..." className="pl-10" style={{ borderRadius: 'var(--r-ctl)' }} />
           </div>
         )}
         filtros={(
@@ -197,7 +197,7 @@ export default function Lotes() {
               lotes vienen por almacén y antes no se decía cuál. */}
           <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />
           <Button variant="outline" onClick={() => refetch()} disabled={isFetching || !almacen}
-            style={{ borderRadius: '8px' }} title="Volver a pedir el informe de lotes">
+            style={{ borderRadius: 'var(--r-ctl)' }} title="Volver a pedir el informe de lotes">
             <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
           </Button>
           {/* El unico filtro de la pantalla, junto al de columnas: un
@@ -234,11 +234,11 @@ export default function Lotes() {
           numeros, y cinco tarjetas a dos columnas se comian la pantalla
           entera antes de que apareciera un solo lote. */}
       <div className="hidden sm:grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <KPICard title="Vencidos" value={counts.vencido} icon={AlertTriangle} color="text-[#E24B4A]" bgColor="bg-[#E24B4A]/10" />
-        <KPICard title="Críticos" value={counts.critico} icon={AlertTriangle} color="text-[#E24B4A]" bgColor="bg-[#E24B4A]/5" />
-        <KPICard title="Por vencer" value={counts.por_vencer} icon={Clock} color="text-[#BA7517]" bgColor="bg-[#BA7517]/10" />
-        <KPICard title="Vigentes" value={counts.vigente} icon={CheckCircle} color="text-[#1D9E75]" bgColor="bg-[#1D9E75]/10" />
-        <KPICard title="Sin fecha" value={counts.sin_fecha} icon={HelpCircle} color="text-[#888780]" bgColor="bg-[#888780]/10" />
+        <KPICard title="Vencidos" value={counts.vencido} icon={AlertTriangle} color="text-[var(--c-bad)]" bgColor="bg-[var(--c-bad)]/10" />
+        <KPICard title="Críticos" value={counts.critico} icon={AlertTriangle} color="text-[var(--c-bad)]" bgColor="bg-[var(--c-bad)]/5" />
+        <KPICard title="Por vencer" value={counts.por_vencer} icon={Clock} color="text-[var(--c-warn)]" bgColor="bg-[var(--c-warn)]/10" />
+        <KPICard title="Vigentes" value={counts.vigente} icon={CheckCircle} color="text-[var(--c-ok-dim)]" bgColor="bg-[var(--c-ok-dim)]/10" />
+        <KPICard title="Sin fecha" value={counts.sin_fecha} icon={HelpCircle} color="text-[var(--c-gray)]" bgColor="bg-[var(--c-gray)]/10" />
       </div>
 
       {/* Pestañas y no un desplegable: con un desplegable hay que abrirlo
@@ -352,32 +352,32 @@ export default function Lotes() {
             </ReadOnlyBlock>
             <div className="space-y-3">
               <Input type="number" placeholder="Cantidad por vencer" value={icForm.cant_x_vencer}
-                onChange={(e) => setIcForm({ ...icForm, cant_x_vencer: e.target.value })} style={{ borderRadius: '8px' }} />
+                onChange={(e) => setIcForm({ ...icForm, cant_x_vencer: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
               <Input placeholder="Clasificación INV" value={icForm.clasif_inv}
-                onChange={(e) => setIcForm({ ...icForm, clasif_inv: e.target.value })} style={{ borderRadius: '8px' }} />
+                onChange={(e) => setIcForm({ ...icForm, clasif_inv: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
               <Textarea placeholder="Nota INV" value={icForm.nota_inv}
-                onChange={(e) => setIcForm({ ...icForm, nota_inv: e.target.value })} style={{ borderRadius: '8px' }} />
+                onChange={(e) => setIcForm({ ...icForm, nota_inv: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
               <Input type="number" placeholder="Precio propuesto IC" value={icForm.propuesta_precio_ic}
-                onChange={(e) => setIcForm({ ...icForm, propuesta_precio_ic: e.target.value })} style={{ borderRadius: '8px' }} />
+                onChange={(e) => setIcForm({ ...icForm, propuesta_precio_ic: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
               <Input type="number" placeholder="Precio a restaurar" value={icForm.precio_restaurar}
-                onChange={(e) => setIcForm({ ...icForm, precio_restaurar: e.target.value })} style={{ borderRadius: '8px' }} />
+                onChange={(e) => setIcForm({ ...icForm, precio_restaurar: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
 
               {icForm.propuesta_precio_ic && selected.precio_costo && (
-                <div className="bg-secondary/50 p-3 rounded-lg space-y-1" style={{ borderRadius: '8px' }}>
+                <div className="bg-secondary/50 p-3 rounded-lg space-y-1" style={{ borderRadius: 'var(--r-ctl)' }}>
                   <p className="text-xs text-muted-foreground">Descuento: <span className="font-medium text-foreground">
                     {(((selected.precio_costo - Number(icForm.propuesta_precio_ic)) / selected.precio_costo) * 100).toFixed(1)}%
                   </span></p>
-                  <p className="text-xs text-muted-foreground">Recaudación estimada: <span className="font-medium text-[#1D9E75]">
+                  <p className="text-xs text-muted-foreground">Recaudación estimada: <span className="font-medium text-[var(--c-ok-dim)]">
                     ${(Number(icForm.cant_x_vencer || 0) * Number(icForm.propuesta_precio_ic || 0)).toFixed(2)}
                   </span></p>
-                  <p className="text-xs text-muted-foreground">Pérdida si merma: <span className="font-medium text-[#E24B4A]">
+                  <p className="text-xs text-muted-foreground">Pérdida si merma: <span className="font-medium text-[var(--c-bad)]">
                     ${(Number(icForm.cant_x_vencer || 0) * (selected.precio_costo || 0)).toFixed(2)}
                   </span></p>
                 </div>
               )}
 
               {icForm.cant_x_vencer && Number(icForm.cant_x_vencer) > (selected.cantidad || 0) && (
-                <p className="text-xs text-[#E24B4A]">
+                <p className="text-xs text-[var(--c-bad)]">
                   Cantidad por vencer ({icForm.cant_x_vencer}) supera el total del lote ({selected.cantidad})
                 </p>
               )}
@@ -403,7 +403,7 @@ export default function Lotes() {
                 precio_restaurar: Number(icForm.precio_restaurar),
                 notas_ic: icForm.notas_ic,
                 estado_tarea: 'pendiente',
-              })} disabled={!icForm.cant_x_vencer || Number(icForm.cant_x_vencer) > (selected.cantidad || 0)} style={{ borderRadius: '8px' }}>
+              })} disabled={!icForm.cant_x_vencer || Number(icForm.cant_x_vencer) > (selected.cantidad || 0)} style={{ borderRadius: 'var(--r-ctl)' }}>
                 <Send className="w-4 h-4 mr-1.5" /> Enviar a IC
               </Button>
             </div>
@@ -446,20 +446,20 @@ function MenuLote({ lote, puedeGestionar, onAccion }) {
 
   if (lote.estado_fv === 'vencido' || sinFecha) {
     acciones.push({
-      clave: 'merma', etiqueta: 'Mandar a merma', Icono: TrendingDown, color: 'text-[#E24B4A]',
+      clave: 'merma', etiqueta: 'Mandar a merma', Icono: TrendingDown, color: 'text-[var(--c-bad)]',
       nota: sinFecha ? 'si lo ves vencido' : null,
     });
   }
   if (['critico', 'por_vencer'].includes(lote.estado_fv) || sinFecha) {
     acciones.push({
-      clave: 'ic', etiqueta: 'Enviar a intervención comercial', Icono: Send, color: 'text-[#BA7517]',
+      clave: 'ic', etiqueta: 'Enviar a intervención comercial', Icono: Send, color: 'text-[var(--c-warn)]',
       nota: sinFecha ? 'si le queda poco' : null,
     });
   }
   acciones.push({
     clave: 'editar',
     etiqueta: lote.fecha_vencimiento ? 'Corregir fecha o anotar' : 'Poner la fecha del envase',
-    Icono: CalendarPlus, color: 'text-[#60a5fa]',
+    Icono: CalendarPlus, color: 'text-[var(--c-info-2)]',
   });
 
   return (
@@ -520,21 +520,21 @@ function EditarLote({ lote, guardando, onGuardar, onCancelar }) {
       <label className="block space-y-1 text-xs text-muted-foreground">
         Fecha de vencimiento del envase
         <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)}
-          style={{ borderRadius: '8px' }} />
+          style={{ borderRadius: 'var(--r-ctl)' }} />
       </label>
 
       <label className="block space-y-1 text-xs text-muted-foreground">
         Nota
         <Textarea value={nota} onChange={(e) => setNota(e.target.value)} rows={2}
           placeholder="Qué se vio al revisar: el envase no la trae, está borrosa, el lote no aparece…"
-          style={{ borderRadius: '8px' }} />
+          style={{ borderRadius: 'var(--r-ctl)' }} />
       </label>
 
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="outline" onClick={onCancelar} style={{ borderRadius: '8px' }}>Cancelar</Button>
+        <Button variant="outline" onClick={onCancelar} style={{ borderRadius: 'var(--r-ctl)' }}>Cancelar</Button>
         <Button disabled={guardando || (!fecha && !nota.trim())}
           onClick={() => onGuardar({ fecha_vencimiento: fecha || null, nota: nota.trim() })}
-          style={{ borderRadius: '8px' }}>
+          style={{ borderRadius: 'var(--r-ctl)' }}>
           Guardar revisión
         </Button>
       </div>
@@ -564,12 +564,12 @@ function MermaDeLote({ lote, guardando, onGuardar, onCancelar }) {
         <label className="space-y-1 text-xs text-muted-foreground">
           Cantidad a mermar
           <Input type="number" min="0" value={cantidad}
-            onChange={(e) => setCantidad(e.target.value)} style={{ borderRadius: '8px' }} />
+            onChange={(e) => setCantidad(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
         </label>
         <label className="space-y-1 text-xs text-muted-foreground">
           Clasificación
           <Select value={clasif} onValueChange={setClasif}>
-            <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
+            <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue /></SelectTrigger>
             <SelectContent>
               {ALL_CLASIF_MERMA.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
@@ -578,7 +578,7 @@ function MermaDeLote({ lote, guardando, onGuardar, onCancelar }) {
       </div>
 
       {pasa && (
-        <p className="text-xs text-[#E24B4A]">
+        <p className="text-xs text-[var(--c-bad)]">
           {n} supera las {lote.cantidad} que hay en el lote.
         </p>
       )}
@@ -590,14 +590,14 @@ function MermaDeLote({ lote, guardando, onGuardar, onCancelar }) {
       <label className="block space-y-1 text-xs text-muted-foreground">
         Notas
         <Textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={2}
-          style={{ borderRadius: '8px' }} />
+          style={{ borderRadius: 'var(--r-ctl)' }} />
       </label>
 
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="outline" onClick={onCancelar} style={{ borderRadius: '8px' }}>Cancelar</Button>
+        <Button variant="outline" onClick={onCancelar} style={{ borderRadius: 'var(--r-ctl)' }}>Cancelar</Button>
         <Button disabled={guardando || n <= 0 || pasa}
           onClick={() => onGuardar({ cantidad: n, clasif, notas: notas.trim() })}
-          style={{ borderRadius: '8px' }}>
+          style={{ borderRadius: 'var(--r-ctl)' }}>
           <TrendingDown className="w-4 h-4 mr-1.5" /> Registrar merma
         </Button>
       </div>
@@ -613,8 +613,11 @@ function MermaDeLote({ lote, guardando, onGuardar, onCancelar }) {
  * maquetaciones que mantener en paralelo, que es como se desincronizan.
  */
 function celdaLote({ lote: l, clave, enTabla, user, onAccion }) {
+  // `py-1.5`: la fila baja de 44 px a 32. En una pantalla de portátil eso
+  // son seis filas más sin desplazar, que es de lo que va un listado de
+  // trabajo. La ficha del teléfono no cambia: ahí el dedo manda.
   const env = (contenido, clases = '') => (enTabla
-    ? <td key={clave} className={`p-3 ${clases}`}>{contenido}</td>
+    ? <td key={clave} className={`px-2.5 py-1.5 ${clases}`}>{contenido}</td>
     : contenido);
 
   switch (clave) {
@@ -630,8 +633,8 @@ function celdaLote({ lote: l, clave, enTabla, user, onAccion }) {
     case 'temperatura':
       return env(
         <span className={`inline-block text-[10px] px-2 py-0.5 rounded ${
-          l.temperatura === 'chilled' ? 'bg-[#378ADD]/10 text-[#378ADD]' : 'bg-secondary text-muted-foreground'
-        }`} style={{ borderRadius: '4px' }}>
+          l.temperatura === 'chilled' ? 'bg-[var(--c-info)]/10 text-[var(--c-info)]' : 'bg-secondary text-muted-foreground'
+        }`} style={{ borderRadius: 'var(--r-chip)' }}>
           {l.temperatura === 'chilled' ? 'Frio' : 'Ambiente'}
         </span>,
         'text-center',

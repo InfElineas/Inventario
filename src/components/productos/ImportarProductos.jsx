@@ -144,14 +144,14 @@ export default function ImportarProductos({ productos, user, onClose, onImported
   const ready = colCodigo && colCampo && campoDestino && rows.length > 0;
 
   return (
-    <Card className="p-6 space-y-5" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+    <Card className="p-6 space-y-5" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">Importar stock desde archivo</h3>
         <Button variant="ghost" size="sm" onClick={onClose}><X className="w-4 h-4" /></Button>
       </div>
 
       {/* Límites info */}
-      <div className="text-[11px] text-muted-foreground bg-secondary/50 px-3 py-2 rounded-md" style={{ borderRadius: '6px' }}>
+      <div className="text-[11px] text-muted-foreground bg-secondary/50 px-3 py-2 rounded-md" style={{ borderRadius: 'var(--r-ctl)' }}>
         Límites: CSV · máx. 5 MB · máx. {IMPORT_LIMITS.MAX_ROWS.toLocaleString('es')} filas · cantidades 0–{IMPORT_LIMITS.MAX_QTY.toLocaleString('es')}
       </div>
 
@@ -160,7 +160,7 @@ export default function ImportarProductos({ productos, user, onClose, onImported
         <p className="text-xs text-muted-foreground mb-2">1. Sube un archivo CSV</p>
         <div
           className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-accent/30 transition-colors"
-          style={{ borderRadius: '8px' }}
+          style={{ borderRadius: 'var(--r-ctl)' }}
           onClick={() => inputRef.current.click()}
         >
           <Upload className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
@@ -171,7 +171,7 @@ export default function ImportarProductos({ productos, user, onClose, onImported
         </div>
 
         {fileError && (
-          <p className="text-xs text-[#E24B4A] mt-1.5 flex items-center gap-1">
+          <p className="text-xs text-[var(--c-bad)] mt-1.5 flex items-center gap-1">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             {fileError}
           </p>
@@ -189,7 +189,7 @@ export default function ImportarProductos({ productos, user, onClose, onImported
             <div>
               <label className="text-xs text-muted-foreground block mb-1">Columna de código</label>
               <Select value={colCodigo} onValueChange={setColCodigo}>
-                <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                 <SelectContent>
                   {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                 </SelectContent>
@@ -198,7 +198,7 @@ export default function ImportarProductos({ productos, user, onClose, onImported
             <div>
               <label className="text-xs text-muted-foreground block mb-1">Columna de cantidad</label>
               <Select value={colCampo} onValueChange={setColCampo}>
-                <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                 <SelectContent>
                   {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                 </SelectContent>
@@ -207,7 +207,7 @@ export default function ImportarProductos({ productos, user, onClose, onImported
             <div>
               <label className="text-xs text-muted-foreground block mb-1">Importar como</label>
               <Select value={campoDestino} onValueChange={setCampoDestino}>
-                <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
+                <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {CAMPOS_ALMACEN.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
                 </SelectContent>
@@ -219,7 +219,7 @@ export default function ImportarProductos({ productos, user, onClose, onImported
 
       {/* Preview */}
       {rows.length > 0 && colCodigo && colCampo && (
-        <div className="border rounded-lg overflow-hidden" style={{ borderRadius: '8px', borderWidth: '0.5px' }}>
+        <div className="border rounded-lg overflow-hidden" style={{ borderRadius: 'var(--r-ctl)', borderWidth: '0.5px' }}>
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b bg-secondary/50">
@@ -245,16 +245,16 @@ export default function ImportarProductos({ productos, user, onClose, onImported
       {/* Result */}
       {result && (
         <div className="flex gap-3">
-          <div className="flex items-center gap-1.5 text-xs text-[#1D9E75]">
+          <div className="flex items-center gap-1.5 text-xs text-[var(--c-ok-dim)]">
             <Check className="w-3.5 h-3.5" /> {result.updated} actualizados
           </div>
           {result.skipped > 0 && (
-            <div className="flex items-center gap-1.5 text-xs text-[#BA7517]">
+            <div className="flex items-center gap-1.5 text-xs text-[var(--c-warn)]">
               <AlertTriangle className="w-3.5 h-3.5" /> {result.skipped} omitidos (código no encontrado o cantidad inválida)
             </div>
           )}
           {result.duplicated > 0 && (
-            <div className="flex items-center gap-1.5 text-xs text-[#BA7517]">
+            <div className="flex items-center gap-1.5 text-xs text-[var(--c-warn)]">
               <AlertTriangle className="w-3.5 h-3.5" /> {result.duplicated} filas con código repetido en el archivo (se usó solo la primera)
             </div>
           )}
@@ -262,8 +262,8 @@ export default function ImportarProductos({ productos, user, onClose, onImported
       )}
 
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onClose} style={{ borderRadius: '8px' }}>Cerrar</Button>
-        <Button onClick={handleImport} disabled={!ready || loading} style={{ borderRadius: '8px' }}>
+        <Button variant="outline" onClick={onClose} style={{ borderRadius: 'var(--r-ctl)' }}>Cerrar</Button>
+        <Button onClick={handleImport} disabled={!ready || loading} style={{ borderRadius: 'var(--r-ctl)' }}>
           {loading
             ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Importando...</>
             : <><Upload className="w-4 h-4 mr-1.5" /> Importar</>}

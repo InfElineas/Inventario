@@ -98,7 +98,7 @@ function Carrusel({ fotos, nombre }) {
             <span
               key={idx}
               className={`h-1 rounded-full transition-all duration-300 ${
-                idx === actual ? 'w-4 bg-[#4ade80]' : 'w-1 bg-white/35'
+                idx === actual ? 'w-4 bg-[var(--c-ok)]' : 'w-1 bg-white/35'
               }`}
             />
           ))}
@@ -131,13 +131,13 @@ function Dato({ label, children }) {
 
 /** Vocabulario de public."apGlobalV2". Con existencia pesa más que sin ella. */
 const COLOR_ANUNCIO = {
-  'ACTIVADO':                'text-[#4ade80] bg-[#4ade80]/10',
-  'DESACTIVADO EF>0':        'text-[#fb923c] bg-[#fb923c]/10',
-  'DESACTIVADO EF=0':        'text-[#facc15] bg-[#facc15]/10',
-  'DESACTIVADO MUERTO EF>0': 'text-[#e24b4a] bg-[#e24b4a]/10',
-  'DESACTIVADO MUERTO EF=0': 'text-[#888780] bg-[#88878014]',
-  'SIN ID EF>0':             'text-[#BA7517] bg-[#BA751714]',
-  'SIN ID EF=0':             'text-[#888780] bg-[#88878014]',
+  'ACTIVADO':                'text-[var(--c-ok)] bg-[var(--c-ok)]/10',
+  'DESACTIVADO EF>0':        'text-[var(--c-orange)] bg-[var(--c-orange)]/10',
+  'DESACTIVADO EF=0':        'text-[var(--c-yellow)] bg-[var(--c-yellow)]/10',
+  'DESACTIVADO MUERTO EF>0': 'text-[var(--c-bad)] bg-[var(--c-bad)]/10',
+  'DESACTIVADO MUERTO EF=0': 'text-[var(--c-gray)] bg-[var(--c-gray)]/8',
+  'SIN ID EF>0':             'text-[var(--c-warn)] bg-[var(--c-warn)]/8',
+  'SIN ID EF=0':             'text-[var(--c-gray)] bg-[var(--c-gray)]/8',
 }
 
 /**
@@ -210,11 +210,11 @@ export default function CatalogoHoverCard({ producto, rect, enVivo, cargando, er
         </div>
 
         <div className="flex items-center pt-1.5 border-t border-border">
-          <Cifra label="EF" value={numberFmt.format(producto.ef)} color={producto.ef === 0 ? '#e24b4a' : '#4ade80'} />
-          <Cifra label="A" value={numberFmt.format(producto.enAlmacen)} color="#60a5fa" />
-          <Cifra label="T" value={numberFmt.format(producto.enTienda)} color="#facc15" />
+          <Cifra label="EF" value={numberFmt.format(producto.ef)} color={producto.ef === 0 ? 'var(--c-bad)' : 'var(--c-ok)'} />
+          <Cifra label="A" value={numberFmt.format(producto.enAlmacen)} color="var(--c-info-2)" />
+          <Cifra label="T" value={numberFmt.format(producto.enTienda)} color="var(--c-yellow)" />
           {producto.precio > 0 && (
-            <Cifra label="Precio" value={`$${producto.precio.toFixed(2)}`} color="#a78bfa" />
+            <Cifra label="Precio" value={`$${producto.precio.toFixed(2)}`} color="var(--c-purple)" />
           )}
         </div>
 
@@ -234,11 +234,11 @@ export default function CatalogoHoverCard({ producto, rect, enVivo, cargando, er
               <RefreshCw className="w-2.5 h-2.5 animate-spin" /> Consultando el submayor…
             </p>
           ) : error ? (
-            <p className="flex items-center gap-1 text-[#e24b4a]">
+            <p className="flex items-center gap-1 text-[var(--c-bad)]">
               <AlertTriangle className="w-2.5 h-2.5" /> El submayor no respondió
             </p>
           ) : vivo ? (
-            <p className={discrepa ? 'text-[#BA7517]' : 'text-muted-foreground'}>
+            <p className={discrepa ? 'text-[var(--c-warn)]' : 'text-muted-foreground'}>
               <span className="uppercase tracking-wide">Submayor ahora</span>{' '}
               EF <strong>{numberFmt.format(vivo.fisica)}</strong>
               {' · '}A <strong>{numberFmt.format(vivo.enAlmacen)}</strong>

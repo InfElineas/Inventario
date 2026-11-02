@@ -8,10 +8,10 @@ import {
 } from 'lucide-react';
 
 const TIPO_CONFIG = {
-  stock: { icon: Package, color: 'text-[#378ADD]', bg: 'bg-[#378ADD]/10', label: 'Stock' },
-  precio: { icon: Tag, color: 'text-[#BA7517]', bg: 'bg-[#BA7517]/10', label: 'Precio' },
-  estado_anuncio: { icon: ToggleLeft, color: 'text-[#1D9E75]', bg: 'bg-[#1D9E75]/10', label: 'Anuncio' },
-  importacion: { icon: ClipboardCheck, color: 'text-[#7B68D4]', bg: 'bg-[#7B68D4]/10', label: 'Importación' },
+  stock: { icon: Package, color: 'text-[var(--c-info)]', bg: 'bg-[var(--c-info)]/10', label: 'Stock' },
+  precio: { icon: Tag, color: 'text-[var(--c-warn)]', bg: 'bg-[var(--c-warn)]/10', label: 'Precio' },
+  estado_anuncio: { icon: ToggleLeft, color: 'text-[var(--c-ok-dim)]', bg: 'bg-[var(--c-ok-dim)]/10', label: 'Anuncio' },
+  importacion: { icon: ClipboardCheck, color: 'text-[var(--c-purple)]', bg: 'bg-[var(--c-purple)]/10', label: 'Importación' },
 };
 
 const CAMPO_LABEL = {
@@ -53,7 +53,7 @@ function MovimientoItem({ mov }) {
           <div className="text-right shrink-0">
             <p className="text-[11px] text-muted-foreground">{fechaFormateada}</p>
             {diferencia !== null && diferencia !== 0 && (
-              <span className={`text-xs font-medium flex items-center gap-0.5 justify-end mt-0.5 ${diferencia > 0 ? 'text-[#1D9E75]' : 'text-[#E24B4A]'}`}>
+              <span className={`text-xs font-medium flex items-center gap-0.5 justify-end mt-0.5 ${diferencia > 0 ? 'text-[var(--c-ok-dim)]' : 'text-[var(--c-bad)]'}`}>
                 {diferencia > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                 {diferencia > 0 ? '+' : ''}{diferencia}
               </span>
@@ -137,8 +137,8 @@ export default function ProductoHistorial({ productoId }) {
             {invEventos.map(ev => (
               <div key={ev.id} className="flex gap-3 pb-4 last:pb-0 relative">
                 <div className="absolute left-4 top-8 bottom-0 w-px bg-border" />
-                <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center ${ev.resultado === 'ok' ? 'bg-[#1D9E75]/10' : ev.resultado === 'faltante' ? 'bg-[#E24B4A]/10' : 'bg-[#BA7517]/10'}`}>
-                  <ClipboardCheck className={`w-3.5 h-3.5 ${ev.resultado === 'ok' ? 'text-[#1D9E75]' : ev.resultado === 'faltante' ? 'text-[#E24B4A]' : 'text-[#BA7517]'}`} />
+                <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center ${ev.resultado === 'ok' ? 'bg-[var(--c-ok-dim)]/10' : ev.resultado === 'faltante' ? 'bg-[var(--c-bad)]/10' : 'bg-[var(--c-warn)]/10'}`}>
+                  <ClipboardCheck className={`w-3.5 h-3.5 ${ev.resultado === 'ok' ? 'text-[var(--c-ok-dim)]' : ev.resultado === 'faltante' ? 'text-[var(--c-bad)]' : 'text-[var(--c-warn)]'}`} />
                 </div>
                 <div className="flex-1 min-w-0 pt-0.5">
                   <div className="flex items-start justify-between gap-2">
@@ -153,16 +153,16 @@ export default function ProductoHistorial({ productoId }) {
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
                     <span className="text-[11px] bg-secondary px-1.5 py-0.5 rounded">EF TKC: {ev.exist_fisica_tkc}</span>
                     <span className="text-[11px] bg-secondary px-1.5 py-0.5 rounded">Conteo: {ev.conteo_real}</span>
-                    <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${ev.diferencia === 0 ? 'bg-[#1D9E75]/10 text-[#1D9E75]' : ev.diferencia > 0 ? 'bg-[#BA7517]/10 text-[#BA7517]' : 'bg-[#E24B4A]/10 text-[#E24B4A]'}`}>
+                    <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${ev.diferencia === 0 ? 'bg-[var(--c-ok-dim)]/10 text-[var(--c-ok-dim)]' : ev.diferencia > 0 ? 'bg-[var(--c-warn)]/10 text-[var(--c-warn)]' : 'bg-[var(--c-bad)]/10 text-[var(--c-bad)]'}`}>
                       Dif: {ev.diferencia > 0 ? '+' : ''}{ev.diferencia}
                     </span>
                     {ev.fact_no_factura && (
-                      <span className="text-[11px] bg-[#7B68D4]/10 text-[#7B68D4] px-1.5 py-0.5 rounded flex items-center gap-1">
+                      <span className="text-[11px] bg-[var(--c-purple)]/10 text-[var(--c-purple)] px-1.5 py-0.5 rounded flex items-center gap-1">
                         <FileText className="w-3 h-3" /> {ev.fact_no_factura}
                       </span>
                     )}
                     {ev.auditor_nombre && (
-                      <span className="text-[11px] bg-[#1D9E75]/10 text-[#1D9E75] px-1.5 py-0.5 rounded">
+                      <span className="text-[11px] bg-[var(--c-ok-dim)]/10 text-[var(--c-ok-dim)] px-1.5 py-0.5 rounded">
                         ✓ {ev.auditor_nombre}
                       </span>
                     )}

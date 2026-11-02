@@ -9,10 +9,17 @@ export default function StatusBadge({ status, vocabulario, className: classNameR
   const className = classNameRaw ?? '';
   const tabla = vocabulario === 'recepcion' ? ESTADO_RECEPCION : ESTADO_TAREA;
   const config = tabla[status] || ESTADO_TAREA.pendiente;
+  // Punto y palabra, sin pastilla.
+  //
+  // El fondo de color no añadía nada que el punto no dijera ya, y cobraba
+  // caro: cinco píldoras en una fila de tabla son cinco manchas de color
+  // compitiendo con el dato, y cada una se llevaba 20 px de ancho y 8 de
+  // alto que en una lista de cincuenta filas se notan. El color sigue
+  // estando donde hace falta —en el punto y en la palabra—, que es lo que
+  // se busca al repasar una columna de estados.
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium ${config.bg} ${config.text} ${className}`}
-      style={{ borderRadius: '4px' }}>
-      <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
+    <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${config.text} ${className}`}>
+      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${config.dot}`} />
       {config.label}
     </span>
   );

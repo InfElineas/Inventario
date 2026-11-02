@@ -40,12 +40,12 @@ export default function ProductoDetail({ producto, role, onUpdate }) {
     <div className="p-5 space-y-4">
       {canEdit && !editMode && (
         <div className="flex justify-end">
-          <Button variant="outline" size="sm" onClick={() => setEditMode(true)} style={{ borderRadius: '8px' }}>Editar</Button>
+          <Button variant="outline" size="sm" onClick={() => setEditMode(true)} style={{ borderRadius: 'var(--r-ctl)' }}>Editar</Button>
         </div>
       )}
 
       <Tabs defaultValue="info">
-        <TabsList className="w-full" style={{ borderRadius: '8px' }}>
+        <TabsList className="w-full" style={{ borderRadius: 'var(--r-ctl)' }}>
           <TabsTrigger value="info" className="flex-1 text-xs">Información</TabsTrigger>
           <TabsTrigger value="historial" className="flex-1 text-xs">Historial</TabsTrigger>
         </TabsList>
@@ -76,49 +76,49 @@ export default function ProductoDetail({ producto, role, onUpdate }) {
               </ReadOnlyBlock>
             </>
           ) : (
-            <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: '8px', borderWidth: '0.5px' }}>
+            <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: 'var(--r-ctl)', borderWidth: '0.5px' }}>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Editar datos</p>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-muted-foreground">Exist. física</label>
                   <Input type="number" min="0" value={form.exist_fisica}
-                    onChange={(e) => setForm({ ...form, exist_fisica: e.target.value })} style={{ borderRadius: '8px' }} />
+                    onChange={(e) => setForm({ ...form, exist_fisica: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">Almacén</label>
                   <Input type="number" min="0" value={form.almacen}
-                    onChange={(e) => setForm({ ...form, almacen: e.target.value })} style={{ borderRadius: '8px' }} />
+                    onChange={(e) => setForm({ ...form, almacen: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">Tienda</label>
                   <Input type="number" min="0" value={form.tienda}
-                    onChange={(e) => setForm({ ...form, tienda: e.target.value })} style={{ borderRadius: '8px' }} />
+                    onChange={(e) => setForm({ ...form, tienda: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">Vigencia días</label>
                   <Input type="number" value={form.vigencia_dias}
-                    onChange={(e) => setForm({ ...form, vigencia_dias: e.target.value })} style={{ borderRadius: '8px' }} />
+                    onChange={(e) => setForm({ ...form, vigencia_dias: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">Stock mínimo</label>
                   <Input type="number" min="0" value={form.stock_minimo}
-                    onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })} style={{ borderRadius: '8px' }} />
+                    onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">Precio venta</label>
                   <Input type="number" value={form.precio}
-                    onChange={(e) => setForm({ ...form, precio: e.target.value })} style={{ borderRadius: '8px' }} />
+                    onChange={(e) => setForm({ ...form, precio: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">Precio costo</label>
                   <Input type="number" value={form.precio_costo}
-                    onChange={(e) => setForm({ ...form, precio_costo: e.target.value })} style={{ borderRadius: '8px' }} />
+                    onChange={(e) => setForm({ ...form, precio_costo: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
                 </div>
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Estado anuncio</label>
                 <Select value={form.estado_anuncio} onValueChange={(v) => setForm({ ...form, estado_anuncio: v })}>
-                  <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
+                  <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ACTIVADO">ACTIVADO</SelectItem>
                     <SelectItem value="DESACTIVADO">DESACTIVADO</SelectItem>
@@ -126,8 +126,8 @@ export default function ProductoDetail({ producto, role, onUpdate }) {
                 </Select>
               </div>
               <div className="flex gap-2 pt-1">
-                <Button size="sm" onClick={handleSave} style={{ borderRadius: '8px' }}>Guardar</Button>
-                <Button size="sm" variant="outline" onClick={() => setEditMode(false)} style={{ borderRadius: '8px' }}>Cancelar</Button>
+                <Button size="sm" onClick={handleSave} style={{ borderRadius: 'var(--r-ctl)' }}>Guardar</Button>
+                <Button size="sm" variant="outline" onClick={() => setEditMode(false)} style={{ borderRadius: 'var(--r-ctl)' }}>Cancelar</Button>
               </div>
             </div>
           )}

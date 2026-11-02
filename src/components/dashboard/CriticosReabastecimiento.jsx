@@ -41,7 +41,7 @@ export default function CriticosReabastecimiento({ almacen }) {
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
         <h3 className="text-sm font-medium flex items-center gap-2">
-          <ShoppingCart className="w-4 h-4 text-[#E24B4A]" />
+          <ShoppingCart className="w-4 h-4 text-[var(--c-bad)]" />
           Se acaban primero
           <span className="text-xs text-muted-foreground font-normal">
             — {warehouseName(almacen) || almacen}, anuncios activados
@@ -77,7 +77,7 @@ export default function CriticosReabastecimiento({ almacen }) {
               </span>
               <span className="text-right whitespace-nowrap">
                 <span className={`block text-sm font-medium tabular-nums ${
-                  f.cobertura <= 0 ? 'text-[#E24B4A]' : f.cobertura < DIAS / 2 ? 'text-[#E24B4A]' : 'text-[#BA7517]'
+                  f.cobertura <= 0 ? 'text-[var(--c-bad)]' : f.cobertura < DIAS / 2 ? 'text-[var(--c-bad)]' : 'text-[var(--c-warn)]'
                 }`}>
                   {f.cobertura <= 0 ? 'agotado' : `${f.cobertura.toFixed(1)} días`}
                 </span>

@@ -111,10 +111,10 @@ const ORDEN_COLUMNA = {
 };
 
 function colorCobertura(dias, objetivo) {
-  if (dias <= 0) return 'text-[#E24B4A]';
-  if (dias < objetivo / 2) return 'text-[#E24B4A]';
-  if (dias < objetivo) return 'text-[#BA7517]';
-  return 'text-[#1D9E75]';
+  if (dias <= 0) return 'text-[var(--c-bad)]';
+  if (dias < objetivo / 2) return 'text-[var(--c-bad)]';
+  if (dias < objetivo) return 'text-[var(--c-warn)]';
+  return 'text-[var(--c-ok-dim)]';
 }
 
 export default function Reabastecimiento() {
@@ -239,7 +239,7 @@ export default function Reabastecimiento() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Nombre o código…" className="pl-10" style={{ borderRadius: '8px' }} />
+              placeholder="Nombre o código…" className="pl-10" style={{ borderRadius: 'var(--r-ctl)' }} />
           </div>
         ) : null}
         filtros={(
@@ -272,7 +272,7 @@ export default function Reabastecimiento() {
               dicen lo mismo en la cuarta parte del sitio. */}
           <label title="Días de cobertura a comprar"
             className="h-9 flex items-center gap-1 px-2 rounded-lg border border-border bg-card text-xs text-muted-foreground"
-            style={{ borderRadius: '8px' }}>
+            style={{ borderRadius: 'var(--r-ctl)' }}>
             <CalendarRange className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span className="sr-only">Días de cobertura</span>
             <Input type="number" min="1" max="365" value={dias} aria-label="Días de cobertura"
@@ -281,7 +281,7 @@ export default function Reabastecimiento() {
             d
           </label>
           <Button variant="outline" onClick={() => refetch()} disabled={isFetching || !almacen}
-            style={{ borderRadius: '8px' }} title="Volver a pedir el informe de rotación">
+            style={{ borderRadius: 'var(--r-ctl)' }} title="Volver a pedir el informe de rotación">
             <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
           </Button>
           <ColPicker cols={REAB_COL_DEFS} visible={cols}
@@ -345,7 +345,7 @@ export default function Reabastecimiento() {
             a pedir. {EXPLICACION(dias)}
           </p>
 
-          <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+          <Card className="overflow-hidden" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -395,7 +395,7 @@ export default function Reabastecimiento() {
                               <Input type="number" min="0" className="w-20 text-right h-7 text-xs"
                                 value={cantidades[f.id] ?? f.faltan}
                                 onChange={(e) => setCantidades((c) => ({ ...c, [f.id]: e.target.value }))}
-                                style={{ borderRadius: '6px' }} />
+                                style={{ borderRadius: 'var(--r-ctl)' }} />
                             </td>
                           ),
                         };

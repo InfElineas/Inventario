@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 
 const CATEGORIAS = [
-  { key: 'vencido',    label: 'Vencido',       color: '#E24B4A', min: -Infinity, max: 0 },
+  { key: 'vencido',    label: 'Vencido',       color: 'var(--c-bad)', min: -Infinity, max: 0 },
   { key: '1_7',        label: '1–7 días',       color: '#C0392B', min: 1,  max: 7  },
   { key: '8_15',       label: '8–15 días',      color: '#E67E22', min: 8,  max: 15 },
   { key: '16_30',      label: '16–30 días',     color: '#F1C40F', min: 16, max: 30 },
@@ -123,10 +123,10 @@ export default function ReporteVencimientos({ lotes: lotesRaw }) {
         {[
           { label: 'Total lotes con FV', value: totalLotes, color: 'text-foreground' },
           { label: 'Valor total en riesgo', value: `$${totalValor.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: 'text-primary' },
-          { label: 'Vencidos', value: chartData[0]?.lotes ?? 0, color: 'text-[#E24B4A]' },
+          { label: 'Vencidos', value: chartData[0]?.lotes ?? 0, color: 'text-[var(--c-bad)]' },
           { label: 'Por vencer ≤ 30 días', value: (chartData[1]?.lotes ?? 0) + (chartData[2]?.lotes ?? 0) + (chartData[3]?.lotes ?? 0), color: 'text-[#E67E22]' },
         ].map(kpi => (
-          <Card key={kpi.label} className="p-4" style={{ borderRadius: '10px', borderWidth: '0.5px' }}>
+          <Card key={kpi.label} className="p-4" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
             <p className="text-xs text-muted-foreground mb-1">{kpi.label}</p>
             <p className={`text-xl font-semibold ${kpi.color}`}>{kpi.value}</p>
           </Card>
@@ -134,7 +134,7 @@ export default function ReporteVencimientos({ lotes: lotesRaw }) {
       </div>
 
       {/* Gráfico */}
-      <Card className="p-5" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+      <Card className="p-5" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
         <div className="flex items-center justify-between mb-4">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Lotes por categoría de vencimiento</p>
           <Button variant="outline" size="sm" onClick={exportXLSX} className="text-xs gap-1.5">
@@ -162,7 +162,7 @@ export default function ReporteVencimientos({ lotes: lotesRaw }) {
 
       {/* Tabla detalle */}
       {detalleRows.length > 0 && (
-        <Card className="p-5" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+        <Card className="p-5" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-4">Detalle de lotes</p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

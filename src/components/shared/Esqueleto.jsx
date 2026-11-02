@@ -49,7 +49,7 @@ export function EsqueletoContenido() {
       <div className="sm:hidden space-y-2">
         {Array.from({ length: 5 }, (_, i) => (
           <div key={i} className="rounded-xl border border-border bg-card p-3 space-y-2.5"
-            style={{ borderRadius: '12px' }}>
+            style={{ borderRadius: 'var(--r-card)' }}>
             <Barra className="h-4 w-3/4" />
             <Barra className="h-2.5 w-28" />
             <div className="grid grid-cols-2 gap-3 pt-1">
@@ -61,7 +61,7 @@ export function EsqueletoContenido() {
       </div>
 
       <div className="hidden sm:block rounded-xl border border-border bg-card overflow-hidden"
-        style={{ borderRadius: '12px' }}>
+        style={{ borderRadius: 'var(--r-card)' }}>
         <div className="flex gap-4 px-3 py-3 border-b border-border">
           {[28, 16, 12, 12, 16].map((w, i) => (
             <div key={i} className="rounded bg-muted animate-pulse h-3" style={{ width: `${w}%` }} />

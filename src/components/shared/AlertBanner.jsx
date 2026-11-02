@@ -1,10 +1,10 @@
 import { AlertTriangle, Info, CheckCircle } from 'lucide-react';
 
 const variants = {
-  warning: { bg: 'bg-[#BA751710]', border: 'border-[#BA7517]/20', text: 'text-[#BA7517]', Icon: AlertTriangle },
-  danger: { bg: 'bg-[#E24B4A10]', border: 'border-[#E24B4A]/20', text: 'text-[#E24B4A]', Icon: AlertTriangle },
-  info: { bg: 'bg-[#378ADD10]', border: 'border-[#378ADD]/20', text: 'text-[#378ADD]', Icon: Info },
-  success: { bg: 'bg-[#1D9E7510]', border: 'border-[#1D9E75]/20', text: 'text-[#1D9E75]', Icon: CheckCircle },
+  warning: { bg: 'bg-[var(--c-warn)]/6', border: 'border-[var(--c-warn)]/20', text: 'text-[var(--c-warn)]', Icon: AlertTriangle },
+  danger: { bg: 'bg-[var(--c-bad)]/6', border: 'border-[var(--c-bad)]/20', text: 'text-[var(--c-bad)]', Icon: AlertTriangle },
+  info: { bg: 'bg-[var(--c-info)]/6', border: 'border-[var(--c-info)]/20', text: 'text-[var(--c-info)]', Icon: Info },
+  success: { bg: 'bg-[var(--c-ok-dim)]/6', border: 'border-[var(--c-ok-dim)]/20', text: 'text-[var(--c-ok-dim)]', Icon: CheckCircle },
 };
 
 export default function AlertBanner({ variant: variantRaw, message }) {
@@ -13,7 +13,7 @@ export default function AlertBanner({ variant: variantRaw, message }) {
   const IconComp = v.Icon;
   return (
     <div className={`flex items-center gap-2.5 px-4 py-3 rounded-lg border ${v.bg} ${v.border}`}
-      style={{ borderRadius: '8px' }}>
+      style={{ borderRadius: 'var(--r-ctl)' }}>
       <IconComp className={`w-4 h-4 ${v.text} shrink-0`} />
       <p className={`text-sm ${v.text}`}>{message}</p>
     </div>

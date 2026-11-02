@@ -60,7 +60,7 @@ export default function HistorialInventarioDialog({ producto, almacen, onClose }
             <>
               <p className="text-xs text-muted-foreground">
                 {filas.length} {filas.length === 1 ? 'conteo' : 'conteos'}
-                {conDiferencia > 0 && <> · <span className="text-[#BA7517]">{conDiferencia} con diferencia</span></>}
+                {conDiferencia > 0 && <> · <span className="text-[var(--c-warn)]">{conDiferencia} con diferencia</span></>}
               </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
@@ -82,7 +82,7 @@ export default function HistorialInventarioDialog({ producto, almacen, onClose }
                         <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">{i.exist_fisica_tkc ?? '—'}</td>
                         <td className="py-1.5 pr-3 text-right tabular-nums">{i.conteo_real ?? '—'}</td>
                         <td className={`py-1.5 pr-3 text-right tabular-nums font-medium ${
-                          (i.diferencia ?? 0) === 0 ? 'text-[#1D9E75]' : (i.diferencia ?? 0) > 0 ? 'text-[#BA7517]' : 'text-[#E24B4A]'
+                          (i.diferencia ?? 0) === 0 ? 'text-[var(--c-ok-dim)]' : (i.diferencia ?? 0) > 0 ? 'text-[var(--c-warn)]' : 'text-[var(--c-bad)]'
                         }`}>
                           {(i.diferencia ?? 0) > 0 ? '+' : ''}{i.diferencia ?? 0}
                         </td>

@@ -108,14 +108,15 @@
     --destructive:         0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders — near-invisible on dark */
-    --border:              0 0% 14%;     /* #242424 */
+    /* Borders — la rejilla tiene que verse: en una tabla densa es lo único
+       que separa una fila de la siguiente. */
+    --border:              0 0% 15%;     /* #262626 */
     --input:               0 0% 10%;
 
     /* Focus ring — green */
     --ring:                142 69% 60%;
 
-    --radius: 0.5rem;
+    --radius: 0.25rem;
 
     /* ── Status / role semantic colors ──────────────────── */
     --success:             142 71% 45%;
@@ -145,6 +146,36 @@
     --sidebar-accent-foreground:   0 0% 75%;
     --sidebar-border:              0 0% 11%;
     --sidebar-ring:               142 69% 60%;
+
+    /* ── Escala de redondeo ──────────────────────────────────
+       Tres medidas y una sola perilla. El sitio tenía el radio
+       escrito a mano en 390 sitios —4, 6, 8, 10 y 12 px sin
+       criterio—, así que cambiarlo era imposible y ningún par de
+       pantallas coincidía.
+
+       Chip: lo que rodea a una palabra. Control: botón, campo,
+       fila de filtros. Tarjeta: lo que contiene a los demás. */
+    --r-chip: 3px;
+    --r-ctl:  4px;
+    --r-card: 8px;
+
+    /* ── Colores de estado ───────────────────────────────────
+       Estos nueve estaban escritos a mano por todo el código, unas
+       700 veces. Siguen valiendo exactamente lo mismo: lo que
+       cambia es que ahora se declaran una vez.
+
+       El nombre dice para qué sirve, no de qué color es: el día que
+       el rojo del faltante tenga que cambiar, se cambia aquí. */
+    --c-ok:     #4ade80;   /* acción, activo, correcto */
+    --c-ok-dim: #1d9e75;   /* cerrado, ya no hay nada que hacer */
+    --c-bad:    #e24b4a;   /* faltante, devuelto, error */
+    --c-warn:   #ba7517;   /* sobrante, pendiente de otro */
+    --c-info:   #378add;   /* en curso */
+    --c-info-2: #60a5fa;   /* informativo sin estado */
+    --c-purple: #a78bfa;   /* auditoría */
+    --c-orange: #fb923c;   /* por vencer */
+    --c-yellow: #facc15;   /* aviso menor */
+    --c-gray:   #888780;   /* sin estado */
   }
 
   .dark {
@@ -190,6 +221,7 @@
     --sidebar-accent-foreground:   0 0% 75%;
     --sidebar-border:              0 0% 11%;
     --sidebar-ring:               142 69% 60%;
+    --border:              0 0% 15%;
   }
 
   /* ─── Light mode ───────────────────────────────────────────── */
@@ -236,6 +268,22 @@
     --sidebar-accent-foreground:   0 0% 20%;
     --sidebar-border:              0 0% 88%;
     --sidebar-ring:               142 55% 40%;
+
+    /* Los mismos estados, oscurecidos para que se lean sobre blanco.
+       Los valores del tema oscuro están pensados para fondo negro y sobre
+       papel se quedan muy por debajo de 4.5:1 —el verde da 1.8:1, que es
+       texto invisible—. Mientras estuvieron escritos a mano en cada
+       componente esto no se podía arreglar. */
+    --c-ok:     #15803d;
+    --c-ok-dim: #0f766e;
+    --c-bad:    #b91c1c;
+    --c-warn:   #8a5410;
+    --c-info:   #1d4ed8;
+    --c-info-2: #1d4ed8;
+    --c-purple: #6d28d9;
+    --c-orange: #c2410c;
+    --c-yellow: #a16207;
+    --c-gray:   #5b5a55;
   }
 }
 
@@ -284,6 +332,9 @@
 
   .font-mono, code, kbd, samp, pre {
     font-family: var(--font-mono);
+    /* Cifras de ancho fijo: en una columna de cantidades, el 1 ocupando
+       menos que el 8 desalinea la coma y obliga a leer número a número. */
+    font-variant-numeric: tabular-nums;
   }
 
   /* Minimal scrollbar */

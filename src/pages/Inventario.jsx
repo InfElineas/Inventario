@@ -319,7 +319,7 @@ export default function Inventario({ ambito = 'inventario' }) {
     return { visibles, tapados: inventarios.length - visibles.length };
   }, [inventarios, ambito]);
 
-  const difColor = (d) => d === 0 ? 'text-[#1D9E75]' : d > 0 ? 'text-[#BA7517]' : 'text-[#E24B4A]';
+  const difColor = (d) => d === 0 ? 'text-[var(--c-ok-dim)]' : d > 0 ? 'text-[var(--c-warn)]' : 'text-[var(--c-bad)]';
 
 
   return (
@@ -334,7 +334,7 @@ export default function Inventario({ ambito = 'inventario' }) {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)}
-              placeholder="Buscar..." className="pl-10" style={{ borderRadius: '8px' }} />
+              placeholder="Buscar..." className="pl-10" style={{ borderRadius: 'var(--r-ctl)' }} />
           </div>
         )}
         filtros={(
@@ -362,14 +362,14 @@ export default function Inventario({ ambito = 'inventario' }) {
             onOrderChange={(next) => { setColOrder(next); saveColsWithOrder(INV_COLS_KEY, cols, next); }} />
           {/* Reabastecimiento tiene pantalla propia: comprar no es contar, y
               el panel incrustado aquí no daba sitio para pestañas ni filtros. */}
-          <Button variant="outline" asChild style={{ borderRadius: '8px' }}>
+          <Button variant="outline" asChild style={{ borderRadius: 'var(--r-ctl)' }}>
             <Link to="/reabastecimiento">
               <ShoppingCart className="w-4 h-4 lg:mr-1.5" />
               <span className="hidden lg:inline">Reabastecimiento</span>
             </Link>
           </Button>
           {tieneRol(user, ['inv', 'administrador', 'superadmin']) && (
-            <Button onClick={() => { setShowForm(true); setSelectedId(null); }} style={{ borderRadius: '8px' }}>
+            <Button onClick={() => { setShowForm(true); setSelectedId(null); }} style={{ borderRadius: 'var(--r-ctl)' }}>
               <Plus className="w-4 h-4 lg:mr-1.5" /><span className="hidden lg:inline"> Nuevo conteo</span>
             </Button>
           )}
@@ -465,10 +465,10 @@ function MisPendientes({ inventarios, email, onAbrir, onVerTodos }) {
     <button
       type="button"
       onClick={() => (uno ? onAbrir(mios[0].id) : onVerTodos())}
-      className="w-full flex items-center gap-3 px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl border border-[#BA7517]/30 bg-[#BA7517]/5 text-left transition-transform active:scale-[0.995]"
-      style={{ borderRadius: '12px' }}
+      className="w-full flex items-center gap-3 px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl border border-[var(--c-warn)]/30 bg-[var(--c-warn)]/5 text-left transition-transform active:scale-[0.995]"
+      style={{ borderRadius: 'var(--r-card)' }}
     >
-      <ClipboardList className="w-4 h-4 text-[#BA7517] shrink-0" />
+      <ClipboardList className="w-4 h-4 text-[var(--c-warn)] shrink-0" />
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium">
           Tienes {mios.length} {uno ? 'conteo sin enviar' : 'conteos sin enviar'}
@@ -531,7 +531,7 @@ function ExistenciaAhora({ inv }) {
   const cambio = Number.isFinite(ahora) && Number.isFinite(entonces) && ahora !== entonces;
 
   return (
-    <div className="px-4 py-3 rounded-lg border border-border bg-secondary/40 text-xs space-y-1" style={{ borderRadius: '8px' }}>
+    <div className="px-4 py-3 rounded-lg border border-border bg-secondary/40 text-xs space-y-1" style={{ borderRadius: 'var(--r-ctl)' }}>
       <p className="font-medium text-foreground">
         Conteo del {inv.fecha_inv?.slice(0, 10) ?? '—'}
         {dias !== null && dias > 0 && <span className="text-muted-foreground font-normal"> — hace {dias} {dias === 1 ? 'día' : 'días'}</span>}
@@ -542,7 +542,7 @@ function ExistenciaAhora({ inv }) {
         <span className="text-foreground">{isLoading ? '…' : Number.isFinite(ahora) ? ahora : '—'}</span>.
       </p>
       {cambio && (
-        <p className="text-[#BA7517]">
+        <p className="text-[var(--c-warn)]">
           La existencia ha cambiado desde el conteo. La diferencia registrada sigue siendo la de
           aquel día; comprueba si el ajuste sigue teniendo sentido.
         </p>
@@ -592,11 +592,11 @@ function BloqueCorreccion({ inv, devuelto, isUpdating, onGuardar, confirmDialog 
     onGuardar({ ...cambios, estado_tarea: destino });
   };
 
-  const borde = devuelto ? 'border-[#E24B4A]/40 bg-[#E24B4A08]' : 'border-border bg-secondary/40';
+  const borde = devuelto ? 'border-[var(--c-bad)]/40 bg-[var(--c-bad)]/3' : 'border-border bg-secondary/40';
 
   return (
-    <div className={`space-y-3 p-4 border rounded-lg ${borde}`} style={{ borderRadius: '8px' }}>
-      <p className={`text-xs font-medium uppercase tracking-wider ${devuelto ? 'text-[#E24B4A]' : 'text-muted-foreground'}`}>
+    <div className={`space-y-3 p-4 border rounded-lg ${borde}`} style={{ borderRadius: 'var(--r-ctl)' }}>
+      <p className={`text-xs font-medium uppercase tracking-wider ${devuelto ? 'text-[var(--c-bad)]' : 'text-muted-foreground'}`}>
         {devuelto ? 'Devuelto — corrección requerida' : 'Sin enviar — puedes recontar'}
       </p>
 
@@ -615,14 +615,14 @@ function BloqueCorreccion({ inv, devuelto, isUpdating, onGuardar, confirmDialog 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block space-y-1.5 text-xs text-muted-foreground">
           Conteo real
-          <Input type="number" min="0" value={conteo} onChange={(e) => setConteo(e.target.value)} style={{ borderRadius: '8px' }} />
+          <Input type="number" min="0" value={conteo} onChange={(e) => setConteo(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
         </label>
         <label className="block space-y-1.5 text-xs text-muted-foreground">
           Fecha del conteo
           {/* Hoy o ayer: un conteo se hace en el día, y como mucho se registra
               a la mañana siguiente. */}
           <Input type="date" value={fecha} min={AYER()} max={HOY()}
-            onChange={(e) => setFecha(e.target.value)} style={{ borderRadius: '8px' }} />
+            onChange={(e) => setFecha(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
         </label>
       </div>
 
@@ -636,7 +636,7 @@ function BloqueCorreccion({ inv, devuelto, isUpdating, onGuardar, confirmDialog 
 
       {diferencia !== 0 && (
         <Select value={clasif} onValueChange={(v) => { setClasif(v); setIntercambio(null); }}>
-          <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Clasificación de ajuste" /></SelectTrigger>
+          <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Clasificación de ajuste" /></SelectTrigger>
           <SelectContent>{conValorActual(CLASIF_AJUSTE, inv.clasif_ajuste).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
         </Select>
       )}
@@ -656,22 +656,22 @@ function BloqueCorreccion({ inv, devuelto, isUpdating, onGuardar, confirmDialog 
       ))}
 
       <Textarea value={notas} maxLength={500} onChange={(e) => setNotas(e.target.value)}
-        placeholder="Notas del conteo…" style={{ borderRadius: '8px' }} />
+        placeholder="Notas del conteo…" style={{ borderRadius: 'var(--r-ctl)' }} />
       <SugerenciasNota valor={notas} onElegir={setNotas} />
 
       <div className="flex flex-wrap gap-2">
         {!devuelto && (
           <Button size="sm" variant="outline" disabled={!valido || isUpdating}
-            onClick={() => onGuardar(cambios)} style={{ borderRadius: '8px' }}>
+            onClick={() => onGuardar(cambios)} style={{ borderRadius: 'var(--r-ctl)' }}>
             {isUpdating ? 'Guardando…' : 'Guardar el nuevo conteo'}
           </Button>
         )}
-        <Button size="sm" disabled={!valido || isUpdating} onClick={enviar} style={{ borderRadius: '8px' }}>
+        <Button size="sm" disabled={!valido || isUpdating} onClick={enviar} style={{ borderRadius: 'var(--r-ctl)' }}>
           {devuelto ? 'Reenviar conteo corregido' : 'Enviar a facturación'}
         </Button>
       </div>
       {faltaClasif && (
-        <p className="text-xs text-[#BA7517]">Hay diferencia: elige una clasificación antes de guardar.</p>
+        <p className="text-xs text-[var(--c-warn)]">Hay diferencia: elige una clasificación antes de guardar.</p>
       )}
     </div>
   );
@@ -708,13 +708,13 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
   // Mensaje contextual según estado + rol
   const statusHint = (() => {
     const e = inv.estado_tarea;
-    if (e === 'completado') return { msg: 'Proceso completado y cerrado.', color: 'text-[#4ade80]' };
+    if (e === 'completado') return { msg: 'Proceso completado y cerrado.', color: 'text-[var(--c-ok)]' };
     if (e === 'pend_fact'  && !tieneRol(user, ['fact','administrador','superadmin']))
-      return { msg: 'Esperando revisión de FACTURACIÓN.', color: 'text-[#60a5fa]' };
+      return { msg: 'Esperando revisión de FACTURACIÓN.', color: 'text-[var(--c-info-2)]' };
     if (e === 'en_auditoria' && !tieneRol(user, ['auditor','administrador','superadmin']))
-      return { msg: 'En revisión por AUDITORÍA.', color: 'text-[#a78bfa]' };
+      return { msg: 'En revisión por AUDITORÍA.', color: 'text-[var(--c-purple)]' };
     if (e === 'devuelto' && !tieneRol(user, ['inv','administrador','superadmin']))
-      return { msg: 'Devuelto a INV para corrección.', color: 'text-[#E24B4A]' };
+      return { msg: 'Devuelto a INV para corrección.', color: 'text-[var(--c-bad)]' };
     return null;
   })();
 
@@ -727,7 +727,7 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
         {canDelete && (
           <Button
             variant="ghost" size="sm"
-            className="text-[#E24B4A] hover:text-[#E24B4A] hover:bg-[#E24B4A]/10"
+            className="text-[var(--c-bad)] hover:text-[var(--c-bad)] hover:bg-[var(--c-bad)]/10"
             onClick={async () => { if (await confirmDialog('Esta acción no se puede deshacer.', { title: '¿Eliminar este conteo?', destructive: true })) onDelete() }}
           >
             <Trash2 className="w-4 h-4" />
@@ -794,23 +794,23 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
 
       {/* FACT form */}
       {canProcessFact && (
-        <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: '8px', borderWidth: '0.5px' }}>
+        <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: 'var(--r-ctl)', borderWidth: '0.5px' }}>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Procesamiento FACT</p>
           {hermanos.length > 0 && (
             <AlertBanner variant="warning"
               message={`Hay ${hermanos.length} ${hermanos.length === 1 ? 'conteo anterior' : 'conteos anteriores'} de este producto esperando a facturación. Al procesar este, aquellos se cierran sin ajuste y se avisa a quien los hizo: su diferencia se midió contra otra existencia.`} />
           )}
-          <Input placeholder="No. factura TKC" value={factData.fact_no_factura} onChange={(e) => setFactData({ ...factData, fact_no_factura: e.target.value })} style={{ borderRadius: '8px' }} />
+          <Input placeholder="No. factura TKC" value={factData.fact_no_factura} onChange={(e) => setFactData({ ...factData, fact_no_factura: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
           <Select value={factData.fact_clasif} onValueChange={(v) => setFactData({ ...factData, fact_clasif: v })}>
-            <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Clasificación FACT" /></SelectTrigger>
+            <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Clasificación FACT" /></SelectTrigger>
             <SelectContent>{conValorActual(CLASIF_FACT, inv.fact_clasif).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={factData.fact_estado} onValueChange={(v) => setFactData({ ...factData, fact_estado: v })}>
-            <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Estado FACT" /></SelectTrigger>
+            <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Estado FACT" /></SelectTrigger>
             <SelectContent>{ESTADO_FACT.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent>
           </Select>
           {estadoContradictorio(inv.resultado, factData.fact_estado) && (
-            <p className="text-xs text-[#BA7517] bg-[#BA7517]/10 px-3 py-2 rounded-md">
+            <p className="text-xs text-[var(--c-warn)] bg-[var(--c-warn)]/10 px-3 py-2 rounded-md">
               El conteo dio un <strong>{inv.resultado}</strong> de {Math.abs(inv.diferencia ?? 0)} y
               estás aplicando «{factData.fact_estado}», que va en sentido contrario. Puedes
               continuar, pero comprueba que es lo que quieres.
@@ -822,7 +822,7 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
               registro guarda un solo producto, así que esa información solo queda aquí.
             </p>
           )}
-          <Textarea placeholder="Notas FACT" value={factData.fact_notas} onChange={(e) => setFactData({ ...factData, fact_notas: e.target.value })} style={{ borderRadius: '8px' }} />
+          <Textarea placeholder="Notas FACT" value={factData.fact_notas} onChange={(e) => setFactData({ ...factData, fact_notas: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
           <div className="flex gap-2">
             <Button size="sm" disabled={isUpdating} onClick={async () => {
               // Los conteos anteriores del mismo producto que siguen esperando
@@ -846,10 +846,10 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
                 fact_fecha: new Date().toISOString().slice(0, 10),
                 estado_tarea: 'en_auditoria',
               }, hermanos);
-            }} style={{ borderRadius: '8px' }}>
+            }} style={{ borderRadius: 'var(--r-ctl)' }}>
               {isUpdating ? 'Enviando...' : 'Enviar a auditor'}
             </Button>
-            <Button size="sm" variant="outline" disabled={isUpdating} onClick={() => onUpdate({ estado_tarea: 'devuelto' })} style={{ borderRadius: '8px' }}>
+            <Button size="sm" variant="outline" disabled={isUpdating} onClick={() => onUpdate({ estado_tarea: 'devuelto' })} style={{ borderRadius: 'var(--r-ctl)' }}>
               Devolver a INV
             </Button>
           </div>
@@ -858,25 +858,25 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
 
       {/* Auditor form */}
       {canAudit && (
-        <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: '8px', borderWidth: '0.5px' }}>
+        <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: 'var(--r-ctl)', borderWidth: '0.5px' }}>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Auditoría</p>
-          <Textarea placeholder="Nota del auditor" value={auditorNota} onChange={(e) => setAuditorNota(e.target.value)} style={{ borderRadius: '8px' }} />
+          <Textarea placeholder="Nota del auditor" value={auditorNota} onChange={(e) => setAuditorNota(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
           <div className="flex gap-2">
             <Button size="sm" disabled={isUpdating} onClick={async () => {
               if (!await confirmDialog('Se completará el proceso y no podrá revertirse.', { title: '¿Aprobar y completar este inventario?' })) return;
               onUpdate({ nota_auditor: auditorNota, auditor_id: user?.email, auditor_nombre: user?.full_name, auditoria_fecha: new Date().toISOString().slice(0, 10), estado_tarea: 'completado' });
-            }} style={{ borderRadius: '8px' }}>{isUpdating ? 'Guardando...' : 'Aprobar y completar'}</Button>
+            }} style={{ borderRadius: 'var(--r-ctl)' }}>{isUpdating ? 'Guardando...' : 'Aprobar y completar'}</Button>
             {/* Dos destinos: no siempre el problema es del conteo. Si lo que
                 está mal es la factura o la clasificación contable, devolverlo
                 a quien contó no arregla nada y hace perder un viaje. */}
             <Button size="sm" variant="outline" disabled={isUpdating}
               onClick={() => onUpdate({ nota_auditor: auditorNota, auditoria_fecha: new Date().toISOString().slice(0, 10), estado_tarea: 'devuelto' })}
-              style={{ borderRadius: '8px' }}>
+              style={{ borderRadius: 'var(--r-ctl)' }}>
               Devolver a inventario
             </Button>
             <Button size="sm" variant="outline" disabled={isUpdating}
               onClick={() => onUpdate({ nota_auditor: auditorNota, auditoria_fecha: new Date().toISOString().slice(0, 10), estado_tarea: 'pend_fact' })}
-              style={{ borderRadius: '8px' }}>
+              style={{ borderRadius: 'var(--r-ctl)' }}>
               Devolver a facturación
             </Button>
           </div>
@@ -889,8 +889,11 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
 
 /** Una celda del listado de conteos, la misma para tabla y ficha. */
 function celdaConteo(inv, clave, enTabla, difColor) {
+  // `py-1.5`: la fila baja de 44 px a 32. En una pantalla de portátil eso
+  // son seis filas más sin desplazar, que es de lo que va un listado de
+  // trabajo. La ficha del teléfono no cambia: ahí el dedo manda.
   const env = (contenido, clases = '') => (enTabla
-    ? <td key={clave} className={`p-3 ${clases}`}>{contenido}</td>
+    ? <td key={clave} className={`px-2.5 py-1.5 ${clases}`}>{contenido}</td>
     : contenido);
 
   switch (clave) {
@@ -957,7 +960,7 @@ function ParIntercambio({ id }) {
 
   return (
     <div className="rounded-lg border border-border bg-secondary/40 p-3 space-y-1"
-      style={{ borderRadius: '8px' }}>
+      style={{ borderRadius: 'var(--r-ctl)' }}>
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
         Intercambiado con
       </p>
@@ -965,7 +968,7 @@ function ParIntercambio({ id }) {
       <p className="text-xs text-muted-foreground font-mono">{par.producto_codigo}</p>
       <p className="text-xs text-muted-foreground">
         Diferencia{' '}
-        <span className={`font-medium ${(par.diferencia ?? 0) > 0 ? 'text-[#BA7517]' : 'text-[#E24B4A]'}`}>
+        <span className={`font-medium ${(par.diferencia ?? 0) > 0 ? 'text-[var(--c-warn)]' : 'text-[var(--c-bad)]'}`}>
           {(par.diferencia ?? 0) > 0 ? '+' : ''}{par.diferencia}
         </span>
         {' · '}{par.fecha_inv?.slice(0, 10)}

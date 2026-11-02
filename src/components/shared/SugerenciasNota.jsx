@@ -42,7 +42,7 @@ export default function SugerenciasNota({ valor, onElegir, opciones = NOTAS_FREC
             key={frase} type="button" onClick={() => añadir(frase)} disabled={puesta}
             className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
               puesta
-                ? 'border-[#4ade80]/40 bg-[#4ade80]/10 text-[#4ade80] cursor-default'
+                ? 'border-[var(--c-ok)]/40 bg-[var(--c-ok)]/10 text-[var(--c-ok)] cursor-default'
                 : 'border-border text-muted-foreground hover:bg-secondary hover:text-foreground'
             }`}
           >

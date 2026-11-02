@@ -326,7 +326,7 @@ export default function GeneradorPDF({ onClose }) {
   }
 
   return (
-    <Card className="p-6 space-y-5" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+    <Card className="p-6 space-y-5" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-primary" />
@@ -343,7 +343,7 @@ export default function GeneradorPDF({ onClose }) {
             type="date"
             value={filtros.fechaDesde}
             onChange={e => setFiltros(f => ({ ...f, fechaDesde: e.target.value }))}
-            style={{ borderRadius: '8px' }}
+            style={{ borderRadius: 'var(--r-ctl)' }}
           />
         </div>
         <div>
@@ -352,13 +352,13 @@ export default function GeneradorPDF({ onClose }) {
             type="date"
             value={filtros.fechaHasta}
             onChange={e => setFiltros(f => ({ ...f, fechaHasta: e.target.value }))}
-            style={{ borderRadius: '8px' }}
+            style={{ borderRadius: 'var(--r-ctl)' }}
           />
         </div>
         <div>
           <label className="text-xs text-muted-foreground block mb-1">Suministrador</label>
           <Select value={filtros.suministrador} onValueChange={v => setFiltros(f => ({ ...f, suministrador: v }))}>
-            <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
+            <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los suministradores</SelectItem>
               {suministradores.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -370,11 +370,11 @@ export default function GeneradorPDF({ onClose }) {
       {/* Preview summary */}
       {!isLoading && (
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-secondary/50 rounded-lg p-4 text-center" style={{ borderRadius: '8px' }}>
+          <div className="bg-secondary/50 rounded-lg p-4 text-center" style={{ borderRadius: 'var(--r-ctl)' }}>
             <p className="text-2xl font-semibold text-primary">{filtered.inventarios.length}</p>
             <p className="text-xs text-muted-foreground mt-1">Conteos de inventario</p>
           </div>
-          <div className="bg-secondary/50 rounded-lg p-4 text-center" style={{ borderRadius: '8px' }}>
+          <div className="bg-secondary/50 rounded-lg p-4 text-center" style={{ borderRadius: 'var(--r-ctl)' }}>
             <p className="text-2xl font-semibold text-primary">{filtered.movimientos.length}</p>
             <p className="text-xs text-muted-foreground mt-1">Movimientos de stock</p>
           </div>
@@ -382,7 +382,7 @@ export default function GeneradorPDF({ onClose }) {
       )}
 
       {!isLoading && (inventarios.length >= 1000 || movimientos.length >= 1000) && (
-        <p className="text-xs text-[#BA7517] bg-[#BA7517]/10 px-3 py-2 rounded-md">
+        <p className="text-xs text-[var(--c-warn)] bg-[var(--c-warn)]/10 px-3 py-2 rounded-md">
           Solo se cargan los 1000 registros más recientes de cada tipo. Si "Fecha desde" queda fuera de ese rango, el reporte no incluirá los registros más antiguos — acorta el rango de fechas para asegurar que estén completos.
         </p>
       )}
@@ -396,12 +396,12 @@ export default function GeneradorPDF({ onClose }) {
 
       {/* Actions */}
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onClose} style={{ borderRadius: '8px' }}>Cancelar</Button>
+        <Button variant="outline" onClick={onClose} style={{ borderRadius: 'var(--r-ctl)' }}>Cancelar</Button>
         <Button
           variant="outline"
           disabled={isLoading || generating}
           onClick={() => handleGenerate(true)}
-          style={{ borderRadius: '8px' }}
+          style={{ borderRadius: 'var(--r-ctl)' }}
         >
           {generating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Eye className="w-4 h-4 mr-1.5" />}
           Vista previa
@@ -409,7 +409,7 @@ export default function GeneradorPDF({ onClose }) {
         <Button
           disabled={isLoading || generating}
           onClick={() => handleGenerate(false)}
-          style={{ borderRadius: '8px' }}
+          style={{ borderRadius: 'var(--r-ctl)' }}
         >
           {generating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Download className="w-4 h-4 mr-1.5" />}
           Descargar PDF

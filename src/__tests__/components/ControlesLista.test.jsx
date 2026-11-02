@@ -40,12 +40,14 @@ describe('FiltroIcono', () => {
   it('puesto, se marca en el color de acento', () => {
     // Un filtro activo que no se ve es la forma más rápida de no entender
     // por qué falta algo en la lista.
+    // Se busca el token, no el color: el verde vive en `--c-ok` y el día que
+    // cambie de valor esta prueba tiene que seguir valiendo.
     const { container } = pintar('chilled');
-    expect(container.querySelector('[class*="4ade80"]')).toBeTruthy();
+    expect(container.querySelector('[class*="--c-ok"]')).toBeTruthy();
   });
 
   it('sin filtrar, no se marca', () => {
     const { container } = pintar('all');
-    expect(container.querySelector('[class*="4ade80"]')).toBeNull();
+    expect(container.querySelector('[class*="--c-ok"]')).toBeNull();
   });
 });

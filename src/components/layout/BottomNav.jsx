@@ -86,11 +86,11 @@ export default function BottomNav({ user, pendingCounts: pendingCountsRaw }) {
           className="lg:hidden fixed right-4 z-50 w-11 h-11 flex items-center justify-center shadow-lg active:scale-95"
           style={{
             bottom: 'calc(56px + env(safe-area-inset-bottom, 0px) + 12px)',
-            background: '#4ade80',
+            background: 'var(--c-ok)',
             color: '#000',
             // Cuadrado con las esquinas del sitio, no un circulo: todo lo
             // demas —tarjetas, botones, campos— usa este mismo radio.
-            borderRadius: '12px',
+            borderRadius: 'var(--r-card)',
             transition: 'transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 180ms ease',
             transform: oculto ? 'translateY(90px) scale(0.8)' : 'none',
             opacity: oculto ? 0 : 1,
@@ -100,7 +100,7 @@ export default function BottomNav({ user, pendingCounts: pendingCountsRaw }) {
           {abierto ? <X className="w-5 h-5" /> : <MoreHorizontal className="w-5 h-5" />}
           {!abierto && pendientesOcultas > 0 && (
             <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white"
-              style={{ background: '#E24B4A' }}>
+              style={{ background: 'var(--c-bad)' }}>
               {pendientesOcultas > 9 ? '9+' : pendientesOcultas}
             </span>
           )}
@@ -140,13 +140,13 @@ export default function BottomNav({ user, pendingCounts: pendingCountsRaw }) {
                       key={item.path}
                       to={item.path}
                       className={`flex items-center gap-3 px-4 py-3 transition-colors ${
-                        activa ? 'text-[#4ade80] bg-[#4ade80]/[0.08]' : 'text-foreground hover:bg-accent'
+                        activa ? 'text-[var(--c-ok)] bg-[var(--c-ok)]/[0.08]' : 'text-foreground hover:bg-accent'
                       }`}
                     >
                       {Icon && <Icon className="w-[18px] h-[18px] shrink-0" />}
                       <span className="flex-1 text-sm">{item.label}</span>
                       {cuenta > 0 && (
-                        <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full text-[11px] font-bold bg-[#4ade80]/15 text-[#4ade80]">
+                        <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full text-[11px] font-bold bg-[var(--c-ok)]/15 text-[var(--c-ok)]">
                           {cuenta}
                         </span>
                       )}
@@ -182,17 +182,17 @@ export default function BottomNav({ user, pendingCounts: pendingCountsRaw }) {
               // se desplaza, así que repartir el ancho deja cada destino donde
               // el dedo lo espera.
               className="relative flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 transition-colors"
-              style={{ padding: '6px 4px 4px', color: activa ? '#4ade80' : 'hsl(var(--muted-foreground))' }}
+              style={{ padding: '6px 4px 4px', color: activa ? 'var(--c-ok)' : 'hsl(var(--muted-foreground))' }}
             >
               {activa && (
                 <span className="absolute top-0 left-1/2 -translate-x-1/2 rounded-b-full"
-                  style={{ width: '20px', height: '2px', background: '#4ade80' }} />
+                  style={{ width: '20px', height: '2px', background: 'var(--c-ok)' }} />
               )}
               <div className="relative">
                 {Icon && <Icon style={{ width: '18px', height: '18px' }} />}
                 {cuenta > 0 && (
                   <span className="absolute -top-1 -right-1.5 flex items-center justify-center rounded-full text-black font-bold"
-                    style={{ width: '14px', height: '14px', fontSize: '9px', background: '#4ade80' }}>
+                    style={{ width: '14px', height: '14px', fontSize: '9px', background: 'var(--c-ok)' }}>
                     {cuenta > 9 ? '9+' : cuenta}
                   </span>
                 )}

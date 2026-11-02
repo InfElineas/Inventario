@@ -44,7 +44,7 @@ export default function Notificaciones() {
           <h1 className="text-lg sm:text-xl font-medium">Notificaciones</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{notifs.filter(n => !n.leida).length} sin leer</p>
         </div>
-        <Button variant="outline" size="sm" onClick={markAllRead} style={{ borderRadius: '8px' }}>
+        <Button variant="outline" size="sm" onClick={markAllRead} style={{ borderRadius: 'var(--r-ctl)' }}>
           <CheckCheck className="w-4 h-4 sm:mr-1.5" />
           <span className="hidden sm:inline">Marcar todas como leídas</span>
         </Button>
@@ -54,14 +54,14 @@ export default function Notificaciones() {
         {isLoading ? (
           <p className="text-sm text-muted-foreground text-center py-8">Cargando...</p>
         ) : notifs.length === 0 ? (
-          <Card className="p-8 text-center" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+          <Card className="p-8 text-center" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
             <Bell className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">Sin notificaciones</p>
           </Card>
         ) : notifs.map(n => (
           <Card key={n.id}
             className={`p-4 flex items-start gap-3 transition-all ${n.leida ? 'opacity-60' : ''}`}
-            style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+            style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
             <span className="text-lg">{typeIcons[n.tipo] || '🔔'}</span>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium">{n.titulo}</p>

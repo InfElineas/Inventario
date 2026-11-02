@@ -43,7 +43,7 @@ export default function ListaResponsive({
   if (filas.length === 0) {
     return (
       <Card className="p-10 text-center text-sm text-muted-foreground"
-        style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+        style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
         {vacio}
       </Card>
     );
@@ -63,7 +63,7 @@ export default function ListaResponsive({
             className={`w-full text-left rounded-xl border border-border bg-card p-3 transition-transform ${
               alPulsar ? 'active:scale-[0.99]' : 'cursor-default'
             }`}
-            style={{ borderRadius: '12px' }}
+            style={{ borderRadius: 'var(--r-card)' }}
           >
             <div className="flex items-start gap-2.5 mb-2">
               {marca && (
@@ -98,17 +98,17 @@ export default function ListaResponsive({
       </div>
 
       {/* Tabla: de `sm` para arriba, donde sí cabe. */}
-      <Card className="hidden sm:block overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+      <Card className="hidden sm:block overflow-hidden" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
-                {cabeceraMarca && <th className="p-3 w-9">{cabeceraMarca}</th>}
+                {cabeceraMarca && <th className="px-2.5 py-1.5 w-8">{cabeceraMarca}</th>}
                 {columnas.map((k) => (orden ? (
                   <SortTh key={k} colKey={k} label={titulos[k]?.label ?? k}
                     align={titulos[k]?.align} sort={orden.sort} onSort={orden.onSort} />
                 ) : (
-                  <th key={k} className={`p-3 text-xs font-medium text-muted-foreground ${
+                  <th key={k} className={`px-2.5 py-1.5 text-xs font-medium text-muted-foreground ${
                     titulos[k]?.align === 'right' ? 'text-right'
                       : titulos[k]?.align === 'center' ? 'text-center' : 'text-left'
                   }`}>{titulos[k]?.label ?? k}</th>
@@ -123,7 +123,7 @@ export default function ListaResponsive({
                     alPulsar ? 'hover:bg-accent/50 cursor-pointer' : ''
                   }`}>
                   {marca && (
-                    <td className="p-3" onClick={(e) => e.stopPropagation()}>{marca(fila)}</td>
+                    <td className="px-2.5 py-1.5" onClick={(e) => e.stopPropagation()}>{marca(fila)}</td>
                   )}
                   {columnas.map((k) => celda(fila, k, true))}
                 </tr>
@@ -149,7 +149,7 @@ function Esqueleto({ columnas }) {
       <div className="sm:hidden space-y-2">
         {Array.from({ length: 5 }, (_, i) => (
           <div key={i} className="rounded-xl border border-border bg-card p-3 space-y-2"
-            style={{ borderRadius: '12px' }}>
+            style={{ borderRadius: 'var(--r-card)' }}>
             <div className="h-4 w-2/3 rounded bg-muted animate-pulse" />
             <div className="grid grid-cols-2 gap-3">
               <div className="h-3 w-full rounded bg-muted animate-pulse" />
@@ -158,7 +158,7 @@ function Esqueleto({ columnas }) {
           </div>
         ))}
       </div>
-      <Card className="hidden sm:block p-4 space-y-3" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+      <Card className="hidden sm:block p-4 space-y-3" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
         {Array.from({ length: 6 }, (_, i) => (
           <div key={i} className="flex gap-3">
             {columnas.map((k) => <div key={k} className="h-4 flex-1 rounded bg-muted animate-pulse" />)}

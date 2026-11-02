@@ -164,7 +164,7 @@ export default function AjusteForm({ tipo }) {
       <label className="block space-y-1.5 text-xs text-muted-foreground max-w-xs">
         Almacén
         <Select value={almacenValido ? almacen : ''} onValueChange={setAlmacen}>
-          <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Elige un almacén" /></SelectTrigger>
+          <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Elige un almacén" /></SelectTrigger>
           <SelectContent>
             {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
           </SelectContent>
@@ -172,13 +172,13 @@ export default function AjusteForm({ tipo }) {
       </label>
 
       {bloqueo && (
-        <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-[#BA7517]/30 bg-[#BA751710]" style={{ borderRadius: '8px' }}>
-          <ShieldAlert className="w-4 h-4 text-[#BA7517] mt-0.5 shrink-0" />
-          <div className="flex-1 text-sm text-[#BA7517]">
+        <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-[var(--c-warn)]/30 bg-[var(--c-warn)]/6" style={{ borderRadius: 'var(--r-ctl)' }}>
+          <ShieldAlert className="w-4 h-4 text-[var(--c-warn)] mt-0.5 shrink-0" />
+          <div className="flex-1 text-sm text-[var(--c-warn)]">
             <p className="font-medium">Se envió a TKC y no se pudo comprobar el resultado.</p>
             <p className="mt-0.5">Revisa en TKC si el documento quedó antes de repetir: reintentarlo a ciegas puede duplicarlo o aplicarlo dos veces.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setBloqueo(null)} style={{ borderRadius: '8px' }}>
+          <Button variant="outline" size="sm" onClick={() => setBloqueo(null)} style={{ borderRadius: 'var(--r-ctl)' }}>
             Ya lo revisé en TKC
           </Button>
         </div>
@@ -209,7 +209,7 @@ export default function AjusteForm({ tipo }) {
                 Impedir abrirlo dejaría al usuario sin saber qué le falta. */}
             <Button variant="outline" disabled={!almacenValido}
               onClick={() => setMontarAbierto(true)}
-              style={{ borderRadius: '8px' }}>
+              style={{ borderRadius: 'var(--r-ctl)' }}>
               Montar un ajuste a mano
             </Button>
           </div>
@@ -226,12 +226,12 @@ export default function AjusteForm({ tipo }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5 text-xs text-muted-foreground">
             Fecha
-            <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={{ borderRadius: '8px' }} />
+            <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
           </label>
           <label className="space-y-1.5 text-xs text-muted-foreground">
             Clasificación{cfg.clasificacionObligatoria ? ' (obligatoria)' : ''}
             <Select value={clasificacion} onValueChange={setClasificacion}>
-              <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Elige una clasificación" /></SelectTrigger>
+              <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Elige una clasificación" /></SelectTrigger>
               <SelectContent>
                 {cfg.clasificaciones.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
@@ -239,7 +239,7 @@ export default function AjusteForm({ tipo }) {
           </label>
           <label className="space-y-1.5 text-xs text-muted-foreground">
             Observaciones (opcional)
-            <Input value={notas} maxLength={500} onChange={(e) => setNotas(e.target.value)} style={{ borderRadius: '8px' }} />
+            <Input value={notas} maxLength={500} onChange={(e) => setNotas(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
           </label>
         </div>
 
@@ -251,12 +251,12 @@ export default function AjusteForm({ tipo }) {
             onChange={(e) => setTexto(e.target.value)}
             placeholder={'7622210833662*3\n7622210697394*4'}
             className="font-mono text-sm"
-            style={{ borderRadius: '8px' }}
+            style={{ borderRadius: 'var(--r-ctl)' }}
           />
         </label>
 
         {errores.length > 0 && (
-          <ul className="text-xs text-[#E24B4A] space-y-0.5">
+          <ul className="text-xs text-[var(--c-bad)] space-y-0.5">
             {errores.slice(0, 8).map((e, i) => (
               <li key={i}>{e.linea ? `Línea ${e.linea}: ` : ''}{e.motivo}{e.texto ? ` («${e.texto}»)` : ''}</li>
             ))}
@@ -269,7 +269,7 @@ export default function AjusteForm({ tipo }) {
             {lines.length} {lines.length === 1 ? 'producto' : 'productos'}, {lines.reduce((s, l) => s + l.quantity, 0)} unidades.
             Montarlo no mueve la existencia.
           </p>
-          <Button onClick={() => montar.mutate()} disabled={!puedeMontar || estaOcupado} style={{ borderRadius: '8px' }}>
+          <Button onClick={() => montar.mutate()} disabled={!puedeMontar || estaOcupado} style={{ borderRadius: 'var(--r-ctl)' }}>
             {montar.isPending && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
             Montar ajuste
           </Button>
@@ -283,7 +283,7 @@ export default function AjusteForm({ tipo }) {
         <Card className="p-5 space-y-4">
           {resultado.tipo === 'creado' && (
             <>
-              <div className="flex items-center gap-2 text-[#1D9E75]">
+              <div className="flex items-center gap-2 text-[var(--c-ok-dim)]">
                 <CheckCircle2 className="w-4 h-4" />
                 <h2 className="text-sm font-medium">
                   Documento {documento?.code ?? documento?.id} montado en «editada»
@@ -354,7 +354,7 @@ export default function AjusteForm({ tipo }) {
                       </Button>
                       {puedeConfirmar(f.status) && confirmado[f.id]?.tipo !== 'confirmado' && (
                         <Button
-                          size="sm" variant="outline" style={{ borderRadius: '8px' }}
+                          size="sm" variant="outline" style={{ borderRadius: 'var(--r-ctl)' }}
                           disabled={sinTkc || estaOcupado || bloqueo === f.id}
                           onClick={() => pedirConfirmacion(f.id, f.code)}
                           title="Confirmar" aria-label="Confirmar"
@@ -363,7 +363,7 @@ export default function AjusteForm({ tipo }) {
                         </Button>
                       )}
                       {confirmado[f.id] && confirmado[f.id].tipo !== 'confirmado' && (
-                        <span className="text-xs text-[#E24B4A]">{confirmado[f.id].mensaje}</span>
+                        <span className="text-xs text-[var(--c-bad)]">{confirmado[f.id].mensaje}</span>
                       )}
                     </td>
                   </tr>
@@ -399,12 +399,12 @@ function ConfirmarBloque({ resultado, onConfirmar, deshabilitado, pendiente, cfg
       {resultado && resultado.tipo !== 'confirmado' && (
         <AlertBanner variant={resultado.tipo === 'sin_verificar' ? 'warning' : 'danger'} message={mensajeDeError(resultado)} />
       )}
-      <div className="flex items-center justify-between gap-3 rounded-lg border px-4 py-3" style={{ borderRadius: '8px' }}>
+      <div className="flex items-center justify-between gap-3 rounded-lg border px-4 py-3" style={{ borderRadius: 'var(--r-ctl)' }}>
         <p className="text-xs text-muted-foreground flex items-center gap-2">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
           Confirmarlo {cfg.efectoConfirmar} las cantidades en la existencia de TKC.
         </p>
-        <Button onClick={onConfirmar} disabled={deshabilitado} style={{ borderRadius: '8px' }}>
+        <Button onClick={onConfirmar} disabled={deshabilitado} style={{ borderRadius: 'var(--r-ctl)' }}>
           {pendiente ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Check className="w-4 h-4 mr-1.5" />}
           Confirmar ajuste
         </Button>
@@ -426,7 +426,7 @@ function TablaLineas({ titulo, filas, conMotivo = false }) {
                 <td className="py-1 pr-3 text-muted-foreground">{f.line}</td>
                 <td className="py-1 pr-3 font-mono">{f.code}</td>
                 <td className="py-1 pr-3 text-right">{f.quantity}</td>
-                {conMotivo && <td className="py-1 text-[#E24B4A]">{f.reason}</td>}
+                {conMotivo && <td className="py-1 text-[var(--c-bad)]">{f.reason}</td>}
               </tr>
             ))}
           </tbody>

@@ -85,11 +85,11 @@ export function Plan({ lineas, concedido, pedido, modulo }) {
   const verbo = modulo === 'bajar' ? 'bajarían' : 'subirían';
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden" style={{ borderRadius: '8px' }}>
+    <div className="rounded-lg border border-border overflow-hidden" style={{ borderRadius: 'var(--r-ctl)' }}>
       <div className="px-3 py-2 border-b border-border flex items-center gap-2">
         {concedido > 0
-          ? <CheckCircle2 className="w-3.5 h-3.5 text-[#1D9E75] shrink-0" />
-          : <XCircle className="w-3.5 h-3.5 text-[#E24B4A] shrink-0" />}
+          ? <CheckCircle2 className="w-3.5 h-3.5 text-[var(--c-ok-dim)] shrink-0" />
+          : <XCircle className="w-3.5 h-3.5 text-[var(--c-bad)] shrink-0" />}
         <p className="text-xs font-medium">
           {concedido > 0
             ? `Se ${verbo} ${concedido} de las ${pedido} unidades pedidas.`
@@ -103,7 +103,7 @@ export function Plan({ lineas, concedido, pedido, modulo }) {
             <li key={`${l.line}-${l.code}`} className="px-3 py-2 space-y-1">
               <div className="flex items-baseline justify-between gap-3 text-xs">
                 <span className="font-mono text-muted-foreground">{l.code}</span>
-                <span className={concede > 0 ? 'text-[#1D9E75]' : 'text-[#E24B4A]'}>
+                <span className={concede > 0 ? 'text-[var(--c-ok-dim)]' : 'text-[var(--c-bad)]'}>
                   {concede} de {l.requested}
                 </span>
               </div>
@@ -111,7 +111,7 @@ export function Plan({ lineas, concedido, pedido, modulo }) {
                   que hay. Pero hay que decirlo, porque quien pidió 294 y ve
                   «ejecutado» da por hecho que se movieron 294. */}
               {concede > 0 && concede < Number(l.requested) && (
-                <p className="text-xs text-[#BA7517]">
+                <p className="text-xs text-[var(--c-warn)]">
                   Se recorta a lo que hay disponible.
                 </p>
               )}
@@ -239,7 +239,7 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
           <DialogDescription className="text-xs">{cfg.descripcion}</DialogDescription>
 
           <div className="space-y-4">
-            <div className="bg-secondary/50 rounded-lg p-3 space-y-1" style={{ borderRadius: '8px' }}>
+            <div className="bg-secondary/50 rounded-lg p-3 space-y-1" style={{ borderRadius: 'var(--r-ctl)' }}>
               <p className="text-sm font-medium line-clamp-2">{producto.nombre}</p>
               <p className="text-xs text-muted-foreground font-mono">{producto.codigo}</p>
               <p className="text-xs text-muted-foreground">
@@ -253,7 +253,7 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
                 Cantidad a mover
                 <Input type="number" min="1" value={cantidad} inputMode="numeric"
                   onChange={(e) => { setCantidad(e.target.value); setPlan(null); setResultado(null); }}
-                  style={{ borderRadius: '8px' }} />
+                  style={{ borderRadius: 'var(--r-ctl)' }} />
               </label>
               <label className="block space-y-1.5 text-xs text-muted-foreground">
                 Modo
@@ -274,7 +274,7 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
                 Porcentaje (1–100)
                 <Input type="number" min="1" max="100" value={porcentaje} inputMode="numeric"
                   onChange={(e) => { setPorcentaje(e.target.value); setPlan(null); setResultado(null); }}
-                  style={{ borderRadius: '8px' }} />
+                  style={{ borderRadius: 'var(--r-ctl)' }} />
               </label>
             )}
 
@@ -299,7 +299,7 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
             )}
 
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <Button variant="outline" onClick={onClose} style={{ borderRadius: '8px' }}>
+              <Button variant="outline" onClick={onClose} style={{ borderRadius: 'var(--r-ctl)' }}>
                 {resultado ? 'Cerrar' : 'Cancelar'}
               </Button>
               {!resultado && (
@@ -308,7 +308,7 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
                       ha pasado un rato con el diálogo abierto, o tras un fallo
                       de red. */}
                   <Button variant="outline" disabled={!entradaValida || ocupado}
-                    onClick={() => setIntento((i) => i + 1)} style={{ borderRadius: '8px' }}>
+                    onClick={() => setIntento((i) => i + 1)} style={{ borderRadius: 'var(--r-ctl)' }}>
                     <RefreshCw className={`w-4 h-4 mr-1.5 ${ocupado === 'analizar' ? 'animate-spin' : ''}`} />
                     Volver a analizar
                   </Button>
@@ -316,7 +316,7 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
                       ejecutar uno que no concede nada manda un envío que TKC
                       ya dijo que va a rechazar. */}
                   <Button disabled={!plan || analisis.concedido === 0 || !entradaValida || ocupado} onClick={ejecutar}
-                    style={{ borderRadius: '8px' }}>
+                    style={{ borderRadius: 'var(--r-ctl)' }}>
                     {ocupado === 'ejecutar' && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
                     Ejecutar
                   </Button>

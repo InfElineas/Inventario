@@ -1,6 +1,6 @@
 export default function ReadOnlyBlock({ title, children }) {
   return (
-    <div className="bg-secondary/50 rounded-lg p-4" style={{ borderRadius: '12px' }}>
+    <div className="bg-secondary/50 rounded-lg p-4" style={{ borderRadius: 'var(--r-card)' }}>
       <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest mb-3">
         {title} — solo lectura
       </p>

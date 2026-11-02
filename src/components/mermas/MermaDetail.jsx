@@ -36,30 +36,30 @@ function EditarMerma({ merma, isUpdating, onGuardar }) {
   const precioUnit = Number(merma.precio_unitario) || 0;
 
   return (
-    <div className="space-y-3 p-4 border border-border rounded-lg bg-secondary/40" style={{ borderRadius: '8px' }}>
+    <div className="space-y-3 p-4 border border-border rounded-lg bg-secondary/40" style={{ borderRadius: 'var(--r-ctl)' }}>
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Sin bajar de tienda — puedes corregirla</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block space-y-1.5 text-xs text-muted-foreground">
           Cantidad
-          <Input type="number" min="1" value={cantidad} onChange={(e) => setCantidad(e.target.value)} style={{ borderRadius: '8px' }} />
+          <Input type="number" min="1" value={cantidad} onChange={(e) => setCantidad(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
         </label>
         <label className="block space-y-1.5 text-xs text-muted-foreground">
           Pérdida
-          <p className="text-sm font-medium text-[#E24B4A] pt-2">${(n * precioUnit || 0).toFixed(2)}</p>
+          <p className="text-sm font-medium text-[var(--c-bad)] pt-2">${(n * precioUnit || 0).toFixed(2)}</p>
         </label>
       </div>
       <Select value={clasif} onValueChange={setClasif}>
-        <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Clasificación de merma" /></SelectTrigger>
+        <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Clasificación de merma" /></SelectTrigger>
         <SelectContent>{conValorActual(ALL_CLASIF_MERMA, merma.clasif_merma).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
       </Select>
       <Select value={destino} onValueChange={setDestino}>
-        <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Destino final" /></SelectTrigger>
+        <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Destino final" /></SelectTrigger>
         <SelectContent>{DESTINOS_MERMA.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
       </Select>
       <Textarea value={notas} maxLength={500} onChange={(e) => setNotas(e.target.value)}
-        placeholder="Notas…" style={{ borderRadius: '8px' }} />
+        placeholder="Notas…" style={{ borderRadius: 'var(--r-ctl)' }} />
       <div className="flex justify-end">
-        <Button size="sm" disabled={!valido || isUpdating} style={{ borderRadius: '8px' }}
+        <Button size="sm" disabled={!valido || isUpdating} style={{ borderRadius: 'var(--r-ctl)' }}
           onClick={() => onGuardar({
             cantidad: n,
             clasif_merma: clasif,
@@ -135,7 +135,7 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
         )) && (
           <Button
             variant="ghost" size="sm"
-            className="text-[#E24B4A] hover:text-[#E24B4A] hover:bg-[#E24B4A]/10"
+            className="text-[var(--c-bad)] hover:text-[var(--c-bad)] hover:bg-[var(--c-bad)]/10"
             onClick={async () => { if (await confirmDialog('Esta acción no se puede deshacer.', { title: '¿Eliminar esta merma?', destructive: true })) onDelete() }}
           >
             <Trash2 className="w-4 h-4" />
@@ -187,26 +187,26 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
 
       {/* FACT processing */}
       {canFact && (
-        <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: '8px', borderWidth: '0.5px' }}>
+        <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: 'var(--r-ctl)', borderWidth: '0.5px' }}>
           <div className="flex gap-2 mb-3">
-            <Button size="sm" variant={tab === 'procesar' ? 'default' : 'outline'} onClick={() => setTab('procesar')} style={{ borderRadius: '8px' }}>Procesar FACT</Button>
-            <Button size="sm" variant={tab === 'reconteo' ? 'default' : 'outline'} onClick={() => setTab('reconteo')} style={{ borderRadius: '8px' }}>Solicitar reconteo</Button>
+            <Button size="sm" variant={tab === 'procesar' ? 'default' : 'outline'} onClick={() => setTab('procesar')} style={{ borderRadius: 'var(--r-ctl)' }}>Procesar FACT</Button>
+            <Button size="sm" variant={tab === 'reconteo' ? 'default' : 'outline'} onClick={() => setTab('reconteo')} style={{ borderRadius: 'var(--r-ctl)' }}>Solicitar reconteo</Button>
           </div>
 
           {tab === 'procesar' && (
             <div className="space-y-3">
               {merma.cantidad > 200 && <AlertBanner variant="danger" message={`Alerta: cantidad ${merma.cantidad} > 200`} />}
               {merma.total_perdida > 500 && <AlertBanner variant="danger" message={`Alerta: valor $${merma.total_perdida?.toFixed(2)} > $500`} />}
-              <Input placeholder="No. factura TKC" value={factData.fact_no_factura} onChange={(e) => setFactData({ ...factData, fact_no_factura: e.target.value })} style={{ borderRadius: '8px' }} />
+              <Input placeholder="No. factura TKC" value={factData.fact_no_factura} onChange={(e) => setFactData({ ...factData, fact_no_factura: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
               <Select value={factData.fact_clasif} onValueChange={(v) => setFactData({ ...factData, fact_clasif: v })}>
-                <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Clasificación FACT" /></SelectTrigger>
+                <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Clasificación FACT" /></SelectTrigger>
                 <SelectContent>{CLASIF_FACT.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={factData.fact_estado} onValueChange={(v) => setFactData({ ...factData, fact_estado: v })}>
-                <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Estado FACT" /></SelectTrigger>
+                <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Estado FACT" /></SelectTrigger>
                 <SelectContent>{ESTADO_FACT.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent>
               </Select>
-              <Textarea placeholder="Notas FACT" value={factData.fact_notas} onChange={(e) => setFactData({ ...factData, fact_notas: e.target.value })} style={{ borderRadius: '8px' }} />
+              <Textarea placeholder="Notas FACT" value={factData.fact_notas} onChange={(e) => setFactData({ ...factData, fact_notas: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
               <div className="flex gap-2">
                 <Button size="sm" disabled={isUpdating} onClick={() => handleTransicion({
                   ...factData,
@@ -214,8 +214,8 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
                   fact_especialista_nombre: user?.full_name,
                   fact_fecha: format(new Date(), 'yyyy-MM-dd'),
                   estado_tarea: 'en_auditoria'
-                })} style={{ borderRadius: '8px' }}>{isUpdating ? 'Enviando...' : 'Enviar a auditor'}</Button>
-                <Button size="sm" variant="outline" disabled={isUpdating} onClick={() => handleTransicion({ estado_tarea: 'devuelto' })} style={{ borderRadius: '8px' }}>Devolver</Button>
+                })} style={{ borderRadius: 'var(--r-ctl)' }}>{isUpdating ? 'Enviando...' : 'Enviar a auditor'}</Button>
+                <Button size="sm" variant="outline" disabled={isUpdating} onClick={() => handleTransicion({ estado_tarea: 'devuelto' })} style={{ borderRadius: 'var(--r-ctl)' }}>Devolver</Button>
               </div>
             </div>
           )}
@@ -223,12 +223,12 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
           {tab === 'reconteo' && (
             <div className="space-y-3">
               <Select value={reconteoMotivo} onValueChange={setReconteoMotivo}>
-                <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Motivo del reconteo (obligatorio)" /></SelectTrigger>
+                <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Motivo del reconteo (obligatorio)" /></SelectTrigger>
                 <SelectContent>
                   {MOTIVOS_RECONTEO.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Textarea placeholder="Detalle adicional" value={reconteoDetalle} onChange={(e) => setReconteoDetalle(e.target.value)} style={{ borderRadius: '8px' }} />
+              <Textarea placeholder="Detalle adicional" value={reconteoDetalle} onChange={(e) => setReconteoDetalle(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
               <Button size="sm" disabled={!reconteoMotivo || isUpdating} onClick={() => {
                 const reconteos = [...(merma.reconteos || []), {
                   solicitado_por: user?.email,
@@ -244,7 +244,7 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
                   version_reconteo: (merma.version_reconteo || 1) + 1,
                   reconteos,
                 });
-              }} style={{ borderRadius: '8px' }}>Enviar solicitud</Button>
+              }} style={{ borderRadius: 'var(--r-ctl)' }}>Enviar solicitud</Button>
             </div>
           )}
         </div>
@@ -256,8 +256,8 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
         const cantValida = Number.isInteger(cantNum) && cantNum >= 1
         const esSinFact = CLASIF_MERMA_SIN_FACT.includes(invReconteo.clasif_merma)
         return (
-          <div className="space-y-3 p-4 border border-[#E24B4A]/40 rounded-lg bg-[#E24B4A08]" style={{ borderRadius: '8px' }}>
-            <p className="text-xs font-medium text-[#E24B4A] uppercase tracking-wider">Devuelto — corrección requerida</p>
+          <div className="space-y-3 p-4 border border-[var(--c-bad)]/40 rounded-lg bg-[var(--c-bad)]/3" style={{ borderRadius: 'var(--r-ctl)' }}>
+            <p className="text-xs font-medium text-[var(--c-bad)] uppercase tracking-wider">Devuelto — corrección requerida</p>
             {merma.nota_auditor && (
               <p className="text-xs text-muted-foreground"><span className="font-medium">Nota auditor:</span> {merma.nota_auditor}</p>
             )}
@@ -266,10 +266,10 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
               placeholder="Cantidad corregida"
               value={invReconteo.cantidad}
               onChange={(e) => setInvReconteo(d => ({ ...d, cantidad: e.target.value }))}
-              style={{ borderRadius: '8px' }}
+              style={{ borderRadius: 'var(--r-ctl)' }}
             />
             <Select value={invReconteo.clasif_merma} onValueChange={(v) => setInvReconteo(d => ({ ...d, clasif_merma: v }))}>
-              <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Clasificación" /></SelectTrigger>
+              <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Clasificación" /></SelectTrigger>
               <SelectContent>
                 {(ALL_CLASIF_MERMA || []).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
@@ -287,7 +287,7 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
                   estado_tarea:  esSinFact ? 'en_auditoria' : 'pend_fact',
                 })
               }}
-              style={{ borderRadius: '8px' }}
+              style={{ borderRadius: 'var(--r-ctl)' }}
             >
               {isUpdating ? 'Enviando...' : 'Reenviar merma corregida'}
             </Button>
@@ -301,8 +301,8 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
         const cantNum = Number(invReconteo.cantidad)
         const cantValida = Number.isInteger(cantNum) && cantNum >= 1
         return (
-          <div className="space-y-3 p-4 border border-[#BA7517]/40 rounded-lg bg-[#BA751708]" style={{ borderRadius: '8px' }}>
-            <p className="text-xs font-medium text-[#BA7517] uppercase tracking-wider">Reconteo solicitado por FACT</p>
+          <div className="space-y-3 p-4 border border-[var(--c-warn)]/40 rounded-lg bg-[var(--c-warn)]/3" style={{ borderRadius: 'var(--r-ctl)' }}>
+            <p className="text-xs font-medium text-[var(--c-warn)] uppercase tracking-wider">Reconteo solicitado por FACT</p>
             {ultimoReconteo && (
               <div className="text-xs text-muted-foreground space-y-0.5">
                 <p><span className="font-medium">Motivo:</span> {ultimoReconteo.motivo_categoria}</p>
@@ -315,10 +315,10 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
               placeholder="Nueva cantidad (reconteo físico)"
               value={invReconteo.cantidad}
               onChange={(e) => setInvReconteo(d => ({ ...d, cantidad: e.target.value }))}
-              style={{ borderRadius: '8px' }}
+              style={{ borderRadius: 'var(--r-ctl)' }}
             />
             <Select value={invReconteo.clasif_merma} onValueChange={(v) => setInvReconteo(d => ({ ...d, clasif_merma: v }))}>
-              <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Clasificación" /></SelectTrigger>
+              <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Clasificación" /></SelectTrigger>
               <SelectContent>
                 {(ALL_CLASIF_MERMA || []).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
@@ -341,7 +341,7 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
                   estado_tarea:  'pend_fact',
                 })
               }}
-              style={{ borderRadius: '8px' }}
+              style={{ borderRadius: 'var(--r-ctl)' }}
             >
               Confirmar reconteo y devolver a FACT
             </Button>
@@ -351,15 +351,15 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
 
       {/* Auditor */}
       {canAudit && (
-        <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: '8px', borderWidth: '0.5px' }}>
+        <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: 'var(--r-ctl)', borderWidth: '0.5px' }}>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Auditoría</p>
 
           {/* Estado de requisitos */}
           <div className="space-y-1.5">
-            <div className={`text-xs flex justify-between p-2 rounded ${rebajaOk ? 'bg-[#1D9E7510] text-[#1D9E75]' : 'bg-[#E24B4A10] text-[#E24B4A]'}`} style={{ borderRadius: '4px' }}>
+            <div className={`text-xs flex justify-between p-2 rounded ${rebajaOk ? 'bg-[var(--c-ok-dim)]/6 text-[var(--c-ok-dim)]' : 'bg-[var(--c-bad)]/6 text-[var(--c-bad)]'}`} style={{ borderRadius: 'var(--r-chip)' }}>
               <span>Rebajado de tienda</span><span>{rebajaOk ? 'SÍ' : 'NO — bloquea aprobación'}</span>
             </div>
-            <div className={`text-xs flex justify-between p-2 rounded ${destinosOk ? 'bg-[#1D9E7510] text-[#1D9E75]' : 'bg-[#E24B4A10] text-[#E24B4A]'}`} style={{ borderRadius: '4px' }}>
+            <div className={`text-xs flex justify-between p-2 rounded ${destinosOk ? 'bg-[var(--c-ok-dim)]/6 text-[var(--c-ok-dim)]' : 'bg-[var(--c-bad)]/6 text-[var(--c-bad)]'}`} style={{ borderRadius: 'var(--r-chip)' }}>
               <span>Destinos asignados: {destSum} / {merma.cantidad}</span>
               <span>{destinosOk ? 'OK' : `Faltan ${merma.cantidad - destSum}`}</span>
             </div>
@@ -369,12 +369,12 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
           {destinos.length > 0 && (
             <div className="space-y-1">
               {destinos.map((d, i) => (
-                <div key={i} className="flex items-center justify-between text-xs bg-secondary/50 px-3 py-1.5 rounded" style={{ borderRadius: '6px' }}>
+                <div key={i} className="flex items-center justify-between text-xs bg-secondary/50 px-3 py-1.5 rounded" style={{ borderRadius: 'var(--r-ctl)' }}>
                   <span className="font-medium">{d.tipo}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">{d.cantidad} ud.</span>
                     <button
-                      className="text-[#E24B4A] hover:opacity-70 text-xs font-bold leading-none"
+                      className="text-[var(--c-bad)] hover:opacity-70 text-xs font-bold leading-none"
                       onClick={() => setDestinos(ds => ds.filter((_, j) => j !== i))}
                     >×</button>
                   </div>
@@ -387,7 +387,7 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
           {!destinosOk && (
             <div className="flex gap-2">
               <Select value={newDestino.tipo} onValueChange={(v) => setNewDestino(d => ({ ...d, tipo: v }))}>
-                <SelectTrigger className="flex-1 h-8 text-xs" style={{ borderRadius: '6px' }}>
+                <SelectTrigger className="flex-1 h-8 text-xs" style={{ borderRadius: 'var(--r-ctl)' }}>
                   <SelectValue placeholder="Destino" />
                 </SelectTrigger>
                 <SelectContent>
@@ -400,7 +400,7 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
                 value={newDestino.cantidad}
                 onChange={(e) => setNewDestino(d => ({ ...d, cantidad: e.target.value }))}
                 className="w-20 h-8 text-xs"
-                style={{ borderRadius: '6px' }}
+                style={{ borderRadius: 'var(--r-ctl)' }}
               />
               <Button
                 size="sm" variant="outline"
@@ -410,21 +410,21 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
                   setDestinos(ds => [...ds, { tipo: newDestino.tipo, cantidad: Number(newDestino.cantidad) }])
                   setNewDestino({ tipo: '', cantidad: '' })
                 }}
-                style={{ borderRadius: '6px' }}
+                style={{ borderRadius: 'var(--r-ctl)' }}
               >+</Button>
             </div>
           )}
 
-          <Textarea placeholder="Nota del auditor" value={auditorNota} onChange={(e) => setAuditorNota(e.target.value)} style={{ borderRadius: '8px' }} />
+          <Textarea placeholder="Nota del auditor" value={auditorNota} onChange={(e) => setAuditorNota(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
 
           <div className="flex gap-2">
             <Button size="sm" disabled={!canApprove || isUpdating} onClick={async () => {
               if (!await confirmDialog('Se completará el proceso y no podrá revertirse.', { title: '¿Aprobar y completar esta merma?' })) return;
               handleTransicion({ destinos, nota_auditor: auditorNota, auditor_id: user?.email, auditor_nombre: user?.full_name, auditoria_fecha: format(new Date(), 'yyyy-MM-dd'), estado_tarea: 'completado' });
-            }} style={{ borderRadius: '8px' }}>
+            }} style={{ borderRadius: 'var(--r-ctl)' }}>
               {isUpdating ? 'Guardando...' : canApprove ? 'Aprobar y completar' : 'Bloqueado'}
             </Button>
-            <Button size="sm" variant="outline" disabled={isUpdating} onClick={() => handleTransicion({ nota_auditor: auditorNota, auditoria_fecha: format(new Date(), 'yyyy-MM-dd'), estado_tarea: 'devuelto' })} style={{ borderRadius: '8px' }}>Devolver</Button>
+            <Button size="sm" variant="outline" disabled={isUpdating} onClick={() => handleTransicion({ nota_auditor: auditorNota, auditoria_fecha: format(new Date(), 'yyyy-MM-dd'), estado_tarea: 'devuelto' })} style={{ borderRadius: 'var(--r-ctl)' }}>Devolver</Button>
           </div>
         </div>
       )}

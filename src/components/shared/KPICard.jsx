@@ -8,8 +8,8 @@
  * antes de que apareciera un solo dato.
  */
 export default function KPICard({ title, value, icon: Icon, color: colorRaw, bgColor: bgColorRaw, subtitle }) {
-  const color = colorRaw ?? 'text-[#4ade80]'
-  const bgColor = bgColorRaw ?? 'bg-[#4ade80]/10'
+  const color = colorRaw ?? 'text-[var(--c-ok)]'
+  const bgColor = bgColorRaw ?? 'bg-[var(--c-ok)]/10'
   return (
     <div className="p-3 sm:p-5 rounded-lg bg-card border border-border">
       <div className="flex items-start justify-between mb-1.5 sm:mb-3 gap-2">

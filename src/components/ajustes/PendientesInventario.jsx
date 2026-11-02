@@ -49,7 +49,7 @@ export default function PendientesInventario({ tipo, almacen, onUsar }) {
   if (!cfg || !almacen) return null;
 
   return (
-    <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+    <Card className="overflow-hidden" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border">
         <p className="text-sm font-medium flex items-center gap-2">
           <ClipboardList className="w-4 h-4 text-muted-foreground" />
@@ -59,7 +59,7 @@ export default function PendientesInventario({ tipo, almacen, onUsar }) {
           )}
         </p>
         {filas.length > 0 && (
-          <Button type="button" variant="outline" size="sm" style={{ borderRadius: '8px' }}
+          <Button type="button" variant="outline" size="sm" style={{ borderRadius: 'var(--r-ctl)' }}
             onClick={() => onUsar(aLineas(filas))}>
             <ArrowDownToLine className="w-3.5 h-3.5 mr-1.5" />
             Pasarlos al formulario
@@ -96,7 +96,7 @@ export default function PendientesInventario({ tipo, almacen, onUsar }) {
                   </td>
                   <td className="px-3 py-2 font-mono text-xs hidden sm:table-cell">{i.producto_codigo || '—'}</td>
                   <td className="px-3 py-2 text-right tabular-nums font-medium"
-                      style={{ color: Number(i.diferencia) > 0 ? '#BA7517' : '#E24B4A' }}>
+                      style={{ color: Number(i.diferencia) > 0 ? 'var(--c-warn)' : 'var(--c-bad)' }}>
                     {Number(i.diferencia) > 0 ? '+' : ''}{i.diferencia}
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground hidden md:table-cell">

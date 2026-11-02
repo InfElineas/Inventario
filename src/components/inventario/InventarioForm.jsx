@@ -167,13 +167,13 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
   // ajustes que no cuadran y sin saber que eran el mismo caso.
   const faltaIntercambio = clasifAjuste === CLASIF_INTERCAMBIO && !intercambio;
 
-  const difColor = diferencia === 0 ? 'text-[#1D9E75]' : diferencia > 0 ? 'text-[#BA7517]' : 'text-[#E24B4A]';
+  const difColor = diferencia === 0 ? 'text-[var(--c-ok-dim)]' : diferencia > 0 ? 'text-[var(--c-warn)]' : 'text-[var(--c-bad)]';
 
   // ── Pantalla de confirmación (diferencia detectada) ──────────
   if (pendingData) {
     const esSobrante = pendingData.diferencia > 0;
-    const difColor   = esSobrante ? 'text-[#BA7517]' : 'text-[#E24B4A]';
-    const difBg      = esSobrante ? 'bg-[#BA7517]/8 border-[#BA7517]/20' : 'bg-[#E24B4A]/8 border-[#E24B4A]/20';
+    const difColor   = esSobrante ? 'text-[var(--c-warn)]' : 'text-[var(--c-bad)]';
+    const difBg      = esSobrante ? 'bg-[var(--c-warn)]/8 border-[var(--c-warn)]/20' : 'bg-[var(--c-bad)]/8 border-[var(--c-bad)]/20';
     return (
       <div className="space-y-5">
         {/* Resumen del conteo */}
@@ -207,15 +207,15 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
           <p className="text-sm font-medium">¿Qué pasa después?</p>
           <ol className="space-y-1.5 text-xs text-muted-foreground list-none">
             <li className="flex gap-2">
-              <span className="w-5 h-5 rounded-full bg-[#4ade80]/15 text-[#4ade80] flex items-center justify-center font-bold shrink-0 text-[10px]">1</span>
+              <span className="w-5 h-5 rounded-full bg-[var(--c-ok)]/15 text-[var(--c-ok)] flex items-center justify-center font-bold shrink-0 text-[10px]">1</span>
               <span>El conteo queda en estado <strong className="text-foreground">Pendiente FACT</strong>.</span>
             </li>
             <li className="flex gap-2">
-              <span className="w-5 h-5 rounded-full bg-[#60a5fa]/15 text-[#60a5fa] flex items-center justify-center font-bold shrink-0 text-[10px]">2</span>
+              <span className="w-5 h-5 rounded-full bg-[var(--c-info-2)]/15 text-[var(--c-info-2)] flex items-center justify-center font-bold shrink-0 text-[10px]">2</span>
               <span><strong className="text-foreground">Facturación</strong> revisa la diferencia, agrega la factura o nota de ajuste y lo envía a auditoría.</span>
             </li>
             <li className="flex gap-2">
-              <span className="w-5 h-5 rounded-full bg-[#a78bfa]/15 text-[#a78bfa] flex items-center justify-center font-bold shrink-0 text-[10px]">3</span>
+              <span className="w-5 h-5 rounded-full bg-[var(--c-purple)]/15 text-[var(--c-purple)] flex items-center justify-center font-bold shrink-0 text-[10px]">3</span>
               <span><strong className="text-foreground">Auditor</strong> valida y cierra el proceso.</span>
             </li>
           </ol>
@@ -223,7 +223,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
         </div>
 
         <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="outline" onClick={() => setPendingData(null)} style={{ borderRadius: '8px' }}>
+          <Button variant="outline" onClick={() => setPendingData(null)} style={{ borderRadius: 'var(--r-ctl)' }}>
             Editar conteo
           </Button>
           {/* Guardar sin enviar: una diferencia suele querer recontarse antes
@@ -232,11 +232,11 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
               sale en la lista de pendientes de quien lo contó. */}
           <Button variant="outline" disabled={isPending}
             onClick={() => onSubmit({ ...pendingData, estado_tarea: 'en_curso' })}
-            style={{ borderRadius: '8px' }}>
+            style={{ borderRadius: 'var(--r-ctl)' }}>
             <Save className="w-4 h-4 mr-1.5" />
             Guardar para recontar
           </Button>
-          <Button onClick={() => onSubmit(pendingData)} disabled={isPending} style={{ borderRadius: '8px' }}>
+          <Button onClick={() => onSubmit(pendingData)} disabled={isPending} style={{ borderRadius: 'var(--r-ctl)' }}>
             <Save className="w-4 h-4 mr-1.5" />
             {isPending ? 'Enviando…' : 'Confirmar y enviar a FACT'}
           </Button>
@@ -263,7 +263,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
             variant="outline"
             onClick={() => setShowScanner(true)}
             title="Escanear código de barras"
-            style={{ borderRadius: '8px' }}
+            style={{ borderRadius: 'var(--r-ctl)' }}
           >
             <ScanLine className="w-4 h-4" />
           </Button>
@@ -280,7 +280,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
       )}
 
       {avisoEscaneo && (
-        <p className="text-xs text-[#BA7517] bg-[#BA7517]/10 px-3 py-2 rounded-md">{avisoEscaneo}</p>
+        <p className="text-xs text-[var(--c-warn)] bg-[var(--c-warn)]/10 px-3 py-2 rounded-md">{avisoEscaneo}</p>
       )}
 
       {producto && !conTkc && (
@@ -289,7 +289,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
 
       {producto && (
         <>
-          <div className="bg-secondary/50 rounded-lg p-4 flex gap-4 items-start" style={{ borderRadius: '8px' }}>
+          <div className="bg-secondary/50 rounded-lg p-4 flex gap-4 items-start" style={{ borderRadius: 'var(--r-ctl)' }}>
             <ProductThumb fotos={producto.fotos} nombre={producto.nombre} />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 flex-1 min-w-0">
               <div className="col-span-2 sm:col-span-1"><p className="text-[10px] text-muted-foreground uppercase">Producto</p><p className="text-sm font-medium line-clamp-2">{producto.nombre}</p></div>
@@ -306,7 +306,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
               ['A (almacén)', desglose?.enAlmacen],
               ['T (tienda)',  desglose?.enTienda],
             ].map(([etiqueta, valor]) => (
-              <div key={etiqueta} className="bg-secondary/50 rounded-lg px-3 py-2 text-center" style={{ borderRadius: '8px' }}>
+              <div key={etiqueta} className="bg-secondary/50 rounded-lg px-3 py-2 text-center" style={{ borderRadius: 'var(--r-ctl)' }}>
                 <p className="text-[10px] text-muted-foreground uppercase">{etiqueta}</p>
                 <p className="text-lg font-semibold tabular-nums">
                   {cargandoSubmayor ? '…' : desglose ? valor : '—'}
@@ -320,7 +320,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
             <p className="text-xs text-muted-foreground">Consultando el submayor de TKC…</p>
           )}
           {!cargandoSubmayor && desfase && (
-            <p className="text-xs text-[#BA7517] bg-[#BA7517]/10 px-3 py-2 rounded-md">
+            <p className="text-xs text-[var(--c-warn)] bg-[var(--c-warn)]/10 px-3 py-2 rounded-md">
               El submayor dice <strong>{desglose.fisica}</strong> y nuestro catálogo{' '}
               <strong>{efLocal}</strong>. Se compara contra el submayor, que es el dato de TKC
               ahora mismo; el catálogo lleva sin sincronizar desde la última vez.
@@ -329,8 +329,8 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
           {/* Sin el dato de TKC no se cuenta: la copia puede llevar horas y la
               diferencia saldría contra un número que ya no es. */}
           {sinSubmayor && (
-            <div className="flex items-start gap-3 px-3 py-2.5 rounded-md border border-[#E24B4A]/30 bg-[#E24B4A]/10">
-              <div className="flex-1 text-xs text-[#E24B4A]">
+            <div className="flex items-start gap-3 px-3 py-2.5 rounded-md border border-[var(--c-bad)]/30 bg-[var(--c-bad)]/10">
+              <div className="flex-1 text-xs text-[var(--c-bad)]">
                 <p className="font-medium">No hay existencia de TKC para este producto.</p>
                 <p className="mt-0.5">
                   {!producto.id_tienda
@@ -342,7 +342,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
               </div>
               {producto.id_tienda && (
                 <Button type="button" variant="outline" size="sm" onClick={() => refetchSubmayor()}
-                  disabled={cargandoSubmayor} style={{ borderRadius: '8px' }}>
+                  disabled={cargandoSubmayor} style={{ borderRadius: 'var(--r-ctl)' }}>
                   <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${cargandoSubmayor ? 'animate-spin' : ''}`} />
                   Reintentar
                 </Button>
@@ -352,7 +352,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
 
           {/* Ya hay un conteo suyo hoy: se corrige ese, no se crea otro. */}
           {conteoPrevio && (
-            <div className="px-3 py-2.5 rounded-md border border-[#BA7517]/30 bg-[#BA7517]/10 text-xs text-[#BA7517]">
+            <div className="px-3 py-2.5 rounded-md border border-[var(--c-warn)]/30 bg-[var(--c-warn)]/10 text-xs text-[var(--c-warn)]">
               <p className="font-medium">Este producto ya se contó hoy en este almacén.</p>
               <p className="mt-0.5">
                 Lo contó {conteoPrevio.especialista_nombre || conteoPrevio.especialista_id || 'otra persona'} y
@@ -366,7 +366,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Líneas de detalle</p>
-              <Button variant="outline" size="sm" onClick={addDetalle} style={{ borderRadius: '8px' }}>
+              <Button variant="outline" size="sm" onClick={addDetalle} style={{ borderRadius: 'var(--r-ctl)' }}>
                 <Plus className="w-3.5 h-3.5 mr-1.5" /> Agregar FV
               </Button>
             </div>
@@ -374,17 +374,17 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
               <div key={i} className="grid grid-cols-2 sm:grid-cols-[1fr_1fr_100px_36px] gap-2 items-end">
                 <div className="col-span-2 sm:col-span-1">
                   <label className="text-[11px] text-muted-foreground">Fecha vencimiento</label>
-                  <Input type="date" value={d.fecha_vencimiento} onChange={(e) => updateDetalle(i, 'fecha_vencimiento', e.target.value)} style={{ borderRadius: '8px' }} />
+                  <Input type="date" value={d.fecha_vencimiento} onChange={(e) => updateDetalle(i, 'fecha_vencimiento', e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
                 </div>
                 <div>
                   <label className="text-[11px] text-muted-foreground">No. lote</label>
-                  <Input value={d.no_lote} onChange={(e) => updateDetalle(i, 'no_lote', e.target.value)} placeholder="Opcional" style={{ borderRadius: '8px' }} />
+                  <Input value={d.no_lote} onChange={(e) => updateDetalle(i, 'no_lote', e.target.value)} placeholder="Opcional" style={{ borderRadius: 'var(--r-ctl)' }} />
                 </div>
                 {/* En móvil: cantidad y botón comparten la celda derecha */}
                 <div className="flex gap-2 items-end sm:contents">
                   <div className="flex-1 min-w-0">
                     <label className="text-[11px] text-muted-foreground">Cantidad</label>
-                    <Input type="number" min="0" value={d.cantidad} onChange={(e) => updateDetalle(i, 'cantidad', e.target.value)} style={{ borderRadius: '8px' }} />
+                    <Input type="number" min="0" value={d.cantidad} onChange={(e) => updateDetalle(i, 'cantidad', e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => removeDetalle(i)} disabled={detalles.length === 1}>
                     <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
@@ -395,7 +395,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
           </div>
 
           {/* Summary */}
-          <div className="flex items-center gap-6 p-4 bg-secondary/50 rounded-lg" style={{ borderRadius: '8px' }}>
+          <div className="flex items-center gap-6 p-4 bg-secondary/50 rounded-lg" style={{ borderRadius: 'var(--r-ctl)' }}>
             <div><p className="text-[10px] text-muted-foreground uppercase">Conteo</p><p className="text-lg font-medium">{conteoReal}</p></div>
             <div><p className="text-[10px] text-muted-foreground uppercase">EF TKC</p><p className="text-lg font-medium">{efTkc}</p></div>
             <div><p className="text-[10px] text-muted-foreground uppercase">Diferencia</p><p className={`text-lg font-medium ${difColor}`}>{diferencia > 0 ? '+' : ''}{diferencia}</p></div>
@@ -406,7 +406,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
               <AlertBanner variant={diferencia > 0 ? 'warning' : 'danger'} message={`Diferencia detectada: ${diferencia > 0 ? 'sobrante' : 'faltante'} de ${Math.abs(diferencia)} unidades. Se requiere clasificación.`} />
               <Select value={clasifAjuste}
                 onValueChange={(v) => { setClasifAjuste(v); setIntercambio(null); }}>
-                <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Clasificación de ajuste" /></SelectTrigger>
+                <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Clasificación de ajuste" /></SelectTrigger>
                 <SelectContent>
                   {CLASIF_AJUSTE.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
@@ -426,22 +426,22 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground font-medium">Fecha del conteo *</label>
             <Input type="date" value={fechaInv} min={AYER()} max={HOY()}
-              onChange={(e) => setFechaInv(e.target.value)} required style={{ borderRadius: '8px' }} />
+              onChange={(e) => setFechaInv(e.target.value)} required style={{ borderRadius: 'var(--r-ctl)' }} />
           </div>
           <div className="space-y-2">
-            <Textarea value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Notas del conteo..." maxLength={500} style={{ borderRadius: '8px' }} />
+            <Textarea value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Notas del conteo..." maxLength={500} style={{ borderRadius: 'var(--r-ctl)' }} />
             <SugerenciasNota valor={notas} onElegir={setNotas} />
           </div>
 
           {validError && (
-            <p className="text-xs text-[#E24B4A] bg-[#E24B4A]/10 px-3 py-2 rounded-md">{validError}</p>
+            <p className="text-xs text-[var(--c-bad)] bg-[var(--c-bad)]/10 px-3 py-2 rounded-md">{validError}</p>
           )}
 
           <div className="flex justify-end gap-2">
             <Button onClick={handleSubmit}
               disabled={!producto || sinSubmayor || Boolean(conteoPrevio) || cargandoSubmayor
                 || (diferencia !== 0 && !clasifAjuste) || faltaIntercambio || isPending}
-              style={{ borderRadius: '8px' }}>
+              style={{ borderRadius: 'var(--r-ctl)' }}>
               <Save className="w-4 h-4 mr-1.5" /> {isPending ? 'Guardando...' : 'Confirmar conteo'}
             </Button>
           </div>

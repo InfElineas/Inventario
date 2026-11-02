@@ -144,7 +144,7 @@ export default function Auditoria() {
       </div>
 
       {/* Filters */}
-      <Card className="p-4" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+      <Card className="p-4" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
         <div className="flex flex-col gap-3">
           {/* Los filtros, cuadrados y con su icono, como en el resto del
               modulo. Las fechas no caben en uno —son dos campos que hay que
@@ -168,14 +168,14 @@ export default function Auditoria() {
               <span className="sr-only">Desde</span>
               <Input type="date" value={fechaDesde} aria-label="Desde"
                 onChange={(e) => { setFechaDesde(e.target.value); resetPage(); }}
-                style={{ borderRadius: '8px' }} className="h-9 w-[135px] text-xs" />
+                style={{ borderRadius: 'var(--r-ctl)' }} className="h-9 w-[135px] text-xs" />
             </label>
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span aria-hidden="true">—</span>
               <span className="sr-only">Hasta</span>
               <Input type="date" value={fechaHasta} aria-label="Hasta"
                 onChange={(e) => { setFechaHasta(e.target.value); resetPage(); }}
-                style={{ borderRadius: '8px' }} className="h-9 w-[135px] text-xs" />
+                style={{ borderRadius: 'var(--r-ctl)' }} className="h-9 w-[135px] text-xs" />
             </label>
           </div>
 
@@ -186,7 +186,7 @@ export default function Auditoria() {
               onChange={(e) => { setSearchQ(e.target.value); resetPage(); }}
               placeholder="Buscar producto o usuario..."
               className="pl-10"
-              style={{ borderRadius: '8px' }}
+              style={{ borderRadius: 'var(--r-ctl)' }}
             />
           </div>
 
@@ -205,7 +205,7 @@ export default function Auditoria() {
       </Card>
 
       {/* Table */}
-      <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+      <Card className="overflow-hidden" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -245,7 +245,7 @@ export default function Auditoria() {
                       tipo_cambio: (
                         <td key={k} className="p-3">
                           <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${TIPO_COLORS[r.tipo_cambio] || 'bg-secondary text-secondary-foreground'}`}
-                            style={{ borderRadius: '4px' }}>
+                            style={{ borderRadius: 'var(--r-chip)' }}>
                             {r.tipo_cambio || '—'}
                           </span>
                         </td>
@@ -256,7 +256,7 @@ export default function Auditoria() {
                       origen: (
                         <td key={k} className="p-3 text-center">
                           <span className={`text-[10px] px-2 py-0.5 rounded ${r.origen === 'importacion' ? 'bg-green-50 text-green-700' : 'bg-secondary text-muted-foreground'}`}
-                            style={{ borderRadius: '4px' }}>
+                            style={{ borderRadius: 'var(--r-chip)' }}>
                             {r.origen || 'manual'}
                           </span>
                         </td>

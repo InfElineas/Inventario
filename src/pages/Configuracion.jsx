@@ -56,7 +56,7 @@ function Toggle({ value, onChange }) {
         width:        44,
         height:       24,
         borderRadius: 12,
-        background:   value ? '#4ade80' : 'hsl(var(--muted))',
+        background:   value ? 'var(--c-ok)' : 'hsl(var(--muted))',
         border:       value ? 'none' : '1px solid hsl(var(--border))',
         cursor:       'pointer',
         outline:      'none',
@@ -252,8 +252,8 @@ export default function Configuracion() {
               </p>
             )}
             {isExternaConfigured && errorAlmacenes && !loadingAlmacenes && (
-              <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[#e24b4a]/5 border border-[#e24b4a]/20">
-                <p className="text-xs text-[#e24b4a]">
+              <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[var(--c-bad)]/5 border border-[var(--c-bad)]/20">
+                <p className="text-xs text-[var(--c-bad)]">
                   No se pudo conectar a la BD externa. Verifica las credenciales y que <code className="bg-muted px-1 rounded text-[10px]">invGlobal</code> sea accesible.
                 </p>
                 <button type="button" onClick={() => refetchAlmacenes()}
@@ -274,8 +274,8 @@ export default function Configuracion() {
                       <button key={a} type="button" onClick={() => toggleAlmacen(a)}
                         className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium border transition-colors
                           ${active
-                            ? 'bg-[#4ade80]/10 border-[#4ade80]/40 text-[#4ade80]'
-                            : 'bg-background border-border text-muted-foreground hover:border-[#4ade80]/30 hover:text-foreground'}`}
+                            ? 'bg-[var(--c-ok)]/10 border-[var(--c-ok)]/40 text-[var(--c-ok)]'
+                            : 'bg-background border-border text-muted-foreground hover:border-[var(--c-ok)]/30 hover:text-foreground'}`}
                       >
                         <span className="truncate">{a}</span>
                         {active && <Check className="w-3 h-3 shrink-0 ml-1" />}
@@ -293,7 +293,7 @@ export default function Configuracion() {
                   </p>
                   {almacenesConfig.length > 0 && (
                     <button type="button" onClick={() => setAlmacenesConfig([])}
-                      className="text-[11px] text-muted-foreground hover:text-[#e24b4a] transition-colors">
+                      className="text-[11px] text-muted-foreground hover:text-[var(--c-bad)] transition-colors">
                       Limpiar
                     </button>
                   )}
@@ -330,7 +330,7 @@ export default function Configuracion() {
                           </p>
                         </div>
                         <button type="button" onClick={addHorario} disabled={syncCfg.horarios.length >= 8}
-                          className="flex items-center gap-1 text-xs text-[#4ade80] hover:opacity-80 disabled:opacity-40 transition-opacity">
+                          className="flex items-center gap-1 text-xs text-[var(--c-ok)] hover:opacity-80 disabled:opacity-40 transition-opacity">
                           <Plus className="w-3 h-3" /> Añadir
                         </button>
                       </div>
@@ -338,10 +338,10 @@ export default function Configuracion() {
                         {syncCfg.horarios.map((h, idx) => (
                           <div key={idx} className="flex items-center gap-1.5">
                             <input type="time" value={h} onChange={e => setHorario(idx, e.target.value)}
-                              className="px-2.5 py-1.5 text-sm rounded-lg bg-background border border-border text-foreground focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50" />
+                              className="px-2.5 py-1.5 text-sm rounded-lg bg-background border border-border text-foreground focus:outline-hidden focus:ring-1 focus:ring-[var(--c-ok)]/50" />
                             {syncCfg.horarios.length > 1 && (
                               <button type="button" onClick={() => removeHorario(idx)}
-                                className="p-1 text-muted-foreground hover:text-[#e24b4a] transition-colors rounded">
+                                className="p-1 text-muted-foreground hover:text-[var(--c-bad)] transition-colors rounded">
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             )}
@@ -360,8 +360,8 @@ export default function Configuracion() {
                               <button key={a} type="button" onClick={() => toggleAlmacenSync(a)}
                                 className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs border transition-colors
                                   ${active
-                                    ? 'bg-[#4ade80]/10 border-[#4ade80]/40 text-[#4ade80]'
-                                    : 'bg-background border-border text-muted-foreground hover:border-[#4ade80]/20'}`}>
+                                    ? 'bg-[var(--c-ok)]/10 border-[var(--c-ok)]/40 text-[var(--c-ok)]'
+                                    : 'bg-background border-border text-muted-foreground hover:border-[var(--c-ok)]/20'}`}>
                                 {active && <Check className="w-2.5 h-2.5" />}
                                 {a}
                               </button>
@@ -381,10 +381,10 @@ export default function Configuracion() {
 
           {/* Error migración */}
           {saveError && saveError.includes('migration') && (
-            <div className="flex items-start gap-2.5 px-4 py-3 rounded-lg bg-[#BA7517]/10 border border-[#BA7517]/30">
-              <AlertTriangle className="w-4 h-4 text-[#BA7517] shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2.5 px-4 py-3 rounded-lg bg-[var(--c-warn)]/10 border border-[var(--c-warn)]/30">
+              <AlertTriangle className="w-4 h-4 text-[var(--c-warn)] shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <p className="text-xs font-medium text-[#BA7517]">Migraciones pendientes en la base</p>
+                <p className="text-xs font-medium text-[var(--c-warn)]">Migraciones pendientes en la base</p>
                 <p className="text-xs text-muted-foreground">
                   Ejecuta <code className="bg-muted px-1 rounded text-[10px]">migration_v8.sql</code> y{' '}
                   <code className="bg-muted px-1 rounded text-[10px]">migration_v9.sql</code> en <strong>ELINEAS_BD</strong>, como <code className="bg-muted px-1 rounded text-[10px]">elineasadmin</code>.
@@ -397,11 +397,11 @@ export default function Configuracion() {
           <div className="flex items-center gap-3">
             <button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}
               className="px-6 py-2.5 text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
-              style={{ background: '#4ade80', color: '#000' }}>
+              style={{ background: 'var(--c-ok)', color: '#000' }}>
               {saveMut.isPending ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar configuración'}
             </button>
             {saveError && !saveError.includes('migration') && (
-              <p className="text-xs text-[#e24b4a]">{saveError}</p>
+              <p className="text-xs text-[var(--c-bad)]">{saveError}</p>
             )}
           </div>
         </div>
@@ -419,7 +419,7 @@ export default function Configuracion() {
                   <button type="button"
                     onClick={() => { syncAll(manualAlmacenes.map(String)); setTimeout(() => refetchLogs(), 5000) }}
                     disabled={isRunning}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-[#4ade80]/10 text-[#4ade80] border border-[#4ade80]/20 hover:bg-[#4ade80]/20 disabled:opacity-50 transition-colors font-medium whitespace-nowrap">
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-[var(--c-ok)]/10 text-[var(--c-ok)] border border-[var(--c-ok)]/20 hover:bg-[var(--c-ok)]/20 disabled:opacity-50 transition-colors font-medium whitespace-nowrap">
                     <RefreshCw className={`w-3 h-3 ${isRunning ? 'animate-spin' : ''}`} />
                     {isRunning
                       ? `${(syncState?.idx ?? 0) + 1}/${syncState?.total ?? manualAlmacenes.length}`
@@ -437,15 +437,15 @@ export default function Configuracion() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium">Almacén {alm}</p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          {result?.ok === true  && <span className="text-[#4ade80]">{result.synced} prods · {result.desactivados ?? 0} baja</span>}
-                          {result?.ok === false && <span className="text-[#e24b4a] truncate block max-w-[180px]">{result.msg}</span>}
+                          {result?.ok === true  && <span className="text-[var(--c-ok)]">{result.synced} prods · {result.desactivados ?? 0} baja</span>}
+                          {result?.ok === false && <span className="text-[var(--c-bad)] truncate block max-w-[180px]">{result.msg}</span>}
                           {result === undefined && <>Sync: {fmtSync(log?.synced_at)}</>}
                         </p>
                       </div>
                       <button type="button"
                         onClick={() => { syncOne(String(alm)); setTimeout(() => refetchLogs(), 3000) }}
                         disabled={isRunning}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg bg-[#4ade80]/10 text-[#4ade80] border border-[#4ade80]/20 hover:bg-[#4ade80]/20 disabled:opacity-50 transition-colors whitespace-nowrap shrink-0">
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg bg-[var(--c-ok)]/10 text-[var(--c-ok)] border border-[var(--c-ok)]/20 hover:bg-[var(--c-ok)]/20 disabled:opacity-50 transition-colors whitespace-nowrap shrink-0">
                         <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
                         {syncing ? '…' : 'Sync'}
                       </button>

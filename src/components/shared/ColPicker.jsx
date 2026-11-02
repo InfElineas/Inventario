@@ -99,7 +99,7 @@ export default function ColPicker({ cols, visible, onChange, storageKey, order, 
         <button
           aria-label="Elegir columnas"
           title="Elegir columnas"
-          className="h-9 flex items-center gap-1.5 px-3 text-xs rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors"
+          className="h-9 flex items-center gap-1.5 px-3 text-xs rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[var(--c-ok)]/30 transition-colors"
         >
           <SlidersHorizontal className="w-4 h-4" />
           <span className="hidden sm:inline">Columnas</span>
@@ -107,7 +107,7 @@ export default function ColPicker({ cols, visible, onChange, storageKey, order, 
       </PopoverTrigger>
 
       <PopoverContent align="end" sideOffset={6} className="w-[230px] max-w-[calc(100vw-2rem)] p-0 py-2 overflow-hidden"
-        style={{ borderRadius: '12px' }}>
+        style={{ borderRadius: 'var(--r-card)' }}>
         <div>
           {displayCols.map((c, idx) => (
             <div
@@ -119,7 +119,7 @@ export default function ColPicker({ cols, visible, onChange, storageKey, order, 
               onDragEnd={handleDragEnd}
               className={`flex items-center gap-1 px-3 py-1.5 transition-colors cursor-default
                 ${order && onOrderChange && !c.required ? 'cursor-grab active:cursor-grabbing' : ''}
-                ${dragOver === c.key ? 'bg-[#4ade80]/10 border-t border-[#4ade80]/40' : 'hover:bg-white/[0.04]'}
+                ${dragOver === c.key ? 'bg-[var(--c-ok)]/10 border-t border-[var(--c-ok)]/40' : 'hover:bg-white/[0.04]'}
                 ${dragKey === c.key ? 'opacity-40' : ''}
               `}
             >
@@ -129,7 +129,7 @@ export default function ColPicker({ cols, visible, onChange, storageKey, order, 
                 onClick={() => toggle(c.key)}
                 className="flex items-center gap-2 flex-1 min-w-0 disabled:opacity-40"
               >
-                <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${visible[c.key] ? 'bg-[#4ade80] border-[#4ade80]' : 'border-[#333]'}`}>
+                <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${visible[c.key] ? 'bg-[var(--c-ok)] border-[var(--c-ok)]' : 'border-[#333]'}`}>
                   {visible[c.key] && <Check className="w-2.5 h-2.5 text-black" strokeWidth={3} />}
                 </span>
                 <span className={`text-sm truncate ${visible[c.key] ? 'text-foreground' : 'text-muted-foreground'}`}>{c.label}</span>

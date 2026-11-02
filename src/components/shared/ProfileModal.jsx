@@ -52,15 +52,15 @@ export default function ProfileModal({ user, open, onClose }) {
               <img src={user.avatar_url} alt={displayName}
                 className="w-14 h-14 rounded-full object-cover border-2 border-border" />
             ) : (
-              <div className="w-14 h-14 rounded-full flex items-center justify-center bg-[#4ade80]/20 border-2 border-[#4ade80]/30">
-                <User className="w-6 h-6 text-[#4ade80]" />
+              <div className="w-14 h-14 rounded-full flex items-center justify-center bg-[var(--c-ok)]/20 border-2 border-[var(--c-ok)]/30">
+                <User className="w-6 h-6 text-[var(--c-ok)]" />
               </div>
             )}
             <div className="min-w-0">
               <p className="font-semibold text-foreground truncate">{displayName}</p>
               <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               <span className="inline-block mt-0.5 text-[10px] font-mono px-1.5 py-0.5 rounded"
-                style={{ background: '#4ade8022', color: '#4ade80' }}>
+                style={{ background: 'color-mix(in srgb, var(--c-ok) 13%, transparent)', color: 'var(--c-ok)' }}>
                 {user?.role?.toUpperCase()}
               </span>
             </div>
@@ -74,7 +74,7 @@ export default function ProfileModal({ user, open, onClose }) {
               onChange={e => setNickname(e.target.value)}
               placeholder={user?.full_name || 'Tu nombre en la app'}
               maxLength={30}
-              className="w-full px-3 py-2 text-sm rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50"
+              className="w-full px-3 py-2 text-sm rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-[var(--c-ok)]/50"
             />
             <p className="text-[10px] text-muted-foreground">
               Se muestra en lugar de tu nombre de Google dentro de la app.
@@ -85,7 +85,7 @@ export default function ProfileModal({ user, open, onClose }) {
           <button
             type="button"
             onClick={() => { onClose(); navigate('/configuracion') }}
-            className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors"
+            className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:border-[var(--c-ok)]/30 transition-colors"
           >
             <span className="flex items-center gap-2">
               <Settings2 className="w-4 h-4" />
@@ -102,7 +102,7 @@ export default function ProfileModal({ user, open, onClose }) {
             </div>
             <button
               onClick={toggleTheme}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:border-[var(--c-ok)]/30 transition-colors"
             >
               {isDark ? <><Sun className="w-4 h-4" /> Claro</> : <><Moon className="w-4 h-4" /> Oscuro</>}
             </button>
@@ -114,7 +114,7 @@ export default function ProfileModal({ user, open, onClose }) {
               onClick={() => saveMut.mutate()}
               disabled={saveMut.isPending}
               className="flex-1 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-              style={{ background: '#4ade80', color: '#000' }}
+              style={{ background: 'var(--c-ok)', color: '#000' }}
             >
               {saveMut.isPending ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar'}
             </button>

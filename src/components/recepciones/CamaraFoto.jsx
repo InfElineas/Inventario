@@ -84,7 +84,7 @@ export default function CamaraFoto({ abierta, onCerrar, onTomar }) {
         {error ? (
           <AlertBanner variant="warning" message={error} />
         ) : (
-          <div className="rounded-lg overflow-hidden bg-black" style={{ borderRadius: '10px' }}>
+          <div className="rounded-lg overflow-hidden bg-black" style={{ borderRadius: 'var(--r-card)' }}>
             {previa
               ? <img src={previa} alt="Foto tomada" className="w-full" />
               : <video ref={video} autoPlay playsInline muted className="w-full" />}
@@ -92,16 +92,16 @@ export default function CamaraFoto({ abierta, onCerrar, onTomar }) {
         )}
 
         <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="outline" onClick={onCerrar} style={{ borderRadius: '8px' }}>Cancelar</Button>
+          <Button variant="outline" onClick={onCerrar} style={{ borderRadius: 'var(--r-ctl)' }}>Cancelar</Button>
           {previa ? (
             <>
-              <Button variant="outline" onClick={() => setPrevia(null)} style={{ borderRadius: '8px' }}>
+              <Button variant="outline" onClick={() => setPrevia(null)} style={{ borderRadius: 'var(--r-ctl)' }}>
                 <RotateCcw className="w-4 h-4 mr-1.5" /> Repetir
               </Button>
-              <Button onClick={usar} style={{ borderRadius: '8px' }}>Usar esta</Button>
+              <Button onClick={usar} style={{ borderRadius: 'var(--r-ctl)' }}>Usar esta</Button>
             </>
           ) : (
-            <Button onClick={disparar} disabled={Boolean(error) || tomando} style={{ borderRadius: '8px' }}>
+            <Button onClick={disparar} disabled={Boolean(error) || tomando} style={{ borderRadius: 'var(--r-ctl)' }}>
               {tomando
                 ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Tomando…</>
                 : <><Camera className="w-4 h-4 mr-1.5" /> Tomar foto</>}

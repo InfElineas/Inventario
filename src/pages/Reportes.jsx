@@ -32,7 +32,7 @@ function SectionHeader({ title, children }) {
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger asChild>
-        <button className="w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors rounded-lg" style={{ borderRadius: '8px' }}>
+        <button className="w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors rounded-lg" style={{ borderRadius: 'var(--r-ctl)' }}>
           <h2 className="text-sm font-medium">{title}</h2>
           <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
@@ -44,7 +44,7 @@ function SectionHeader({ title, children }) {
 
 function ReportCard({ title, onExport, children }) {
   return (
-    <Card className="p-5" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+    <Card className="p-5" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
         {onExport && (
@@ -146,7 +146,7 @@ export default function Reportes() {
             Generar PDF
           </BotonAccion>
           <Select value={periodo} onValueChange={setPeriodo}>
-            <SelectTrigger className="w-32" style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-32" style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="mes">Mes actual</SelectItem>
               <SelectItem value="anio">Año actual</SelectItem>
@@ -162,7 +162,7 @@ export default function Reportes() {
       )}
 
       {/* Operativos */}
-      <Card style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+      <Card style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
         <SectionHeader title="Operativos">
           <ReportCard title="Cola de tareas pendientes por rol"
             onExport={() => exportCSV(pendingByRole, 'tareas_pendientes.csv')}>
@@ -204,7 +204,7 @@ export default function Reportes() {
                       <td className="p-2">{l.producto_nombre}</td>
                       <td className="p-2 text-xs">{l.no_lote || '—'}</td>
                       <td className="p-2 text-center">
-                        <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${l.estado_fv === 'vencido' ? 'bg-[#E24B4A14] text-[#E24B4A]' : 'bg-[#BA751714] text-[#BA7517]'}`} style={{ borderRadius: '4px' }}>
+                        <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${l.estado_fv === 'vencido' ? 'bg-[var(--c-bad)]/8 text-[var(--c-bad)]' : 'bg-[var(--c-warn)]/8 text-[var(--c-warn)]'}`} style={{ borderRadius: 'var(--r-chip)' }}>
                           {l.estado_fv}
                         </span>
                       </td>
@@ -219,7 +219,7 @@ export default function Reportes() {
       </Card>
 
       {/* Financieros */}
-      <Card style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+      <Card style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
         <SectionHeader title="Financieros">
           <ReportCard title="Mermas por clasificación y mes"
             onExport={() => exportCSV(mermasChartData.map(({ _sort, ...row }) => row), 'mermas_clasif.csv')}>
@@ -233,11 +233,11 @@ export default function Reportes() {
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="Mal estado" stackId="a" fill="#E24B4A" />
-                  <Bar dataKey="Merma-FV" stackId="a" fill="#BA7517" />
-                  <Bar dataKey="Cuenta casa" stackId="a" fill="#7F77DD" />
-                  <Bar dataKey="Salida insumos" stackId="a" fill="#378ADD" />
-                  <Bar dataKey="Otros" stackId="a" fill="#888780" />
+                  <Bar dataKey="Mal estado" stackId="a" fill="var(--c-bad)" />
+                  <Bar dataKey="Merma-FV" stackId="a" fill="var(--c-warn)" />
+                  <Bar dataKey="Cuenta casa" stackId="a" fill="var(--c-purple)" />
+                  <Bar dataKey="Salida insumos" stackId="a" fill="var(--c-info)" />
+                  <Bar dataKey="Otros" stackId="a" fill="var(--c-gray)" />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -246,14 +246,14 @@ export default function Reportes() {
       </Card>
 
       {/* Vencimientos */}
-      <Card style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+      <Card style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
         <SectionHeader title="Productos próximos a vencer">
           <ReporteVencimientos lotes={lotes} />
         </SectionHeader>
       </Card>
 
       {/* Rendimiento */}
-      <Card style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+      <Card style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
         <SectionHeader title="Rendimiento">
           <ReportCard title="Tareas completadas por especialista"
             onExport={() => exportCSV(Object.values(byEspecialista), 'rendimiento_especialista.csv')}>
@@ -270,7 +270,7 @@ export default function Reportes() {
                     <td className="p-2 font-medium">{e.nombre}</td>
                     <td className="p-2 text-right">{e.mermas}</td>
                     <td className="p-2 text-right">{e.inventarios}</td>
-                    <td className="p-2 text-right text-[#E24B4A]">${e.monto_merma.toFixed(2)}</td>
+                    <td className="p-2 text-right text-[var(--c-bad)]">${e.monto_merma.toFixed(2)}</td>
                   </tr>
                 ))}
                 {Object.values(byEspecialista).length === 0 && (

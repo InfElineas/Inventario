@@ -25,21 +25,21 @@ const PERIODS = [
 
 const EST_ORDER = ['SIN RESERVA','NO TIENDA','ULTIMAS PIEZAS','PROXIMO','DISPONIBLE','AGOTADO','SIN ID']
 const EST_COLOR = {
-  'SIN RESERVA':   '#e24b4a',
-  'NO TIENDA':     '#fb923c',
-  'ULTIMAS PIEZAS':'#facc15',
-  'PROXIMO':       '#60a5fa',
-  'DISPONIBLE':    '#4ade80',
-  'AGOTADO':       '#e24b4a',
-  'SIN ID':        '#64748b',
+  'SIN RESERVA':   'var(--c-bad)',
+  'NO TIENDA':     'var(--c-orange)',
+  'ULTIMAS PIEZAS':'var(--c-yellow)',
+  'PROXIMO':       'var(--c-info-2)',
+  'DISPONIBLE':    'var(--c-ok)',
+  'AGOTADO':       'var(--c-bad)',
+  'SIN ID':        'var(--c-gray)',
 }
 
 const TAREA_COLOR = {
-  completado:   '#4ade80',
-  pend_fact:    '#facc15',
-  en_auditoria: '#fb923c',
-  en_curso:     '#60a5fa',
-  devuelto:     '#e24b4a',
+  completado:   'var(--c-ok)',
+  pend_fact:    'var(--c-yellow)',
+  en_auditoria: 'var(--c-orange)',
+  en_curso:     'var(--c-info-2)',
+  devuelto:     'var(--c-bad)',
 }
 
 function fmtDate(raw) {
@@ -71,12 +71,12 @@ function DashKPI({ title, value, sub, color, alert, onClick }) {
 
 // ── Modal genérico de breakdown por almacén ───────────────────
 const KPI_MODAL_CFG = {
-  conStock:   { title: 'Con stock',     subtitle: 'Productos con EF > 0',                          color: '#4ade80', metric: 'conStock'  },
-  enTienda:   { title: 'En tienda',     subtitle: 'Productos con T > 0 (visibles en tienda)',       color: '#60a5fa', metric: 'enTienda'  },
-  sinTienda:  { title: 'No en Tienda',  subtitle: 'EF > 0 pero T = 0 (stock invisible en tienda)', color: '#fb923c', metric: 'sinTienda' },
-  sinReserva: { title: 'Sin Reserva',   subtitle: 'A = 0 y T > 6 — urgente',                       color: '#e24b4a', metric: 'sinReserva'},
-  agotados:   { title: 'Agotados',      subtitle: 'Con ID en TKC · EF = 0',                        color: '#e24b4a', metric: 'agotados'  },
-  total:      { title: 'Total SKUs',    subtitle: 'Todos los productos en catálogo',                color: '#64748b', metric: 'total'     },
+  conStock:   { title: 'Con stock',     subtitle: 'Productos con EF > 0',                          color: 'var(--c-ok)', metric: 'conStock'  },
+  enTienda:   { title: 'En tienda',     subtitle: 'Productos con T > 0 (visibles en tienda)',       color: 'var(--c-info-2)', metric: 'enTienda'  },
+  sinTienda:  { title: 'No en Tienda',  subtitle: 'EF > 0 pero T = 0 (stock invisible en tienda)', color: 'var(--c-orange)', metric: 'sinTienda' },
+  sinReserva: { title: 'Sin Reserva',   subtitle: 'A = 0 y T > 6 — urgente',                       color: 'var(--c-bad)', metric: 'sinReserva'},
+  agotados:   { title: 'Agotados',      subtitle: 'Con ID en TKC · EF = 0',                        color: 'var(--c-bad)', metric: 'agotados'  },
+  total:      { title: 'Total SKUs',    subtitle: 'Todos los productos en catálogo',                color: 'var(--c-gray)', metric: 'total'     },
 }
 
 function KPIBreakdownModal({ metricKey, breakdown, onClose }) {
@@ -125,7 +125,7 @@ function KPIBreakdownModal({ metricKey, breakdown, onClose }) {
           })}
         </div>
         <div className="px-5 py-3 border-t border-border bg-muted/30">
-          <Link to="/bd-tkc" onClick={onClose} className="text-xs text-[#4ade80] hover:underline">
+          <Link to="/bd-tkc" onClick={onClose} className="text-xs text-[var(--c-ok)] hover:underline">
             Ver catálogo completo →
           </Link>
         </div>
@@ -150,7 +150,7 @@ function PeriodSelector({ period, setPeriod, customFrom, setCustomFrom, customTo
           onClick={() => { setPeriod(p.key); setShowCustom(false) }}
           className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-colors
             ${period === p.key && !showCustom
-              ? 'bg-[#4ade80]/15 text-[#4ade80] border border-[#4ade80]/30'
+              ? 'bg-[var(--c-ok)]/15 text-[var(--c-ok)] border border-[var(--c-ok)]/30'
               : 'bg-card border border-border text-muted-foreground hover:text-foreground'}`}
         >
           {p.label}
@@ -163,7 +163,7 @@ function PeriodSelector({ period, setPeriod, customFrom, setCustomFrom, customTo
           onClick={() => setShowCustom(v => !v)}
           className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg font-medium transition-colors border
             ${showCustom
-              ? 'bg-[#60a5fa]/15 text-[#60a5fa] border-[#60a5fa]/30'
+              ? 'bg-[var(--c-info-2)]/15 text-[var(--c-info-2)] border-[var(--c-info-2)]/30'
               : 'bg-card border-border text-muted-foreground hover:text-foreground'}`}
         >
           <CalendarDays className="w-3.5 h-3.5" />
@@ -177,13 +177,13 @@ function PeriodSelector({ period, setPeriod, customFrom, setCustomFrom, customTo
             <input
               type="date" value={customFrom}
               onChange={e => setCustomFrom(e.target.value)}
-              className="px-2 py-1 text-xs rounded-lg bg-background border border-border text-foreground focus:outline-hidden focus:ring-1 focus:ring-[#60a5fa]/50"
+              className="px-2 py-1 text-xs rounded-lg bg-background border border-border text-foreground focus:outline-hidden focus:ring-1 focus:ring-[var(--c-info-2)]/50"
             />
             <span className="text-xs text-muted-foreground">→</span>
             <input
               type="date" value={customTo}
               onChange={e => setCustomTo(e.target.value)}
-              className="px-2 py-1 text-xs rounded-lg bg-background border border-border text-foreground focus:outline-hidden focus:ring-1 focus:ring-[#60a5fa]/50"
+              className="px-2 py-1 text-xs rounded-lg bg-background border border-border text-foreground focus:outline-hidden focus:ring-1 focus:ring-[var(--c-info-2)]/50"
             />
             {(customFrom || customTo) && (
               <button onClick={() => { setCustomFrom(''); setCustomTo('') }}
@@ -204,7 +204,7 @@ function EstadoTiendaTable({ breakdown, total }) {
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <h3 className="text-sm font-medium">Estado de Tienda</h3>
-        <Link to="/bd-tkc" className="text-xs text-[#4ade80] hover:underline">Ver catálogo →</Link>
+        <Link to="/bd-tkc" className="text-xs text-[var(--c-ok)] hover:underline">Ver catálogo →</Link>
       </div>
       <table className="w-full text-sm">
         <thead>
@@ -257,10 +257,10 @@ function VencimientosWidget({ lotes }) {
     <div className="rounded-xl border border-border bg-card overflow-hidden h-full">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <h3 className="text-sm font-medium">Vencimientos</h3>
-        <Link to="/lotes" className="text-xs text-[#4ade80] hover:underline">Ver todos →</Link>
+        <Link to="/lotes" className="text-xs text-[var(--c-ok)] hover:underline">Ver todos →</Link>
       </div>
       <div className="flex border-b border-border">
-        {[['vencido','Vencidos','#e24b4a'],['critico','Críticos','#fb923c'],['por_vencer','Por vencer','#facc15']].map(([key, label, color]) => (
+        {[['vencido','Vencidos','var(--c-bad)'],['critico','Críticos','var(--c-orange)'],['por_vencer','Por vencer','var(--c-yellow)']].map(([key, label, color]) => (
           <button key={key} onClick={() => setTab(key)}
             className={`flex-1 py-2 text-xs font-medium transition-colors ${tab === key ? 'border-b-2' : 'text-muted-foreground hover:text-foreground'}`}
             style={{ borderColor: tab === key ? color : 'transparent', color: tab === key ? color : undefined }}
@@ -291,7 +291,7 @@ function MermasTable({ mermas, period }) {
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <h3 className="text-sm font-medium">Mermas <span className="text-xs text-muted-foreground">({period})</span></h3>
-        <Link to="/mermas" className="text-xs text-[#4ade80] hover:underline">Ver todas →</Link>
+        <Link to="/mermas" className="text-xs text-[var(--c-ok)] hover:underline">Ver todas →</Link>
       </div>
       {mermas.length === 0 ? (
         <p className="text-xs text-muted-foreground text-center py-8">Sin mermas en el período</p>
@@ -330,12 +330,12 @@ function MermasTable({ mermas, period }) {
 }
 
 function InventariosTable({ inventarios, period }) {
-  const difColor = d => d === 0 ? '#4ade80' : d > 0 ? '#facc15' : '#e24b4a'
+  const difColor = d => d === 0 ? 'var(--c-ok)' : d > 0 ? 'var(--c-yellow)' : 'var(--c-bad)'
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <h3 className="text-sm font-medium">Inventarios <span className="text-xs text-muted-foreground">({period})</span></h3>
-        <Link to="/inventario" className="text-xs text-[#4ade80] hover:underline">Ver todos →</Link>
+        <Link to="/inventario" className="text-xs text-[var(--c-ok)] hover:underline">Ver todos →</Link>
       </div>
       {inventarios.length === 0 ? (
         <p className="text-xs text-muted-foreground text-center py-8">Sin inventarios en el período</p>
@@ -542,19 +542,19 @@ export default function Dashboard() {
       { clave: 'devueltos', cantidad: devueltos, color: TAREA_COLOR.devuelto, Icono: Undo2,
         texto: devueltos === 1 ? 'caso te lo devolvieron' : 'casos te los devolvieron',
         accion: 'Corregir y volver a enviar', enlace: '/inventario' },
-      { clave: 'vencidos', cantidad: vencidos, color: '#e24b4a', Icono: AlertTriangle,
+      { clave: 'vencidos', cantidad: vencidos, color: 'var(--c-bad)', Icono: AlertTriangle,
         texto: vencidos === 1 ? 'lote ya vencido con existencia' : 'lotes ya vencidos con existencia',
         accion: 'Darles salida como merma', enlace: '/lotes' },
-      { clave: 'porVencer', cantidad: porVencer, color: '#ba7517', Icono: Clock,
+      { clave: 'porVencer', cantidad: porVencer, color: 'var(--c-warn)', Icono: Clock,
         texto: porVencer === 1 ? 'lote se vence en menos de 30 dias' : 'lotes se vencen en menos de 30 dias',
         accion: 'Revisar vencimientos', enlace: '/lotes' },
-      { clave: 'enCurso', cantidad: enCurso, color: '#378add', Icono: ClipboardList,
+      { clave: 'enCurso', cantidad: enCurso, color: 'var(--c-info)', Icono: ClipboardList,
         texto: enCurso === 1 ? 'conteo sin enviar a facturacion' : 'conteos sin enviar a facturacion',
         accion: 'Terminarlos y enviarlos', enlace: '/inventario' },
-      { clave: 'pendFact', cantidad: invStats.pendFact + mermaStats.pendFact, color: '#fb923c', Icono: FileText,
+      { clave: 'pendFact', cantidad: invStats.pendFact + mermaStats.pendFact, color: 'var(--c-orange)', Icono: FileText,
         texto: 'esperando a facturacion',
         accion: 'Ver que falta', enlace: '/facturacion/inventario' },
-      { clave: 'enAudit', cantidad: invStats.enAudit, color: '#7f77dd', Icono: ShieldCheck,
+      { clave: 'enAudit', cantidad: invStats.enAudit, color: 'var(--c-purple)', Icono: ShieldCheck,
         texto: invStats.enAudit === 1 ? 'caso en auditoria' : 'casos en auditoria',
         accion: 'Seguir su estado', enlace: '/auditoria' },
     ]
@@ -590,7 +590,7 @@ export default function Dashboard() {
             <select
               value={almacen}
               onChange={e => setAlmacen(e.target.value)}
-              className="appearance-none pl-3 pr-8 py-1.5 text-sm rounded-lg bg-muted border border-border text-foreground font-medium focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 cursor-pointer"
+              className="appearance-none pl-3 pr-8 py-1.5 text-sm rounded-lg bg-muted border border-border text-foreground font-medium focus:outline-hidden focus:ring-1 focus:ring-[var(--c-ok)]/50 cursor-pointer"
             >
               <option value="">— Todos los almacenes —</option>
               {almacenes.map(a => <option key={a} value={a}>Almacén {a}</option>)}
@@ -615,13 +615,13 @@ export default function Dashboard() {
               y lo que se agotó. En el móvil son las únicas que salen sin
               desplegar. */}
           <BloqueMetricas metricas={[
-            { clave: 'sinReserva', titulo: 'Sin Reserva',  valor: stats.sinReserva, sub: 'urgente · A=0 y T>6', color: '#e24b4a', alerta: stats.sinReserva > 0, onClick: () => openModal('sinReserva') },
-            { clave: 'noTienda',   titulo: 'No en Tienda', valor: stats.noTienda,   sub: 'EF>0 · T=0',          color: '#fb923c', alerta: stats.noTienda > 0,   onClick: () => openModal('sinTienda') },
-            { clave: 'agotados',   titulo: 'Agotados',     valor: stats.agotados,   color: '#e24b4a', alerta: stats.agotados > 0, onClick: () => openModal('agotados'),
+            { clave: 'sinReserva', titulo: 'Sin Reserva',  valor: stats.sinReserva, sub: 'urgente · A=0 y T>6', color: 'var(--c-bad)', alerta: stats.sinReserva > 0, onClick: () => openModal('sinReserva') },
+            { clave: 'noTienda',   titulo: 'No en Tienda', valor: stats.noTienda,   sub: 'EF>0 · T=0',          color: 'var(--c-orange)', alerta: stats.noTienda > 0,   onClick: () => openModal('sinTienda') },
+            { clave: 'agotados',   titulo: 'Agotados',     valor: stats.agotados,   color: 'var(--c-bad)', alerta: stats.agotados > 0, onClick: () => openModal('agotados'),
               sub: `con ID · EF=0${stats.sinIdEf0 > 0 ? ` (+${stats.sinIdEf0.toLocaleString()} sin ID)` : ''}` },
-            { clave: 'conStock',   titulo: 'Con stock',    valor: stats.conStock,   sub: 'EF > 0',              color: '#4ade80', onClick: () => openModal('conStock') },
-            { clave: 'enTienda',   titulo: 'En tienda',    valor: stats.enTienda,   sub: 'T > 0 · visibles',    color: '#60a5fa', onClick: () => openModal('enTienda') },
-            { clave: 'total',      titulo: 'Total SKUs',   valor: stats.total,      sub: 'todos los almacenes', color: '#64748b', onClick: () => openModal('total') },
+            { clave: 'conStock',   titulo: 'Con stock',    valor: stats.conStock,   sub: 'EF > 0',              color: 'var(--c-ok)', onClick: () => openModal('conStock') },
+            { clave: 'enTienda',   titulo: 'En tienda',    valor: stats.enTienda,   sub: 'T > 0 · visibles',    color: 'var(--c-info-2)', onClick: () => openModal('enTienda') },
+            { clave: 'total',      titulo: 'Total SKUs',   valor: stats.total,      sub: 'todos los almacenes', color: 'var(--c-gray)', onClick: () => openModal('total') },
           ]} />
 
           {/* Breakdown por almacén */}
@@ -636,10 +636,10 @@ export default function Dashboard() {
                 <span className="col-span-2">Almacén</span>
                 <span className="col-span-4">Distribución EF / En Tienda</span>
                 <span className="text-right col-span-1">Total</span>
-                <span className="text-right col-span-1 text-[#4ade80]">c/EF</span>
-                <span className="text-right col-span-1 text-[#60a5fa]">Tienda</span>
-                <span className="text-right col-span-1 text-[#fb923c]">No T.</span>
-                <span className="text-right col-span-1 text-[#ba7517]">Sin ID</span>
+                <span className="text-right col-span-1 text-[var(--c-ok)]">c/EF</span>
+                <span className="text-right col-span-1 text-[var(--c-info-2)]">Tienda</span>
+                <span className="text-right col-span-1 text-[var(--c-orange)]">No T.</span>
+                <span className="text-right col-span-1 text-[var(--c-warn)]">Sin ID</span>
                 <span className="text-right col-span-1">Cob. %</span>
               </div>
               <div className="divide-y divide-border">
@@ -651,7 +651,7 @@ export default function Dashboard() {
                     <div key={row.almacen} className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center hover:bg-accent/30 transition-colors">
                       <button
                         onClick={() => setAlmacen(row.almacen)}
-                        className="col-span-2 text-sm font-semibold text-foreground hover:text-[#4ade80] transition-colors text-left truncate"
+                        className="col-span-2 text-sm font-semibold text-foreground hover:text-[var(--c-ok)] transition-colors text-left truncate"
                       >
                         {row.almacen}
                       </button>
@@ -659,10 +659,10 @@ export default function Dashboard() {
                         {/* Barra doble: verde=conStock, azul=enTienda */}
                         <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden">
                           {/* Verde: proporción con stock */}
-                          <div className="absolute left-0 top-0 h-full rounded-full bg-[#4ade80]"
+                          <div className="absolute left-0 top-0 h-full rounded-full bg-[var(--c-ok)]"
                             style={{ width: `${Math.max(stockPct, 0.3)}%` }} />
                           {/* Azul (encima): proporción en tienda */}
-                          <div className="absolute left-0 top-0 h-full rounded-full bg-[#60a5fa]"
+                          <div className="absolute left-0 top-0 h-full rounded-full bg-[var(--c-info-2)]"
                             style={{ width: `${Math.max(tiendaAbs, tiendaAbs > 0 ? 0.3 : 0)}%` }} />
                         </div>
                         <div className="text-[9px] text-muted-foreground mt-0.5">
@@ -670,15 +670,15 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <span className="col-span-1 text-right font-mono text-sm font-semibold">{row.total.toLocaleString()}</span>
-                      <span className="col-span-1 text-right font-mono text-xs text-[#4ade80]">{row.conStock.toLocaleString()}</span>
-                      <span className="col-span-1 text-right font-mono text-xs text-[#60a5fa]">{row.enTienda.toLocaleString()}</span>
-                      <span className="col-span-1 text-right font-mono text-xs" style={{ color: row.sinTienda > 0 ? '#fb923c' : 'hsl(var(--muted-foreground))' }}>
+                      <span className="col-span-1 text-right font-mono text-xs text-[var(--c-ok)]">{row.conStock.toLocaleString()}</span>
+                      <span className="col-span-1 text-right font-mono text-xs text-[var(--c-info-2)]">{row.enTienda.toLocaleString()}</span>
+                      <span className="col-span-1 text-right font-mono text-xs" style={{ color: row.sinTienda > 0 ? 'var(--c-orange)' : 'hsl(var(--muted-foreground))' }}>
                         {row.sinTienda.toLocaleString()}
                       </span>
-                      <span className="col-span-1 text-right font-mono text-xs" style={{ color: row.sinId > 0 ? '#ba7517' : 'hsl(var(--muted-foreground))' }}>
+                      <span className="col-span-1 text-right font-mono text-xs" style={{ color: row.sinId > 0 ? 'var(--c-warn)' : 'hsl(var(--muted-foreground))' }}>
                         {row.sinId.toLocaleString()}
                       </span>
-                      <span className="col-span-1 text-right font-mono text-xs" style={{ color: tiendaCov >= 80 ? '#4ade80' : tiendaCov >= 50 ? '#facc15' : '#e24b4a' }}>
+                      <span className="col-span-1 text-right font-mono text-xs" style={{ color: tiendaCov >= 80 ? 'var(--c-ok)' : tiendaCov >= 50 ? 'var(--c-yellow)' : 'var(--c-bad)' }}>
                         {tiendaCov.toFixed(0)}%
                       </span>
                     </div>
@@ -686,9 +686,9 @@ export default function Dashboard() {
                 })}
               </div>
               <div className="px-4 py-2.5 border-t border-border flex flex-wrap items-center gap-4 text-[10px] text-muted-foreground">
-                <span className="flex items-center gap-1"><span className="w-3 h-1.5 rounded bg-[#4ade80] inline-block"/> Con EF (% local del almacén)</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-1.5 rounded bg-[#60a5fa] inline-block"/> En Tienda (dentro del EF)</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-1.5 rounded bg-[#fb923c] inline-block"/> No en Tienda</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-1.5 rounded bg-[var(--c-ok)] inline-block"/> Con EF (% local del almacén)</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-1.5 rounded bg-[var(--c-info-2)] inline-block"/> En Tienda (dentro del EF)</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-1.5 rounded bg-[var(--c-orange)] inline-block"/> No en Tienda</span>
                 <span className="ml-auto font-medium">Cob. % = de los que tienen EF, cuántos están en Tienda</span>
               </div>
             </div>
@@ -711,24 +711,24 @@ export default function Dashboard() {
 
           {/* KPI Row 1 — 6 tarjetas igual que global */}
           <BloqueMetricas metricas={[
-            { clave: 'sinReserva', titulo: 'Sin Reserva',  valor: stats.sinReserva, sub: 'urgente · A=0 y T>6', color: '#e24b4a', alerta: stats.sinReserva > 0 },
-            { clave: 'noTienda',   titulo: 'No en Tienda', valor: stats.noTienda,   sub: 'EF>0 · T=0',          color: '#fb923c', alerta: stats.noTienda > 0 },
-            { clave: 'sinId',      titulo: 'Sin ID c/EF',  valor: stats.sinId,      sub: 'sin anuncio TKC',     color: '#ba7517', alerta: stats.sinId > 0 },
-            { clave: 'conStock',   titulo: 'Con stock',    valor: stats.conStock,   color: '#4ade80',
+            { clave: 'sinReserva', titulo: 'Sin Reserva',  valor: stats.sinReserva, sub: 'urgente · A=0 y T>6', color: 'var(--c-bad)', alerta: stats.sinReserva > 0 },
+            { clave: 'noTienda',   titulo: 'No en Tienda', valor: stats.noTienda,   sub: 'EF>0 · T=0',          color: 'var(--c-orange)', alerta: stats.noTienda > 0 },
+            { clave: 'sinId',      titulo: 'Sin ID c/EF',  valor: stats.sinId,      sub: 'sin anuncio TKC',     color: 'var(--c-warn)', alerta: stats.sinId > 0 },
+            { clave: 'conStock',   titulo: 'Con stock',    valor: stats.conStock,   color: 'var(--c-ok)',
               sub: `EF > 0 · ${stats.enTienda.toLocaleString()} en tienda` },
-            { clave: 'enTienda',   titulo: 'En tienda',    valor: stats.enTienda,   color: '#60a5fa',
+            { clave: 'enTienda',   titulo: 'En tienda',    valor: stats.enTienda,   color: 'var(--c-info-2)',
               sub: `T > 0 · ${stats.total > 0 ? ((stats.enTienda / stats.total) * 100).toFixed(0) : 0}% del catálogo` },
-            { clave: 'total',      titulo: 'Total SKUs',   valor: stats.total,      color: '#64748b',
+            { clave: 'total',      titulo: 'Total SKUs',   valor: stats.total,      color: 'var(--c-gray)',
               sub: `${stats.agotados.toLocaleString()} agotados · ${stats.sinIdEf0.toLocaleString()} sin ID/EF` },
           ]} />
 
           {/* KPI Row 2 — Workflow */}
           <BloqueMetricas columnas="sm:grid-cols-4" metricas={[
-            { clave: 'inv',    titulo: `Inventarios (${periodLabel})`, valor: invStats.total,   sub: `${invStats.pendFact} pend. FACT`,   color: '#378add' },
-            { clave: 'audit',  titulo: 'En auditoría', color: '#ba7517', sub: 'total pendiente',
+            { clave: 'inv',    titulo: `Inventarios (${periodLabel})`, valor: invStats.total,   sub: `${invStats.pendFact} pend. FACT`,   color: 'var(--c-info)' },
+            { clave: 'audit',  titulo: 'En auditoría', color: 'var(--c-warn)', sub: 'total pendiente',
               valor: mermas.filter(m => m.estado_tarea === 'en_auditoria').length + invStats.enAudit },
-            { clave: 'mermas', titulo: `Mermas (${periodLabel})`,      valor: mermaStats.total, sub: `${mermaStats.pendFact} pend. FACT`, color: '#fb923c' },
-            { clave: 'monto',  titulo: 'Monto mermas', valor: `$${mermaStats.monto.toFixed(2)}`, sub: 'período completado', color: '#7f77dd' },
+            { clave: 'mermas', titulo: `Mermas (${periodLabel})`,      valor: mermaStats.total, sub: `${mermaStats.pendFact} pend. FACT`, color: 'var(--c-orange)' },
+            { clave: 'monto',  titulo: 'Monto mermas', valor: `$${mermaStats.monto.toFixed(2)}`, sub: 'período completado', color: 'var(--c-purple)' },
           ]} />
 
           {/* Row 2.5 — Qué comprar hoy. Los KPI dicen cómo está el almacén;

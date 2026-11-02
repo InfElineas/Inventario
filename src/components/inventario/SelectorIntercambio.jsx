@@ -103,7 +103,7 @@ export default function SelectorIntercambio({
 
       {lista.length > 0 && (
         <div className="rounded-lg border border-border divide-y divide-border overflow-hidden max-h-56 overflow-y-auto"
-          style={{ borderRadius: '10px' }}>
+          style={{ borderRadius: 'var(--r-card)' }}>
           {lista.map((i) => {
             const puesto = i.id === valor;
             return (
@@ -112,11 +112,11 @@ export default function SelectorIntercambio({
                 type="button"
                 onClick={() => onElegir(puesto ? null : i)}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
-                  puesto ? 'bg-[#4ade80]/10' : 'hover:bg-accent'
+                  puesto ? 'bg-[var(--c-ok)]/10' : 'hover:bg-accent'
                 }`}
               >
                 <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                  puesto ? 'bg-[#4ade80] border-[#4ade80]' : 'border-border'
+                  puesto ? 'bg-[var(--c-ok)] border-[var(--c-ok)]' : 'border-border'
                 }`}>
                   {puesto && <Check className="w-2.5 h-2.5 text-black" strokeWidth={3} />}
                 </span>
@@ -127,7 +127,7 @@ export default function SelectorIntercambio({
                   </span>
                 </span>
                 <span className={`text-sm font-medium tabular-nums shrink-0 ${
-                  (i.diferencia ?? 0) > 0 ? 'text-[#BA7517]' : 'text-[#E24B4A]'
+                  (i.diferencia ?? 0) > 0 ? 'text-[var(--c-warn)]' : 'text-[var(--c-bad)]'
                 }`}>
                   {(i.diferencia ?? 0) > 0 ? '+' : ''}{i.diferencia}
                 </span>
@@ -138,7 +138,7 @@ export default function SelectorIntercambio({
       )}
 
       {elegido && (
-        <p className="text-xs text-[#1D9E75]">
+        <p className="text-xs text-[var(--c-ok-dim)]">
           Se emparejará con «{elegido.producto_nombre}». Los dos conteos quedarán enlazados.
         </p>
       )}

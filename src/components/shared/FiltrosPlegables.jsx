@@ -26,12 +26,12 @@ export default function FiltrosPlegables({ activos = 0, onLimpiar, children }) {
           onClick={() => setAbierto((v) => !v)}
           aria-expanded={abierto}
           className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card text-sm transition-transform active:scale-[0.99]"
-          style={{ borderRadius: '10px' }}
+          style={{ borderRadius: 'var(--r-card)' }}
         >
           <SlidersHorizontal className="w-4 h-4 text-muted-foreground shrink-0" />
           <span className="flex-1 text-left">Filtros</span>
           {activos > 0 && (
-            <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full text-[11px] font-bold bg-[#4ade80]/15 text-[#4ade80]">
+            <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full text-[11px] font-bold bg-[var(--c-ok)]/15 text-[var(--c-ok)]">
               {activos}
             </span>
           )}

@@ -26,7 +26,7 @@ import {
 import { ErrorDeRed } from '@/services/ajustesService';
 import { SIN_SONDEO } from '@/lib/query-client';
 
-const COLOR_LINEA = { done: 'text-[#1D9E75]', failed: 'text-[#E24B4A]', unverified: 'text-[#BA7517]' };
+const COLOR_LINEA = { done: 'text-[var(--c-ok-dim)]', failed: 'text-[var(--c-bad)]', unverified: 'text-[var(--c-warn)]' };
 
 /**
  * Procesar productos `NoMT…`: pasar su existencia al producto normal del mismo
@@ -208,13 +208,13 @@ export default function ProcesamientoForm() {
       {sinTkc && <TkcBloqueoAviso funcion="analizar o procesar productos" />}
 
       {bloqueo && (
-        <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-[#BA7517]/30 bg-[#BA751710]" style={{ borderRadius: '8px' }}>
-          <ShieldAlert className="w-4 h-4 text-[#BA7517] mt-0.5 shrink-0" />
-          <div className="flex-1 text-sm text-[#BA7517]">
+        <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-[var(--c-warn)]/30 bg-[var(--c-warn)]/6" style={{ borderRadius: 'var(--r-ctl)' }}>
+          <ShieldAlert className="w-4 h-4 text-[var(--c-warn)] mt-0.5 shrink-0" />
+          <div className="flex-1 text-sm text-[var(--c-warn)]">
             <p className="font-medium">Se envió a TKC y no se pudo comprobar el resultado.</p>
             <p className="mt-0.5">Revisa en TKC si el procesamiento quedó antes de repetir: reintentarlo a ciegas puede procesar dos veces.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setBloqueo(false)} style={{ borderRadius: '8px' }}>
+          <Button variant="outline" size="sm" onClick={() => setBloqueo(false)} style={{ borderRadius: 'var(--r-ctl)' }}>
             Ya lo revisé en TKC
           </Button>
         </div>
@@ -224,7 +224,7 @@ export default function ProcesamientoForm() {
       <label className="block space-y-1.5 text-xs text-muted-foreground max-w-xs">
         Almacén
         <Select value={almacenValido ? almacen : ''} onValueChange={setAlmacen}>
-          <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Elige un almacén" /></SelectTrigger>
+          <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Elige un almacén" /></SelectTrigger>
           <SelectContent>
             {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
           </SelectContent>
@@ -243,7 +243,7 @@ export default function ProcesamientoForm() {
         </TabsList>
 
         <TabsContent value="pendientes" className="space-y-4">
-          <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+          <Card className="overflow-hidden" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
             <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border">
               <p className="text-sm font-medium flex items-center gap-2">
                 <ClipboardList className="w-4 h-4 text-muted-foreground" />
@@ -254,7 +254,7 @@ export default function ProcesamientoForm() {
               </p>
               <div className="flex items-center gap-1">
                 {listos.length > 0 && (
-                  <Button type="button" variant="outline" size="sm" style={{ borderRadius: '8px' }} onClick={cargarTodos}>
+                  <Button type="button" variant="outline" size="sm" style={{ borderRadius: 'var(--r-ctl)' }} onClick={cargarTodos}>
                     <ArrowDownToLine className="w-3.5 h-3.5 mr-1.5" />
                     Pasarlos al formulario
                   </Button>
@@ -294,7 +294,7 @@ export default function ProcesamientoForm() {
                         <td className="px-3 py-2 font-mono text-xs hidden sm:table-cell">{c.code}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{c.quantity}</td>
                         <td className="px-3 py-2 font-mono text-xs hidden md:table-cell">{c.targetCode ?? '—'}</td>
-                        <td className={`px-3 py-2 text-xs ${c.status === 'ready' ? 'text-[#1D9E75]' : 'text-muted-foreground'}`}>{c.reason}</td>
+                        <td className={`px-3 py-2 text-xs ${c.status === 'ready' ? 'text-[var(--c-ok-dim)]' : 'text-muted-foreground'}`}>{c.reason}</td>
                         <td className="px-4 py-2 text-right">
                           {c.status === 'ready' && (
                             <Button size="sm" variant="ghost" title="Agregar al formulario" aria-label={`Agregar ${c.code}`} onClick={() => agregar(c)}>
@@ -319,7 +319,7 @@ export default function ProcesamientoForm() {
                 condición para que la clave de idempotencia se reutilice en vez
                 de procesar dos veces. Procesar con éxito sí lo vacía. */}
             <Button variant="outline" disabled={!almacenValido} onClick={() => setEntradaAbierta(true)}
-              style={{ borderRadius: '8px' }}>
+              style={{ borderRadius: 'var(--r-ctl)' }}>
               Procesar a mano
             </Button>
           </div>
@@ -378,12 +378,12 @@ export default function ProcesamientoForm() {
             onChange={(e) => setTexto(e.target.value)}
             placeholder={'NoMT10157977*1\nNoMT021321020*2'}
             className="font-mono text-sm"
-            style={{ borderRadius: '8px' }}
+            style={{ borderRadius: 'var(--r-ctl)' }}
           />
         </label>
 
         {errores.length > 0 && (
-          <ul className="text-xs text-[#E24B4A] space-y-0.5">
+          <ul className="text-xs text-[var(--c-bad)] space-y-0.5">
             {errores.slice(0, 8).map((e, i) => (
               <li key={i}>{e.linea ? `Línea ${e.linea}: ` : ''}{e.motivo}{e.texto ? ` («${e.texto}»)` : ''}</li>
             ))}
@@ -391,7 +391,7 @@ export default function ProcesamientoForm() {
           </ul>
         )}
         {repetidos.length > 0 && (
-          <p className="text-xs text-[#E24B4A]">
+          <p className="text-xs text-[var(--c-bad)]">
             Repetido con y sin NoMT (es el mismo producto): {repetidos.slice(0, 5).join(', ')}.
           </p>
         )}
@@ -401,7 +401,7 @@ export default function ProcesamientoForm() {
             {lines.length} {lines.length === 1 ? 'producto' : 'productos'}, {lines.reduce((s, l) => s + l.quantity, 0)} unidades.
             Analizar no mueve la existencia.
           </p>
-          <Button variant="outline" onClick={() => analizar.mutate()} disabled={!puedeAnalizar} style={{ borderRadius: '8px' }}>
+          <Button variant="outline" onClick={() => analizar.mutate()} disabled={!puedeAnalizar} style={{ borderRadius: 'var(--r-ctl)' }}>
             {analizar.isPending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Search className="w-4 h-4 mr-1.5" />}
             Analizar
           </Button>
@@ -410,24 +410,24 @@ export default function ProcesamientoForm() {
         {/* ── Análisis ─────────────────────────────────────────── */}
         {analisis?.tipo === 'error' && <AlertBanner variant="danger" message={mensajeDeError(analisis)} />}
         {analisis?.tipo === 'analizado' && (
-          <div className="rounded-lg border border-border p-4 space-y-4" style={{ borderRadius: '8px' }}>
+          <div className="rounded-lg border border-border p-4 space-y-4" style={{ borderRadius: 'var(--r-ctl)' }}>
           <h2 className="text-sm font-medium">
             {analisis.procesables} de {analisis.lineas.length} se pueden procesar
             {!analisisVigente && <span className="text-muted-foreground font-normal"> (cambiaste la entrada: vuelve a analizar)</span>}
           </h2>
           <TablaAnalisis lineas={analisis.lineas} />
           {analisis.rechazadas.length > 0 && (
-            <ul className="text-xs text-[#E24B4A] space-y-0.5">
+            <ul className="text-xs text-[var(--c-bad)] space-y-0.5">
               {analisis.rechazadas.map((r, i) => <li key={i}>Línea {r.line}: {r.reason} («{r.code}»)</li>)}
             </ul>
           )}
-          <div className="flex items-center justify-between gap-3 rounded-lg border px-4 py-3" style={{ borderRadius: '8px' }}>
+          <div className="flex items-center justify-between gap-3 rounded-lg border px-4 py-3" style={{ borderRadius: 'var(--r-ctl)' }}>
             <p className="text-xs text-muted-foreground">
               {aProcesar.length > 0
                 ? `Se procesarán ${aProcesar.length} ${aProcesar.length === 1 ? 'producto' : 'productos'} en ${documentos} ${documentos === 1 ? 'documento' : 'documentos'}. Lo que no se pueda no se envía.`
                 : 'Nada que procesar con esta entrada.'}
             </p>
-            <Button onClick={pedirConfirmacion} disabled={!puedeProcesar} style={{ borderRadius: '8px' }}>
+            <Button onClick={pedirConfirmacion} disabled={!puedeProcesar} style={{ borderRadius: 'var(--r-ctl)' }}>
               {ejecutar.isPending && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
               Procesar
             </Button>
@@ -477,7 +477,7 @@ function TablaAnalisis({ lineas }) {
               <td className="py-1.5 pr-3 text-right">{l.requested}</td>
               <td className="py-1.5 pr-3 text-right">{l.existence}</td>
               <td className="py-1.5 pr-3 font-mono">{l.targetCode || '—'}</td>
-              <td className={`py-1.5 ${l.processable ? 'text-[#1D9E75]' : 'text-[#E24B4A]'}`}>
+              <td className={`py-1.5 ${l.processable ? 'text-[var(--c-ok-dim)]' : 'text-[var(--c-bad)]'}`}>
                 {l.processable ? 'Se puede procesar' : motivo(l)}
               </td>
             </tr>
@@ -494,7 +494,7 @@ function ResultadoProceso({ r }) {
   return (
     <Card className="p-5 space-y-4">
       {(r.tipo === 'procesado' || r.tipo === 'parcial') && (
-        <div className={`flex items-center gap-2 ${r.tipo === 'procesado' ? 'text-[#1D9E75]' : 'text-[#BA7517]'}`}>
+        <div className={`flex items-center gap-2 ${r.tipo === 'procesado' ? 'text-[var(--c-ok-dim)]' : 'text-[var(--c-warn)]'}`}>
           <CheckCircle2 className="w-4 h-4" />
           <h2 className="text-sm font-medium">
             {r.tipo === 'procesado'
@@ -529,7 +529,7 @@ function ResultadoProceso({ r }) {
         </div>
       ))}
       {r.rechazadas.length > 0 && (
-        <ul className="text-xs text-[#E24B4A] space-y-0.5">
+        <ul className="text-xs text-[var(--c-bad)] space-y-0.5">
           {r.rechazadas.map((x, i) => <li key={i}>Línea {x.line}: {x.reason} («{x.code}»)</li>)}
         </ul>
       )}

@@ -36,7 +36,7 @@ const fmt = (iso) => iso ? new Date(iso).toLocaleString('es', { dateStyle: 'shor
 function StatusChip({ ok, label }) {
   return (
     <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
-      ok ? 'bg-[#4ade80]/10 text-[#4ade80]' : 'bg-[#e24b4a]/10 text-[#e24b4a]'
+      ok ? 'bg-[var(--c-ok)]/10 text-[var(--c-ok)]' : 'bg-[var(--c-bad)]/10 text-[var(--c-bad)]'
     }`}>
       {ok ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
       {label}
@@ -71,12 +71,12 @@ function TabSistema() {
   });
 
   const kpis = data ? [
-    { label: 'Productos',       value: data.productos,        color: '#4ade80' },
-    { label: 'Usuarios activos',value: data.usuarios,         color: '#60a5fa' },
-    { label: 'Mermas',          value: data.mermas,           color: '#fb923c' },
-    { label: 'Inventarios',     value: data.inventarios,      color: '#a78bfa' },
+    { label: 'Productos',       value: data.productos,        color: 'var(--c-ok)' },
+    { label: 'Usuarios activos',value: data.usuarios,         color: 'var(--c-info-2)' },
+    { label: 'Mermas',          value: data.mermas,           color: 'var(--c-orange)' },
+    { label: 'Inventarios',     value: data.inventarios,      color: 'var(--c-purple)' },
     { label: 'Recepciones',     value: data.recepciones,      color: '#f472b6' },
-    { label: 'Notif. no leídas',value: data.notificaciones,   color: '#facc15' },
+    { label: 'Notif. no leídas',value: data.notificaciones,   color: 'var(--c-yellow)' },
     { label: 'Eventos audit',   value: data.workflow_eventos, color: '#34d399' },
   ] : [];
 
@@ -84,7 +84,7 @@ function TabSistema() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <p className="text-sm text-muted-foreground">Estado general del sistema</p>
-        <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching} style={{ borderRadius: '8px' }}>
+        <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching} style={{ borderRadius: 'var(--r-ctl)' }}>
           <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? 'animate-spin' : ''}`} /> Actualizar
         </Button>
       </div>
@@ -100,14 +100,14 @@ function TabSistema() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
-          <p className="text-sm font-medium mb-3 flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-[#e24b4a]" />Errores de sync recientes</p>
+          <p className="text-sm font-medium mb-3 flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-[var(--c-bad)]" />Errores de sync recientes</p>
           {!data?.syncErrors.length ? <p className="text-sm text-muted-foreground">Sin errores registrados.</p> :
             data.syncErrors.map((e, i) => {
               let p = {}; try { const parsed = JSON.parse(e.mensaje); if (parsed._type === 'sync_errors') p = parsed; } catch {}
               return (
-                <div key={i} className="flex justify-between p-3 mb-2 rounded-lg border border-[#e24b4a]/20 bg-[#e24b4a]/5" style={{ borderRadius: '8px' }}>
+                <div key={i} className="flex justify-between p-3 mb-2 rounded-lg border border-[var(--c-bad)]/20 bg-[var(--c-bad)]/5" style={{ borderRadius: 'var(--r-ctl)' }}>
                   <div>
-                    <p className="text-xs font-medium text-[#e24b4a]">Almacén {p.almacen || '—'} · {p.fallidos || 0} fallos</p>
+                    <p className="text-xs font-medium text-[var(--c-bad)]">Almacén {p.almacen || '—'} · {p.fallidos || 0} fallos</p>
                     {p.muestra?.slice(0, 1).map((m, j) => <p key={j} className="text-[10px] text-muted-foreground mt-0.5">• {m.msg?.slice(0, 70)}</p>)}
                   </div>
                   <p className="text-[10px] text-muted-foreground ml-2">{fmt(e.created_date)}</p>
@@ -116,9 +116,9 @@ function TabSistema() {
             })}
         </div>
         <div>
-          <p className="text-sm font-medium mb-3 flex items-center gap-2"><Activity className="w-4 h-4 text-[#60a5fa]" />Actividad reciente</p>
+          <p className="text-sm font-medium mb-3 flex items-center gap-2"><Activity className="w-4 h-4 text-[var(--c-info-2)]" />Actividad reciente</p>
           {data?.lastActivity.map((e, i) => (
-            <div key={i} className="flex justify-between p-3 mb-1.5 rounded-lg border border-border bg-card" style={{ borderRadius: '8px' }}>
+            <div key={i} className="flex justify-between p-3 mb-1.5 rounded-lg border border-border bg-card" style={{ borderRadius: 'var(--r-ctl)' }}>
               <div>
                 <p className="text-xs font-medium">{e.actor_nombre || e.actor_id}</p>
                 <p className="text-[10px] text-muted-foreground">{e.tabla} → <span className="text-foreground">{e.estado_nuevo}</span></p>
@@ -176,12 +176,12 @@ function TabDiagnostico() {
             : <StatusChip ok={false} label={`${failCount} pendiente${failCount > 1 ? 's' : ''}`} />
           )}
         </div>
-        <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching} style={{ borderRadius: '8px' }}>
+        <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching} style={{ borderRadius: 'var(--r-ctl)' }}>
           <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? 'animate-spin' : ''}`} /> Verificar
         </Button>
       </div>
 
-      <Card style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+      <Card style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
         <div className="divide-y divide-border">
           {isLoading ? (
             <div className="p-6 text-center text-muted-foreground">Verificando...</div>
@@ -189,8 +189,8 @@ function TabDiagnostico() {
             <div key={i} className="flex items-center justify-between px-4 py-3">
               <div className="flex items-center gap-3">
                 {c.ok
-                  ? <CheckCircle className="w-4 h-4 text-[#4ade80] shrink-0" />
-                  : <XCircle    className="w-4 h-4 text-[#e24b4a] shrink-0" />
+                  ? <CheckCircle className="w-4 h-4 text-[var(--c-ok)] shrink-0" />
+                  : <XCircle    className="w-4 h-4 text-[var(--c-bad)] shrink-0" />
                 }
                 <div>
                   <p className="text-sm font-medium">{c.label}</p>
@@ -204,8 +204,8 @@ function TabDiagnostico() {
       </Card>
 
       {!isLoading && !allOk && (
-        <div className="p-4 rounded-lg border border-[#e24b4a]/30 bg-[#e24b4a]/5" style={{ borderRadius: '8px' }}>
-          <p className="text-sm font-medium text-[#e24b4a] mb-1">Migraciones pendientes</p>
+        <div className="p-4 rounded-lg border border-[var(--c-bad)]/30 bg-[var(--c-bad)]/5" style={{ borderRadius: 'var(--r-ctl)' }}>
+          <p className="text-sm font-medium text-[var(--c-bad)] mb-1">Migraciones pendientes</p>
           <p className="text-xs text-muted-foreground">
             Ejecuta los archivos indicados en el SQL Editor de la BD local en orden numérico.
           </p>
@@ -218,9 +218,9 @@ function TabDiagnostico() {
           <Database className="w-4 h-4 text-muted-foreground" />
           Verificaciones manuales (requieren SQL Editor)
         </p>
-        <div className="text-xs text-muted-foreground space-y-1.5 p-4 rounded-lg border border-border bg-card" style={{ borderRadius: '8px' }}>
+        <div className="text-xs text-muted-foreground space-y-1.5 p-4 rounded-lg border border-border bg-card" style={{ borderRadius: 'var(--r-ctl)' }}>
           <p className="font-medium text-foreground mb-2">Ejecuta en el SQL Editor para verificar:</p>
-          <pre className="text-[10px] bg-secondary/50 p-3 rounded overflow-x-auto" style={{ borderRadius: '6px' }}>{`-- Índice único de productos (creado manualmente)
+          <pre className="text-[10px] bg-secondary/50 p-3 rounded overflow-x-auto" style={{ borderRadius: 'var(--r-ctl)' }}>{`-- Índice único de productos (creado manualmente)
 SELECT indexname FROM pg_indexes
 WHERE tablename='productos' AND indexname='productos_almacen_codigo_unique';
 
@@ -277,14 +277,14 @@ function TabSincronizacion() {
       {/* Schedules activos */}
       <div>
         <p className="text-sm font-medium mb-3 flex items-center gap-2">
-          <Clock className="w-4 h-4 text-[#60a5fa]" /> Sincronización automática activa
+          <Clock className="w-4 h-4 text-[var(--c-info-2)]" /> Sincronización automática activa
         </p>
         {!schedules.length ? (
           <p className="text-sm text-muted-foreground">Ningún usuario tiene sync automático activado.</p>
         ) : (
           <div className="space-y-2">
             {schedules.map(u => (
-              <div key={u.email} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card" style={{ borderRadius: '8px' }}>
+              <div key={u.email} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card" style={{ borderRadius: 'var(--r-ctl)' }}>
                 <div>
                   <p className="text-xs font-medium">{u.full_name || u.email}</p>
                   <p className="text-[10px] text-muted-foreground">
@@ -303,13 +303,13 @@ function TabSincronizacion() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-medium flex items-center gap-2">
-            <Zap className="w-4 h-4 text-[#4ade80]" /> Sync manual por almacén
+            <Zap className="w-4 h-4 text-[var(--c-ok)]" /> Sync manual por almacén
           </p>
           <button
             onClick={() => syncAll(almacenes)}
             disabled={isRunning || !almacenes.length}
             className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors disabled:opacity-50
-              bg-[#4ade80]/10 hover:bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/20"
+              bg-[var(--c-ok)]/10 hover:bg-[var(--c-ok)]/20 text-[var(--c-ok)] border-[var(--c-ok)]/20"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRunning && syncState?.type === 'all' ? 'animate-spin' : ''}`} />
             {isRunning && syncState?.type === 'all'
@@ -323,19 +323,19 @@ function TabSincronizacion() {
             const loading = isRunning && syncState?.current === alm;
             const log     = groupedLog[alm];
             return (
-              <div key={alm} className="p-3 rounded-lg border border-border bg-card space-y-2" style={{ borderRadius: '8px' }}>
+              <div key={alm} className="p-3 rounded-lg border border-border bg-card space-y-2" style={{ borderRadius: 'var(--r-ctl)' }}>
                 <div className="flex justify-between items-center">
                   <p className="text-xs font-medium">Almacén {alm}</p>
                   {result && <StatusChip ok={result.ok} label={result.ok ? `${result.synced} sync` : 'Error'} />}
                 </div>
                 {log && <p className="text-[10px] text-muted-foreground">Último: {fmt(log.synced_at)}</p>}
-                {result?.ok === false && <p className="text-[10px] text-[#e24b4a] line-clamp-2">{result.msg}</p>}
+                {result?.ok === false && <p className="text-[10px] text-[var(--c-bad)] line-clamp-2">{result.msg}</p>}
                 <Button
                   size="sm" className="w-full h-7 text-xs"
                   variant="outline"
                   disabled={isRunning}
                   onClick={() => syncOne(alm)}
-                  style={{ borderRadius: '6px' }}
+                  style={{ borderRadius: 'var(--r-ctl)' }}
                 >
                   {loading ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Sincronizando</> : <><RefreshCw className="w-3 h-3 mr-1" />Sincronizar</>}
                 </Button>
@@ -348,9 +348,9 @@ function TabSincronizacion() {
       {/* Log reciente */}
       <div>
         <p className="text-sm font-medium mb-3 flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-[#a78bfa]" /> Log de sincronizaciones ({syncLog.length})
+          <BarChart3 className="w-4 h-4 text-[var(--c-purple)]" /> Log de sincronizaciones ({syncLog.length})
         </p>
-        <Card style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+        <Card style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
           <div className="overflow-x-auto max-h-64">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-card border-b">
@@ -369,8 +369,8 @@ function TabSincronizacion() {
                   <tr key={i} className="border-b last:border-0 hover:bg-accent/30">
                     <td className="p-3 text-xs">{r.user_email}</td>
                     <td className="p-3 text-xs font-medium">Almacén {r.almacen}</td>
-                    <td className="p-3 text-xs text-right text-[#4ade80]">{r.synced ?? '—'}</td>
-                    <td className="p-3 text-xs text-right text-[#e24b4a]">{r.errors || 0}</td>
+                    <td className="p-3 text-xs text-right text-[var(--c-ok)]">{r.synced ?? '—'}</td>
+                    <td className="p-3 text-xs text-right text-[var(--c-bad)]">{r.errors || 0}</td>
                     <td className="p-3 text-xs text-muted-foreground">{fmt(r.synced_at)}</td>
                   </tr>
                 ))}
@@ -432,8 +432,8 @@ const ERROR_CATALOG = [
 ];
 
 function impactoColor(imp) {
-  if (imp === 'critico') return { bg: 'bg-[#e24b4a]/10', border: 'border-[#e24b4a]/30', text: 'text-[#e24b4a]', badge: 'bg-[#e24b4a]/10 text-[#e24b4a]' };
-  if (imp === 'medio')   return { bg: 'bg-[#ba7517]/10', border: 'border-[#ba7517]/30', text: 'text-[#ba7517]', badge: 'bg-[#ba7517]/10 text-[#ba7517]' };
+  if (imp === 'critico') return { bg: 'bg-[var(--c-bad)]/10', border: 'border-[var(--c-bad)]/30', text: 'text-[var(--c-bad)]', badge: 'bg-[var(--c-bad)]/10 text-[var(--c-bad)]' };
+  if (imp === 'medio')   return { bg: 'bg-[var(--c-warn)]/10', border: 'border-[var(--c-warn)]/30', text: 'text-[var(--c-warn)]', badge: 'bg-[var(--c-warn)]/10 text-[var(--c-warn)]' };
   return { bg: 'bg-secondary/50', border: 'border-border', text: 'text-muted-foreground', badge: 'bg-secondary text-muted-foreground' };
 }
 
@@ -442,11 +442,11 @@ function SqlBlock({ code }) {
   const copy = () => { navigator.clipboard?.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); };
   return (
     <div className="relative">
-      <pre className="text-[10px] bg-secondary/70 p-3 rounded-lg overflow-x-auto leading-relaxed" style={{ borderRadius: '6px' }}>{code}</pre>
+      <pre className="text-[10px] bg-secondary/70 p-3 rounded-lg overflow-x-auto leading-relaxed" style={{ borderRadius: 'var(--r-ctl)' }}>{code}</pre>
       <button onClick={copy} className="absolute top-2 right-2 p-1 rounded opacity-60 hover:opacity-100 transition-opacity bg-background border border-border">
         <Copy className="w-3 h-3" />
       </button>
-      {copied && <span className="absolute top-2 right-7 text-[10px] text-[#4ade80]">¡Copiado!</span>}
+      {copied && <span className="absolute top-2 right-7 text-[10px] text-[var(--c-ok)]">¡Copiado!</span>}
     </div>
   );
 }
@@ -523,7 +523,7 @@ function TabLogsSinc() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <p className="text-sm text-muted-foreground">Análisis detallado de errores de sincronización</p>
-        <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching} style={{ borderRadius: '8px' }}>
+        <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching} style={{ borderRadius: 'var(--r-ctl)' }}>
           <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? 'animate-spin' : ''}`} /> Actualizar
         </Button>
       </div>
@@ -531,10 +531,10 @@ function TabLogsSinc() {
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Total fallos registrados', value: failures.length, color: '#e24b4a' },
-          { label: 'Almacenes afectados',       value: almacenesAfectados.length, color: '#fb923c' },
-          { label: 'Tipo de error más común',   value: patronMasFrecuente ? `${patronMasFrecuente[0]} (${patronMasFrecuente[1]})` : '—', color: '#facc15', small: true },
-          { label: 'Almacén más afectado',      value: almacenMasAfectado ? `Alm. ${almacenMasAfectado[0]} (${almacenMasAfectado[1]})` : '—', color: '#60a5fa', small: true },
+          { label: 'Total fallos registrados', value: failures.length, color: 'var(--c-bad)' },
+          { label: 'Almacenes afectados',       value: almacenesAfectados.length, color: 'var(--c-orange)' },
+          { label: 'Tipo de error más común',   value: patronMasFrecuente ? `${patronMasFrecuente[0]} (${patronMasFrecuente[1]})` : '—', color: 'var(--c-yellow)', small: true },
+          { label: 'Almacén más afectado',      value: almacenMasAfectado ? `Alm. ${almacenMasAfectado[0]} (${almacenMasAfectado[1]})` : '—', color: 'var(--c-info-2)', small: true },
         ].map(k => (
           <div key={k.label} className="p-3 rounded-xl border border-border bg-card space-y-1">
             <p className="text-[10px] text-muted-foreground">{k.label}</p>
@@ -547,7 +547,7 @@ function TabLogsSinc() {
         <div className="p-8 text-center text-muted-foreground">Cargando logs...</div>
       ) : failures.length === 0 ? (
         <div className="p-8 text-center text-muted-foreground">
-          <CheckCircle className="w-8 h-8 mx-auto mb-2 text-[#4ade80]" />
+          <CheckCircle className="w-8 h-8 mx-auto mb-2 text-[var(--c-ok)]" />
           <p className="text-sm">Sin errores de sincronización registrados.</p>
         </div>
       ) : (
@@ -555,7 +555,7 @@ function TabLogsSinc() {
           {/* Análisis por causa */}
           <div>
             <p className="text-sm font-medium mb-3 flex items-center gap-2">
-              <Lightbulb className="w-4 h-4 text-[#facc15]" /> Causas identificadas
+              <Lightbulb className="w-4 h-4 text-[var(--c-yellow)]" /> Causas identificadas
             </p>
             <div className="space-y-2">
               {catalogoActivos.map(c => {
@@ -563,7 +563,7 @@ function TabLogsSinc() {
                 const count = patronCount[c.patron] || 0;
                 const open = expandedCausa === c.patron;
                 return (
-                  <div key={c.patron} className={`rounded-xl border ${col.border} ${col.bg}`} style={{ borderRadius: '10px' }}>
+                  <div key={c.patron} className={`rounded-xl border ${col.border} ${col.bg}`} style={{ borderRadius: 'var(--r-card)' }}>
                     <button
                       className="w-full flex items-center justify-between px-4 py-3 text-left"
                       onClick={() => setExpandedCausa(open ? null : c.patron)}
@@ -592,7 +592,7 @@ function TabLogsSinc() {
                             <p className="text-xs leading-relaxed">{c.porque}</p>
                           </div>
                           <div className="space-y-1.5">
-                            <p className="text-xs font-semibold text-[#4ade80] flex items-center gap-1.5"><CheckCircle className="w-3 h-3" /> Impacto real</p>
+                            <p className="text-xs font-semibold text-[var(--c-ok)] flex items-center gap-1.5"><CheckCircle className="w-3 h-3" /> Impacto real</p>
                             <p className="text-xs leading-relaxed">{c.accion}</p>
                           </div>
                         </div>
@@ -653,11 +653,11 @@ function TabLogsSinc() {
           {/* Tabla detallada filtrable */}
           <div>
             <p className="text-sm font-medium mb-3 flex items-center gap-2">
-              <Database className="w-4 h-4 text-[#60a5fa]" /> Log detallado de fallos ({filtered.length})
+              <Database className="w-4 h-4 text-[var(--c-info-2)]" /> Log detallado de fallos ({filtered.length})
             </p>
             <div className="flex gap-2 mb-3 flex-wrap">
               <Select value={filtroAlmacen} onValueChange={setFiltroAlmacen}>
-                <SelectTrigger className="h-8 text-xs w-44" style={{ borderRadius: '8px' }}>
+                <SelectTrigger className="h-8 text-xs w-44" style={{ borderRadius: 'var(--r-ctl)' }}>
                   <SelectValue placeholder="Almacén" />
                 </SelectTrigger>
                 <SelectContent>
@@ -666,7 +666,7 @@ function TabLogsSinc() {
                 </SelectContent>
               </Select>
               <Select value={filtroError} onValueChange={setFiltroError}>
-                <SelectTrigger className="h-8 text-xs w-40" style={{ borderRadius: '8px' }}>
+                <SelectTrigger className="h-8 text-xs w-40" style={{ borderRadius: 'var(--r-ctl)' }}>
                   <SelectValue placeholder="Tipo error" />
                 </SelectTrigger>
                 <SelectContent>
@@ -679,11 +679,11 @@ function TabLogsSinc() {
                 <Input
                   value={searchQ} onChange={e => setSearchQ(e.target.value)}
                   placeholder="Buscar producto, código, ID..."
-                  className="pl-9 h-8 text-xs" style={{ borderRadius: '8px' }}
+                  className="pl-9 h-8 text-xs" style={{ borderRadius: 'var(--r-ctl)' }}
                 />
               </div>
             </div>
-            <Card style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+            <Card style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
               <div className="overflow-x-auto max-h-80">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-card border-b">
@@ -780,7 +780,7 @@ function TabMantenimiento({ confirmDialog }) {
       label: 'Limpiar notificaciones leídas',
       desc: 'Elimina notificaciones leídas con más de 30 días',
       icon: Bell,
-      color: '#facc15',
+      color: 'var(--c-yellow)',
       confirm: '¿Eliminar notificaciones leídas con más de 30 días?',
       fn: async () => {
         const cutoff = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
@@ -808,7 +808,7 @@ function TabMantenimiento({ confirmDialog }) {
       label: 'Limpiar historial de movimientos',
       desc: 'Elimina registros de historial con más de 180 días',
       icon: Database,
-      color: '#60a5fa',
+      color: 'var(--c-info-2)',
       confirm: '¿Eliminar historial con más de 180 días?',
       fn: async () => {
         const cutoff = new Date(Date.now() - 180 * 24 * 3600 * 1000).toISOString();
@@ -821,7 +821,7 @@ function TabMantenimiento({ confirmDialog }) {
       label: 'Limpiar log de sync antiguo',
       desc: 'Conserva solo el último sync por usuario/almacén (ya es upsert, no aplica)',
       icon: RefreshCw,
-      color: '#4ade80',
+      color: 'var(--c-ok)',
       confirm: '¿Limpiar sync_auto_log de entradas antiguas (más de 60 días)?',
       fn: async () => {
         const count = await base44.entities.SyncAutoLog.count();
@@ -864,7 +864,7 @@ function TabMantenimiento({ confirmDialog }) {
 
           if (task.isCustom) {
             return (
-              <Card key={task.key} className="p-4 space-y-3" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+              <Card key={task.key} className="p-4 space-y-3" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
                 <div className="flex items-start gap-3">
                   <div className="p-2 rounded-lg shrink-0" style={{ background: `${task.color}18` }}>
                     <Icon className="w-4 h-4" style={{ color: task.color }} />
@@ -878,10 +878,10 @@ function TabMantenimiento({ confirmDialog }) {
                   placeholder="Mensaje de notificación..."
                   value={broadcastMsg}
                   onChange={e => setBroadcastMsg(e.target.value)}
-                  style={{ borderRadius: '8px' }}
+                  style={{ borderRadius: 'var(--r-ctl)' }}
                 />
                 <div className="flex items-center gap-2">
-                  <Button size="sm" onClick={sendBroadcast} disabled={!broadcastMsg.trim()} style={{ borderRadius: '8px' }}>
+                  <Button size="sm" onClick={sendBroadcast} disabled={!broadcastMsg.trim()} style={{ borderRadius: 'var(--r-ctl)' }}>
                     <Send className="w-3.5 h-3.5 mr-1.5" /> Enviar a todos
                   </Button>
                   {result && <StatusChip ok={result.ok} label={result.msg} />}
@@ -891,7 +891,7 @@ function TabMantenimiento({ confirmDialog }) {
           }
 
           return (
-            <Card key={task.key} className="p-4 space-y-3" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+            <Card key={task.key} className="p-4 space-y-3" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
               <div className="flex items-start gap-3">
                 <div className="p-2 rounded-lg shrink-0" style={{ background: `${task.color}18` }}>
                   <Icon className="w-4 h-4" style={{ color: task.color }} />
@@ -909,7 +909,7 @@ function TabMantenimiento({ confirmDialog }) {
                     if (await confirmDialog(task.confirm, { title: '¿Ejecutar tarea?', destructive: true }))
                       run(task.key, task.fn);
                   }}
-                  style={{ borderRadius: '8px' }}
+                  style={{ borderRadius: 'var(--r-ctl)' }}
                 >
                   {result?.loading
                     ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Ejecutando...</>
@@ -984,30 +984,30 @@ function TabUsuarios({ confirmDialog }) {
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar..." className="pl-9" style={{ borderRadius: '8px' }} />
+          <Input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar..." className="pl-9" style={{ borderRadius: 'var(--r-ctl)' }} />
         </div>
-        <Button onClick={() => setShowCreate(v => !v)} style={{ borderRadius: '8px' }}><Plus className="w-4 h-4 mr-1.5" />Nuevo</Button>
+        <Button onClick={() => setShowCreate(v => !v)} style={{ borderRadius: 'var(--r-ctl)' }}><Plus className="w-4 h-4 mr-1.5" />Nuevo</Button>
       </div>
       {showCreate && (
-        <Card className="p-4 space-y-3 border-[#6798ff]/30 bg-[#6798ff]/5" style={{ borderRadius: '12px' }}>
-          <p className="text-sm font-medium text-[#6798ff]">Crear usuario</p>
-          {createError && <p className="text-xs text-[#e24b4a]">{createError}</p>}
+        <Card className="p-4 space-y-3 border-[var(--c-info)]/30 bg-[var(--c-info)]/5" style={{ borderRadius: 'var(--r-card)' }}>
+          <p className="text-sm font-medium text-[var(--c-info)]">Crear usuario</p>
+          {createError && <p className="text-xs text-[var(--c-bad)]">{createError}</p>}
           <div className="grid grid-cols-2 gap-3">
-            <Input placeholder="Email *" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={{ borderRadius: '8px' }} />
-            <Input placeholder="Nombre" value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} style={{ borderRadius: '8px' }} />
-            <Input type="password" placeholder="Contraseña (vacío = solo Google)" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} style={{ borderRadius: '8px' }} />
+            <Input placeholder="Email *" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={{ borderRadius: 'var(--r-ctl)' }} />
+            <Input placeholder="Nombre" value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} style={{ borderRadius: 'var(--r-ctl)' }} />
+            <Input type="password" placeholder="Contraseña (vacío = solo Google)" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} style={{ borderRadius: 'var(--r-ctl)' }} />
             <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
-              <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
+              <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue /></SelectTrigger>
               <SelectContent>{Object.entries(ROLES).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" onClick={() => createMut.mutate()} disabled={!form.email || createMut.isPending} style={{ borderRadius: '8px' }}>{createMut.isPending ? 'Creando...' : 'Crear'}</Button>
-            <Button size="sm" variant="outline" onClick={() => setShowCreate(false)} style={{ borderRadius: '8px' }}>Cancelar</Button>
+            <Button size="sm" onClick={() => createMut.mutate()} disabled={!form.email || createMut.isPending} style={{ borderRadius: 'var(--r-ctl)' }}>{createMut.isPending ? 'Creando...' : 'Crear'}</Button>
+            <Button size="sm" variant="outline" onClick={() => setShowCreate(false)} style={{ borderRadius: 'var(--r-ctl)' }}>Cancelar</Button>
           </div>
         </Card>
       )}
-      <Card style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+      <Card style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="border-b">
@@ -1023,19 +1023,19 @@ function TabUsuarios({ confirmDialog }) {
                   <td className="p-3"><p className="font-medium text-sm">{u.full_name || '—'}</p><p className="text-xs text-muted-foreground">{u.email}</p></td>
                   <td className="p-3">
                     <Select value={u.role || 'inv'} onValueChange={v => updateMut.mutate({ id: u.id, data: { role: v } })}>
-                      <SelectTrigger className="h-7 text-xs w-36" style={{ borderRadius: '6px' }}><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-7 text-xs w-36" style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue /></SelectTrigger>
                       <SelectContent>{Object.entries(ROLES).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </td>
                   <td className="p-3 text-center">
                     <button onClick={() => updateMut.mutate({ id: u.id, data: { activo: !u.activo } })}
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${u.activo ? 'bg-[#4ade80]/10 text-[#4ade80]' : 'bg-[#e24b4a]/10 text-[#e24b4a]'}`}>
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${u.activo ? 'bg-[var(--c-ok)]/10 text-[var(--c-ok)]' : 'bg-[var(--c-bad)]/10 text-[var(--c-bad)]'}`}>
                       {u.activo ? 'Activo' : 'Inactivo'}
                     </button>
                   </td>
                   <td className="p-3 text-xs text-muted-foreground">{fmt(u.created_date)}</td>
                   <td className="p-3 text-center">
-                    <button className="text-[#e24b4a] hover:opacity-70"
+                    <button className="text-[var(--c-bad)] hover:opacity-70"
                       onClick={async () => { if (await confirmDialog(`Se eliminará a ${u.email}.`, { title: '¿Eliminar usuario?', destructive: true })) deleteMut.mutate(u.id) }}>
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -1081,25 +1081,25 @@ function TabAuditoria() {
     return true;
   });
 
-  const estadoColor = { completado: 'text-[#4ade80]', devuelto: 'text-[#e24b4a]', pend_fact: 'text-[#ba7517]', en_auditoria: 'text-[#60a5fa]' };
+  const estadoColor = { completado: 'text-[var(--c-ok)]', devuelto: 'text-[var(--c-bad)]', pend_fact: 'text-[var(--c-warn)]', en_auditoria: 'text-[var(--c-info-2)]' };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 flex-wrap">
         {tablas.map(t => (
           <button key={t} onClick={() => setFiltroTabla(t)}
-            className={`px-2.5 py-1 text-xs font-medium rounded-md border transition-colors ${filtroTabla === t ? 'bg-[#6798ff]/10 text-[#6798ff] border-[#6798ff]/30' : 'text-muted-foreground border-border'}`}>
+            className={`px-2.5 py-1 text-xs font-medium rounded-md border transition-colors ${filtroTabla === t ? 'bg-[var(--c-info)]/10 text-[var(--c-info)] border-[var(--c-info)]/30' : 'text-muted-foreground border-border'}`}>
             {t === 'all' ? 'Todos' : t}
           </button>
         ))}
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar actor..." className="pl-9 h-8 text-xs" style={{ borderRadius: '8px' }} />
+          <Input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar actor..." className="pl-9 h-8 text-xs" style={{ borderRadius: 'var(--r-ctl)' }} />
         </div>
       </div>
       <div>
-        <p className="text-sm font-medium mb-3 flex items-center gap-2"><Activity className="w-4 h-4 text-[#60a5fa]" />Transiciones de workflow ({filtered.length})</p>
-        <Card style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+        <p className="text-sm font-medium mb-3 flex items-center gap-2"><Activity className="w-4 h-4 text-[var(--c-info-2)]" />Transiciones de workflow ({filtered.length})</p>
+        <Card style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
           <div className="overflow-x-auto max-h-72">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-card border-b">
@@ -1132,8 +1132,8 @@ function TabAuditoria() {
         </Card>
       </div>
       <div>
-        <p className="text-sm font-medium mb-3 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-[#4ade80]" />Acciones administrativas ({adminLog.length})</p>
-        <Card style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+        <p className="text-sm font-medium mb-3 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-[var(--c-ok)]" />Acciones administrativas ({adminLog.length})</p>
+        <Card style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
           <div className="overflow-x-auto max-h-56">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-card border-b">
@@ -1150,7 +1150,7 @@ function TabAuditoria() {
                     <tr key={a.id} className="border-b last:border-0 hover:bg-accent/30">
                       <td className="p-3 text-xs font-medium">{a.admin_email}</td>
                       <td className="p-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${a.accion === 'aprobar' ? 'bg-[#4ade80]/10 text-[#4ade80]' : a.accion === 'rechazar' || a.accion === 'desactivar' ? 'bg-[#e24b4a]/10 text-[#e24b4a]' : 'bg-secondary text-muted-foreground'}`}>{a.accion}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${a.accion === 'aprobar' ? 'bg-[var(--c-ok)]/10 text-[var(--c-ok)]' : a.accion === 'rechazar' || a.accion === 'desactivar' ? 'bg-[var(--c-bad)]/10 text-[var(--c-bad)]' : 'bg-secondary text-muted-foreground'}`}>{a.accion}</span>
                       </td>
                       <td className="p-3 text-xs text-muted-foreground">{a.target_email}</td>
                       <td className="p-3 text-[10px] text-muted-foreground">{fmt(a.created_at)}</td>
@@ -1179,8 +1179,8 @@ export default function SuperAdmin() {
       {ConfirmDialogNode}
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-[#e24b4a]/10">
-            <Crown className="w-5 h-5 text-[#e24b4a]" />
+          <div className="p-2 rounded-lg bg-[var(--c-bad)]/10">
+            <Crown className="w-5 h-5 text-[var(--c-bad)]" />
           </div>
           <div>
             <h1 className="text-lg sm:text-xl font-medium">Panel Super Admin</h1>

@@ -70,7 +70,7 @@ export default function ResolverIncidencia({
   const sinResolver = diferencias.filter((d) => (d.tipo_diferencia ?? 'pendiente') === 'pendiente').length;
 
   return (
-    <Card className="p-4 space-y-4" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+    <Card className="p-4 space-y-4" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-medium">Resolver incidencia</h2>
         <span className="text-xs text-muted-foreground">
@@ -97,12 +97,12 @@ export default function ResolverIncidencia({
           <div className="flex gap-2">
             <Button variant="outline" size="sm" disabled={marcadas.size === 0}
               onClick={() => { onRecontar([...marcadas]); setMarcadas(new Set()); }}
-              style={{ borderRadius: '8px' }}>
+              style={{ borderRadius: 'var(--r-ctl)' }}>
               <RotateCcw className="w-4 h-4 mr-1.5" /> Mandar a recontar
             </Button>
             {puedeCerrar && (
               <Button size="sm" disabled={sinResolver > 0}
-                onClick={() => onUpdate({ estado: 'cerrada' })} style={{ borderRadius: '8px' }}>
+                onClick={() => onUpdate({ estado: 'cerrada' })} style={{ borderRadius: 'var(--r-ctl)' }}>
                 <Check className="w-4 h-4 mr-1.5" /> Dar por resuelta
               </Button>
             )}
@@ -136,7 +136,7 @@ function Linea({ dif, marcada, puedeRecontar, onMarcar, onGuardar }) {
 
   return (
     <div className="p-3 rounded-lg border space-y-3 bg-secondary/30"
-      style={{ borderRadius: '10px', borderWidth: '0.5px' }}>
+      style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
       <div className="flex items-start gap-3">
         {puedeRecontar && (
           <Checkbox checked={marcada} onCheckedChange={onMarcar} className="mt-1" />
@@ -146,7 +146,7 @@ function Linea({ dif, marcada, puedeRecontar, onMarcar, onGuardar }) {
           <p className="text-xs text-muted-foreground">
             Se pidieron {dif.cant_esperada} y llegaron {dif.cant_recibida}
             {' · '}
-            <span className={dif.cantidad_diferencia < 0 ? 'text-[#E24B4A]' : 'text-[#BA7517]'}>
+            <span className={dif.cantidad_diferencia < 0 ? 'text-[var(--c-bad)]' : 'text-[var(--c-warn)]'}>
               {dif.cantidad_diferencia > 0 ? '+' : ''}{dif.cantidad_diferencia}
             </span>
           </p>
@@ -163,7 +163,7 @@ function Linea({ dif, marcada, puedeRecontar, onMarcar, onGuardar }) {
         <label className="sm:col-span-2 space-y-1 text-xs text-muted-foreground">
           Qué se decide
           <Select value={tipo} onValueChange={setTipo}>
-            <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue /></SelectTrigger>
+            <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue /></SelectTrigger>
             <SelectContent>
               {RESOLUCIONES.map((r) => (
                 <SelectItem key={r.valor} value={r.valor}>{r.label}</SelectItem>
@@ -174,7 +174,7 @@ function Linea({ dif, marcada, puedeRecontar, onMarcar, onGuardar }) {
         <label className="space-y-1 text-xs text-muted-foreground">
           Cantidad a facturar
           <Input type="number" min="0" value={facturar}
-            onChange={(e) => setFacturar(e.target.value)} style={{ borderRadius: '8px' }} />
+            onChange={(e) => setFacturar(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
         </label>
       </div>
 
@@ -182,7 +182,7 @@ function Linea({ dif, marcada, puedeRecontar, onMarcar, onGuardar }) {
         Nota {tipo !== 'pendiente' && '*'}
         <Textarea value={nota} onChange={(e) => setNota(e.target.value)} rows={2}
           placeholder="Qué se acordó, con quién, y qué queda pendiente."
-          style={{ borderRadius: '8px' }} />
+          style={{ borderRadius: 'var(--r-ctl)' }} />
       </label>
 
       {Number(facturar) !== Number(dif.cant_recibida) && (
@@ -197,7 +197,7 @@ function Linea({ dif, marcada, puedeRecontar, onMarcar, onGuardar }) {
             nota_resolucion: nota.trim(),
             cant_facturar: Number(facturar) || 0,
           })}
-          style={{ borderRadius: '8px' }}>
+          style={{ borderRadius: 'var(--r-ctl)' }}>
           Guardar resolución
         </Button>
       </div>

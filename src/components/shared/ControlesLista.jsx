@@ -33,7 +33,7 @@ export function SelectorAlmacen({ almacen, setAlmacen, almacenesConfig, classNam
     <Select value={valido ? almacen : ''} onValueChange={setAlmacen}>
       {/* Lo justo para el nombre más largo. Antes se llevaba 208 px y dejaba
           a los demás filtros fuera de la fila. */}
-      <SelectTrigger className={`${ALTO} w-[150px] text-xs ${className}`} style={{ borderRadius: '8px' }}>
+      <SelectTrigger className={`${ALTO} w-[150px] text-xs ${className}`} style={{ borderRadius: 'var(--r-ctl)' }}>
         <SelectValue placeholder="Almacén" />
       </SelectTrigger>
       <SelectContent>
@@ -75,10 +75,10 @@ export function FiltroIcono({ icono: Icono, etiqueta, valor, porDefecto, opcione
         className={`${ALTO} w-9 justify-center p-0 [&>svg:last-child]:hidden text-xs
           lg:w-auto lg:justify-between lg:gap-1.5 lg:px-3 lg:[&>svg:last-child]:block ${
           puesto
-            ? 'border-[#4ade80]/40 text-[#4ade80] bg-[#4ade80]/10'
+            ? 'border-[var(--c-ok)]/40 text-[var(--c-ok)] bg-[var(--c-ok)]/10'
             : 'text-muted-foreground'
         }`}
-        style={{ borderRadius: '8px' }}
+        style={{ borderRadius: 'var(--r-ctl)' }}
       >
         <span className="flex items-center gap-1.5 min-w-0">
           <Icono className="w-4 h-4 shrink-0" />

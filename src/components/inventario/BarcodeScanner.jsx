@@ -126,12 +126,12 @@ export default function BarcodeScanner({ onResult, onClose }) {
       {/* Botones cámara */}
       <div className="flex gap-2">
         {!cameraActive ? (
-          <Button onClick={() => startCamera(selectedCamera)} className="flex-1" style={{ borderRadius: '8px' }}>
+          <Button onClick={() => startCamera(selectedCamera)} className="flex-1" style={{ borderRadius: 'var(--r-ctl)' }}>
             <Camera className="w-4 h-4 mr-1.5" /> Activar cámara
           </Button>
         ) : (
           <>
-            <Button onClick={stopCamera} variant="outline" className="flex-1" style={{ borderRadius: '8px' }}>
+            <Button onClick={stopCamera} variant="outline" className="flex-1" style={{ borderRadius: 'var(--r-ctl)' }}>
               <CameraOff className="w-4 h-4 mr-1.5" /> Detener
             </Button>
             {cameras.length > 1 && (
@@ -143,7 +143,7 @@ export default function BarcodeScanner({ onResult, onClose }) {
                   const next = cameras[(idx + 1) % cameras.length];
                   switchCamera(next.deviceId);
                 }}
-                style={{ borderRadius: '8px' }}
+                style={{ borderRadius: 'var(--r-ctl)' }}
                 title="Cambiar cámara"
               >
                 <RefreshCw className="w-4 h-4" />
@@ -166,11 +166,11 @@ export default function BarcodeScanner({ onResult, onClose }) {
           value={manualCode}
           onChange={(e) => setManualCode(e.target.value)}
           placeholder="Código de barras / código producto"
-          style={{ borderRadius: '8px' }}
+          style={{ borderRadius: 'var(--r-ctl)' }}
           inputMode="text"
           autoComplete="off"
         />
-        <Button type="submit" variant="outline" style={{ borderRadius: '8px' }}>
+        <Button type="submit" variant="outline" style={{ borderRadius: 'var(--r-ctl)' }}>
           <Search className="w-4 h-4" />
         </Button>
       </form>

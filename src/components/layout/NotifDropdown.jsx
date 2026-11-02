@@ -10,16 +10,16 @@ import { es } from 'date-fns/locale';
 import { base44 } from '@/api/base44Client';
 
 const TYPE_CFG = {
-  merma:     { Icon: Package,       color: '#E24B4A', defaultLink: '/mermas'    },
-  lote:      { Icon: Clock,         color: '#BA7517', defaultLink: '/lotes'     },
-  recepcion: { Icon: Truck,         color: '#378ADD', defaultLink: '/recepciones'},
-  reconteo:  { Icon: RefreshCw,     color: '#BA7517', defaultLink: '/mermas'    },
-  devuelto:  { Icon: Undo2,         color: '#E24B4A', defaultLink: '/mermas'    },
-  sistema:   { Icon: Database,      color: '#4ade80', defaultLink: null         },
-  usuario:   { Icon: UserPlus,      color: '#a78bfa', defaultLink: '/admin/usuarios' },
-  Merma:     { Icon: Package,       color: '#E24B4A', defaultLink: '/mermas'    },
-  Inventario:{ Icon: CheckCheck,    color: '#60a5fa', defaultLink: '/inventario'},
-  Anuncio:   { Icon: AlertTriangle, color: '#fb923c', defaultLink: '/anuncios'  },
+  merma:     { Icon: Package,       color: 'var(--c-bad)', defaultLink: '/mermas'    },
+  lote:      { Icon: Clock,         color: 'var(--c-warn)', defaultLink: '/lotes'     },
+  recepcion: { Icon: Truck,         color: 'var(--c-info)', defaultLink: '/recepciones'},
+  reconteo:  { Icon: RefreshCw,     color: 'var(--c-warn)', defaultLink: '/mermas'    },
+  devuelto:  { Icon: Undo2,         color: 'var(--c-bad)', defaultLink: '/mermas'    },
+  sistema:   { Icon: Database,      color: 'var(--c-ok)', defaultLink: null         },
+  usuario:   { Icon: UserPlus,      color: 'var(--c-purple)', defaultLink: '/admin/usuarios' },
+  Merma:     { Icon: Package,       color: 'var(--c-bad)', defaultLink: '/mermas'    },
+  Inventario:{ Icon: CheckCheck,    color: 'var(--c-info-2)', defaultLink: '/inventario'},
+  Anuncio:   { Icon: AlertTriangle, color: 'var(--c-orange)', defaultLink: '/anuncios'  },
 };
 
 function timeAgo(date) {
@@ -105,7 +105,7 @@ export default function NotifDropdown({ notifications: notificationsRaw }) {
       >
         <Bell className="w-5 h-5 sm:w-4 sm:h-4" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 sm:-top-0.5 sm:-right-0.5 w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold text-black bg-[#4ade80]">
+          <span className="absolute top-1 right-1 sm:-top-0.5 sm:-right-0.5 w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold text-black bg-[var(--c-ok)]">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -123,7 +123,7 @@ export default function NotifDropdown({ notifications: notificationsRaw }) {
             <div className="flex items-center gap-2">
               <p className="text-[13px] font-semibold text-foreground">Notificaciones</p>
               {unreadCount > 0 && (
-                <span className="text-[10px] font-bold text-black px-1.5 py-0.5 rounded-full bg-[#4ade80]">
+                <span className="text-[10px] font-bold text-black px-1.5 py-0.5 rounded-full bg-[var(--c-ok)]">
                   {unreadCount}
                 </span>
               )}
@@ -132,7 +132,7 @@ export default function NotifDropdown({ notifications: notificationsRaw }) {
               <button
                 onClick={() => markAll.mutate()}
                 disabled={markAll.isPending}
-                className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-[#4ade80] transition-colors"
+                className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-[var(--c-ok)] transition-colors"
               >
                 <CheckCheck className="w-3 h-3" />
                 Marcar leídas
@@ -184,7 +184,7 @@ export default function NotifDropdown({ notifications: notificationsRaw }) {
                           {n.es_error && (
                             <button
                               onClick={(e) => { e.stopPropagation(); setReporting(n.id); }}
-                              className="flex items-center gap-1 text-[10px] text-[#e24b4a] hover:opacity-70 transition-opacity"
+                              className="flex items-center gap-1 text-[10px] text-[var(--c-bad)] hover:opacity-70 transition-opacity"
                             >
                               <AlertTriangle className="w-3 h-3" />
                               Reportar
@@ -192,13 +192,13 @@ export default function NotifDropdown({ notifications: notificationsRaw }) {
                           )}
                         </div>
                       </div>
-                      <span className="w-[6px] h-[6px] rounded-full shrink-0 mt-1.5 bg-[#4ade80]" />
+                      <span className="w-[6px] h-[6px] rounded-full shrink-0 mt-1.5 bg-[var(--c-ok)]" />
                     </div>
 
                     {/* Formulario de reporte */}
                     {isReporting && (
-                      <div className="px-4 pb-3 space-y-2 bg-[#e24b4a]/5 border-t border-[#e24b4a]/20">
-                        <p className="text-[11px] font-medium text-[#e24b4a] pt-2">Enviar reporte a soporte</p>
+                      <div className="px-4 pb-3 space-y-2 bg-[var(--c-bad)]/5 border-t border-[var(--c-bad)]/20">
+                        <p className="text-[11px] font-medium text-[var(--c-bad)] pt-2">Enviar reporte a soporte</p>
                         <p className="text-[10px] text-muted-foreground">
                           Se enviará la notificación con contexto técnico a soporte@mercadoelineas.com
                         </p>
@@ -206,7 +206,7 @@ export default function NotifDropdown({ notifications: notificationsRaw }) {
                           <button
                             onClick={() => reportToSupport.mutate(n)}
                             disabled={reportToSupport.isPending}
-                            className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-md bg-[#e24b4a]/10 text-[#e24b4a] hover:bg-[#e24b4a]/20 transition-colors disabled:opacity-50"
+                            className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-md bg-[var(--c-bad)]/10 text-[var(--c-bad)] hover:bg-[var(--c-bad)]/20 transition-colors disabled:opacity-50"
                           >
                             <Send className="w-3 h-3" />
                             {reportToSupport.isPending ? 'Enviando...' : 'Enviar reporte'}
@@ -229,7 +229,7 @@ export default function NotifDropdown({ notifications: notificationsRaw }) {
           {/* Footer */}
           <button
             onClick={() => { setOpen(false); navigate('/notificaciones'); }}
-            className="w-full flex items-center justify-center gap-1.5 py-3 text-[12px] font-medium text-[#4ade80] hover:bg-[#4ade80]/5 transition-colors border-t border-border"
+            className="w-full flex items-center justify-center gap-1.5 py-3 text-[12px] font-medium text-[var(--c-ok)] hover:bg-[var(--c-ok)]/5 transition-colors border-t border-border"
           >
             Ver todas las notificaciones
             <ArrowRight className="w-3 h-3" />

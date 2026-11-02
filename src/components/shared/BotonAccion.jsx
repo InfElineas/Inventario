@@ -22,7 +22,7 @@ export default function BotonAccion({ icono: Icono, children, className = '', ..
       aria-label={children}
       title={children}
       className={`shrink-0 px-2.5 sm:px-4 ${className}`}
-      style={{ borderRadius: '8px', ...(resto.style ?? {}) }}
+      style={{ borderRadius: 'var(--r-ctl)', ...(resto.style ?? {}) }}
     >
       {Icono && <Icono className="w-4 h-4 sm:mr-1.5" />}
       <span className="hidden sm:inline">{children}</span>

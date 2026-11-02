@@ -97,13 +97,13 @@ export default function ProductSearch({ onSelect, placeholder: placeholderRaw })
           onFocus={() => results.length > 0 && setOpen(true)}
           placeholder={placeholder}
           className="pl-10"
-          style={{ borderRadius: '8px' }}
+          style={{ borderRadius: 'var(--r-ctl)' }}
         />
       </div>
 
       {verLista && (
         <div className="border border-border bg-card max-h-60 overflow-y-auto divide-y divide-border"
-          style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+          style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
           {results.length > 0 ? (
             results.map((p) => (
               <button
@@ -122,7 +122,7 @@ export default function ProductSearch({ onSelect, placeholder: placeholderRaw })
               </button>
             ))
           ) : error ? (
-            <div className="p-4 text-center text-sm text-[#E24B4A]">
+            <div className="p-4 text-center text-sm text-[var(--c-bad)]">
               No se pudo buscar: {error}
             </div>
           ) : (

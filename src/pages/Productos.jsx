@@ -138,13 +138,13 @@ const estadoTiendaDe  = (p) => p.estado_tienda ?? 'SIN DATOS';
 const prioridadDe     = (p) => p.prioridad_tienda ?? 99;
 
 const EA_STYLE = {
-  'ACTIVADO':                { cls: 'text-[#4ade80] bg-[#4ade80]/10' },
-  'DESACTIVADO EF=0':        { cls: 'text-[#facc15] bg-[#facc15]/10' },
-  'DESACTIVADO EF>0':        { cls: 'text-[#fb923c] bg-[#fb923c]/10' },
-  'DESACTIVADO MUERTO EF=0': { cls: 'text-[#e24b4a] bg-[#e24b4a]/10' },
-  'DESACTIVADO MUERTO EF>0': { cls: 'text-[#e24b4a] bg-[#e24b4a]/10' },
-  'SIN ID EF=0':             { cls: 'text-[#64748b] bg-[#64748b]/10' },
-  'SIN ID EF>0':             { cls: 'text-[#94a3b8] bg-[#94a3b8]/10' },
+  'ACTIVADO':                { cls: 'text-[var(--c-ok)] bg-[var(--c-ok)]/10' },
+  'DESACTIVADO EF=0':        { cls: 'text-[var(--c-yellow)] bg-[var(--c-yellow)]/10' },
+  'DESACTIVADO EF>0':        { cls: 'text-[var(--c-orange)] bg-[var(--c-orange)]/10' },
+  'DESACTIVADO MUERTO EF=0': { cls: 'text-[var(--c-bad)] bg-[var(--c-bad)]/10' },
+  'DESACTIVADO MUERTO EF>0': { cls: 'text-[var(--c-bad)] bg-[var(--c-bad)]/10' },
+  'SIN ID EF=0':             { cls: 'text-[var(--c-gray)] bg-[var(--c-gray)]/10' },
+  'SIN ID EF>0':             { cls: 'text-[var(--c-gray)] bg-[var(--c-gray)]/10' },
 };
 const EA_LABEL = {
   'ACTIVADO':                'ACTIVADO',
@@ -156,8 +156,8 @@ const EA_LABEL = {
   'SIN ID EF>0':             'SIN ID c/EF',
 };
 const ET_LABEL_COLOR = {
-  'SIN RESERVA':'#e24b4a','NO TIENDA':'#fb923c','ULTIMAS PIEZAS':'#facc15',
-  'PROXIMO':'#60a5fa','DISPONIBLE':'#4ade80','AGOTADO':'#e24b4a','SIN ID':'#64748b',
+  'SIN RESERVA':'var(--c-bad)','NO TIENDA':'var(--c-orange)','ULTIMAS PIEZAS':'var(--c-yellow)',
+  'PROXIMO':'var(--c-info-2)','DISPONIBLE':'var(--c-ok)','AGOTADO':'var(--c-bad)','SIN ID':'var(--c-gray)',
 };
 
 // ── Sub-components ────────────────────────────────────────────
@@ -176,21 +176,21 @@ function MenuAcciones({ producto, puedeMoverTienda, onMover, onHistorial, onCont
   const acciones = [];
   if (puedeMoverTienda) {
     acciones.push(
-      { clave: 'subir', etiqueta: 'Subir a tienda', Icono: ArrowUpFromLine, color: 'text-[#4ade80]', al: () => onMover('subir') },
-      { clave: 'bajar', etiqueta: 'Bajar de tienda', Icono: ArrowDownToLine, color: 'text-[#BA7517]', al: () => onMover('bajar') },
+      { clave: 'subir', etiqueta: 'Subir a tienda', Icono: ArrowUpFromLine, color: 'text-[var(--c-ok)]', al: () => onMover('subir') },
+      { clave: 'bajar', etiqueta: 'Bajar de tienda', Icono: ArrowDownToLine, color: 'text-[var(--c-warn)]', al: () => onMover('bajar') },
     );
   }
 
   // El historial lo puede mirar cualquiera: es leer, no mover nada.
   acciones.push({
     clave: 'historial', etiqueta: 'Historial del submayor', Icono: History,
-    color: 'text-[#60a5fa]', al: onHistorial,
+    color: 'text-[var(--c-info-2)]', al: onHistorial,
   });
   // Qué le ha contado inventario a este producto: si aparece cada semana con
   // diferencia, no es el mismo caso que si falló una vez.
   acciones.push({
     clave: 'conteos', etiqueta: 'Conteos de inventario', Icono: ClipboardList,
-    color: 'text-[#a78bfa]', al: onConteos,
+    color: 'text-[var(--c-purple)]', al: onConteos,
   });
 
   if (acciones.length === 0) return <span className="text-muted-foreground/40 text-xs">—</span>;
@@ -242,16 +242,16 @@ function FailureHistoryRecord({ record, onRetry, isPending }) {
   const [expanded, setExpanded] = useState(false);
   const fmt = (iso) => iso ? new Date(iso).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' }) : '—';
   return (
-    <div className="rounded-lg border border-[#e24b4a]/20 bg-[#e24b4a]/5 overflow-hidden">
+    <div className="rounded-lg border border-[var(--c-bad)]/20 bg-[var(--c-bad)]/5 overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 gap-2">
         <div className="flex items-center gap-2 text-xs min-w-0">
-          <span className="text-[#e24b4a] font-medium whitespace-nowrap">{record.fallidos} fallidos</span>
+          <span className="text-[var(--c-bad)] font-medium whitespace-nowrap">{record.fallidos} fallidos</span>
           <span className="text-muted-foreground truncate">{fmt(record.fecha)}</span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {record.failures?.length > 0 && (
             <button onClick={() => onRetry(record.failures)} disabled={isPending}
-              className="text-xs px-2.5 py-1 rounded-md bg-[#4ade80]/10 text-[#4ade80] border border-[#4ade80]/20 hover:bg-[#4ade80]/20 disabled:opacity-50">
+              className="text-xs px-2.5 py-1 rounded-md bg-[var(--c-ok)]/10 text-[var(--c-ok)] border border-[var(--c-ok)]/20 hover:bg-[var(--c-ok)]/20 disabled:opacity-50">
               {isPending ? 'Reintentando…' : 'Reintentar'}
             </button>
           )}
@@ -263,13 +263,13 @@ function FailureHistoryRecord({ record, onRetry, isPending }) {
         </div>
       </div>
       {expanded && (
-        <div className="border-t border-[#e24b4a]/10 px-3 py-2 max-h-40 overflow-y-auto space-y-0.5">
+        <div className="border-t border-[var(--c-bad)]/10 px-3 py-2 max-h-40 overflow-y-auto space-y-0.5">
           {!record.failures?.length ? (
             <p className="text-xs text-muted-foreground italic">Detalle no disponible.</p>
           ) : record.failures.map((f, i) => (
-            <div key={i} className="flex items-start gap-2 text-xs py-1 border-b border-[#e24b4a]/10 last:border-0">
+            <div key={i} className="flex items-start gap-2 text-xs py-1 border-b border-[var(--c-bad)]/10 last:border-0">
               <span className="text-foreground font-medium min-w-0 flex-1 line-clamp-1">{f.nombre || f.id_tienda || f.codigo}</span>
-              <span className="text-[#e24b4a] shrink-0 text-[10px] max-w-[55%] text-right">{f.msg}</span>
+              <span className="text-[var(--c-bad)] shrink-0 text-[10px] max-w-[55%] text-right">{f.msg}</span>
             </div>
           ))}
         </div>
@@ -330,9 +330,9 @@ function SearchableSelect({ value, onChange, options, placeholder, maxWidth: max
         onClick={() => { setOpen(v => !v); setQuery(''); }}
         className={Icono
           ? `${ALTO} w-9 justify-center lg:w-auto lg:justify-between lg:gap-1.5 lg:px-3 ${maxWidth}
-            flex items-center text-xs rounded-lg bg-card border transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 ${
-            activo ? 'border-[#4ade80]/40 text-[#4ade80] bg-[#4ade80]/10' : 'border-border text-muted-foreground hover:text-foreground'}`
-          : `h-9 flex items-center gap-1.5 px-3 text-xs rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 ${maxWidth}`}>
+            flex items-center text-xs rounded-lg bg-card border transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[var(--c-ok)]/50 ${
+            activo ? 'border-[var(--c-ok)]/40 text-[var(--c-ok)] bg-[var(--c-ok)]/10' : 'border-border text-muted-foreground hover:text-foreground'}`
+          : `h-9 flex items-center gap-1.5 px-3 text-xs rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[var(--c-ok)]/30 transition-colors cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-[var(--c-ok)]/50 ${maxWidth}`}>
         {Icono ? (
           <>
             <span className="flex items-center gap-1.5 min-w-0">
@@ -361,7 +361,7 @@ function SearchableSelect({ value, onChange, options, placeholder, maxWidth: max
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar…"
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50" />
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-[var(--c-ok)]/50" />
             </div>
           </div>
           <div className="py-1 max-h-52 overflow-y-auto">
@@ -370,7 +370,7 @@ function SearchableSelect({ value, onChange, options, placeholder, maxWidth: max
             ) : filtered.map(o => (
               <button key={o.value} type="button"
                 onClick={() => { onChange(o.value); setOpen(false); setQuery(''); }}
-                className={`w-full text-left px-4 py-2 text-sm truncate transition-colors hover:bg-white/[0.04] ${value === o.value ? 'text-[#4ade80]' : 'text-muted-foreground hover:text-foreground'}`}>
+                className={`w-full text-left px-4 py-2 text-sm truncate transition-colors hover:bg-white/[0.04] ${value === o.value ? 'text-[var(--c-ok)]' : 'text-muted-foreground hover:text-foreground'}`}>
                 {o.label}
               </button>
             ))}
@@ -745,7 +745,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   });
 
   // ── Shared helpers ─────────────────────────────────────────
-  const FILTER_INPUT_CLS = "pl-3 pr-3 py-2 text-sm rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[#4ade80]/30 transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50 h-9 w-20";
+  const FILTER_INPUT_CLS = "pl-3 pr-3 py-2 text-sm rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[var(--c-ok)]/30 transition-colors focus:outline-hidden focus:ring-1 focus:ring-[var(--c-ok)]/50 h-9 w-20";
   const SET_FILTER = (key) => (e) => { setAdvFilters(f => ({ ...f, [key]: e.target.value })); resetPage(); };
 
   const hayFiltrosEL  = search || Object.values(advFilters).some(v => v && v !== 'all');
@@ -1002,10 +1002,10 @@ export default function Productos({ initialSource: initialSourceRaw }) {
             <>
               {/* KPIs */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <KPICard title="Total"          value={counts.total}     icon={Package}      color="text-[#378ADD]" bgColor="bg-[#378ADD]/10" />
-                <KPICard title="Con stock"      value={counts.activados} icon={ToggleLeft}    color="text-[#1D9E75]" bgColor="bg-[#1D9E75]/10" />
-                <KPICard title="Agotados (TKC)" value={counts.desact_ef} icon={AlertTriangle} color="text-[#E24B4A]" bgColor="bg-[#E24B4A]/10" />
-                <KPICard title="Sin ID con EF"  value={counts.sin_id}    icon={Hash}          color="text-[#BA7517]" bgColor="bg-[#BA7517]/10" />
+                <KPICard title="Total"          value={counts.total}     icon={Package}      color="text-[var(--c-info)]" bgColor="bg-[var(--c-info)]/10" />
+                <KPICard title="Con stock"      value={counts.activados} icon={ToggleLeft}    color="text-[var(--c-ok-dim)]" bgColor="bg-[var(--c-ok-dim)]/10" />
+                <KPICard title="Agotados (TKC)" value={counts.desact_ef} icon={AlertTriangle} color="text-[var(--c-bad)]" bgColor="bg-[var(--c-bad)]/10" />
+                <KPICard title="Sin ID con EF"  value={counts.sin_id}    icon={Hash}          color="text-[var(--c-warn)]" bgColor="bg-[var(--c-warn)]/10" />
               </div>
 
               {showImport && (
@@ -1026,7 +1026,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input value={search} onChange={e => { setSearch(e.target.value); resetPage(); }}
                     placeholder="Buscar por nombre, código o suministrador…"
-                    className="w-full pl-9 pr-9 py-2 text-sm rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground hover:border-[#4ade80]/30 transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50" />
+                    className="w-full pl-9 pr-9 py-2 text-sm rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground hover:border-[var(--c-ok)]/30 transition-colors focus:outline-hidden focus:ring-1 focus:ring-[var(--c-ok)]/50" />
                   {search && (
                     <button onClick={() => { setSearch(''); resetPage(); }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -1043,7 +1043,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   </span>
                   {(hayFiltrosEL || sort.key !== 'nombre' || sort.dir !== 'asc') && (
                     <button onClick={resetFiltros}
-                      className="flex items-center gap-1 text-xs text-[#e24b4a] hover:text-[#e24b4a]/80 transition-colors">
+                      className="flex items-center gap-1 text-xs text-[var(--c-bad)] hover:text-[var(--c-bad)]/80 transition-colors">
                       <X className="w-3 h-3" /> Limpiar
                     </button>
                   )}
@@ -1057,7 +1057,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                 onUpdate={(data) => updateMut.mutate({ id: selected.id, data })} />
 
               {/* Tabla ELíneas */}
-              <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+              <Card className="overflow-hidden" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -1120,13 +1120,13 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                                   <td key="nombre" className="p-3 cursor-pointer"
                                     onMouseEnter={e => setHoveredProduct({ p, rect: e.currentTarget.getBoundingClientRect() })}
                                     onMouseLeave={() => setHoveredProduct(null)}>
-                                    <p className="font-medium line-clamp-2 leading-snug hover:text-[#4ade80] transition-colors">{p.nombre}</p>
+                                    <p className="font-medium line-clamp-2 leading-snug hover:text-[var(--c-ok)] transition-colors">{p.nombre}</p>
                                   </td>
                                 ),
                                 codigo:        <td key={k} className="p-3 text-xs text-muted-foreground font-mono hidden sm:table-cell">{p.codigo_producto || '—'}</td>,
                                 id_tienda:     <td key={k} className="p-3 text-xs font-mono text-muted-foreground hidden sm:table-cell">{p.id_tienda || '—'}</td>,
                                 suministrador: <td key={k} className="p-3 text-xs hidden md:table-cell">{p.suministrador?.replace('SEL ', '') || '—'}</td>,
-                                ef:            <td key={k} className={`p-3 text-right font-semibold tabular-nums ${ef === 0 ? 'text-[#E24B4A]' : ''}`}>{ef}</td>,
+                                ef:            <td key={k} className={`p-3 text-right font-semibold tabular-nums ${ef === 0 ? 'text-[var(--c-bad)]' : ''}`}>{ef}</td>,
                                 a:             <td key={k} className="p-3 text-right text-muted-foreground tabular-nums hidden sm:table-cell">{a}</td>,
                                 t:             <td key={k} className="p-3 text-right text-muted-foreground tabular-nums hidden sm:table-cell">{t}</td>,
                                 precio:        <td key={k} className="p-3 text-right hidden sm:table-cell font-mono text-sm">${(p.precio_costo ?? 0).toFixed(2)}</td>,
@@ -1152,12 +1152,12 @@ export default function Productos({ initialSource: initialSourceRaw }) {
             <>
               {/* Panel de fallidos (sesión actual) */}
               {showFailures && syncFailures.length > 0 && (
-                <div className="rounded-lg border border-[#e24b4a]/30 bg-[#e24b4a]/5 p-3">
+                <div className="rounded-lg border border-[var(--c-bad)]/30 bg-[var(--c-bad)]/5 p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-[#e24b4a]">{syncFailures.length} productos fallidos</span>
+                    <span className="text-sm font-medium text-[var(--c-bad)]">{syncFailures.length} productos fallidos</span>
                     <div className="flex items-center gap-2">
                       <button onClick={() => retryMut.mutate()} disabled={retryMut.isPending}
-                        className="text-xs px-3 py-1 rounded-md bg-[#4ade80]/10 text-[#4ade80] border border-[#4ade80]/20 hover:bg-[#4ade80]/20 disabled:opacity-50">
+                        className="text-xs px-3 py-1 rounded-md bg-[var(--c-ok)]/10 text-[var(--c-ok)] border border-[var(--c-ok)]/20 hover:bg-[var(--c-ok)]/20 disabled:opacity-50">
                         {retryMut.isPending ? 'Reintentando…' : 'Reintentar fallidos'}
                       </button>
                       <button onClick={() => setShowFailures(false)} className="text-xs text-muted-foreground hover:text-foreground">✕</button>
@@ -1165,9 +1165,9 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   </div>
                   <div className="max-h-40 overflow-y-auto space-y-1">
                     {syncFailures.map((f, i) => (
-                      <div key={i} className="flex items-start gap-2 text-xs py-1 border-b border-[#e24b4a]/10 last:border-0">
+                      <div key={i} className="flex items-start gap-2 text-xs py-1 border-b border-[var(--c-bad)]/10 last:border-0">
                         <span className="text-foreground font-medium min-w-0 flex-1 line-clamp-1">{f.nombre || f.id_tienda}</span>
-                        <span className="text-[#e24b4a] shrink-0 text-[10px] max-w-[50%] text-right">{f.msg}</span>
+                        <span className="text-[var(--c-bad)] shrink-0 text-[10px] max-w-[50%] text-right">{f.msg}</span>
                       </div>
                     ))}
                   </div>
@@ -1185,7 +1185,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input value={search} onChange={e => { setSearch(e.target.value); resetPage(); }}
                     placeholder="Buscar por nombre, código, proveedor…"
-                    className="w-full pl-9 pr-9 py-2 text-sm rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground hover:border-[#4ade80]/30 transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#4ade80]/50" />
+                    className="w-full pl-9 pr-9 py-2 text-sm rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground hover:border-[var(--c-ok)]/30 transition-colors focus:outline-hidden focus:ring-1 focus:ring-[var(--c-ok)]/50" />
                   {search && (
                     <button onClick={() => { setSearch(''); resetPage(); }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -1205,7 +1205,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   )}
                   {hayFiltrosTKC && (
                     <button onClick={resetFiltros}
-                      className="flex items-center gap-1 text-xs text-[#e24b4a] hover:text-[#e24b4a]/80 transition-colors">
+                      className="flex items-center gap-1 text-xs text-[var(--c-bad)] hover:text-[var(--c-bad)]/80 transition-colors">
                       <X className="w-3 h-3" /> Limpiar
                     </button>
                   )}
@@ -1217,8 +1217,8 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   eligen y ordenan columnas (ColPicker) y se formatean celdas. */}
               {tkcError ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-2 text-center">
-                  <AlertTriangle className="w-8 h-8 text-[#e24b4a] opacity-70" />
-                  <p className="text-sm text-[#e24b4a]">No se pudo cargar el inventario de TKC</p>
+                  <AlertTriangle className="w-8 h-8 text-[var(--c-bad)] opacity-70" />
+                  <p className="text-sm text-[var(--c-bad)]">No se pudo cargar el inventario de TKC</p>
                   <p className="text-xs text-muted-foreground max-w-md">{tkcError.message}</p>
                 </div>
               ) : loadingTKC ? (
@@ -1235,7 +1235,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                     <>
                       <p className="text-sm">Ningún producto cumple los filtros</p>
                       <button onClick={resetFiltros}
-                        className="flex items-center gap-1 text-xs text-[#4ade80] hover:text-[#4ade80]/80 transition-colors">
+                        className="flex items-center gap-1 text-xs text-[var(--c-ok)] hover:text-[var(--c-ok)]/80 transition-colors">
                         <X className="w-3 h-3" /> Quitar los filtros
                       </button>
                     </>
@@ -1244,7 +1244,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   )}
                 </div>
               ) : (
-                <Card className="overflow-hidden" style={{ borderRadius: '12px', borderWidth: '0.5px' }}>
+                <Card className="overflow-hidden" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
@@ -1321,7 +1321,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                                 const value = p[key] ?? 0;
                                 return (
                                   <td key={key} className="px-3 py-2 text-right tabular-nums font-mono whitespace-nowrap">
-                                    <span className={key === 'ef' && value === 0 ? 'text-[#e24b4a]' : ''}>
+                                    <span className={key === 'ef' && value === 0 ? 'text-[var(--c-bad)]' : ''}>
                                       {numberFmt.format(value)}
                                     </span>
                                   </td>

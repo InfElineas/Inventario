@@ -39,7 +39,7 @@ function SyncProgressBanner() {
     >
       <div className="px-4 pt-3 pb-3 space-y-2">
         <div className="flex items-center gap-3">
-          <RefreshCw className="w-4 h-4 text-[#4ade80] animate-spin shrink-0" />
+          <RefreshCw className="w-4 h-4 text-[var(--c-ok)] animate-spin shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-foreground leading-tight">
               {isAll
@@ -52,7 +52,7 @@ function SyncProgressBanner() {
                   ? `Descargando… ${progress.fetched ?? 0} productos`
                   : `Guardando… ${progress.synced ?? 0} / ${progress.total ?? '?'}`}
                 {progress.errors > 0 && (
-                  <span className="text-[#e24b4a] ml-1">· {progress.errors} err</span>
+                  <span className="text-[var(--c-bad)] ml-1">· {progress.errors} err</span>
                 )}
               </p>
             )}
@@ -60,14 +60,14 @@ function SyncProgressBanner() {
         </div>
         <div className="w-full h-1.5 rounded-full overflow-hidden bg-muted">
           <div
-            className="h-full bg-[#4ade80] transition-all duration-300"
+            className="h-full bg-[var(--c-ok)] transition-all duration-300"
             style={{ width: `${pct}%` }}
           />
         </div>
         {isAll && (
           <div className="w-full h-0.5 rounded-full overflow-hidden bg-muted">
             <div
-              className="h-full bg-[#60a5fa] transition-all duration-500"
+              className="h-full bg-[var(--c-info-2)] transition-all duration-500"
               style={{ width: `${(idx / total) * 100}%` }}
             />
           </div>
@@ -350,7 +350,7 @@ export default function AppLayout() {
                 style={{
                   background: 'hsl(var(--input))',
                   border: '1px solid hsl(var(--border))',
-                  borderRadius: '6px',
+                  borderRadius: 'var(--r-ctl)',
                   width: '140px',
                 }}
               />
@@ -370,10 +370,10 @@ export default function AppLayout() {
               >
                 {user?.avatar_url ? (
                   <img src={user.avatar_url} alt={initials}
-                    className="w-8 h-8 sm:w-6 sm:h-6 rounded-full object-cover shrink-0 border border-[#4ade80]/30" />
+                    className="w-8 h-8 sm:w-6 sm:h-6 rounded-full object-cover shrink-0 border border-[var(--c-ok)]/30" />
                 ) : (
                   <div className="w-8 h-8 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[11px] sm:text-[10px] font-bold text-black shrink-0"
-                    style={{ background: '#4ade80' }}>
+                    style={{ background: 'var(--c-ok)' }}>
                     {initials}
                   </div>
                 )}
@@ -392,10 +392,10 @@ export default function AppLayout() {
                     <div className="flex items-center gap-2.5 mb-1">
                       {user?.avatar_url ? (
                         <img src={user.avatar_url} alt={initials}
-                          className="w-8 h-8 rounded-full object-cover shrink-0 border border-[#4ade80]/30" />
+                          className="w-8 h-8 rounded-full object-cover shrink-0 border border-[var(--c-ok)]/30" />
                       ) : (
                         <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-black shrink-0"
-                          style={{ background: '#4ade80' }}>
+                          style={{ background: 'var(--c-ok)' }}>
                           {initials}
                         </div>
                       )}
@@ -403,7 +403,7 @@ export default function AppLayout() {
                         <p className="text-[13px] font-medium text-foreground truncate leading-tight">
                           {user?.nickname || user?.full_name || 'Usuario'}
                         </p>
-                        <p className="text-[10px] text-[#4ade80] font-mono leading-tight" style={{ letterSpacing: '0.06em' }}>
+                        <p className="text-[10px] text-[var(--c-ok)] font-mono leading-tight" style={{ letterSpacing: '0.06em' }}>
                           {roleLabel.toUpperCase()}
                         </p>
                       </div>

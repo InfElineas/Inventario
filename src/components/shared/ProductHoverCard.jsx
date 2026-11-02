@@ -94,11 +94,11 @@ export default function ProductHoverCard({ producto, rect }) {
         {/* Stock + precio */}
         <div className="flex items-center gap-0 pt-1.5 border-t border-border">
           {[
-            { label: 'EF', value: producto.exist_fisica ?? 0, color: (producto.exist_fisica ?? 0) === 0 ? '#e24b4a' : '#4ade80' },
-            { label: 'A',  value: producto.almacen ?? 0,       color: '#60a5fa' },
-            { label: 'T',  value: producto.tienda  ?? 0,       color: '#facc15' },
+            { label: 'EF', value: producto.exist_fisica ?? 0, color: (producto.exist_fisica ?? 0) === 0 ? 'var(--c-bad)' : 'var(--c-ok)' },
+            { label: 'A',  value: producto.almacen ?? 0,       color: 'var(--c-info-2)' },
+            { label: 'T',  value: producto.tienda  ?? 0,       color: 'var(--c-yellow)' },
             ...(+(producto.precio_costo ?? 0) > 0
-              ? [{ label: 'Precio', value: `$${(+producto.precio_costo).toFixed(2)}`, color: '#a78bfa' }]
+              ? [{ label: 'Precio', value: `$${(+producto.precio_costo).toFixed(2)}`, color: 'var(--c-purple)' }]
               : [])
           ].map(({ label, value, color }) => (
             <div key={label} className="flex-1 text-center px-1">

@@ -133,7 +133,7 @@ export default function Anuncios() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input value={searchQ} onChange={(e) => { setSearchQ(e.target.value); setPage(1); }}
-              placeholder="Buscar producto..." className="pl-10" style={{ borderRadius: '8px' }} />
+              placeholder="Buscar producto..." className="pl-10" style={{ borderRadius: 'var(--r-ctl)' }} />
           </div>
         )}
         filtros={(
@@ -175,10 +175,10 @@ export default function Anuncios() {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard title={"MUERTO EF>0"} value={counts.muerto_ef} icon={AlertTriangle} color="text-[#E24B4A]" bgColor="bg-[#E24B4A]/10" />
-        <KPICard title={"DESACT EF>0"} value={counts.desact_ef} icon={AlertTriangle} color="text-[#fb923c]" bgColor="bg-[#fb923c]/10" />
-        <KPICard title="Sin ID con stock" value={counts.sin_id} icon={Hash} color="text-[#BA7517]" bgColor="bg-[#BA7517]/10" />
-        <KPICard title={"Activo EF=0"} value={counts.activo_ef0} icon={Eye} color="text-[#888780]" bgColor="bg-[#888780]/10" />
+        <KPICard title={"MUERTO EF>0"} value={counts.muerto_ef} icon={AlertTriangle} color="text-[var(--c-bad)]" bgColor="bg-[var(--c-bad)]/10" />
+        <KPICard title={"DESACT EF>0"} value={counts.desact_ef} icon={AlertTriangle} color="text-[var(--c-orange)]" bgColor="bg-[var(--c-orange)]/10" />
+        <KPICard title="Sin ID con stock" value={counts.sin_id} icon={Hash} color="text-[var(--c-warn)]" bgColor="bg-[var(--c-warn)]/10" />
+        <KPICard title={"Activo EF=0"} value={counts.activo_ef0} icon={Eye} color="text-[var(--c-gray)]" bgColor="bg-[var(--c-gray)]/10" />
       </div>
 
 
@@ -233,11 +233,11 @@ const TIPO_CASO_WHY = {
 };
 
 const ESTADO_HINT = {
-  pendiente:     { msg: 'Esperando revisión de INV.',          color: 'text-[#facc15]' },
-  pend_ca:       { msg: 'Esperando acción de CA (Anuncios).',  color: 'text-[#60a5fa]' },
-  en_auditoria:  { msg: 'En revisión por Auditoría.',          color: 'text-[#a78bfa]' },
-  completado:    { msg: 'Proceso completado y cerrado.',        color: 'text-[#4ade80]' },
-  devuelto:      { msg: 'Devuelto para corrección.',           color: 'text-[#E24B4A]'  },
+  pendiente:     { msg: 'Esperando revisión de INV.',          color: 'text-[var(--c-yellow)]' },
+  pend_ca:       { msg: 'Esperando acción de CA (Anuncios).',  color: 'text-[var(--c-info-2)]' },
+  en_auditoria:  { msg: 'En revisión por Auditoría.',          color: 'text-[var(--c-purple)]' },
+  completado:    { msg: 'Proceso completado y cerrado.',        color: 'text-[var(--c-ok)]' },
+  devuelto:      { msg: 'Devuelto para corrección.',           color: 'text-[var(--c-bad)]'  },
 };
 
 function AnuncioDetail({ anuncio, role, user, onUpdate }) {
@@ -327,18 +327,18 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
 
       {/* INV form */}
       {canInv && (
-        <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: '8px', borderWidth: '0.5px' }}>
+        <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: 'var(--r-ctl)', borderWidth: '0.5px' }}>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Revisión INV</p>
           <Select value={invForm.motivo_tkc} onValueChange={(v) => setInvForm({ ...invForm, motivo_tkc: v })}>
-            <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Motivo TKC" /></SelectTrigger>
+            <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Motivo TKC" /></SelectTrigger>
             <SelectContent>{MOTIVOS_TKC.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={invForm.motivo_elineas} onValueChange={(v) => setInvForm({ ...invForm, motivo_elineas: v })}>
-            <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Motivo ELíneas" /></SelectTrigger>
+            <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Motivo ELíneas" /></SelectTrigger>
             <SelectContent>{MOTIVOS_ELINEAS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={invForm.accion_inv} onValueChange={(v) => setInvForm({ ...invForm, accion_inv: v })}>
-            <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Acción INV" /></SelectTrigger>
+            <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Acción INV" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="reactivar">Reactivar</SelectItem>
               <SelectItem value="escalar_ca">Escalar a CA</SelectItem>
@@ -346,7 +346,7 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
               <SelectItem value="mantener">Mantener</SelectItem>
             </SelectContent>
           </Select>
-          <Textarea value={invForm.nota_inv} onChange={(e) => setInvForm({ ...invForm, nota_inv: e.target.value })} placeholder="Nota INV" style={{ borderRadius: '8px' }} />
+          <Textarea value={invForm.nota_inv} onChange={(e) => setInvForm({ ...invForm, nota_inv: e.target.value })} placeholder="Nota INV" style={{ borderRadius: 'var(--r-ctl)' }} />
           <Button size="sm" onClick={() => {
             const needsCaAction = ['reactivar', 'escalar_ca'].includes(invForm.accion_inv);
             handleTransicion({
@@ -356,16 +356,16 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
               fecha_inv: format(new Date(), 'yyyy-MM-dd'),
               estado_tarea: needsCaAction ? 'pend_ca' : 'en_auditoria',
             });
-          }} disabled={!invForm.accion_inv} style={{ borderRadius: '8px' }}>Confirmar</Button>
+          }} disabled={!invForm.accion_inv} style={{ borderRadius: 'var(--r-ctl)' }}>Confirmar</Button>
         </div>
       )}
 
       {/* CA form */}
       {canCa && (
-        <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: '8px', borderWidth: '0.5px' }}>
+        <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: 'var(--r-ctl)', borderWidth: '0.5px' }}>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Revisión CA</p>
           <Select value={caForm.accion_ca} onValueChange={(v) => setCaForm({ ...caForm, accion_ca: v })}>
-            <SelectTrigger style={{ borderRadius: '8px' }}><SelectValue placeholder="Acción CA" /></SelectTrigger>
+            <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Acción CA" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="reactivar">Reactivar</SelectItem>
               <SelectItem value="actualizar_precio">Actualizar precio</SelectItem>
@@ -376,9 +376,9 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
           </Select>
           {caForm.accion_ca === 'actualizar_precio' && (
             <Input type="number" placeholder="Precio nuevo" value={caForm.precio_nuevo}
-              onChange={(e) => setCaForm({ ...caForm, precio_nuevo: e.target.value })} style={{ borderRadius: '8px' }} />
+              onChange={(e) => setCaForm({ ...caForm, precio_nuevo: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
           )}
-          <Textarea value={caForm.nota_ca} onChange={(e) => setCaForm({ ...caForm, nota_ca: e.target.value })} placeholder="Nota CA" style={{ borderRadius: '8px' }} />
+          <Textarea value={caForm.nota_ca} onChange={(e) => setCaForm({ ...caForm, nota_ca: e.target.value })} placeholder="Nota CA" style={{ borderRadius: 'var(--r-ctl)' }} />
           <Button size="sm" onClick={() => handleTransicion({
             ...caForm,
             precio_nuevo: caForm.precio_nuevo ? Number(caForm.precio_nuevo) : null,
@@ -386,15 +386,15 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
             especialista_ca_nombre: user?.full_name,
             fecha_ca: format(new Date(), 'yyyy-MM-dd'),
             estado_tarea: 'en_auditoria',
-          })} disabled={!caForm.accion_ca} style={{ borderRadius: '8px' }}>Confirmar</Button>
+          })} disabled={!caForm.accion_ca} style={{ borderRadius: 'var(--r-ctl)' }}>Confirmar</Button>
         </div>
       )}
 
       {/* Auditor */}
       {canAudit && (
-        <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: '8px', borderWidth: '0.5px' }}>
+        <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: 'var(--r-ctl)', borderWidth: '0.5px' }}>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Auditoría</p>
-          <Textarea value={auditorNota} onChange={(e) => setAuditorNota(e.target.value)} placeholder="Nota auditor" style={{ borderRadius: '8px' }} />
+          <Textarea value={auditorNota} onChange={(e) => setAuditorNota(e.target.value)} placeholder="Nota auditor" style={{ borderRadius: 'var(--r-ctl)' }} />
           <div className="flex gap-2">
             <Button size="sm" onClick={async () => {
               if (!await confirmDialog('Se completará el proceso y no podrá revertirse.', { title: '¿Aprobar y completar?' })) return;
@@ -406,8 +406,8 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
                 estado_tarea: 'completado',
                 fecha_resolucion: format(new Date(), 'yyyy-MM-dd'),
               });
-            }} style={{ borderRadius: '8px' }}>Aprobar</Button>
-            <Button size="sm" variant="outline" onClick={() => handleTransicion({ nota_auditor: auditorNota, estado_tarea: 'devuelto' })} style={{ borderRadius: '8px' }}>Devolver</Button>
+            }} style={{ borderRadius: 'var(--r-ctl)' }}>Aprobar</Button>
+            <Button size="sm" variant="outline" onClick={() => handleTransicion({ nota_auditor: auditorNota, estado_tarea: 'devuelto' })} style={{ borderRadius: 'var(--r-ctl)' }}>Devolver</Button>
           </div>
         </div>
       )}
@@ -419,8 +419,11 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
 
 /** Una celda del listado de anuncios, la misma para tabla y ficha. */
 function celdaAnuncio(a, clave, enTabla) {
+  // `py-1.5`: la fila baja de 44 px a 32. En una pantalla de portátil eso
+  // son seis filas más sin desplazar, que es de lo que va un listado de
+  // trabajo. La ficha del teléfono no cambia: ahí el dedo manda.
   const env = (contenido, clases = '') => (enTabla
-    ? <td key={clave} className={`p-3 ${clases}`}>{contenido}</td>
+    ? <td key={clave} className={`px-2.5 py-1.5 ${clases}`}>{contenido}</td>
     : contenido);
   const tc = TIPO_CASO_LABELS[a.tipo_caso] || {};
 
@@ -435,7 +438,7 @@ function celdaAnuncio(a, clave, enTabla) {
     case 'tipo':
       return env(
         <span className={`inline-block text-[10px] px-2 py-0.5 rounded font-medium ${tc.bg} ${tc.text}`}
-          style={{ borderRadius: '4px' }}>{tc.label}</span>,
+          style={{ borderRadius: 'var(--r-chip)' }}>{tc.label}</span>,
         'text-center',
       );
     case 'ef':

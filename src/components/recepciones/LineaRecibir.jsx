@@ -66,7 +66,7 @@ export default function LineaRecibir({ linea, producto, nuevo, onConfirmar, onCa
 
   return (
     <div className="p-4 rounded-lg border space-y-3 bg-secondary/30"
-      style={{ borderRadius: '10px', borderWidth: '0.5px' }}>
+      style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-medium">{linea.producto_nombre}</p>
@@ -81,27 +81,27 @@ export default function LineaRecibir({ linea, producto, nuevo, onConfirmar, onCa
         <label className="space-y-1 text-xs text-muted-foreground">
           Cantidad recibida *
           <Input type="number" min="0" value={cantidad} autoFocus
-            onChange={(e) => setCantidad(e.target.value)} style={{ borderRadius: '8px' }} />
+            onChange={(e) => setCantidad(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
         </label>
         <label className="space-y-1 text-xs text-muted-foreground">
           Gramaje
           <Input value={gramaje} placeholder="370 ml, 500 g…"
-            onChange={(e) => setGramaje(e.target.value)} style={{ borderRadius: '8px' }} />
+            onChange={(e) => setGramaje(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
         </label>
         <label className="space-y-1 text-xs text-muted-foreground">
           Unidades por caja
           <Input type="number" min="0" value={porCaja}
-            onChange={(e) => setPorCaja(e.target.value)} style={{ borderRadius: '8px' }} />
+            onChange={(e) => setPorCaja(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
         </label>
         <label className="col-span-2 lg:col-span-1 space-y-1 text-xs text-muted-foreground">
           Fecha de vencimiento
           <Input type="date" value={vence}
-            onChange={(e) => setVence(e.target.value)} style={{ borderRadius: '8px' }} />
+            onChange={(e) => setVence(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
         </label>
         <label className="space-y-1 text-xs text-muted-foreground">
           Merma de origen
           <Input type="number" min="0" value={merma}
-            onChange={(e) => setMerma(e.target.value)} style={{ borderRadius: '8px' }} />
+            onChange={(e) => setMerma(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
         </label>
       </div>
 
@@ -112,34 +112,34 @@ export default function LineaRecibir({ linea, producto, nuevo, onConfirmar, onCa
 
       {nuevo && (
         <label className="block space-y-1 text-xs text-muted-foreground">
-          Código completo * <span className="text-[#BA7517]">— el producto no está en el catálogo</span>
+          Código completo * <span className="text-[var(--c-warn)]">— el producto no está en el catálogo</span>
           <Input value={codigo} onChange={(e) => setCodigo(e.target.value)}
             placeholder="Código de barras completo, tal como viene en el envase"
-            style={{ borderRadius: '8px' }} />
+            style={{ borderRadius: 'var(--r-ctl)' }} />
         </label>
       )}
 
       <div className="flex flex-wrap items-center gap-3">
         <CamaraFoto abierta={camara} onCerrar={() => setCamara(false)} onTomar={setFoto} />
-        <Button variant="outline" size="sm" onClick={() => setCamara(true)} style={{ borderRadius: '8px' }}>
+        <Button variant="outline" size="sm" onClick={() => setCamara(true)} style={{ borderRadius: 'var(--r-ctl)' }}>
           <Camera className="w-4 h-4 mr-1.5" /> {foto ? 'Repetir foto' : 'Foto de la presentación'}
         </Button>
         {foto && (
           <div className="flex items-center gap-2">
             <img src={foto} alt="Presentación del producto"
-              className="w-12 h-12 object-cover rounded" style={{ borderRadius: '6px' }} />
+              className="w-12 h-12 object-cover rounded" style={{ borderRadius: 'var(--r-ctl)' }} />
             <button onClick={() => setFoto(null)}
-              className="text-xs text-muted-foreground hover:text-[#E24B4A]">Quitar</button>
+              className="text-xs text-muted-foreground hover:text-[var(--c-bad)]">Quitar</button>
           </div>
         )}
 
         <div className="flex gap-2 ml-auto">
           <Button size="sm" variant={calidadOk ? 'default' : 'outline'}
-            onClick={() => setCalidadOk(true)} style={{ borderRadius: '8px' }}>
+            onClick={() => setCalidadOk(true)} style={{ borderRadius: 'var(--r-ctl)' }}>
             <Check className="w-3.5 h-3.5 mr-1" /> Calidad OK
           </Button>
           <Button size="sm" variant={!calidadOk ? 'destructive' : 'outline'}
-            onClick={() => setCalidadOk(false)} style={{ borderRadius: '8px' }}>
+            onClick={() => setCalidadOk(false)} style={{ borderRadius: 'var(--r-ctl)' }}>
             <X className="w-3.5 h-3.5 mr-1" /> Deficiente
           </Button>
         </div>
@@ -147,17 +147,17 @@ export default function LineaRecibir({ linea, producto, nuevo, onConfirmar, onCa
 
       {!calidadOk && (
         <Textarea placeholder="Qué le pasa al producto..." value={notaCalidad}
-          onChange={(e) => setNotaCalidad(e.target.value)} style={{ borderRadius: '8px' }} />
+          onChange={(e) => setNotaCalidad(e.target.value)} style={{ borderRadius: 'var(--r-ctl)' }} />
       )}
 
       <div className="flex flex-wrap justify-end gap-2">
         {onCancelar && (
-          <Button variant="ghost" size="sm" onClick={onCancelar} style={{ borderRadius: '8px' }}>
+          <Button variant="ghost" size="sm" onClick={onCancelar} style={{ borderRadius: 'var(--r-ctl)' }}>
             <X className="w-4 h-4 mr-1.5" /> Cancelar
           </Button>
         )}
         <Button size="sm" onClick={confirmar} disabled={falta || guardando}
-          style={{ borderRadius: '8px' }}>
+          style={{ borderRadius: 'var(--r-ctl)' }}>
           {guardando
             ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Guardando…</>
             : <><Check className="w-4 h-4 mr-1.5" /> Confirmar</>}
@@ -177,8 +177,8 @@ export default function LineaRecibir({ linea, producto, nuevo, onConfirmar, onCa
 function EstadoTkc({ producto, nuevo }) {
   if (nuevo) {
     return (
-      <span className="shrink-0 text-xs px-2 py-1 rounded bg-[#BA751714] text-[#BA7517] font-medium"
-        style={{ borderRadius: '6px' }}>
+      <span className="shrink-0 text-xs px-2 py-1 rounded bg-[var(--c-warn)]/8 text-[var(--c-warn)] font-medium"
+        style={{ borderRadius: 'var(--r-ctl)' }}>
         Nuevo · sin anuncio en TKC
       </span>
     );
@@ -188,8 +188,8 @@ function EstadoTkc({ producto, nuevo }) {
   const activo = estado === 'ACTIVADO';
   return (
     <span className={`shrink-0 text-xs px-2 py-1 rounded font-medium ${
-      activo ? 'bg-[#3E9B4F14] text-[#3E9B4F]' : 'bg-secondary text-muted-foreground'
-    }`} style={{ borderRadius: '6px' }}>
+      activo ? 'bg-[var(--c-ok-dim)]/8 text-[var(--c-ok-dim)]' : 'bg-secondary text-muted-foreground'
+    }`} style={{ borderRadius: 'var(--r-ctl)' }}>
       TKC: {estado}
       {producto?.id_tienda ? ` · ${producto.id_tienda}` : ''}
     </span>
