@@ -86,6 +86,9 @@ nuestra. **Solo los que tienen existencia**: un lote en cero no es una tarea.
 > Los cortes de 15 y 30 días vienen heredados de la vista anterior y **nadie
 > del negocio los ha validado**.
 
+Tocar un lote abre su detalle: qué le pasa según su estado y las acciones que
+le tocan, cada una a un toque (el menú ⋯ de la fila ofrece las mismas).
+
 Qué se puede hacer con cada uno:
 
 - **Crítico o vencido** → **bajarlo de tienda**, la primera opción del menú:

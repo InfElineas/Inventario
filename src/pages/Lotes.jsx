@@ -16,7 +16,7 @@ import { Search, AlertTriangle, Clock, CheckCircle, HelpCircle, Send, MoreHorizo
 import { format } from 'date-fns';
 import { tieneRol } from '@/lib/roles';
 import { ROLES_TIENDA } from '@/lib/ajustes';
-import { accionesDeLote, resumenPorVencer, lotesACsv } from '@/lib/lotes';
+import { accionesDeLote, avisoDeLote, resumenPorVencer, lotesACsv } from '@/lib/lotes';
 import DialogosConteo from '@/components/inventario/AccionesConteo';
 import { sugerirBajadaLote } from '@/components/productos/MoverTiendaDialog';
 import { ALL_CLASIF_MERMA } from '@/lib/constants';
@@ -320,7 +320,9 @@ export default function Lotes() {
         encabezado="producto_nombre"
         accion="accion"
         orden={{ sort, onSort }}
-        alPulsar={(l) => { setSelectedId(l.id); setAccion('editar'); }}
+        // Tocar un lote abre lo que corresponde a su estado, no siempre el
+        // formulario de la fecha: ahí un crítico solo podía cambiar la fecha.
+        alPulsar={(l) => { setSelectedId(l.id); setAccion('detalle'); }}
         celda={(l, k, enTabla) => celdaLote({
           lote: l, clave: k, enTabla, user,
           onAccion: (a) => {
@@ -339,6 +341,24 @@ export default function Lotes() {
       />
 
       <Pagination page={page} total={sorted.length} pageSize={PAGE_SIZE} onPage={irA} />
+
+      {/* Lo primero que se abre: qué pasa con este lote y qué se puede hacer,
+          según su estado. */}
+      <Dialog open={accion === 'detalle' && !!selected} onOpenChange={(o) => { if (!o) cerrar(); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Lote {selected?.no_lote || 's/n'}</DialogTitle></DialogHeader>
+          {selected && (
+            <DetalleLote lote={selected}
+              puedeGestionar={tieneRol(user, ['inv', 'ca', 'administrador'])}
+              puedeMoverTienda={tieneRol(user, ROLES_TIENDA)}
+              onElegir={(clave) => {
+                if (clave === 'bajar') { setBajando(selected); cerrar(); return; }
+                setAccion(clave);
+              }}
+              onCerrar={cerrar} />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Corregir el lote: la fecha del envase y una nota. Vale para
           cualquier estado, porque la fecha también puede venir mal. */}
@@ -469,6 +489,75 @@ export default function Lotes() {
     </div>
   );
 }
+function describirAccion(lote, clave) {
+  return {
+    bajar: { etiqueta: 'Bajar de tienda', Icono: ArrowDownToLine, color: 'text-[var(--c-warn)]' },
+    merma: { etiqueta: 'Mandar a merma', Icono: TrendingDown, color: 'text-[var(--c-bad)]' },
+    ic: { etiqueta: 'Enviar a intervención comercial', Icono: Send, color: 'text-[var(--c-warn)]' },
+    editar: {
+      etiqueta: lote.fecha_vencimiento ? 'Corregir fecha o anotar' : 'Poner la fecha del envase',
+      Icono: CalendarPlus, color: 'text-[var(--c-info-2)]',
+    },
+  }[clave];
+}
+
+/**
+ * Lo que se ve al tocar un lote: sus datos, qué le pasa y lo que se puede
+ * hacer con él, cada cosa a un toque. Es el mismo conjunto del menú de la
+ * fila, pero dicho: en el teléfono el menú de tres puntos pasa desapercibido
+ * y quien tocaba la ficha solo encontraba el formulario de la fecha.
+ */
+function DetalleLote({ lote, puedeGestionar, puedeMoverTienda, onElegir, onCerrar }) {
+  const aviso = avisoDeLote(lote);
+  const acciones = accionesDeLote(lote, { puedeGestionar, puedeMoverTienda });
+
+  return (
+    <div className="space-y-4">
+      <ReadOnlyBlock title="Datos del lote">
+        <ReadOnlyField label="Producto" value={lote.producto_nombre} />
+        <ReadOnlyField label="Código" value={lote.producto_codigo} />
+        <ReadOnlyField label="Cantidad" value={lote.cantidad} />
+        <ReadOnlyField label="Vence"
+          value={lote.fecha_vencimiento ? `${lote.fecha_vencimiento}${lote.fecha_corregida ? ' (del envase)' : ''}` : 'Sin fecha'} />
+      </ReadOnlyBlock>
+
+      {aviso && <AlertBanner variant={aviso.variant} message={aviso.texto} />}
+
+      {lote.nota_revision && (
+        <AlertBanner variant="info"
+          message={`Ya revisado por ${lote.revisado_por || 'alguien'}: ${lote.nota_revision}`} />
+      )}
+
+      {acciones.length > 0 ? (
+        <div className="space-y-2">
+          {acciones.map(({ clave, nota }, i) => {
+            const { etiqueta, Icono, color } = describirAccion(lote, clave);
+            return (
+              <Button key={clave} variant={i === 0 ? 'default' : 'outline'}
+                className="w-full justify-start h-auto py-2.5"
+                onClick={() => onElegir(clave)} style={{ borderRadius: 'var(--r-ctl)' }}>
+                <Icono className={`w-4 h-4 mr-2 shrink-0 ${i === 0 ? '' : color}`} />
+                <span className="text-left">
+                  {etiqueta}
+                  {nota && <span className="block text-[11px] font-normal opacity-70">{nota}</span>}
+                </span>
+              </Button>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Tu rol no puede gestionar este lote desde aquí.
+        </p>
+      )}
+
+      <div className="flex justify-end">
+        <Button variant="ghost" onClick={onCerrar} style={{ borderRadius: 'var(--r-ctl)' }}>Cerrar</Button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Qué se puede hacer con un lote, según en qué estado esté.
  *
@@ -495,18 +584,9 @@ function MenuLote({ lote, puedeGestionar, puedeMoverTienda, onAccion }) {
    * Lo unico que se deja fuera es lo que no tiene sentido: mandar a merma un
    * lote con dos anos por delante, o pedir rebaja de uno ya vencido.
    */
-  const POR_CLAVE = {
-    bajar: { etiqueta: 'Bajar de tienda', Icono: ArrowDownToLine, color: 'text-[var(--c-warn)]' },
-    merma: { etiqueta: 'Mandar a merma', Icono: TrendingDown, color: 'text-[var(--c-bad)]' },
-    ic: { etiqueta: 'Enviar a intervención comercial', Icono: Send, color: 'text-[var(--c-warn)]' },
-    editar: {
-      etiqueta: lote.fecha_vencimiento ? 'Corregir fecha o anotar' : 'Poner la fecha del envase',
-      Icono: CalendarPlus, color: 'text-[var(--c-info-2)]',
-    },
-  };
   // Qué toca en cada estado lo decide `accionesDeLote`, que se prueba aparte.
   const acciones = accionesDeLote(lote, { puedeGestionar, puedeMoverTienda })
-    .map(({ clave, nota }) => ({ clave, nota, ...POR_CLAVE[clave] }));
+    .map(({ clave, nota }) => ({ clave, nota, ...describirAccion(lote, clave) }));
 
   if (acciones.length === 0) return <span className="text-muted-foreground/40 text-xs">—</span>;
 

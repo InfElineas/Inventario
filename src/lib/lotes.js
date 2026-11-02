@@ -46,6 +46,51 @@ export function accionesDeLote(lote, { puedeGestionar, puedeMoverTienda }) {
   return acciones;
 }
 
+const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+
+/**
+ * Lo que hay que decirle a quien abre un lote, según cómo esté.
+ *
+ * Antes tocar un lote abría siempre el formulario de la fecha, también en uno
+ * crítico o vencido, donde lo que importa no es la fecha sino sacarlo del piso.
+ * Esto es lo primero que se lee: qué pasa con este lote y qué se espera de
+ * quien lo tiene delante.
+ *
+ * @returns {{ variant: 'danger'|'warning'|'info', texto: string } | null}
+ */
+export function avisoDeLote(lote) {
+  const dias = lote.vigencia_dias;
+  const unidades = plural(Number(lote.cantidad) || 0, 'unidad', 'unidades');
+  switch (lote.estado_fv) {
+    case 'vencido':
+      return {
+        variant: 'danger',
+        texto: `Venció hace ${plural(Math.abs(dias ?? 0), 'día', 'días')} y quedan ${unidades}. `
+          + 'Baja de tienda lo que siga en el piso y dale salida como merma.',
+      };
+    case 'critico':
+      return {
+        variant: 'danger',
+        texto: `Vence en ${plural(dias ?? 0, 'día', 'días')}, ${unidades}. `
+          + 'Bájalo de tienda lo antes posible y propón una rebaja si no se va a vender.',
+      };
+    case 'por_vencer':
+      return {
+        variant: 'warning',
+        texto: `Vence en ${plural(dias ?? 0, 'día', 'días')}, ${unidades}. `
+          + 'Todavía hay tiempo de rebajarlo o devolverlo antes de que pase a crítico.',
+      };
+    case 'sin_fecha':
+      return {
+        variant: 'info',
+        texto: 'No tiene fecha de vencimiento, y sin ella no avisa ni se puede gestionar. '
+          + 'Mira el envase y anótala.',
+      };
+    default:
+      return null;
+  }
+}
+
 /** Los lotes por vencer en una línea: cuántos, cuánto hay y cuándo vence el primero. */
 export function resumenPorVencer(lotes) {
   const lista = lotes.filter((l) => l.estado_fv === 'por_vencer');

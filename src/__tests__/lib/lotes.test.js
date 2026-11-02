@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { accionesDeLote, resumenPorVencer, lotesACsv } from '@/lib/lotes';
+import { accionesDeLote, avisoDeLote, resumenPorVencer, lotesACsv } from '@/lib/lotes';
 
 const lote = (estado, extra = {}) => ({
   estado_fv: estado, producto_codigo: 'SC1', cantidad: 5, ...extra,
@@ -88,5 +88,33 @@ describe('lotesACsv', () => {
 
   it('sin lotes queda solo la cabecera', () => {
     expect(lotesACsv([]).split('\n')).toHaveLength(1);
+  });
+});
+
+describe('avisoDeLote', () => {
+  it('un vencido dice cuánto lleva vencido y pide bajarlo y darle salida', () => {
+    const a = avisoDeLote(lote('vencido', { vigencia_dias: -3, cantidad: 5 }));
+    expect(a.variant).toBe('danger');
+    expect(a.texto).toMatch(/venció hace 3 días.*5 unidades.*merma/i);
+  });
+
+  it('un crítico pide bajarlo lo antes posible', () => {
+    const a = avisoDeLote(lote('critico', { vigencia_dias: 1, cantidad: 1 }));
+    expect(a.variant).toBe('danger');
+    expect(a.texto).toMatch(/vence en 1 día, 1 unidad.*lo antes posible/i);
+  });
+
+  it('un por vencer avisa con margen: todavía hay tiempo', () => {
+    const a = avisoDeLote(lote('por_vencer', { vigencia_dias: 20 }));
+    expect(a.variant).toBe('warning');
+    expect(a.texto).toMatch(/20 días/);
+  });
+
+  it('sin fecha pide mirar el envase', () => {
+    expect(avisoDeLote(lote('sin_fecha')).texto).toMatch(/envase/i);
+  });
+
+  it('un vigente no dice nada', () => {
+    expect(avisoDeLote(lote('vigente'))).toBeNull();
   });
 });
