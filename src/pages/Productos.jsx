@@ -11,6 +11,7 @@ import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL, ACCION
 import { EXISTENCIA_FILTERS } from '@/services/tkc/body';
 import { warehouseName } from '@/services/tkc/warehouses';
 import { getLastSync } from '@/lib/useAutoSync';
+import MenuAcciones from '@/components/productos/MenuAcciones';
 import MoverTiendaDialog from '@/components/productos/MoverTiendaDialog';
 import HistorialSubmayorDialog from '@/components/productos/HistorialSubmayorDialog';
 import HistorialInventarioDialog from '@/components/productos/HistorialInventarioDialog';
@@ -28,14 +29,13 @@ import ProductoModal from '@/components/productos/ProductoModal';
 const ImportarProductos = lazy(() => import('@/components/productos/ImportarProductos'));
 import {
   Search, Package, AlertTriangle, Hash, ToggleLeft, Upload, ChevronDown, X,
-  Database, RefreshCw, Clock, ArrowUpFromLine, ArrowDownToLine, MoreHorizontal, History, ClipboardList,
+  Database, RefreshCw, Clock,
   Rows3, Boxes, Store, Megaphone, Factory, Tag,
 } from 'lucide-react';
 import SortTh from '@/components/shared/SortTh';
 import { useSortable } from '@/lib/useSortable';
 import { base44 } from '@/api/base44Client';
 import { SIN_SONDEO } from '@/lib/query-client';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { tieneRol } from '@/lib/roles';
 import { ALTO, FiltroIcono } from '@/components/shared/ControlesLista';
 
@@ -161,67 +161,6 @@ const ET_LABEL_COLOR = {
 };
 
 // ── Sub-components ────────────────────────────────────────────
-/**
- * Las acciones de una fila del catálogo.
- *
- * Un menú y no botones sueltos: empezó con subir y bajar de tienda, y la lista
- * va a seguir creciendo. Dos iconos caben en la columna; seis no, y acabarían
- * compitiendo por el sitio con los datos.
- *
- * Lo que una persona no puede hacer no se le enseña apagado: se le quita.
- */
-function MenuAcciones({ producto, puedeMoverTienda, onMover, onHistorial, onConteos }) {
-  const [abierto, setAbierto] = useState(false);
-
-  const acciones = [];
-  if (puedeMoverTienda) {
-    acciones.push(
-      { clave: 'subir', etiqueta: 'Subir a tienda', Icono: ArrowUpFromLine, color: 'text-[var(--c-ok)]', al: () => onMover('subir') },
-      { clave: 'bajar', etiqueta: 'Bajar de tienda', Icono: ArrowDownToLine, color: 'text-[var(--c-warn)]', al: () => onMover('bajar') },
-    );
-  }
-
-  // El historial lo puede mirar cualquiera: es leer, no mover nada.
-  acciones.push({
-    clave: 'historial', etiqueta: 'Historial del submayor', Icono: History,
-    color: 'text-[var(--c-info-2)]', al: onHistorial,
-  });
-  // Qué le ha contado inventario a este producto: si aparece cada semana con
-  // diferencia, no es el mismo caso que si falló una vez.
-  acciones.push({
-    clave: 'conteos', etiqueta: 'Conteos de inventario', Icono: ClipboardList,
-    color: 'text-[var(--c-purple)]', al: onConteos,
-  });
-
-  if (acciones.length === 0) return <span className="text-muted-foreground/40 text-xs">—</span>;
-
-  return (
-    <Popover open={abierto} onOpenChange={setAbierto}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={`Acciones: ${producto.nombre}`}
-          className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <MoreHorizontal className="w-4 h-4" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-52 p-1">
-        {acciones.map(({ clave, etiqueta, Icono, color, al }) => (
-          <button
-            key={clave} type="button"
-            onClick={() => { setAbierto(false); al(); }}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-left hover:bg-secondary transition-colors"
-          >
-            <Icono className={`w-3.5 h-3.5 ${color}`} />
-            {etiqueta}
-          </button>
-        ))}
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 function ProductImg({ fotos, nombre }) {
   const [err, setErr] = useState(false);
   const src = Array.isArray(fotos) && fotos.length > 0 ? fotos[0] : null;

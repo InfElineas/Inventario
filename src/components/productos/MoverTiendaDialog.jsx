@@ -51,6 +51,34 @@ const MODULOS = {
   },
 };
 
+/**
+ * Cuánto bajar de tienda a la vista de la diferencia de un conteo.
+ *
+ * Solo un SOBRANTE se atiende bajando: lo que sobra se encontró de más y
+ * está en el piso de tienda. Un faltante no se arregla moviendo mercancía de
+ * sitio, y proponer una cantidad ahí invitaría a mover lo que no corrige
+ * nada. Nunca más de lo que hay en tienda: TKC lo recortaría igualmente, pero
+ * quien confirma tiene que ver desde el principio la cantidad real.
+ *
+ * @returns {{ cantidad?: number, motivo: string } | null}
+ */
+export function sugerirBajada(diferencia, enTienda) {
+  const dif = Number(diferencia);
+  if (!Number.isFinite(dif) || dif === 0) return null;
+  if (dif < 0) {
+    return { motivo: `El conteo tiene un faltante de ${-dif}: mover mercancía entre almacén y tienda no lo corrige.` };
+  }
+  const tienda = Number(enTienda ?? 0);
+  if (tienda <= 0) {
+    return { motivo: `El conteo tiene un sobrante de ${dif}, pero no hay nada en tienda que bajar.` };
+  }
+  const cantidad = Math.min(dif, tienda);
+  return {
+    cantidad,
+    motivo: `Sobrante de ${dif} en el conteo, ${tienda} en tienda: se propone bajar ${cantidad}.`,
+  };
+}
+
 /** Una por envío distinto; repetir el mismo la reutiliza y TKC no duplica. */
 const nuevaClave = () => `tienda-${crypto.randomUUID()}`;
 
@@ -124,12 +152,12 @@ export function Plan({ lineas, concedido, pedido, modulo }) {
   );
 }
 
-export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, onClose }) {
+export default function MoverTiendaDialog({ modulo, producto, almacen, sugerencia, onHecho, onClose }) {
   const cfg = MODULOS[modulo] ?? MODULOS.subir;
   const { confirmDialog, ConfirmDialogNode } = useConfirm();
 
   const disponible = cfg.disponible(producto ?? {});
-  const [cantidad, setCantidad] = useState(String(disponible || 1));
+  const [cantidad, setCantidad] = useState(String(sugerencia?.cantidad ?? (disponible || 1)));
   const [plan, setPlan] = useState(null);
   const [resultado, setResultado] = useState(null);
   const [error, setError] = useState('');
@@ -263,6 +291,8 @@ export default function MoverTiendaDialog({ modulo, producto, almacen, onHecho, 
                 </select>
               </label>
             </div>
+
+            {sugerencia?.motivo && <AlertBanner variant="info" message={sugerencia.motivo} />}
 
             {modo === 'reserva' && (
               <AlertBanner variant="info"

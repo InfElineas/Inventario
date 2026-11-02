@@ -29,6 +29,8 @@ import { CLASIF_AJUSTE, CLASIF_FACT, ESTADO_FACT, conValorActual } from '@/lib/c
 import { ESTADO_POR_RESULTADO, estadoContradictorio } from '@/lib/ajusteFact'
 import { useSortable } from '@/lib/useSortable';
 import { tieneRol } from '@/lib/roles';
+import { ROLES_TIENDA } from '@/lib/ajustes';
+import DialogosConteo, { CeldaAcciones } from '@/components/inventario/AccionesConteo';
 import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
 import CabeceraLista from '@/components/shared/CabeceraLista';
 import ListaResponsive from '@/components/shared/ListaResponsive';
@@ -99,6 +101,7 @@ const INV_COL_DEFS = [
   { key: 'especialista',  label: 'Especialista',    defaultOn: false, required: false },
   { key: 'estado',        label: 'Estado',          defaultOn: true,  required: false },
   { key: 'fecha',         label: 'Fecha',           defaultOn: true,  required: false },
+  { key: 'acciones',      label: 'Acciones',        defaultOn: true,  required: false },
 ]
 const INV_COLS_KEY = 'inv_cols'
 
@@ -113,11 +116,13 @@ const COL_TITULO = {
   especialista:  { label: 'Especialista',  className: 'hidden lg:table-cell' },
   estado:        { label: 'Estado',        align: 'center' },
   fecha:         { label: 'Fecha',         className: 'hidden md:table-cell' },
+  acciones:      { label: 'Acciones' },
 }
 
 export default function Inventario({ ambito = 'inventario' }) {
   const [showForm, setShowForm] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  const [accionFila, setAccionFila] = useState(null);   // { tipo, inv } del menú de la fila
   // Por defecto, lo que le toca a esta sección. Ver src/lib/ambito.js.
   const { almacen, setAlmacen, almacenesConfig } = useAlmacen();
   const [filterEstado, setFilterEstado] = useState('ambito');
@@ -147,6 +152,7 @@ export default function Inventario({ ambito = 'inventario' }) {
   // de los suyos; facturación y auditoría ven los de todos porque les toca
   // procesarlos.
   const vistaGlobal = tieneRol(user, VISTA_GLOBAL_INV);
+  const puedeMoverTienda = tieneRol(user, ROLES_TIENDA);
 
   // Qué filas le tocan a esta pantalla. Va al WHERE, no al navegador: lo que
   // se filtra aquí tiene que contar para el total y para las páginas.
@@ -410,8 +416,19 @@ export default function Inventario({ ambito = 'inventario' }) {
         claveDe={(inv) => inv.id}
         encabezado="producto"
         orden={{ sort, onSort }}
+        accion="acciones"
         alPulsar={(inv) => { setSelectedId(inv.id); setShowForm(false); }}
-        celda={(inv, k, enTabla) => celdaConteo(inv, k, enTabla, difColor)}
+        celda={(inv, k, enTabla) => celdaConteo(inv, k, enTabla, difColor, (f) => (
+          <CeldaAcciones inv={f} puedeMoverTienda={puedeMoverTienda} onAccion={setAccionFila} />
+        ))}
+      />
+
+      {/* Las acciones del catálogo sobre la fila. Mover cambia la existencia
+          en TKC, así que se descarta lo que se tenía de ella. */}
+      <DialogosConteo
+        accion={accionFila}
+        onHecho={() => queryClient.invalidateQueries({ queryKey: ['submayor-producto'] })}
+        onClose={() => setAccionFila(null)}
       />
 
       <Pagination page={page} total={total} pageSize={PAGE_SIZE} onPage={setPage} />
@@ -888,7 +905,7 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
 }
 
 /** Una celda del listado de conteos, la misma para tabla y ficha. */
-function celdaConteo(inv, clave, enTabla, difColor) {
+function celdaConteo(inv, clave, enTabla, difColor, acciones) {
   // `py-1.5`: la fila baja de 44 px a 32. En una pantalla de portátil eso
   // son seis filas más sin desplazar, que es de lo que va un listado de
   // trabajo. La ficha del teléfono no cambia: ahí el dedo manda.
@@ -929,6 +946,8 @@ function celdaConteo(inv, clave, enTabla, difColor) {
       return env(<StatusBadge status={inv.estado_tarea} />, 'text-center');
     case 'fecha':
       return env(<span className="text-muted-foreground">{inv.fecha_inv?.slice(0, 10)}</span>);
+    case 'acciones':
+      return env(acciones(inv), 'whitespace-nowrap');
     default:
       return env(null);
   }
