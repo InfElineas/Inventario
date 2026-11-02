@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
  *
  * Lo que una persona no puede hacer no se le enseña apagado: se le quita.
  */
-export default function MenuAcciones({ producto, puedeMoverTienda, modulos = ['subir', 'bajar'], onMover, onHistorial, onConteos, onEliminar }) {
+export default function MenuAcciones({ producto, puedeMoverTienda, modulos = ['subir', 'bajar'], extras = [], onMover, onHistorial, onConteos, onEliminar }) {
   const [abierto, setAbierto] = useState(false);
 
   const acciones = [];
@@ -25,6 +25,10 @@ export default function MenuAcciones({ producto, puedeMoverTienda, modulos = ['s
       acciones.push({ clave: 'bajar', etiqueta: 'Bajar de tienda', Icono: ArrowDownToLine, color: 'text-[var(--c-warn)]', al: () => onMover('bajar') });
     }
   }
+
+  // Lo que solo existe en esa pantalla —en vencimientos, mandar a merma o
+  // pedir una rebaja— va entre los movimientos y las consultas.
+  acciones.push(...extras);
 
   // El historial lo puede mirar cualquiera: es leer, no mover nada.
   acciones.push({
@@ -60,15 +64,18 @@ export default function MenuAcciones({ producto, puedeMoverTienda, modulos = ['s
           <MoreHorizontal className="w-4 h-4" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-52 p-1">
-        {acciones.map(({ clave, etiqueta, Icono, color, al }) => (
+      <PopoverContent align="end" className="w-60 p-1">
+        {acciones.map(({ clave, etiqueta, Icono, color, nota, al }) => (
           <button
             key={clave} type="button"
             onClick={() => { setAbierto(false); al(); }}
             className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-left hover:bg-secondary transition-colors"
           >
-            <Icono className={`w-3.5 h-3.5 ${color}`} />
-            {etiqueta}
+            <Icono className={`w-3.5 h-3.5 shrink-0 ${color}`} />
+            <span className="min-w-0">
+              {etiqueta}
+              {nota && <span className="block text-[11px] text-muted-foreground">{nota}</span>}
+            </span>
           </button>
         ))}
       </PopoverContent>

@@ -11,12 +11,13 @@ import KPICard from '@/components/shared/KPICard';
 import LotBadge from '@/components/shared/LotBadge';
 import { useSortable } from '@/lib/useSortable';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
-import { Search, AlertTriangle, Clock, CheckCircle, HelpCircle, Send, MoreHorizontal,
+import { Search, AlertTriangle, Clock, CheckCircle, HelpCircle, Send,
   CalendarPlus, TrendingDown, RefreshCw, Thermometer, ArrowDownToLine, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { tieneRol } from '@/lib/roles';
 import { ROLES_TIENDA } from '@/lib/ajustes';
-import { accionesDeLote, avisoDeLote, resumenPorVencer, lotesACsv } from '@/lib/lotes';
+import { accionesDeLote, resumenPorVencer, lotesACsv } from '@/lib/lotes';
+import MenuAcciones from '@/components/productos/MenuAcciones';
 import DialogosConteo from '@/components/inventario/AccionesConteo';
 import { sugerirBajadaLote } from '@/components/productos/MoverTiendaDialog';
 import { ALL_CLASIF_MERMA } from '@/lib/constants';
@@ -25,7 +26,6 @@ import { fetchLotes } from '@/services/lotesService';
 import AlertBanner from '@/components/shared/AlertBanner';
 import Pagination from '@/components/shared/Pagination';
 import ListaResponsive from '@/components/shared/ListaResponsive';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { warehouseName } from '@/services/tkc/warehouses';
 import { notifyJefeDepto } from '@/lib/notificationService';
@@ -80,7 +80,7 @@ export default function Lotes() {
   const [searchQ, setSearchQ] = useState('');
   const [selectedId, setSelectedId] = useState(null);
   const [accion, setAccion] = useState(null);   // 'ic' | 'editar' | 'merma'
-  const [bajando, setBajando] = useState(null);   // lote que se baja de tienda
+  const [accionFila, setAccionFila] = useState(null);   // { tipo, inv }: bajar, historial o conteos de un lote
   const [page, setPage] = useState(1);
   const [icForm, setIcForm] = useState({ cant_x_vencer: '', clasif_inv: '', nota_inv: '', propuesta_precio_ic: '', precio_restaurar: '', notas_ic: '' });
   const { sort, onSort } = useSortable('fecha_vencimiento', 'asc');
@@ -320,45 +320,25 @@ export default function Lotes() {
         encabezado="producto_nombre"
         accion="accion"
         orden={{ sort, onSort }}
-        // Tocar un lote abre lo que corresponde a su estado, no siempre el
-        // formulario de la fecha: ahí un crítico solo podía cambiar la fecha.
-        alPulsar={(l) => { setSelectedId(l.id); setAccion('detalle'); }}
         celda={(l, k, enTabla) => celdaLote({
           lote: l, clave: k, enTabla, user,
           onAccion: (a) => {
-            // Bajar de tienda no abre uno de los diálogos de la página.
-            if (a === 'bajar') { setBajando(l); return; }
+            // Bajar de tienda, el historial y los conteos son los diálogos
+            // compartidos; el resto, los de esta página.
+            if (['bajar', 'historial', 'conteos'].includes(a)) { setAccionFila({ tipo: a, inv: l }); return; }
             setSelectedId(l.id); setAccion(a);
           },
         })}
       />
 
       <DialogosConteo
-        accion={bajando ? { tipo: 'bajar', inv: bajando } : null}
-        sugerir={(enTienda) => sugerirBajadaLote(bajando, enTienda)}
+        accion={accionFila}
+        sugerir={(enTienda) => (accionFila?.tipo === 'bajar' ? sugerirBajadaLote(accionFila.inv, enTienda) : null)}
         onHecho={() => queryClient.invalidateQueries({ queryKey: ['submayor-producto'] })}
-        onClose={() => setBajando(null)}
+        onClose={() => setAccionFila(null)}
       />
 
       <Pagination page={page} total={sorted.length} pageSize={PAGE_SIZE} onPage={irA} />
-
-      {/* Lo primero que se abre: qué pasa con este lote y qué se puede hacer,
-          según su estado. */}
-      <Dialog open={accion === 'detalle' && !!selected} onOpenChange={(o) => { if (!o) cerrar(); }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Lote {selected?.no_lote || 's/n'}</DialogTitle></DialogHeader>
-          {selected && (
-            <DetalleLote lote={selected}
-              puedeGestionar={tieneRol(user, ['inv', 'ca', 'administrador'])}
-              puedeMoverTienda={tieneRol(user, ROLES_TIENDA)}
-              onElegir={(clave) => {
-                if (clave === 'bajar') { setBajando(selected); cerrar(); return; }
-                setAccion(clave);
-              }}
-              onCerrar={cerrar} />
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Corregir el lote: la fecha del envase y una nota. Vale para
           cualquier estado, porque la fecha también puede venir mal. */}
@@ -502,116 +482,34 @@ function describirAccion(lote, clave) {
 }
 
 /**
- * Lo que se ve al tocar un lote: sus datos, qué le pasa y lo que se puede
- * hacer con él, cada cosa a un toque. Es el mismo conjunto del menú de la
- * fila, pero dicho: en el teléfono el menú de tres puntos pasa desapercibido
- * y quien tocaba la ficha solo encontraba el formulario de la fecha.
- */
-function DetalleLote({ lote, puedeGestionar, puedeMoverTienda, onElegir, onCerrar }) {
-  const aviso = avisoDeLote(lote);
-  const acciones = accionesDeLote(lote, { puedeGestionar, puedeMoverTienda });
-
-  return (
-    <div className="space-y-4">
-      <ReadOnlyBlock title="Datos del lote">
-        <ReadOnlyField label="Producto" value={lote.producto_nombre} />
-        <ReadOnlyField label="Código" value={lote.producto_codigo} />
-        <ReadOnlyField label="Cantidad" value={lote.cantidad} />
-        <ReadOnlyField label="Vence"
-          value={lote.fecha_vencimiento ? `${lote.fecha_vencimiento}${lote.fecha_corregida ? ' (del envase)' : ''}` : 'Sin fecha'} />
-      </ReadOnlyBlock>
-
-      {aviso && <AlertBanner variant={aviso.variant} message={aviso.texto} />}
-
-      {lote.nota_revision && (
-        <AlertBanner variant="info"
-          message={`Ya revisado por ${lote.revisado_por || 'alguien'}: ${lote.nota_revision}`} />
-      )}
-
-      {acciones.length > 0 ? (
-        <div className="space-y-2">
-          {acciones.map(({ clave, nota }, i) => {
-            const { etiqueta, Icono, color } = describirAccion(lote, clave);
-            return (
-              <Button key={clave} variant={i === 0 ? 'default' : 'outline'}
-                className="w-full justify-start h-auto py-2.5"
-                onClick={() => onElegir(clave)} style={{ borderRadius: 'var(--r-ctl)' }}>
-                <Icono className={`w-4 h-4 mr-2 shrink-0 ${i === 0 ? '' : color}`} />
-                <span className="text-left">
-                  {etiqueta}
-                  {nota && <span className="block text-[11px] font-normal opacity-70">{nota}</span>}
-                </span>
-              </Button>
-            );
-          })}
-        </div>
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          Tu rol no puede gestionar este lote desde aquí.
-        </p>
-      )}
-
-      <div className="flex justify-end">
-        <Button variant="ghost" onClick={onCerrar} style={{ borderRadius: 'var(--r-ctl)' }}>Cerrar</Button>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Qué se puede hacer con un lote, según en qué estado esté.
+ * El menú de la fila: el mismo que el de inventario y mermas.
  *
- * Antes solo había un botón «IC» y solo salía en dos estados: un lote
- * vencido o sin fecha no dejaba hacer nada, que son justo los dos casos
- * donde hay algo que hacer. Lo que corresponde no es lo mismo en cada uno:
- * al vencido se le da salida, al que no tiene fecha se le pone, y al que
- * está por vencer se le busca una rebaja antes de que sea tarde.
+ * Lo propio de vencimientos —mandar a merma, pedir una rebaja, corregir la
+ * fecha— entra como acciones extra; bajar de tienda, el historial y los
+ * conteos son las de siempre. Qué toca en cada estado lo decide
+ * `accionesDeLote`, que se prueba aparte.
+ *
+ * Lo ven todos: consultar el historial no es gestionar. Lo que no toca a su
+ * rol o a su estado no se enseña apagado, se quita.
  */
-function MenuLote({ lote, puedeGestionar, puedeMoverTienda, onAccion }) {
-  const [abierto, setAbierto] = useState(false);
+function MenuDeLote({ lote, puedeGestionar, puedeMoverTienda, onAccion }) {
+  const aplicables = accionesDeLote(lote, { puedeGestionar, puedeMoverTienda });
+  const sePuedeBajar = aplicables.some((a) => a.clave === 'bajar');
 
-  /*
-   * Las tres salidas, siempre a la vista.
-   *
-   * Antes se escondian las que «no tocaban» segun el estado, y en la pestana
-   * de «sin fecha» eso dejaba el menu con una sola opcion: la de poner la
-   * fecha. Pero sin fecha no significa que el lote este bien, significa que
-   * no se sabe — y quien lo tiene delante puede ver perfectamente que esta
-   * pasado y querer darle salida, o que queda poco y querer rebajarlo.
-   * Esconder la accion no evita el error, solo obliga a inventarse una fecha
-   * para desbloquear el menu.
-   *
-   * Lo unico que se deja fuera es lo que no tiene sentido: mandar a merma un
-   * lote con dos anos por delante, o pedir rebaja de uno ya vencido.
-   */
-  // Qué toca en cada estado lo decide `accionesDeLote`, que se prueba aparte.
-  const acciones = accionesDeLote(lote, { puedeGestionar, puedeMoverTienda })
-    .map(({ clave, nota }) => ({ clave, nota, ...describirAccion(lote, clave) }));
-
-  if (acciones.length === 0) return <span className="text-muted-foreground/40 text-xs">—</span>;
+  const extras = aplicables
+    .filter((a) => a.clave !== 'bajar')
+    .map(({ clave, nota }) => ({ clave, nota, ...describirAccion(lote, clave), al: () => onAccion(clave) }));
 
   return (
-    <Popover open={abierto} onOpenChange={setAbierto}>
-      <PopoverTrigger asChild>
-        <button type="button" aria-label={`Acciones: ${lote.producto_nombre}`}
-          className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
-          <MoreHorizontal className="w-4 h-4" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-60 p-1">
-        {acciones.map(({ clave, etiqueta, Icono, color, nota }) => (
-          <button key={clave} type="button"
-            onClick={() => { setAbierto(false); onAccion(clave); }}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-left hover:bg-secondary transition-colors">
-            <Icono className={`w-3.5 h-3.5 shrink-0 ${color}`} />
-            <span className="min-w-0">
-              {etiqueta}
-              {nota && <span className="block text-[11px] text-muted-foreground">{nota}</span>}
-            </span>
-          </button>
-        ))}
-      </PopoverContent>
-    </Popover>
+    <MenuAcciones
+      producto={{ nombre: lote.producto_nombre }}
+      puedeMoverTienda={sePuedeBajar}
+      modulos={['bajar']}
+      extras={extras}
+      onMover={() => onAccion('bajar')}
+      onHistorial={() => onAccion('historial')}
+      onConteos={() => onAccion('conteos')}
+    />
   );
 }
 
@@ -775,7 +673,7 @@ function celdaLote({ lote: l, clave, enTabla, user, onAccion }) {
       return env(<LotBadge estado={l.estado_fv} dias={l.vigencia_dias} />, 'text-center');
     case 'accion':
       return env(
-        <MenuLote lote={l} puedeGestionar={tieneRol(user, ['inv', 'ca', 'administrador'])}
+        <MenuDeLote lote={l} puedeGestionar={tieneRol(user, ['inv', 'ca', 'administrador'])}
           puedeMoverTienda={tieneRol(user, ROLES_TIENDA)} onAccion={onAccion} />,
         'text-center',
       );
