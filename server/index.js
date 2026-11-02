@@ -101,6 +101,15 @@ async function serveStatic(req, res) {
   let filePath = path.join(DIST_DIR, safePath)
 
   const isFile = existsSync(filePath) && statSync(filePath).isFile()
+  // Un asset con hash que ya no existe es un 404, no la página de inicio:
+  // quien lo pide es una pestaña con la versión anterior, y devolverle HTML
+  // como si fuera JavaScript solo le da un error que no dice nada.
+  if (!isFile && urlPath.startsWith('/assets/')) {
+    res.statusCode = 404
+    res.setHeader('Cache-Control', 'no-store')
+    res.end('No encontrado')
+    return
+  }
   if (!isFile) filePath = path.join(DIST_DIR, 'index.html')
 
   const content = await readFile(filePath)

@@ -24,15 +24,27 @@ function esModuloCaducado(error) {
   return /dynamically imported module|Importing a module script failed|Failed to fetch dynamically/i.test(m)
 }
 
+// Una recarga por minuto como mucho. Antes era una por sesión, y la marca no
+// se borraba nunca: la primera pestaña caducada se arreglaba sola, pero en la
+// misma sesión el despliegue siguiente ya no recargaba y salía la pantalla de
+// error. Con una pestaña abierta todo el día, tras cada despliegue.
+//
+// El minuto sigue frenando el bucle: si tras recargar vuelve a fallar, es otra
+// cosa y se enseña.
+const VENTANA_RECARGA_MS = 60_000
+
 // sessionStorage puede no estar (modo privado, cookies bloqueadas). Si no se
 // puede recordar que ya se recargó, es mejor no recargar: un bucle de recargas
 // es peor que una pantalla de error.
-function yaSeRecargo() {
-  try { return sessionStorage.getItem(CLAVE_RECARGA) === '1' } catch { return true }
+export function yaSeRecargo(ahora = Date.now()) {
+  try {
+    const ultima = Number(sessionStorage.getItem(CLAVE_RECARGA))
+    return Number.isFinite(ultima) && ahora - ultima < VENTANA_RECARGA_MS
+  } catch { return true }
 }
 
-function marcarRecarga() {
-  try { sessionStorage.setItem(CLAVE_RECARGA, '1') } catch { /* no se puede: no se recarga */ }
+function marcarRecarga(ahora = Date.now()) {
+  try { sessionStorage.setItem(CLAVE_RECARGA, String(ahora)) } catch { /* no se puede: no se recarga */ }
 }
 
 export default class ErrorBoundary extends Component {
@@ -59,7 +71,13 @@ export default class ErrorBoundary extends Component {
     console.error('[error-boundary]', error, info?.componentStack);
   }
 
-  reintentar = () => this.setState({ error: null });
+  // `React.lazy` recuerda el import que falló: volver a pintar la ruta repite
+  // el mismo error. Con un módulo caducado el único reintento que sirve es
+  // cargar la versión nueva.
+  reintentar = () => {
+    if (esModuloCaducado(this.state.error)) { window.location.reload(); return }
+    this.setState({ error: null });
+  };
 
   render() {
     const { error } = this.state;
