@@ -20,6 +20,9 @@ import { notifyJefeDepto } from '@/lib/notificationService';
 import { logTransicion, logBorrado, notificarTransicion } from '@/lib/workflowService';
 import { useSortable } from '@/lib/useSortable';
 import { tieneRol } from '@/lib/roles';
+import { puedeEliminarMerma } from '@/lib/conteos';
+import { useConfirm } from '@/lib/useConfirm';
+import DialogosConteo, { CeldaAcciones } from '@/components/inventario/AccionesConteo';
 import BotonAccion from '@/components/shared/BotonAccion';
 import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
 import CabeceraLista from '@/components/shared/CabeceraLista';
@@ -45,6 +48,7 @@ const MERMA_COL_DEFS = [
   { key: 'estado_tarea',      label: 'Estado',        defaultOn: true,  required: false },
   { key: 'rebaja_confirmada', label: 'Tienda',        defaultOn: true,  required: false },
   { key: 'fecha_inv',         label: 'Fecha',         defaultOn: true,  required: false },
+  { key: 'acciones',          label: 'Acciones',      defaultOn: true,  required: false },
 ]
 const MERMA_COLS_KEY = 'merma_cols'
 
@@ -58,6 +62,7 @@ const COL_TITULO = {
   estado_tarea:      { label: 'Estado',        align: 'center' },
   rebaja_confirmada: { label: 'Tienda',        align: 'center' },
   fecha_inv:         { label: 'Fecha' },
+  acciones:          { label: 'Acciones' },
 }
 
 /** Clave de orden de la pantalla → columna real, para que ordene Postgres. */
@@ -105,6 +110,8 @@ export default function Mermas({ ambito = 'inventario' }) {
   const puedeBajar = tieneRol(user, ROLES_TIENDA);
   const [seleccion, setSeleccion] = useState(() => new Set());
   const [bajando, setBajando] = useState(null);   // { mermas, almacen }
+  const [accionFila, setAccionFila] = useState(null);   // { tipo, inv } del menú de la fila
+  const { confirmDialog, ConfirmDialogNode } = useConfirm();
 
   const condiciones = {
     ...(almacen ? { almacen_num: almacen } : {}),
@@ -205,8 +212,21 @@ export default function Mermas({ ambito = 'inventario' }) {
   );
   const abrirBajada = (lista) => setBajando({ mermas: lista, almacen: lista[0]?.almacen_num });
 
+  // Bajar de tienda es el flujo de la merma (marca la rebaja y la adelanta de
+  // estado), no el movimiento suelto del catálogo. Eliminar se confirma aquí
+  // y se borra con la misma traza que el botón del detalle.
+  const alElegirAccion = async ({ tipo, inv }) => {
+    if (tipo === 'bajar') { abrirBajada([inv]); return; }
+    if (tipo !== 'eliminar') { setAccionFila({ tipo, inv }); return; }
+    const ok = await confirmDialog('Esta acción no se puede deshacer.', {
+      title: `¿Eliminar la merma de «${inv.producto_nombre}»?`, destructive: true,
+    });
+    if (ok) deleteMut.mutate(inv.id);
+  };
+
   return (
     <div className="space-y-6">
+      {ConfirmDialogNode}
       <CabeceraLista
         titulo="Mermas"
         subtitulo={ambito === 'facturacion'
@@ -311,7 +331,7 @@ export default function Mermas({ ambito = 'inventario' }) {
         vacio="Ninguna merma con estos filtros."
         claveDe={(m) => m.id}
         encabezado="producto_nombre"
-        accion={puedeBajar ? 'bajar' : undefined}
+        accion="acciones"
         orden={{ sort, onSort }}
         alPulsar={(m) => { setSelectedId(m.id); setShowForm(false); }}
         cabeceraMarca={puedeBajar ? (
@@ -330,7 +350,7 @@ export default function Mermas({ ambito = 'inventario' }) {
         pie={(
           <tfoot>
             <tr className="border-t bg-secondary/30">
-              <td colSpan={colOrder.filter((k) => cols[k]).length + (puedeBajar ? 2 : 0)}
+              <td colSpan={colOrder.filter((k) => cols[k]).length + (puedeBajar ? 1 : 0)}
                 className="p-3 text-xs font-medium text-muted-foreground">
                 Pérdida en esta página
                 <span className="ml-2 text-sm text-[var(--c-bad)]">${perdidaPagina.toFixed(2)}</span>
@@ -338,8 +358,20 @@ export default function Mermas({ ambito = 'inventario' }) {
             </tr>
           </tfoot>
         )}
-        celda={(m, k, enTabla) => celdaMerma({ merma: m, clave: k, enTabla, onBajar: () => abrirBajada([m]) })}
+        celda={(m, k, enTabla) => celdaMerma({
+          merma: m, clave: k, enTabla,
+          acciones: (f) => (
+            <CeldaAcciones inv={f} onAccion={alElegirAccion}
+              // Solo se baja lo que sigue contado en el piso de tienda.
+              puedeMoverTienda={puedeBajar && Boolean(f.producto_codigo) && Number(f.cantidad) > 0 && !f.rebaja_confirmada}
+              modulos={['bajar']}
+              puedeEliminar={puedeEliminarMerma(f, user)} />
+          ),
+        })}
       />
+
+      {/* Historial del submayor y conteos del producto de la merma. */}
+      <DialogosConteo accion={accionFila} onClose={() => setAccionFila(null)} />
 
       {/* La pérdida de la página también en el móvil, donde no hay pie de
           tabla que la lleve. */}
@@ -383,7 +415,7 @@ export default function Mermas({ ambito = 'inventario' }) {
  * La misma para la tabla y para la ficha del móvil: con `enTabla` se envuelve
  * en `<td>` y sin él va suelta dentro de la ficha.
  */
-function celdaMerma({ merma: m, clave, enTabla, onBajar }) {
+function celdaMerma({ merma: m, clave, enTabla, acciones }) {
   // `py-1.5`: la fila baja de 44 px a 32. En una pantalla de portátil eso
   // son seis filas más sin desplazar, que es de lo que va un listado de
   // trabajo. La ficha del teléfono no cambia: ahí el dedo manda.
@@ -436,19 +468,8 @@ function celdaMerma({ merma: m, clave, enTabla, onBajar }) {
       );
     case 'fecha_inv':
       return env(<span className="text-muted-foreground">{m.fecha_inv?.slice(0, 10)}</span>);
-    case 'bajar':
-      return env(
-        m.producto_codigo && Number(m.cantidad) > 0 && !m.rebaja_confirmada ? (
-          <button type="button" title="Bajar esta merma de tienda"
-            aria-label={`Bajar de tienda: ${m.producto_nombre}`}
-            onClick={onBajar}
-            className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted-foreground hover:text-[var(--c-warn)] hover:bg-secondary transition-colors">
-            <ArrowDownToLine className="w-3.5 h-3.5" />
-            <span className="sm:hidden">Bajar de tienda</span>
-          </button>
-        ) : null,
-        'text-right',
-      );
+    case 'acciones':
+      return env(acciones(m), 'whitespace-nowrap');
     default:
       return env(null);
   }

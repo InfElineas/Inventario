@@ -14,6 +14,20 @@ export function puedeEliminarConteo(inv, user) {
 }
 
 /**
+ * Quién puede eliminar una merma: el superadministrador, o el inventarista que
+ * la registró mientras nadie del flujo la haya tocado (ni facturación ni
+ * auditoría). Lo comprueba también el servidor.
+ */
+export function puedeEliminarMerma(merma, user) {
+  return tieneRol(user, ['superadmin'])
+    || (tieneRol(user, ['inv'])
+      && merma.especialista_id === user?.email
+      && ['pend_fact', 'en_auditoria'].includes(merma.estado_tarea)
+      && !merma.fact_no_factura
+      && !merma.auditor_id);
+}
+
+/**
  * Las fechas de vencimiento que un conteo trae, como correcciones de lote.
  *
  * Los lotes vienen del informe central, donde no se puede escribir; la fecha

@@ -444,7 +444,8 @@ export default function Inventario({ ambito = 'inventario' }) {
         accion="acciones"
         alPulsar={(inv) => { setSelectedId(inv.id); setShowForm(false); }}
         celda={(inv, k, enTabla) => celdaConteo(inv, k, enTabla, difColor, (f) => (
-          <CeldaAcciones inv={f} user={user} puedeMoverTienda={puedeMoverTienda} onAccion={alElegirAccion} />
+          <CeldaAcciones inv={f} puedeMoverTienda={puedeMoverTienda}
+            puedeEliminar={puedeEliminarConteo(f, user)} onAccion={alElegirAccion} />
         ))}
       />
 

@@ -9,7 +9,6 @@ import HistorialInventarioDialog from '@/components/productos/HistorialInventari
 import { fetchExistenciaTkc } from '@/services/tkcService';
 import { SIN_SONDEO } from '@/lib/query-client';
 import { warehouseName } from '@/services/tkc/warehouses';
-import { puedeEliminarConteo } from '@/lib/conteos';
 import { Loader2 } from 'lucide-react';
 
 /**
@@ -21,17 +20,24 @@ import { Loader2 } from 'lucide-react';
  * detalle del conteo para no pedirlo dos veces.
  */
 
-/** La celda: el menú, sin que pulsarlo abra el detalle de la fila. */
-export function CeldaAcciones({ inv, user, puedeMoverTienda, onAccion }) {
+/**
+ * La celda: el menú, sin que pulsarlo abra el detalle de la fila.
+ *
+ * Sirve a conteos y mermas: `inv` es la fila, `puedeEliminar` lo decide quien
+ * la pinta —cada una tiene su regla— y `modulos` qué movimientos de tienda
+ * se ofrecen.
+ */
+export function CeldaAcciones({ inv, puedeMoverTienda, modulos, puedeEliminar, onAccion }) {
   return (
     <div onClick={(e) => e.stopPropagation()}>
       <MenuAcciones
         producto={{ nombre: inv.producto_nombre }}
         puedeMoverTienda={puedeMoverTienda}
+        modulos={modulos}
         onMover={(modulo) => onAccion({ tipo: modulo, inv })}
         onHistorial={() => onAccion({ tipo: 'historial', inv })}
         onConteos={() => onAccion({ tipo: 'conteos', inv })}
-        onEliminar={puedeEliminarConteo(inv, user) ? () => onAccion({ tipo: 'eliminar', inv }) : undefined}
+        onEliminar={puedeEliminar ? () => onAccion({ tipo: 'eliminar', inv }) : undefined}
       />
     </div>
   );

@@ -11,15 +11,19 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
  *
  * Lo que una persona no puede hacer no se le enseña apagado: se le quita.
  */
-export default function MenuAcciones({ producto, puedeMoverTienda, onMover, onHistorial, onConteos, onEliminar }) {
+export default function MenuAcciones({ producto, puedeMoverTienda, modulos = ['subir', 'bajar'], onMover, onHistorial, onConteos, onEliminar }) {
   const [abierto, setAbierto] = useState(false);
 
   const acciones = [];
   if (puedeMoverTienda) {
-    acciones.push(
-      { clave: 'subir', etiqueta: 'Subir a tienda', Icono: ArrowUpFromLine, color: 'text-[var(--c-ok)]', al: () => onMover('subir') },
-      { clave: 'bajar', etiqueta: 'Bajar de tienda', Icono: ArrowDownToLine, color: 'text-[var(--c-warn)]', al: () => onMover('bajar') },
-    );
+    // `modulos` deja a cada pantalla ofrecer solo lo que tiene sentido: una
+    // merma se baja de tienda, pero subirla no es algo que se haga.
+    if (modulos.includes('subir')) {
+      acciones.push({ clave: 'subir', etiqueta: 'Subir a tienda', Icono: ArrowUpFromLine, color: 'text-[var(--c-ok)]', al: () => onMover('subir') });
+    }
+    if (modulos.includes('bajar')) {
+      acciones.push({ clave: 'bajar', etiqueta: 'Bajar de tienda', Icono: ArrowDownToLine, color: 'text-[var(--c-warn)]', al: () => onMover('bajar') });
+    }
   }
 
   // El historial lo puede mirar cualquiera: es leer, no mover nada.
@@ -38,7 +42,7 @@ export default function MenuAcciones({ producto, puedeMoverTienda, onMover, onHi
   // enseña apagado, se quita.
   if (onEliminar) {
     acciones.push({
-      clave: 'eliminar', etiqueta: 'Eliminar conteo', Icono: Trash2,
+      clave: 'eliminar', etiqueta: 'Eliminar', Icono: Trash2,
       color: 'text-[var(--c-bad)]', al: onEliminar,
     });
   }

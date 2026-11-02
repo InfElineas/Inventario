@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { puedeEliminarMerma } from '@/lib/conteos';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -107,7 +108,6 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
   const canAudit       = tieneRol(user, ['auditor'])  && merma.estado_tarea === 'en_auditoria';
   const canReconteo    = tieneRol(user, ['inv'])      && merma.estado_tarea === 'reconteo_solicitado';
   const canDevueltoInv = tieneRol(user, ['inv'])      && merma.estado_tarea === 'devuelto';
-  const canSuperDelete = tieneRol(user, ['superadmin']);
   // Mientras sigue siendo de inventario, quien la registró la puede corregir
   // entera. Antes había que borrarla y volver a empezar por un dedazo en la
   // cantidad o en la clasificación.
@@ -126,13 +126,7 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
     <div className="p-5 space-y-4">
       <div className="flex items-center justify-between pr-6">
         <DialogTitle className="text-sm font-medium">Detalle de merma</DialogTitle>
-        {(canSuperDelete || (
-          role === 'inv'
-          && merma.especialista_id === user?.email
-          && ['pend_fact', 'en_auditoria'].includes(merma.estado_tarea)
-          && !merma.fact_no_factura
-          && !merma.auditor_id
-        )) && (
+        {puedeEliminarMerma(merma, user) && (
           <Button
             variant="ghost" size="sm"
             className="text-[var(--c-bad)] hover:text-[var(--c-bad)] hover:bg-[var(--c-bad)]/10"
