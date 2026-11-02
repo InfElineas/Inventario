@@ -75,6 +75,16 @@ describe('runSmartNotifications', () => {
     expect(titulosInsertados()).toContainEqual(expect.stringMatching(/lote.*vencido/i));
   });
 
+  it('con los recuentos reales avisa de los críticos aunque la lista traiga solo unos pocos', async () => {
+    await runSmartNotifications({
+      user: { email: 'inv@mercadoelineas.com', role: 'inv' },
+      lotes: [{ estado_fv: 'critico', cantidad: 5 }],
+      conteosLotes: { vencido: 0, critico: 76, por_vencer: 12 },
+    });
+    expect(titulosInsertados()).toContainEqual('76 lotes en estado crítico');
+    expect(titulosInsertados()).toContainEqual('12 lotes próximos a vencer');
+  });
+
   it('NO notifica lotes vencidos sin stock (cantidad 0)', async () => {
     await runSmartNotifications({
       user: { email: 'inv@mercadoelineas.com', role: 'inv' },

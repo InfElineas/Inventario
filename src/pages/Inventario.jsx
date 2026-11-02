@@ -216,7 +216,10 @@ export default function Inventario({ ambito = 'inventario' }) {
             'El conteo se guardó, pero no se pudo actualizar la fecha de vencimiento del lote: '
             + `${e.message}. Corrígela desde Vencimientos.`,
           ))
-          .finally(() => queryClient.invalidateQueries({ queryKey: ['lotes'] }));
+          .finally(() => {
+            queryClient.invalidateQueries({ queryKey: ['lotes'] });
+            queryClient.invalidateQueries({ queryKey: ['lotes-resumen'] });
+          });
       }
       const registro = { ...variables, id: result?.id, estado_tarea: null }
       logTransicion('inventarios', registro, variables.estado_tarea, user, variables).catch(() => {})

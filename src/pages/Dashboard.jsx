@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen'
 import BloqueMetricas from '@/components/shared/BloqueMetricas'
 import AvisosPendientes from '@/components/shared/AvisosPendientes'
-import { fetchLotes } from '@/services/lotesService'
+import { fetchResumenLotes } from '@/services/lotesService'
+import { SIN_SONDEO } from '@/lib/query-client'
 import { isExternaConfigured, fetchAlmacenes } from '@/services/syncService'
 import { ChevronDown, Clock, CalendarDays, X, Undo2, AlertTriangle, ClipboardList,
   FileText, ShieldCheck } from 'lucide-react'
@@ -245,14 +246,13 @@ function EstadoTiendaTable({ breakdown, total }) {
   )
 }
 
-function VencimientosWidget({ lotes }) {
+// Una sola vez: un `{}` nuevo en cada render haría saltar los useMemo que lo usan.
+const SIN_CONTEOS = {}
+
+function VencimientosWidget({ lotes, conteos }) {
   const [tab, setTab] = useState('vencido')
   const filtered = lotes.filter(l => l.estado_fv === tab).slice(0, 6)
-  const counts = {
-    vencido:    lotes.filter(l => l.estado_fv === 'vencido').length,
-    critico:    lotes.filter(l => l.estado_fv === 'critico').length,
-    por_vencer: lotes.filter(l => l.estado_fv === 'por_vencer').length,
-  }
+  const counts = conteos
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden h-full">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
@@ -260,7 +260,7 @@ function VencimientosWidget({ lotes }) {
         <Link to="/lotes" className="text-xs text-[var(--c-ok)] hover:underline">Ver todos →</Link>
       </div>
       <div className="flex border-b border-border">
-        {[['vencido','Vencidos','var(--c-bad)'],['critico','Críticos','var(--c-orange)'],['por_vencer','Por vencer','var(--c-yellow)']].map(([key, label, color]) => (
+        {[['vencido','Vencidos','var(--c-bad)'],['critico','Críticos','var(--c-orange)'],['por_vencer','Por vencer','var(--c-yellow)'],['sin_fecha','Sin fecha','var(--c-gray)']].map(([key, label, color]) => (
           <button key={key} onClick={() => setTab(key)}
             className={`flex-1 py-2 text-xs font-medium transition-colors ${tab === key ? 'border-b-2' : 'text-muted-foreground hover:text-foreground'}`}
             style={{ borderColor: tab === key ? color : 'transparent', color: tab === key ? color : undefined }}
@@ -482,14 +482,18 @@ export default function Dashboard() {
   const inventarios = inventariosRaw ?? []
 
   // ── Lotes ────────────────────────────────────────────────
-  const { data: lotesRaw } = useQuery({
-    queryKey: ['dash_lotes', almacen],
-    queryFn: () => fetchLotes({ almacen, estados: ['vencido', 'critico', 'por_vencer'], limite: 50 }),
+  // La misma consulta que el menú (misma clave): una sola vez por almacén.
+  // Recuentos reales y unos pocos lotes de cada estado. Con una lista con tope,
+  // los vencidos se llevaban los cincuenta y no salía ni un crítico.
+  const { data: resumenLotes } = useQuery({
+    queryKey: ['lotes-resumen', almacen],
+    queryFn: () => fetchResumenLotes({ almacen }),
     enabled: Boolean(almacen),
     retry: false,
-    select: d => Array.isArray(d) ? d : [],
+    ...SIN_SONDEO,
   })
-  const lotes = lotesRaw ?? []
+  const lotes = resumenLotes?.lotes ?? []
+  const conteosLotes = resumenLotes?.conteos ?? SIN_CONTEOS
 
   // ── Stats del almacén / globales ─────────────────────────
   const stats = useMemo(() => {
@@ -532,8 +536,9 @@ export default function Dashboard() {
    * veces esconde al unico que si tiene algo.
    */
   const pendientes = useMemo(() => {
-    const porVencer = lotes.filter(l => ['critico', 'por_vencer'].includes(l.estado_fv)).length
-    const vencidos = lotes.filter(l => l.estado_fv === 'vencido').length
+    // Los recuentos reales, no los de la muestra que se pinta.
+    const porVencer = (conteosLotes.critico ?? 0) + (conteosLotes.por_vencer ?? 0)
+    const vencidos = conteosLotes.vencido ?? 0
     const devueltos = inventarios.filter(i => i.estado_tarea === 'devuelto').length
                     + mermas.filter(m => m.estado_tarea === 'devuelto').length
     const enCurso = inventarios.filter(i => i.estado_tarea === 'en_curso').length
@@ -558,7 +563,7 @@ export default function Dashboard() {
         texto: invStats.enAudit === 1 ? 'caso en auditoria' : 'casos en auditoria',
         accion: 'Seguir su estado', enlace: '/auditoria' },
     ]
-  }, [lotes, inventarios, mermas, invStats, mermaStats])
+  }, [conteosLotes, inventarios, mermas, invStats, mermaStats])
 
   const syncLabel = fmtDate(lastSync?.fecha)
   const openModal = key => setKpiModal(key)
@@ -740,7 +745,7 @@ export default function Dashboard() {
             <div className="lg:col-span-2">
               <EstadoTiendaTable breakdown={stats.breakdown} total={stats.total} />
             </div>
-            <VencimientosWidget lotes={lotes} />
+            <VencimientosWidget lotes={lotes} conteos={conteosLotes} />
           </div>
 
           {/* Row 4 — Tablas */}

@@ -105,6 +105,40 @@ const SQL = `
 `
 
 /**
+ * Las filas de un almacén, guardadas un minuto.
+ *
+ * La consulta cruza la vista del cron con las correcciones y con el costo del
+ * catálogo para cada lote, y la piden a la vez el menú, el panel y la propia
+ * pantalla: tres veces lo mismo cada vez que alguien entra. El informe lo
+ * refresca un cron, así que un minuto de retraso no se nota. Lo que sí se
+ * nota es una corrección recién guardada que no aparece: por eso quien las
+ * escribe llama a `olvidarLotes`.
+ *
+ * Se guarda la promesa, no el resultado: tres peticiones a la vez hacen UNA
+ * consulta, no tres. Y lo guardado son las filas crudas: los días y el estado
+ * se calculan al leer, contra la fecha de hoy.
+ */
+const VIDA_CACHE_MS = 60_000
+const cacheFilas = new Map()
+
+function filasDe(almacen) {
+  const clave = almacen ? String(almacen).trim() : ''
+  const guardada = cacheFilas.get(clave)
+  if (guardada && Date.now() - guardada.en < VIDA_CACHE_MS) return guardada.promesa
+
+  const promesa = query(SQL, [clave || null]).then(({ rows }) => rows)
+  cacheFilas.set(clave, { en: Date.now(), promesa })
+  // Un fallo no se recuerda: el siguiente intento tiene que volver a probar.
+  promesa.catch(() => { if (cacheFilas.get(clave)?.promesa === promesa) cacheFilas.delete(clave) })
+  return promesa
+}
+
+/** Descarta lo guardado: se llama al escribir una corrección de lote. */
+export function olvidarLotes() {
+  cacheFilas.clear()
+}
+
+/**
  * Los lotes de un almacén, en el vocabulario de la pantalla.
  *
  * `estados` y `limite` existen para quien solo necesita una parte —el panel
@@ -114,7 +148,7 @@ const SQL = `
  * @param {{ almacen?: string, estados?: string[], limite?: number }} params
  */
 export async function lotesDe({ almacen, estados, limite } = {}) {
-  const { rows } = await query(SQL, [almacen ? String(almacen).trim() : null])
+  const rows = await filasDe(almacen)
   const hoy = new Date()
 
   let lotes = rows.map((f) => {
@@ -167,4 +201,32 @@ export async function lotesDe({ almacen, estados, limite } = {}) {
   lotes.sort((a, b) => (a.vigencia_dias ?? Infinity) - (b.vigencia_dias ?? Infinity))
 
   return limite > 0 ? lotes.slice(0, limite) : lotes
+}
+
+/**
+ * Cuántos lotes hay en cada estado y los primeros de cada uno.
+ *
+ * Existe para el panel y el menú. Antes pedían «vencidos, críticos y por
+ * vencer» con un tope, y como la lista sale ordenada por lo que vence antes,
+ * los vencidos —que van con días negativos— se comían el tope entero: no
+ * llegaba ni un crítico, ni un por vencer, y los avisos y los contadores
+ * calculaban sobre lo que había cabido. Con un tope por estado y el recuento
+ * aparte, cada uno cuenta y se ve por separado.
+ *
+ * Los que no tienen fecha van por existencia, de más a menos: ordenarlos por
+ * días no dice nada, no tienen.
+ */
+export async function resumenLotes({ almacen, porEstado = 6 } = {}) {
+  const todos = await lotesDe({ almacen })
+
+  const conteos = { vencido: 0, critico: 0, por_vencer: 0, vigente: 0, sin_fecha: 0 }
+  for (const l of todos) conteos[l.estado_fv] += 1
+
+  const lotes = []
+  for (const estado of ['vencido', 'critico', 'por_vencer', 'sin_fecha']) {
+    const grupo = todos.filter((l) => l.estado_fv === estado)
+    if (estado === 'sin_fecha') grupo.sort((a, b) => b.cantidad - a.cantidad)
+    lotes.push(...grupo.slice(0, Math.max(0, porEstado)))
+  }
+  return { conteos, lotes }
 }

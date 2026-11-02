@@ -43,7 +43,7 @@ import { ROLES_AJUSTES, ROLES_TIENDA } from '../lib/ajustes.js'
 import { rolesDe } from '../lib/roles.js'
 import { cobertura, baseReportes } from './rotacionApi.js'
 import { listarPedidos, lineasDePedido, hayPedidos, ESTADOS_PEDIDO } from './pedidosApi.js'
-import { lotesDe } from './lotesApi.js'
+import { lotesDe, resumenLotes } from './lotesApi.js'
 
 class ErrorPeticion extends Error {
   constructor(status, message) {
@@ -525,6 +525,14 @@ export function createTransferenciasApiMiddleware() {
           return fallo(res, 403, 'forbidden', 'Tu rol no puede ver los vencimientos.')
         }
         const cl = new URL(req.url, 'http://local').searchParams
+        // El panel y el menú piden el resumen: recuentos y unos pocos de cada
+        // estado, en lugar de una lista con tope que se llenaba de vencidos.
+        if (cl.get('resumen') === '1') {
+          return json(res, 200, await resumenLotes({
+            almacen: cl.get('almacen') ?? undefined,
+            porEstado: Number(cl.get('porEstado')) || 6,
+          }))
+        }
         return json(res, 200, {
           lotes: await lotesDe({
             almacen: cl.get('almacen') ?? undefined,

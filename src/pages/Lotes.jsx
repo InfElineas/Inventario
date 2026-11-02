@@ -125,7 +125,13 @@ export default function Lotes() {
    */
   const createRevisionMut = useMutation({
     mutationFn: (data) => base44.entities.LoteRevision.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['lotes'] }); cerrar(); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lotes'] });
+      // Una fecha corregida cambia el estado del lote: el panel y el menú
+      // cuentan de este resumen, no de la lista de arriba.
+      queryClient.invalidateQueries({ queryKey: ['lotes-resumen'] });
+      cerrar();
+    },
     onError: (e) => alert(e.message),
   });
 

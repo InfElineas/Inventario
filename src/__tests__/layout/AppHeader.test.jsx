@@ -44,6 +44,12 @@ vi.mock('@/api/base44Client', () => {
   };
 });
 
+// El contador de Vencimientos sale del resumen de lotes, no de `count()` sobre
+// la tabla `lotes` (vacía). `Lote` hace aquí de recuento de críticos.
+vi.mock('@/services/lotesService', () => ({
+  fetchResumenLotes: async () => ({ conteos: { critico: contadores.Lote, vencido: 0 }, lotes: [] }),
+}));
+
 vi.mock('@/lib/AuthContext', () => ({
   useAuth: () => ({
     user: { email: 'test@test.com', role: 'inv', full_name: 'Test User', avatar_url: null },

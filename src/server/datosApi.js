@@ -10,6 +10,7 @@
  */
 
 import { query, queryOne, transaction } from './db.js'
+import { olvidarLotes } from './lotesApi.js'
 import { columnaSegura, columnasDe, soloColumnas, tiposDe } from './columnas.js'
 import { resolverSesion } from './session.js'
 import {
@@ -359,6 +360,8 @@ export function createDatosApiMiddleware() {
           `INSERT INTO ${tabla} (${cols.join(', ')}) VALUES (${marcadores.join(', ')}) RETURNING *`,
           valores,
         )
+        // La fecha corregida tiene que verse ya: los lotes se guardan un minuto.
+        if (tabla === 'lote_revisiones') olvidarLotes()
         return responder(res, 201, { data: fila })
       }
 

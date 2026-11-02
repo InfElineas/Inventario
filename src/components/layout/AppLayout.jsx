@@ -11,7 +11,8 @@ import { useTheme } from '@/lib/useTheme';
 import ProfileModal from '@/components/shared/ProfileModal';
 import { useSyncManager } from '@/lib/SyncContext';
 import { useAlmacen } from '@/lib/useAlmacen';
-import { fetchLotes } from '@/services/lotesService';
+import { fetchResumenLotes } from '@/services/lotesService';
+import { SIN_SONDEO } from '@/lib/query-client';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import { ROLES } from '@/lib/constants';
 import Sidebar from './Sidebar';
@@ -180,16 +181,19 @@ export default function AppLayout() {
   });
   const anuncios = anunciosRaw ?? [];
 
-  // Del informe central. Solo los que avisan de algo y un tope corto: esto
-  // alimenta un contador del menú, no una pantalla.
-  const { data: lotesRaw } = useQuery({
-    queryKey: ['pending-lotes', almacen],
-    queryFn:  () => fetchLotes({ almacen, estados: ['vencido', 'critico', 'por_vencer'], limite: 200 }),
+  // Del informe central: los recuentos por estado y unos pocos de cada uno.
+  // La misma clave que el panel, así que entrar cuesta UNA consulta y no dos.
+  // Antes se pedía «vencidos, críticos y por vencer» con un tope de 200, y los
+  // vencidos se lo comían: ni los avisos ni el contador veían un solo crítico.
+  const { data: resumenLotes } = useQuery({
+    queryKey: ['lotes-resumen', almacen],
+    queryFn:  () => fetchResumenLotes({ almacen }),
     enabled: Boolean(almacen),
     retry: false,
-    select: toArray,
+    ...SIN_SONDEO,
   });
-  const lotes = lotesRaw ?? [];
+  const lotes = resumenLotes?.lotes ?? [];
+  const conteosLotes = resumenLotes?.conteos ?? null;
 
   // ── Contadores del menú ──────────────────────────────────
   // El estado que cuenta como "pendiente" depende del rol.
@@ -227,7 +231,8 @@ export default function AppLayout() {
     'anuncios', 'AnuncioDesact',
     { estado_tarea: estadoPendiente.anuncios, ...(almacen ? { almacen_num: almacen } : {}) },
   ));
-  const { data: lotesCriticos }   = useQuery(contador('lotes',       'Lote',          { estado_fv: ['critico', 'vencido'] }));
+  // Del resumen y no de la tabla `lotes`, que ya no llena nadie y contaba cero siempre.
+  const lotesCriticos = conteosLotes ? (conteosLotes.critico ?? 0) + (conteosLotes.vencido ?? 0) : 0;
 
   // Productos sólo para alertas de stock (no reemplaza el query de páginas)
   const { data: prodAlertsRaw } = useQuery({
@@ -246,7 +251,7 @@ export default function AppLayout() {
     if (!lotes.length && !mermas.length && !prodAlerts.length) return; // wait for data
     smartRanRef.current = true;
     requestBrowserPermission();
-    runSmartNotifications({ user, productos: prodAlerts, lotes, mermas, inventarios, anuncios })
+    runSmartNotifications({ user, productos: prodAlerts, lotes, conteosLotes, mermas, inventarios, anuncios })
       .then(() => queryClient.invalidateQueries({ queryKey: ['notifications-unread'] }))
       .catch(console.error);
   }, [user?.email, lotes.length, mermas.length, prodAlerts.length]);

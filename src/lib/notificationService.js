@@ -114,6 +114,9 @@ export async function runSmartNotifications({
   mermas    = [],
   inventarios = [],
   anuncios  = [],
+  // Los recuentos reales por estado, si se tienen: `lotes` puede ser solo los
+  // primeros de cada uno y contarlos daría siempre el tope.
+  conteosLotes = null,
 }) {
   if (!user?.email) return;
   const email = user.email;
@@ -123,21 +126,22 @@ export async function runSmartNotifications({
   const rules = [];
 
   // 1. Lotes vencidos con stock
-  const vencidos = lotes.filter(l => l.estado_fv === 'vencido' && (l.cantidad || 0) > 0);
-  if (vencidos.length > 0) {
+  const nVencidos = conteosLotes?.vencido
+    ?? lotes.filter(l => l.estado_fv === 'vencido' && (l.cantidad || 0) > 0).length;
+  if (nVencidos > 0) {
     rules.push({
       tipo: 'lote', dedupKey: `lotes_vencidos_${today}`,
-      titulo: `${vencidos.length} lote${vencidos.length > 1 ? 's' : ''} vencido${vencidos.length > 1 ? 's' : ''}`,
+      titulo: `${nVencidos} lote${nVencidos > 1 ? 's' : ''} vencido${nVencidos > 1 ? 's' : ''}`,
       mensaje: 'Mercancía vencida con stock — requiere atención inmediata.',
     });
   }
 
   // 2. Lotes en estado crítico
-  const criticos = lotes.filter(l => l.estado_fv === 'critico');
-  if (criticos.length > 0) {
+  const nCriticos = conteosLotes?.critico ?? lotes.filter(l => l.estado_fv === 'critico').length;
+  if (nCriticos > 0) {
     rules.push({
       tipo: 'lote', dedupKey: `lotes_criticos_${today}`,
-      titulo: `${criticos.length} lote${criticos.length > 1 ? 's' : ''} en estado crítico`,
+      titulo: `${nCriticos} lote${nCriticos > 1 ? 's' : ''} en estado crítico`,
       mensaje: 'Vencen en 15 días o menos — bájalos de tienda cuanto antes y gestiona intervención comercial.',
     });
   }
@@ -295,12 +299,13 @@ export async function runSmartNotifications({
   }
 
   // 10. Lotes próximos a vencer — 30 días (todos los roles)
-  const proximos = lotes.filter(l => l.estado_fv === 'por_vencer' && (l.cantidad || 0) > 0);
-  if (proximos.length > 0) {
+  const nProximos = conteosLotes?.por_vencer
+    ?? lotes.filter(l => l.estado_fv === 'por_vencer' && (l.cantidad || 0) > 0).length;
+  if (nProximos > 0) {
     rules.push({
       tipo: 'lote',
       dedupKey: `lotes_proximos_${today}`,
-      titulo: `${proximos.length} lote${proximos.length > 1 ? 's' : ''} próximo${proximos.length > 1 ? 's' : ''} a vencer`,
+      titulo: `${nProximos} lote${nProximos > 1 ? 's' : ''} próximo${nProximos > 1 ? 's' : ''} a vencer`,
       mensaje: 'Vencen en 16 a 30 días — considera intervención comercial. El reporte se exporta desde Vencimientos.',
     });
   }
