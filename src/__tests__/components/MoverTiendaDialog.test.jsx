@@ -15,7 +15,7 @@ const svc = vi.hoisted(() => ({
 }));
 vi.mock('@/services/tiendaService', () => svc);
 
-const { default: MoverTiendaDialog, sugerirBajada } = await import('@/components/productos/MoverTiendaDialog');
+const { default: MoverTiendaDialog, sugerirBajada, sugerirBajadaLote } = await import('@/components/productos/MoverTiendaDialog');
 
 const PRODUCTO = {
   codigo: 'SC78913092601',
@@ -164,5 +164,24 @@ describe('MoverTiendaDialog con sugerencia', () => {
   it('sin sugerencia propone todo lo que hay, como en el catálogo', () => {
     montar({ modulo: 'bajar', producto: { ...PRODUCTO, enTienda: 10 } });
     expect(screen.getByRole('spinbutton', { name: /cantidad a mover/i })).toHaveValue(10);
+  });
+});
+
+describe('sugerirBajadaLote', () => {
+  const lote = (extra) => ({ no_lote: 'L1', estado_fv: 'critico', cantidad: 8, ...extra });
+
+  it('propone lo que tiene el lote, sin pasar de lo que hay en tienda', () => {
+    expect(sugerirBajadaLote(lote(), 20)).toMatchObject({ cantidad: 8 });
+    expect(sugerirBajadaLote(lote(), 3)).toMatchObject({ cantidad: 3 });
+  });
+
+  it('sin nada en tienda lo dice y no propone cantidad', () => {
+    const s = sugerirBajadaLote(lote({ estado_fv: 'vencido' }), 0);
+    expect(s.cantidad).toBeUndefined();
+    expect(s.motivo).toMatch(/vencido.*nada en tienda/i);
+  });
+
+  it('un lote sin unidades no sugiere nada', () => {
+    expect(sugerirBajadaLote(lote({ cantidad: 0 }), 5)).toBeNull();
   });
 });

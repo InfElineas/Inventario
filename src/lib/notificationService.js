@@ -138,7 +138,7 @@ export async function runSmartNotifications({
     rules.push({
       tipo: 'lote', dedupKey: `lotes_criticos_${today}`,
       titulo: `${criticos.length} lote${criticos.length > 1 ? 's' : ''} en estado crítico`,
-      mensaje: 'Vencen en menos de 7 días — gestionar intervención comercial.',
+      mensaje: 'Vencen en 15 días o menos — bájalos de tienda cuanto antes y gestiona intervención comercial.',
     });
   }
 
@@ -301,7 +301,7 @@ export async function runSmartNotifications({
       tipo: 'lote',
       dedupKey: `lotes_proximos_${today}`,
       titulo: `${proximos.length} lote${proximos.length > 1 ? 's' : ''} próximo${proximos.length > 1 ? 's' : ''} a vencer`,
-      mensaje: 'Vencen en los próximos 30 días — considerar intervención comercial.',
+      mensaje: 'Vencen en 16 a 30 días — considera intervención comercial. El reporte se exporta desde Vencimientos.',
     });
   }
 

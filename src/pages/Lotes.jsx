@@ -12,9 +12,13 @@ import LotBadge from '@/components/shared/LotBadge';
 import { useSortable } from '@/lib/useSortable';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
 import { Search, AlertTriangle, Clock, CheckCircle, HelpCircle, Send, MoreHorizontal,
-  CalendarPlus, TrendingDown, RefreshCw, Thermometer } from 'lucide-react';
+  CalendarPlus, TrendingDown, RefreshCw, Thermometer, ArrowDownToLine, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { tieneRol } from '@/lib/roles';
+import { ROLES_TIENDA } from '@/lib/ajustes';
+import { accionesDeLote, resumenPorVencer, lotesACsv } from '@/lib/lotes';
+import DialogosConteo from '@/components/inventario/AccionesConteo';
+import { sugerirBajadaLote } from '@/components/productos/MoverTiendaDialog';
 import { ALL_CLASIF_MERMA } from '@/lib/constants';
 import { useAlmacen } from '@/lib/useAlmacen';
 import { fetchLotes } from '@/services/lotesService';
@@ -76,6 +80,7 @@ export default function Lotes() {
   const [searchQ, setSearchQ] = useState('');
   const [selectedId, setSelectedId] = useState(null);
   const [accion, setAccion] = useState(null);   // 'ic' | 'editar' | 'merma'
+  const [bajando, setBajando] = useState(null);   // lote que se baja de tienda
   const [page, setPage] = useState(1);
   const [icForm, setIcForm] = useState({ cant_x_vencer: '', clasif_inv: '', nota_inv: '', propuesta_precio_ic: '', precio_restaurar: '', notas_ic: '' });
   const { sort, onSort } = useSortable('fecha_vencimiento', 'asc');
@@ -178,6 +183,24 @@ export default function Lotes() {
 
   const selected = lotes.find(l => l.id === selectedId);
 
+  // El resumen es de todo el almacén, no de la pestaña: el aviso dice qué
+  // viene aunque se esté mirando otra cosa.
+  const porVencer = resumenPorVencer(lotes);
+
+  // Lo que se ve, completo: no solo la página. Quien lo exporta quiere la
+  // lista, y en la pestaña «Por vencer» eso es el reporte de lo que vence.
+  const exportar = () => {
+    const csv = lotesACsv(sorted);
+    // BOM al principio: sin él Excel abre el CSV en latin-1 y parte los acentos.
+    const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vencimientos_${almacen}_${estado}_${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       <CabeceraLista
@@ -202,6 +225,11 @@ export default function Lotes() {
           </Button>
           {/* El unico filtro de la pantalla, junto al de columnas: un
               plegable para un solo desplegable era mas clic que filtro. */}
+          <Button variant="outline" onClick={exportar} disabled={sorted.length === 0}
+            style={{ borderRadius: 'var(--r-ctl)' }} title="Exportar a CSV los lotes que se ven">
+            <Download className="w-4 h-4 lg:mr-1.5" />
+            <span className="hidden lg:inline">Exportar</span>
+          </Button>
           <FiltroIcono
             icono={Thermometer}
             etiqueta="Temperatura"
@@ -228,6 +256,15 @@ export default function Lotes() {
       )}
       {error && (
         <AlertBanner variant="warning" message={`No se pudieron cargar los vencimientos: ${error.message}`} />
+      )}
+      {/* La alerta de lo que viene: es lo único que da tiempo a rebajar o
+          devolver antes de que pase a crítico. */}
+      {porVencer && (estado === 'all' || estado === 'por_vencer') && (
+        <AlertBanner variant="warning"
+          message={`${porVencer.lotes} ${porVencer.lotes === 1 ? 'lote vence' : 'lotes vencen'} en los próximos 30 días `
+            + `(${porVencer.unidades} unidades, $${porVencer.valor.toFixed(2)} a costo)`
+            + `${porVencer.primero ? `; el primero el ${porVencer.primero.fecha}, en ${porVencer.primero.dias} días` : ''}. `
+            + 'Rebájalos o devuélvelos a tiempo; el botón Exportar baja el reporte.'} />
       )}
 
       {/* En el movil no van: las pestanas de abajo dicen los mismos cinco
@@ -261,6 +298,7 @@ export default function Lotes() {
         <p className="text-xs text-muted-foreground -mt-2">
           «{ESTADOS.find((e) => e.clave === estado).label}» son los lotes que
           vencen en {ESTADOS.find((e) => e.clave === estado).rango}.
+          {estado === 'critico' && ' Conviene bajarlos de tienda cuanto antes: el menú de cada lote lo ofrece.'}
         </p>
       )}
 
@@ -279,8 +317,19 @@ export default function Lotes() {
         alPulsar={(l) => { setSelectedId(l.id); setAccion('editar'); }}
         celda={(l, k, enTabla) => celdaLote({
           lote: l, clave: k, enTabla, user,
-          onAccion: (a) => { setSelectedId(l.id); setAccion(a); },
+          onAccion: (a) => {
+            // Bajar de tienda no abre uno de los diálogos de la página.
+            if (a === 'bajar') { setBajando(l); return; }
+            setSelectedId(l.id); setAccion(a);
+          },
         })}
+      />
+
+      <DialogosConteo
+        accion={bajando ? { tipo: 'bajar', inv: bajando } : null}
+        sugerir={(enTienda) => sugerirBajadaLote(bajando, enTienda)}
+        onHecho={() => queryClient.invalidateQueries({ queryKey: ['submayor-producto'] })}
+        onClose={() => setBajando(null)}
       />
 
       <Pagination page={page} total={sorted.length} pageSize={PAGE_SIZE} onPage={irA} />
@@ -423,9 +472,8 @@ export default function Lotes() {
  * al vencido se le da salida, al que no tiene fecha se le pone, y al que
  * está por vencer se le busca una rebaja antes de que sea tarde.
  */
-function MenuLote({ lote, puedeGestionar, onAccion }) {
+function MenuLote({ lote, puedeGestionar, puedeMoverTienda, onAccion }) {
   const [abierto, setAbierto] = useState(false);
-  if (!puedeGestionar) return <span className="text-muted-foreground/40 text-xs">—</span>;
 
   /*
    * Las tres salidas, siempre a la vista.
@@ -441,26 +489,20 @@ function MenuLote({ lote, puedeGestionar, onAccion }) {
    * Lo unico que se deja fuera es lo que no tiene sentido: mandar a merma un
    * lote con dos anos por delante, o pedir rebaja de uno ya vencido.
    */
-  const sinFecha = lote.estado_fv === 'sin_fecha';
-  const acciones = [];
+  const POR_CLAVE = {
+    bajar: { etiqueta: 'Bajar de tienda', Icono: ArrowDownToLine, color: 'text-[var(--c-warn)]' },
+    merma: { etiqueta: 'Mandar a merma', Icono: TrendingDown, color: 'text-[var(--c-bad)]' },
+    ic: { etiqueta: 'Enviar a intervención comercial', Icono: Send, color: 'text-[var(--c-warn)]' },
+    editar: {
+      etiqueta: lote.fecha_vencimiento ? 'Corregir fecha o anotar' : 'Poner la fecha del envase',
+      Icono: CalendarPlus, color: 'text-[var(--c-info-2)]',
+    },
+  };
+  // Qué toca en cada estado lo decide `accionesDeLote`, que se prueba aparte.
+  const acciones = accionesDeLote(lote, { puedeGestionar, puedeMoverTienda })
+    .map(({ clave, nota }) => ({ clave, nota, ...POR_CLAVE[clave] }));
 
-  if (lote.estado_fv === 'vencido' || sinFecha) {
-    acciones.push({
-      clave: 'merma', etiqueta: 'Mandar a merma', Icono: TrendingDown, color: 'text-[var(--c-bad)]',
-      nota: sinFecha ? 'si lo ves vencido' : null,
-    });
-  }
-  if (['critico', 'por_vencer'].includes(lote.estado_fv) || sinFecha) {
-    acciones.push({
-      clave: 'ic', etiqueta: 'Enviar a intervención comercial', Icono: Send, color: 'text-[var(--c-warn)]',
-      nota: sinFecha ? 'si le queda poco' : null,
-    });
-  }
-  acciones.push({
-    clave: 'editar',
-    etiqueta: lote.fecha_vencimiento ? 'Corregir fecha o anotar' : 'Poner la fecha del envase',
-    Icono: CalendarPlus, color: 'text-[var(--c-info-2)]',
-  });
+  if (acciones.length === 0) return <span className="text-muted-foreground/40 text-xs">—</span>;
 
   return (
     <Popover open={abierto} onOpenChange={setAbierto}>
@@ -648,7 +690,7 @@ function celdaLote({ lote: l, clave, enTabla, user, onAccion }) {
     case 'accion':
       return env(
         <MenuLote lote={l} puedeGestionar={tieneRol(user, ['inv', 'ca', 'administrador'])}
-          onAccion={onAccion} />,
+          puedeMoverTienda={tieneRol(user, ROLES_TIENDA)} onAccion={onAccion} />,
         'text-center',
       );
     default:

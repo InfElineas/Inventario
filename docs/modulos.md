@@ -88,11 +88,21 @@ nuestra. **Solo los que tienen existencia**: un lote en cero no es una tarea.
 
 Qué se puede hacer con cada uno:
 
+- **Crítico o vencido** → **bajarlo de tienda**, la primera opción del menú:
+  abre el diálogo de bajar con la cantidad del lote, sin pasar de lo que hay
+  en tienda. Es de quien puede mover mercancía (`ROLES_TIENDA`).
 - **Vencido con existencia** → mandarlo a merma, con su clasificación.
 - **Crítico o por vencer** → intervención comercial: proponer una rebaja.
 - **Cualquiera** → poner o corregir la fecha del envase. Esa fecha no se puede
   escribir en el informe, así que se guarda en `lote_revisiones` y se
-  superpone al leer.
+  superpone al leer. También se rellena al registrar un conteo con fecha de
+  vencimiento.
+
+**Por vencer** tiene alerta y reporte: un aviso en la pantalla con cuántos
+lotes, unidades y valor a costo, y cuándo vence el primero; y una notificación
+diaria (`runSmartNotifications`). El botón *Exportar* baja a CSV los lotes que
+se están viendo —en la pestaña *Por vencer*, ese es el reporte—, con costo y
+valor en riesgo.
 
 ## Recepciones (`/recepciones`)
 

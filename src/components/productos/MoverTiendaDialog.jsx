@@ -79,6 +79,32 @@ export function sugerirBajada(diferencia, enTienda) {
   };
 }
 
+/**
+ * Cuánto bajar de tienda de un lote crítico o vencido.
+ *
+ * Lo que tiene el lote, sin pasar de lo que hay en tienda: el resto del lote
+ * está en el almacén y no hay nada que bajar. El informe de lotes y la
+ * existencia de TKC son dos fuentes, y la cantidad que se mueve es la que
+ * confirma la segunda.
+ *
+ * @returns {{ cantidad?: number, motivo: string } | null}
+ */
+export function sugerirBajadaLote(lote, enTienda) {
+  const delLote = Number(lote?.cantidad ?? 0);
+  if (delLote <= 0) return null;
+  const tienda = Number(enTienda ?? 0);
+  const estado = lote?.estado_fv === 'vencido' ? 'vencido' : 'crítico';
+  const nombre = `Lote ${lote?.no_lote || 's/n'} ${estado}`;
+  if (tienda <= 0) {
+    return { motivo: `${nombre}, pero no hay nada en tienda que bajar.` };
+  }
+  const cantidad = Math.min(delLote, tienda);
+  return {
+    cantidad,
+    motivo: `${nombre}: ${delLote} en el lote, ${tienda} en tienda; se propone bajar ${cantidad}.`,
+  };
+}
+
 /** Una por envío distinto; repetir el mismo la reutiliza y TKC no duplica. */
 const nuevaClave = () => `tienda-${crypto.randomUUID()}`;
 

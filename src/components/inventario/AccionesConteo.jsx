@@ -65,17 +65,31 @@ function Espera({ inv, error, onClose }) {
 /**
  * El diálogo que corresponde a la acción elegida.
  *
- * `accion` es `{ tipo, inv }`; con `null` no hay nada abierto.
+ * `accion` es `{ tipo, inv }`; con `null` no hay nada abierto. `inv` es la fila
+ * de un conteo, de una merma o de un lote: lo único que se le pide es
+ * almacén, nombre y código, y el id del producto si lo trae. Los lotes vienen
+ * del informe central y no lo traen, así que se busca por código.
+ *
+ * `sugerir(enTienda)` cambia la cantidad que propone «bajar»; sin ella se
+ * propone según la diferencia del conteo.
  */
-export default function DialogosConteo({ accion, onHecho, onClose }) {
+export default function DialogosConteo({ accion, sugerir, onHecho, onClose }) {
   const inv = accion?.inv;
   const tipo = accion?.tipo;
 
   const { data: producto, isLoading: cargaProducto } = useQuery({
-    queryKey: ['producto-de-conteo', inv?.producto_id],
-    queryFn: () => base44.entities.Producto.filter({ id: inv.producto_id }, '-updated_date', 1),
-    enabled: Boolean(inv?.producto_id) && tipo !== 'conteos',
-    select: (d) => (Array.isArray(d) ? d[0] : null),
+    // Con id, la misma clave que el detalle del conteo, para no pedirlo dos veces.
+    queryKey: inv?.producto_id
+      ? ['producto-de-conteo', inv.producto_id]
+      : ['producto-por-codigo', inv?.almacen_num, inv?.producto_codigo],
+    queryFn: () => (inv.producto_id
+      ? base44.entities.Producto.filter({ id: inv.producto_id }, '-updated_date', 1)
+      // Un código puede tener varias filas si TKC creó más de un anuncio: sirve
+      // la que tenga id de anuncio.
+      : base44.entities.Producto.filter(
+        { codigo_producto: inv.producto_codigo, almacen_num: inv.almacen_num, activo: true }, '-updated_date', 5)),
+    enabled: Boolean(inv?.producto_id || (inv?.producto_codigo && inv?.almacen_num)) && tipo !== 'conteos',
+    select: (d) => (Array.isArray(d) ? (d.find((p) => p.id_tienda) ?? d[0] ?? null) : null),
     ...SIN_SONDEO,
   });
   const idTienda = producto?.id_tienda;
@@ -102,12 +116,13 @@ export default function DialogosConteo({ accion, onHecho, onClose }) {
     );
   }
 
-  if (!inv.producto_id) {
-    return <Espera inv={inv} onClose={onClose} error="Este conteo no está ligado a un producto del catálogo." />;
+  if (!inv.producto_id && !inv.producto_codigo) {
+    return <Espera inv={inv} onClose={onClose} error="Esta fila no está ligada a un producto del catálogo." />;
   }
   if (cargaProducto) return <Espera inv={inv} onClose={onClose} />;
   if (!idTienda) {
-    return <Espera inv={inv} onClose={onClose} error="El producto no tiene id de anuncio en TKC: no se puede consultar." />;
+    return <Espera inv={inv} onClose={onClose}
+      error={producto ? 'El producto no tiene id de anuncio en TKC: no se puede consultar.' : 'No se encontró el producto en el catálogo de este almacén.'} />;
   }
 
   if (tipo === 'historial') {
@@ -132,7 +147,8 @@ export default function DialogosConteo({ accion, onHecho, onClose }) {
 
   // La sugerencia es de bajar; subir se queda como en el catálogo. Y si la
   // existencia cambió desde el conteo, se dice: la diferencia es de aquel día.
-  const base = tipo === 'bajar' ? sugerirBajada(inv.diferencia, enTienda) : null;
+  const base = tipo !== 'bajar' ? null
+    : sugerir ? sugerir(enTienda) : sugerirBajada(inv.diferencia, enTienda);
   const entonces = inv.exist_fisica_tkc;
   const cambio = Number.isFinite(fisica) && Number.isFinite(entonces) && fisica !== entonces;
   const aviso = cambio

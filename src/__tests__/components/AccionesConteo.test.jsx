@@ -68,10 +68,28 @@ describe('DialogosConteo', () => {
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
   });
 
-  it('un conteo sin producto ligado lo dice y no consulta nada', async () => {
-    montar({ tipo: 'subir', inv: { ...INV, producto_id: null } });
+  it('una fila sin producto ni código lo dice y no consulta nada', async () => {
+    montar({ tipo: 'subir', inv: { ...INV, producto_id: null, producto_codigo: null } });
 
-    expect(await screen.findByText(/no está ligado a un producto/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no está ligada a un producto/i)).toBeInTheDocument();
     expect(mocks.existencia).not.toHaveBeenCalled();
+  });
+
+  it('un lote del informe, sin id de producto, se busca por código y usa su propia sugerencia', async () => {
+    mocks.existencia.mockResolvedValue({ existencia: { fisica: 20, enAlmacen: 15, enTienda: 6 } });
+    const lote = { producto_nombre: 'Mostaza', producto_codigo: 'SC1', almacen_num: '789', no_lote: 'L9', estado_fv: 'critico', cantidad: 4 };
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <DialogosConteo accion={{ tipo: 'bajar', inv: lote }}
+          sugerir={(t) => ({ cantidad: Math.min(lote.cantidad, t), motivo: 'Lote L9 crítico: se propone bajar 4.' })}
+          onHecho={() => {}} onClose={() => {}} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText(/lote L9 crítico: se propone bajar 4/i)).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: /cantidad a mover/i })).toHaveValue(4);
+    expect(mocks.producto).toHaveBeenCalledWith(
+      { codigo_producto: 'SC1', almacen_num: '789', activo: true }, '-updated_date', 5);
   });
 });
