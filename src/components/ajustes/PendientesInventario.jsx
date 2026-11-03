@@ -10,8 +10,6 @@ import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock'
 import ExistenciaAhora from '@/components/inventario/ExistenciaAhora';
 import { ClipboardList, ArrowDownToLine, Eye, PackageMinus, PackagePlus, Undo2, ArrowLeftRight } from 'lucide-react';
 import DialogosConteo, { CeldaAcciones } from '@/components/inventario/AccionesConteo';
-import { tieneRol } from '@/lib/roles';
-import { ROLES_TIENDA } from '@/lib/ajustes';
 import {
   anterioresDe, esAjustable, esIntercambio, lineasDeConteos, ultimoPorProducto,
 } from '@/lib/conteosFact';
@@ -65,8 +63,6 @@ export default function PendientesInventario({ tipo, almacen, onUsar }) {
   const [detalle, setDetalle] = useState(null);
   const [devolviendo, setDevolviendo] = useState(null);
   const [accion, setAccion] = useState(null);     // { tipo, inv } del menú ⋯
-
-  const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
 
   const { data: filas = [], isLoading } = useQuery({
     queryKey: ['pend-fact', tipo, almacen],
@@ -183,15 +179,10 @@ export default function PendientesInventario({ tipo, almacen, onUsar }) {
                     {i.fecha_inv || '—'}
                   </td>
                   <td className="px-3 py-2 text-right whitespace-nowrap">
-                    <CeldaAcciones inv={i} analizar onAccion={setAccion}
-                      puedeMoverTienda={tieneRol(user, ROLES_TIENDA)}
+                    {/* Montar el ajuste y devolver viven dentro del detalle del conteo. */}
+                    <CeldaAcciones inv={i} analizar sinPrecios onAccion={setAccion}
                       extras={[
-                        {
-                          clave: 'montar', etiqueta: `${cfg.montar} con este producto`, Icono: cfg.Icono,
-                          color: 'text-[var(--c-ok)]', al: () => montarUno(i),
-                        },
                         { clave: 'detalle', etiqueta: 'Ver detalle del conteo', Icono: Eye, color: 'text-muted-foreground', al: () => setDetalle(i) },
-                        { clave: 'devolver', etiqueta: 'Devolver a inventario', Icono: Undo2, color: 'text-[var(--c-warn)]', al: () => setDevolviendo(i) },
                       ]} />
                   </td>
                 </tr>
@@ -201,7 +192,19 @@ export default function PendientesInventario({ tipo, almacen, onUsar }) {
         </div>
       )}
 
-      <DetalleConteo conteo={detalle} onClose={() => setDetalle(null)} />
+      <DetalleConteo conteo={detalle} onClose={() => setDetalle(null)}
+        acciones={detalle && (
+          <>
+            <Button type="button" variant="outline" style={{ borderRadius: 'var(--r-ctl)' }}
+              onClick={() => { setDevolviendo(detalle); setDetalle(null); }}>
+              <Undo2 className="w-3.5 h-3.5 mr-1.5" /> Devolver a inventario
+            </Button>
+            <Button type="button" style={{ borderRadius: 'var(--r-ctl)' }}
+              onClick={() => { montarUno(detalle); setDetalle(null); }}>
+              <cfg.Icono className="w-3.5 h-3.5 mr-1.5" /> {cfg.montar}
+            </Button>
+          </>
+        )} />
       <DialogosConteo accion={accion} onHecho={() => setAccion(null)} onClose={() => setAccion(null)} />
       <DevolverConteo conteos={devolviendo ? [devolviendo] : null} onClose={() => setDevolviendo(null)}
         onHecho={() => {
@@ -214,7 +217,7 @@ export default function PendientesInventario({ tipo, almacen, onUsar }) {
 }
 
 /** Todo lo que se sabe del conteo, y cómo está la existencia ahora: lo que hace falta para decidir. */
-export function DetalleConteo({ conteo, onClose }) {
+export function DetalleConteo({ conteo, onClose, acciones }) {
   return (
     <Dialog open={Boolean(conteo)} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -239,6 +242,8 @@ export function DetalleConteo({ conteo, onClose }) {
             {/* Quien procesa lo hace días después: tiene que ver contra qué
                 existencia se midió y cuál es la de ahora. */}
             <ExistenciaAhora inv={conteo} />
+            {/* Lo que se puede hacer con este conteo: montar su ajuste o devolverlo. */}
+            {acciones && <div className="flex flex-wrap justify-end gap-2 pt-1">{acciones}</div>}
           </div>
         )}
       </DialogContent>

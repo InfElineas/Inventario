@@ -363,7 +363,9 @@ export default function Mermas({ ambito = 'inventario' }) {
           acciones: (f) => (
             <CeldaAcciones inv={f} onAccion={alElegirAccion}
               // Solo se baja lo que sigue contado en el piso de tienda.
-              puedeMoverTienda={puedeBajar && Boolean(f.producto_codigo) && Number(f.cantidad) > 0 && !f.rebaja_confirmada}
+              // Facturación solo retira: la bajada de tienda y los precios no son suyos.
+              puedeMoverTienda={ambito !== 'facturacion' && puedeBajar && Boolean(f.producto_codigo) && Number(f.cantidad) > 0 && !f.rebaja_confirmada}
+              sinPrecios={ambito === 'facturacion'}
               modulos={['bajar']}
               analizar={ambito === 'facturacion'}
               puedeEliminar={puedeEliminarMerma(f, user)} />

@@ -95,7 +95,8 @@ describe('ParesIntercambio', () => {
     pintar({});
 
     await userEvent.click((await screen.findAllByRole('button', { name: /^Acciones: Aceite/ }))[0]);
-    await userEvent.click(screen.getByText('Devolver los dos conteos a inventario'));
+    await userEvent.click(screen.getByText('Ver detalle del conteo'));
+    await userEvent.click(await screen.findByRole('button', { name: 'Devolver los dos conteos a inventario' }));
     await userEvent.type(screen.getByPlaceholderText(/qué hay que corregir/i), 'No son productos parecidos');
     await userEvent.click(screen.getByRole('button', { name: /^Devolver$/ }));
 

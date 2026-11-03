@@ -156,6 +156,8 @@ describe('DialogosConteo — analizar diferencia', () => {
     expect(await screen.findByText('Ajustes de aumento')).toBeInTheDocument();
     expect(screen.getByText('Ventas (despachos)')).toBeInTheDocument();
     expect(screen.getByText(/1 subida o bajada de tienda no se cuentan/)).toBeInTheDocument();
+    // Por usuario, con la fecha de sus movimientos.
+    expect(screen.getByText('yeraldind.perez').closest('tr')).toHaveTextContent('30/10/2026');
   });
 
   it('ventas directas y ajustes: solo esos documentos', async () => {

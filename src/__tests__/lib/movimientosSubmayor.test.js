@@ -33,6 +33,7 @@ describe('tipoDeMovimiento', () => {
     expect(tipoDeMovimiento('Salida - Ajuste Disminución - TKCS1')).toBe('ajuste_disminucion');
     expect(tipoDeMovimiento('SALIDA - AJUSTE DE DISMINUCION')).toBe('ajuste_disminucion');
     expect(tipoDeMovimiento('Entrada - Procesamiento - TKCP1')).toBe('procesamiento');
+    expect(tipoDeMovimiento('Entrada - Procesar entrada - TKCP202611562')).toBe('procesamiento');
   });
 
   it('lo que no se reconoce es «otros», no una suposición', () => {
@@ -98,6 +99,18 @@ describe('resumirMovimientos', () => {
   it('por usuario, el que más movió primero', () => {
     expect(r.porUsuario[0]).toMatchObject({ usuario: 'yeraldind.perez', entradas: 180 });
     expect(r.porUsuario.find((u) => u.usuario === 'luism.pavia')).toMatchObject({ movimientos: 2, salidas: 3 });
+  });
+
+  it('por usuario, desde y hasta cuándo: el primer y el último movimiento', () => {
+    const luis = r.porUsuario.find((u) => u.usuario === 'luism.pavia');
+    expect([luis.primera.fecha, luis.ultima.fecha]).toEqual(['05/10/2026', '05/10/2026']);
+    const dani = r.porUsuario.find((u) => u.usuario === 'daniel.asael');
+    expect(dani.primera.fecha).toBe('06/10/2026');
+    const varios = resumirMovimientos(clasificarMovimientos([
+      { fecha: '31/10/2026', documento: 'Salida - Despacho - 2', salida: 1, usuario: 'x' },
+      { fecha: '08/10/2026', documento: 'Salida - Despacho - 1', salida: 1, usuario: 'x' },
+    ])).porUsuario[0];
+    expect([varios.primera.fecha, varios.ultima.fecha]).toEqual(['08/10/2026', '31/10/2026']);
   });
 
   it('lo no reconocido se lista para que se vea', () => {

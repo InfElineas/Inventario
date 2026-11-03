@@ -349,7 +349,7 @@ export default function ProcesamientoForm() {
                         <td className="px-4 py-2 text-right whitespace-nowrap">
                           <span className="inline-block align-middle">
                             <CeldaAcciones inv={{ almacen_num: almacen, producto_codigo: c.code, producto_nombre: c.name }}
-                              analizar onAccion={setAccion} />
+                              analizar sinPrecios onAccion={setAccion} />
                           </span>
                           {c.status === 'ready' && (
                             <Button size="sm" variant="ghost" title="Agregar al formulario" aria-label={`Agregar ${c.code}`} onClick={() => agregar(c)}>

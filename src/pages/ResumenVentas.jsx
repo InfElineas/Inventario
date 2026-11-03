@@ -201,7 +201,7 @@ function celdaVenta(f, clave, enTabla, { almacen, onAccion }) {
     case 'acciones':
       return env(
         <CeldaAcciones inv={{ almacen_num: almacen, producto_codigo: f.codigo, producto_nombre: f.nombre || f.codigo }}
-          analizar onAccion={onAccion} />,
+          analizar sinPrecios onAccion={onAccion} />,
         'whitespace-nowrap',
       );
     case 'cantidad':

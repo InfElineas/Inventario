@@ -314,12 +314,15 @@ se bloquea reintentar hasta revisarlo en TKC.
 Las listas por producto de facturación tienen el mismo menú **⋯** que Inventario:
 los conteos de *Por ajustar* (aumento, disminución) y *Por transferir*, los
 intercambios y los candidatos de Procesamientos, las mermas por facturar y los
-productos del Resumen de ventas. Trae, además de lo de siempre (historial del
-submayor, conteos de inventario, precios, subir y bajar de tienda):
+productos del Resumen de ventas. Trae, además del historial del submayor y los conteos de inventario:
 
-- **Montar ajuste / transferencia / procesamiento con este producto**: pasa esa
-  fila —y su conteo— al formulario, como «Pasarlos al formulario» pero de uno.
+- **Ver detalle del conteo**: el conteo y la existencia de ahora, y desde ahí
+  **montar el ajuste, la transferencia o el procesamiento con ese producto** o
+  **devolverlo a inventario**.
 - **Analizar diferencia**: de dónde viene un faltante o un sobrante.
+
+El menú es corto a propósito: facturación solo retira, así que no ofrece subir ni
+bajar de tienda ni los precios.
 
 **Analizar diferencia** lee el submayor de TKC, que guarda cada movimiento del
 producto con su documento (`Salida - Despacho - …`, `Entrada - Ajuste Aumento - …`,

@@ -46,7 +46,7 @@ const REGLAS = [
   ['ajuste_aumento',     /ajuste( de)? aumento/],
   ['ajuste_disminucion', /ajuste( de)? disminucion/],
   ['transferencia',      /transferencia/],
-  ['procesamiento',      /procesamiento|\bproceso\b/],
+  ['procesamiento',      /procesamiento|procesar|\bproceso\b/],
   ['recepcion',          /recepcion|compra|\bentrada de mercancia/],
   ['merma',              /merma/],
 ];
@@ -100,7 +100,7 @@ export const cambioDeExistencia = (clasificados) => clasificados
  * (`interno`) va aparte en `internos`, para no mezclarlo en los totales.
  *
  * @returns {{ porTipo: Array<{ clave, etiqueta, movimientos, entradas, salidas, neto }>,
- *             porUsuario: Array<{ usuario, movimientos, entradas, salidas }>,
+ *             porUsuario: Array<{ usuario, movimientos, entradas, salidas, primera, ultima }>, // el movimiento, para su fecha
  *             entradas: number, salidas: number, neto: number,
  *             internos: number, otros: string[] }}
  */
@@ -124,8 +124,11 @@ export function resumirMovimientos(clasificados) {
     t.movimientos += 1; t.entradas += e; t.salidas += s; t.neto += e - s;
     porTipo.set(m.tipo, t);
 
-    const u = porUsuario.get(m.usuario || '—') ?? { usuario: m.usuario || '—', movimientos: 0, entradas: 0, salidas: 0 };
+    const u = porUsuario.get(m.usuario || '—') ?? { usuario: m.usuario || '—', movimientos: 0, entradas: 0, salidas: 0, primera: m, ultima: m };
     u.movimientos += 1; u.entradas += e; u.salidas += s;
+    // Cuándo: el primer y el último movimiento del usuario.
+    if (m.iso && (!u.primera.iso || m.iso < u.primera.iso)) u.primera = m;
+    if (m.iso && (!u.ultima.iso || m.iso > u.ultima.iso)) u.ultima = m;
     porUsuario.set(m.usuario || '—', u);
   }
 

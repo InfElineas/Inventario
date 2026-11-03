@@ -139,7 +139,14 @@ describe('PendientesInventario', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Acciones: Arroz' }));
     expect(await screen.findByText('Analizar diferencia')).toBeInTheDocument();
     expect(screen.getByText('Historial del submayor')).toBeInTheDocument();
-    await userEvent.click(screen.getByText('Montar ajuste de aumento con este producto'));
+    // Facturación solo retira: ni subir y bajar de tienda ni los precios.
+    expect(screen.queryByText('Subir a tienda')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bajar de tienda')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ver todos los precios')).not.toBeInTheDocument();
+    // Montar el ajuste y devolver van dentro del detalle del conteo.
+    expect(screen.queryByText(/Montar ajuste de aumento/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByText('Ver detalle del conteo'));
+    await userEvent.click(await screen.findByRole('button', { name: 'Montar ajuste de aumento' }));
 
     expect(onUsar).toHaveBeenCalledTimes(1);
     expect(onUsar.mock.calls[0][0]).toBe('7502*2');
@@ -185,7 +192,8 @@ describe('PendientesInventario', () => {
     pintar({ tipo: 'aumento' });
 
     await userEvent.click(await screen.findByRole('button', { name: 'Acciones: Aceite 1 L' }));
-    await userEvent.click(screen.getByText('Devolver a inventario'));
+    await userEvent.click(screen.getByText('Ver detalle del conteo'));
+    await userEvent.click(await screen.findByRole('button', { name: 'Devolver a inventario' }));
     const devolver = screen.getByRole('button', { name: /^Devolver$/ });
     expect(devolver).toBeDisabled();
 

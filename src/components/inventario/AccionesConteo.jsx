@@ -30,7 +30,7 @@ import AnalisisDiferenciaDialog from '@/components/inventario/AnalisisDiferencia
  * la pinta —cada una tiene su regla— y `modulos` qué movimientos de tienda
  * se ofrecen.
  */
-export function CeldaAcciones({ inv, puedeMoverTienda, modulos, puedeEliminar, analizar, extras, onAccion }) {
+export function CeldaAcciones({ inv, puedeMoverTienda, modulos, puedeEliminar, analizar, sinPrecios, extras, onAccion }) {
   // En facturación, además: analizar de dónde viene la diferencia. Va antes de
   // las consultas, con lo que cada pantalla añada (montar un ajuste, p. ej.).
   const propios = [
@@ -50,7 +50,8 @@ export function CeldaAcciones({ inv, puedeMoverTienda, modulos, puedeEliminar, a
         onMover={(modulo) => onAccion({ tipo: modulo, inv })}
         onHistorial={() => onAccion({ tipo: 'historial', inv })}
         onConteos={() => onAccion({ tipo: 'conteos', inv })}
-        onPrecios={() => onAccion({ tipo: 'precios', inv })}
+        // Facturación solo retira: no mueve a tienda ni mira precios, y el menú se queda corto.
+        onPrecios={sinPrecios ? undefined : () => onAccion({ tipo: 'precios', inv })}
         onEliminar={puedeEliminar ? () => onAccion({ tipo: 'eliminar', inv }) : undefined}
       />
     </div>

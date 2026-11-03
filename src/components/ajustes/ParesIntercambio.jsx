@@ -8,8 +8,6 @@ import { ArrowDownToLine, ArrowRight, Eye, Repeat, Undo2 } from 'lucide-react';
 import { CLASIF_INTERCAMBIO, lineasDePares, paresDeIntercambio } from '@/lib/conteosFact';
 import { DetalleConteo, DevolverConteo } from '@/components/ajustes/PendientesInventario';
 import DialogosConteo, { CeldaAcciones } from '@/components/inventario/AccionesConteo';
-import { tieneRol } from '@/lib/roles';
-import { ROLES_TIENDA } from '@/lib/ajustes';
 
 /**
  * Los intercambios que esperan su procesamiento.
@@ -37,8 +35,6 @@ export default function ParesIntercambio({ almacen, onUsar }) {
   const [detalle, setDetalle] = useState(null);
   const [devolviendo, setDevolviendo] = useState(null);
   const [accion, setAccion] = useState(null);     // { tipo, inv } del menú ⋯
-
-  const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
 
   const { data: filas = [], isLoading } = useQuery({
     queryKey: ['pend-fact', 'intercambio', almacen],
@@ -97,7 +93,7 @@ export default function ParesIntercambio({ almacen, onUsar }) {
                 className="w-3.5 h-3.5 accent-[var(--c-ok)] cursor-pointer shrink-0" />
               <div className="min-w-0 flex-1 grid gap-1 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
                 <div className="min-w-0 flex items-start gap-1">
-                  <Acciones conteo={p.origen} par={p} user={user} onAccion={setAccion} onMontar={onUsar} onDetalle={setDetalle} onDevolver={setDevolviendo} />
+                  <Acciones conteo={p.origen} par={p} onAccion={setAccion} onDetalle={setDetalle} />
                   <div className="min-w-0">
                     <p className="text-sm line-clamp-1">{p.origen.producto_nombre}</p>
                     <p className="text-[11px] text-muted-foreground font-mono">
@@ -109,7 +105,7 @@ export default function ParesIntercambio({ almacen, onUsar }) {
                   <ArrowRight className="w-3.5 h-3.5" /> {p.cantidad}
                 </span>
                 <div className="min-w-0 flex items-start gap-1">
-                  <Acciones conteo={p.destino} par={p} user={user} onAccion={setAccion} onMontar={onUsar} onDetalle={setDetalle} onDevolver={setDevolviendo} />
+                  <Acciones conteo={p.destino} par={p} onAccion={setAccion} onDetalle={setDetalle} />
                   <div className="min-w-0">
                     <p className="text-sm line-clamp-1">{p.destino.producto_nombre}</p>
                     <p className="text-[11px] text-muted-foreground font-mono">
@@ -142,26 +138,32 @@ export default function ParesIntercambio({ almacen, onUsar }) {
         </div>
       )}
 
-      <DetalleConteo conteo={detalle} onClose={() => setDetalle(null)} />
+      <DetalleConteo conteo={detalle?.conteo} onClose={() => setDetalle(null)}
+        acciones={detalle && (
+          <>
+            <Button type="button" variant="outline" style={{ borderRadius: 'var(--r-ctl)' }}
+              onClick={() => { setDevolviendo([detalle.par.origen, detalle.par.destino]); setDetalle(null); }}>
+              <Undo2 className="w-3.5 h-3.5 mr-1.5" /> Devolver los dos conteos a inventario
+            </Button>
+            <Button type="button" style={{ borderRadius: 'var(--r-ctl)' }}
+              onClick={() => { onUsar(lineasDePares([detalle.par]), [detalle.par]); setDetalle(null); }}>
+              <Repeat className="w-3.5 h-3.5 mr-1.5" /> Montar procesamiento de este par
+            </Button>
+          </>
+        )} />
       <DialogosConteo accion={accion} onHecho={() => setAccion(null)} onClose={() => setAccion(null)} />
       <DevolverConteo conteos={devolviendo} onClose={() => setDevolviendo(null)} onHecho={hecho} />
     </Card>
   );
 }
 
-/** El menú ⋯ de un producto del par: analizar su diferencia y montar el procesamiento del par. */
-function Acciones({ conteo, par, user, onAccion, onMontar, onDetalle, onDevolver }) {
+/** El menú ⋯ de un producto del par: su detalle (donde se monta el procesamiento o se devuelve) y analizar su diferencia. */
+function Acciones({ conteo, par, onAccion, onDetalle }) {
   return (
-    <CeldaAcciones inv={conteo} analizar onAccion={onAccion}
-      puedeMoverTienda={tieneRol(user, ROLES_TIENDA)}
+    <CeldaAcciones inv={conteo} analizar sinPrecios onAccion={onAccion}
       extras={[{
-        clave: 'montar', etiqueta: 'Montar procesamiento de este par', Icono: Repeat,
-        color: 'text-[var(--c-ok)]', al: () => onMontar(lineasDePares([par]), [par]),
-      }, {
-        clave: 'detalle', etiqueta: 'Ver detalle del conteo', Icono: Eye, color: 'text-muted-foreground', al: () => onDetalle(conteo),
-      }, {
-        clave: 'devolver', etiqueta: 'Devolver los dos conteos a inventario', Icono: Undo2,
-        color: 'text-[var(--c-warn)]', al: () => onDevolver([par.origen, par.destino]),
+        clave: 'detalle', etiqueta: 'Ver detalle del conteo', Icono: Eye,
+        color: 'text-muted-foreground', al: () => onDetalle({ conteo, par }),
       }]} />
   );
 }

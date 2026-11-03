@@ -39,6 +39,9 @@ function inicioPorDefecto(fechaConteo) {
   return dia(Date.parse(`${iso}T00:00:00Z`) - 7 * 86400000);
 }
 
+/** El contenido de una pestaña: lo que se desplaza es la tabla, no la ventana entera. */
+const ZONA = 'overflow-y-auto min-h-0 max-h-[48vh] space-y-3 pr-1';
+
 const conSigno = (n) => `${n > 0 ? '+' : ''}${n}`;
 
 export default function AnalisisDiferenciaDialog({ inv, idTienda, onClose }) {
@@ -74,7 +77,7 @@ export default function AnalisisDiferenciaDialog({ inv, idTienda, onClose }) {
 
   return (
     <Dialog open onOpenChange={(abierto) => { if (!abierto) onClose(); }}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogTitle className="text-sm font-medium">Analizar diferencia — {warehouseName(almacen)}</DialogTitle>
         <DialogDescription className="text-xs">
           {inv.producto_nombre} · <span className="font-mono">{inv.producto_codigo}</span>
@@ -115,7 +118,7 @@ export default function AnalisisDiferenciaDialog({ inv, idTienda, onClose }) {
         )}
 
         {historial.data && (
-          <Tabs defaultValue="conteo" className="space-y-3">
+          <Tabs defaultValue="conteo" className="flex flex-col gap-3 min-h-0">
             <TabsList className="flex-wrap h-auto">
               <TabsTrigger value="conteo">Desde el conteo</TabsTrigger>
               <TabsTrigger value="origen">Origen</TabsTrigger>
@@ -123,7 +126,7 @@ export default function AnalisisDiferenciaDialog({ inv, idTienda, onClose }) {
               <TabsTrigger value="ventas">Ventas vs despachos</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="conteo" className="space-y-3">
+            <TabsContent value="conteo" className={ZONA}>
               {!fechaConteo ? (
                 <p className="text-sm text-muted-foreground">Esta fila no tiene fecha de conteo: mira el origen de los movimientos.</p>
               ) : (
@@ -134,15 +137,15 @@ export default function AnalisisDiferenciaDialog({ inv, idTienda, onClose }) {
               )}
             </TabsContent>
 
-            <TabsContent value="origen" className="space-y-4">
+            <TabsContent value="origen" className={`${ZONA} space-y-4`}>
               <Origen resumen={resumen} />
             </TabsContent>
 
-            <TabsContent value="ajustes" className="space-y-3">
+            <TabsContent value="ajustes" className={ZONA}>
               <TablaMovimientos movimientos={deAjuste} vacio="Sin ventas directas ni ajustes en el período." />
             </TabsContent>
 
-            <TabsContent value="ventas" className="space-y-3">
+            <TabsContent value="ventas" className={ZONA}>
               <VentasVsDespachos ventas={ventas} despachado={unidadesDespachadas(movimientos)} />
             </TabsContent>
           </Tabs>
@@ -177,15 +180,15 @@ function Origen({ resumen }) {
   }
   return (
     <>
-      <div className="overflow-x-auto">
+      <div>
         <table className="w-full text-xs">
           <thead>
             <tr className="text-left text-muted-foreground border-b">
-              <th className="py-2 pr-3 font-medium">Tipo</th>
-              <th className="py-2 pr-3 font-medium text-right">Movimientos</th>
-              <th className="py-2 pr-3 font-medium text-right">Entradas</th>
-              <th className="py-2 pr-3 font-medium text-right">Salidas</th>
-              <th className="py-2 font-medium text-right">Neto</th>
+              <th className="sticky top-0 bg-background py-2 pr-3 font-medium">Tipo</th>
+              <th className="sticky top-0 bg-background py-2 pr-3 font-medium text-right">Movimientos</th>
+              <th className="sticky top-0 bg-background py-2 pr-3 font-medium text-right">Entradas</th>
+              <th className="sticky top-0 bg-background py-2 pr-3 font-medium text-right">Salidas</th>
+              <th className="sticky top-0 bg-background py-2 font-medium text-right">Neto</th>
             </tr>
           </thead>
           <tbody>
@@ -221,14 +224,26 @@ function Origen({ resumen }) {
           Sin clasificar («Otros»): {resumen.otros.slice(0, 4).join('; ')}{resumen.otros.length > 4 ? '…' : ''}.
         </p>
       )}
-      <div className="overflow-x-auto">
+      <div>
         <p className="text-xs font-medium text-muted-foreground mb-1">Por usuario</p>
         <table className="w-full text-xs">
+          <thead>
+            <tr className="text-left text-muted-foreground border-b">
+              <th className="py-1.5 pr-3 font-medium">Usuario</th>
+              <th className="py-1.5 pr-3 font-medium">Fecha</th>
+              <th className="py-1.5 pr-3 font-medium text-right">Mov.</th>
+              <th className="py-1.5 pr-3 font-medium text-right">Entradas</th>
+              <th className="py-1.5 font-medium text-right">Salidas</th>
+            </tr>
+          </thead>
           <tbody>
             {resumen.porUsuario.map((u) => (
               <tr key={u.usuario} className="border-b last:border-0">
                 <td className="py-1.5 pr-3">{u.usuario}</td>
-                <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">{u.movimientos} mov.</td>
+                <td className="py-1.5 pr-3 whitespace-nowrap text-muted-foreground">
+                  {u.primera.fecha === u.ultima.fecha ? u.primera.fecha : `${u.primera.fecha} – ${u.ultima.fecha}`}
+                </td>
+                <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">{u.movimientos}</td>
                 <td className="py-1.5 pr-3 text-right tabular-nums text-[var(--c-ok-dim)]">{u.entradas || ''}</td>
                 <td className="py-1.5 text-right tabular-nums text-[var(--c-bad)]">{u.salidas || ''}</td>
               </tr>
@@ -282,16 +297,16 @@ function VentasVsDespachos({ ventas, despachado }) {
 function TablaMovimientos({ movimientos, vacio }) {
   if (movimientos.length === 0) return <p className="text-sm text-muted-foreground py-4 text-center">{vacio}</p>;
   return (
-    <div className="overflow-x-auto">
+    <div>
       <table className="w-full text-xs">
         <thead>
           <tr className="text-left text-muted-foreground border-b">
-            <th className="py-2 pr-3 font-medium">Fecha</th>
-            <th className="py-2 pr-3 font-medium">Documento</th>
-            <th className="py-2 pr-3 font-medium text-right">Entrada</th>
-            <th className="py-2 pr-3 font-medium text-right">Salida</th>
-            <th className="py-2 pr-3 font-medium text-right">Después</th>
-            <th className="py-2 font-medium">Usuario</th>
+            <th className="sticky top-0 bg-background py-2 pr-3 font-medium">Fecha</th>
+            <th className="sticky top-0 bg-background py-2 pr-3 font-medium">Documento</th>
+            <th className="sticky top-0 bg-background py-2 pr-3 font-medium text-right">Entrada</th>
+            <th className="sticky top-0 bg-background py-2 pr-3 font-medium text-right">Salida</th>
+            <th className="sticky top-0 bg-background py-2 pr-3 font-medium text-right">Después</th>
+            <th className="sticky top-0 bg-background py-2 font-medium">Usuario</th>
           </tr>
         </thead>
         <tbody>
