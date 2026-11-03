@@ -1,5 +1,7 @@
 # Facturación: de dónde salen los datos (F0)
 
+**Para ejecutarlo paso a paso, ver [facturacion-pasos.md](facturacion-pasos.md).**
+
 Primera tarea de [facturacion-mejoras.md](facturacion-mejoras.md). Lo que sigue
 es lo que se puede afirmar leyendo el código y los documentos de contexto de
 TKC, y lo que **solo se averigua mirando el servidor**, con el comando para
