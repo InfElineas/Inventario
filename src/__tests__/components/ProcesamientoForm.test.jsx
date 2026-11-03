@@ -203,8 +203,48 @@ describe('ProcesamientoForm', () => {
     const user = userEvent.setup();
     montar();
     await user.selectOptions(screen.getAllByRole('combobox')[0], '676');
-    await user.click(await screen.findByRole('button', { name: /pasarlos al formulario/i }));
+    await user.click(await screen.findByRole('button', { name: /pasar los procesables al formulario/i }));
     // El bloqueado no entra: enviarlo solo produciría un rechazo de TKC.
     expect(await screen.findByPlaceholderText(PLACEHOLDER)).toHaveValue('NoMT10157977*3');
+    // Se piden a la API con status=ready, no se toman de la página que se ve.
+    expect(svc.listarCandidatos).toHaveBeenCalledWith(expect.objectContaining({ almacen: '676', status: 'ready', limit: 500 }));
+  });
+
+  it('los candidatos se piden por páginas y se pueden filtrar por estado en la API', async () => {
+    const user = userEvent.setup();
+    montar();
+    await user.selectOptions(screen.getAllByRole('combobox')[0], '676');
+    await waitFor(() => expect(svc.listarCandidatos).toHaveBeenCalledWith(expect.objectContaining({ almacen: '676', status: '', limit: 50, offset: 0 })));
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Estado' }), 'price-differs');
+    await waitFor(() => expect(svc.listarCandidatos).toHaveBeenCalledWith(expect.objectContaining({ status: 'price-differs', offset: 0 })));
+  });
+
+  it('el historial de procesados pide los recientes por páginas, con su estado en español, y dice si falla', async () => {
+    svc.listarProcesados.mockResolvedValue({
+      status: 200, total: 2,
+      body: [
+        { id: 1, code: 'TKCP202613238', status: 'procesada', date: '2026-10-26', totalProducts: 1, totalProcessed: 1 },
+        { id: 2, code: 'TKCP202613300', status: 'proceso', date: '2026-10-27', totalProducts: 3, totalProcessed: 1, canResume: true },
+      ],
+    });
+    const user = userEvent.setup();
+    montar();
+    await user.selectOptions(screen.getAllByRole('combobox')[0], '676');
+    await user.click(screen.getByRole('tab', { name: /Historial/i }));
+
+    expect(await screen.findByText('TKCP202613238')).toBeInTheDocument();
+    expect(within(screen.getByText('TKCP202613300').closest('tr')).getByText('A medias')).toBeInTheDocument();
+    expect(screen.getByText(/Se puede reanudar en TKC/)).toBeInTheDocument();
+    expect(svc.listarProcesados).toHaveBeenCalledWith(expect.objectContaining({ almacen: '676', limit: 50, offset: 0 }));
+  });
+
+  it('si el historial no carga, se ve el error en vez de quedarse vacío', async () => {
+    svc.listarProcesados.mockRejectedValue(new Error('No se pudo conectar con el servidor.'));
+    const user = userEvent.setup();
+    montar();
+    await user.selectOptions(screen.getAllByRole('combobox')[0], '676');
+    await user.click(screen.getByRole('tab', { name: /Historial/i }));
+    expect(await screen.findByText(/No se pudieron cargar los procesamientos: No se pudo conectar/)).toBeInTheDocument();
   });
 });

@@ -141,6 +141,21 @@ describe('leer', () => {
     expect(res.cabeceras['x-truncated-warehouses']).toBe('1');
   });
 
+  it('documentos: sin `recent` se piden los 100 más recientes (todos pasaban del minuto), y con él se respeta', async () => {
+    apiResponde(200, []);
+    await llamar('/api/procesamientos/documentos?almacen=676&status=procesada&q=TKCP');
+    expect(Object.fromEntries(ultimaLlamada().url.searchParams)).toEqual({
+      warehouse: '188', recent: '100', status: 'procesada', q: 'TKCP',
+    });
+
+    await llamar('/api/procesamientos/documentos?almacen=676&recent=30');
+    expect(ultimaLlamada().url.searchParams.get('recent')).toBe('30');
+
+    // Los candidatos no llevan `recent`: no existe para ellos.
+    await llamar('/api/procesamientos/candidatos?almacen=676');
+    expect(ultimaLlamada().url.searchParams.has('recent')).toBe(false);
+  });
+
   it('almacén desconocido: 400', async () => {
     const { res } = await llamar('/api/procesamientos/candidatos?almacen=nope');
     expect(res.statusCode).toBe(400);

@@ -90,6 +90,29 @@ export function interpretarAnalisis(status, body) {
   }
 }
 
+/** Los estados de un candidato (`status`), con lo que dice cada uno. Lo filtra la API. */
+export const ESTADOS_CANDIDATO = [
+  { valor: '', label: 'Todos' },
+  { valor: 'ready', label: 'Procesables' },
+  { valor: 'no-target', label: 'Sin destino' },
+  { valor: 'ambiguous-target', label: 'Varios destinos posibles' },
+  { valor: 'price-differs', label: 'Precio distinto' },
+  { valor: 'target-inactive', label: 'Destino inactivo' },
+  { valor: 'unit-differs', label: 'Unidad distinta' },
+]
+
+/** Los estados de un documento TKCP (`status`). */
+export const ESTADOS_PROCESADO = [
+  { valor: '', label: 'Todos' },
+  { valor: 'procesada', label: 'Procesada' },
+  { valor: 'proceso', label: 'A medias' },
+  { valor: 'cancelada', label: 'Cancelada' },
+]
+
+/** Cómo se dice el estado de un documento. */
+export const etiquetaProcesado = (estado) =>
+  ESTADOS_PROCESADO.find((e) => e.valor && e.valor === String(estado ?? '').toLowerCase())?.label ?? estado ?? ''
+
 /** Etiqueta de una línea ya procesada. */
 export const ETIQUETA_LINEA = {
   done: 'Procesada',

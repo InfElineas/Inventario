@@ -105,6 +105,8 @@ const PROCESOS = {
 const TIPOS_SALIDA = ['decrease', 'direct-sale', 'all']
 
 const MAX_BODY = 512 * 1024
+/** Cuántos procesamientos recientes de cada almacén se piden si el cliente no dice: una página de TKC. */
+const RECIENTES_POR_DEFECTO = 100
 const MAX_LINEAS = 500
 /** Montar analiza cada código en TKC: puede tardar. */
 const TIMEOUT_ESCRITURA_MS = 180_000
@@ -407,8 +409,11 @@ async function atenderProceso(res, req, ctx, operacion, consulta) {
         warehouse: consulta.get('almacen') ? almacenId(consulta.get('almacen')) : undefined,
         refresh: consulta.get('refresh') === 'true' ? 'true' : undefined,
         // Solo los N más recientes de cada almacén: sin él, todos, y un almacén
-        // llega a mil documentos.
-        recent: /^\d{1,4}$/.test(consulta.get('recent') ?? '') ? consulta.get('recent') : undefined,
+        // llega a mil documentos y la lectura pasa del minuto. Por eso los
+        // documentos llevan siempre uno, aunque el cliente no lo pida.
+        recent: /^\d{1,4}$/.test(consulta.get('recent') ?? '')
+          ? consulta.get('recent')
+          : operacion === 'documentos' ? String(RECIENTES_POR_DEFECTO) : undefined,
         status: consulta.get('status') ?? undefined,
         q: consulta.get('q') ?? undefined,
         limit: consulta.get('limit') ?? undefined,

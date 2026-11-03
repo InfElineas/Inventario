@@ -309,6 +309,28 @@ se bloquea reintentar hasta revisarlo en TKC.
   otro almacén sin mover existencia, y el lote de hasta 20 transferencias
   (`/transfers/batch`).
 
+### Procesamientos: por procesar e historial
+
+Las dos listas usan lo que la API ya hace por ellas, en vez de traerlo todo y
+filtrar aquí:
+
+- **Por procesar** (`GET /process/candidates`): los `NoMT…` con existencia del
+  almacén y, de cada uno, el producto al que pasarían, con su precio y su
+  existencia. Se filtra por estado en la API —*Procesables*, *Sin destino*,
+  *Varios destinos posibles*, *Precio distinto*, *Destino inactivo*, *Unidad
+  distinta*—, se busca por código o nombre y va por páginas de 50 con el total.
+  «Pasar los procesables al formulario» los pide con `status=ready`, así que
+  entran todos y no solo los de la página que se ve (hasta 500).
+- **Historial** (`GET /process/documents`): los 100 más recientes del almacén
+  (`recent=100`), con filtro por estado (*Procesada*, *A medias*, *Cancelada*),
+  búsqueda y páginas. **Antes no cargaba**: sin `recent`, TKC devuelve *todos* los
+  documentos de un almacén —hasta unos mil— y la lectura pasaba del minuto. El
+  servidor ahora pone `recent=100` si el cliente no lo pide, y un fallo se ve en
+  pantalla en vez de dejar la lista vacía.
+
+La API recuerda los candidatos 10 minutos y los documentos 2; el botón de
+actualizar se salta esa memoria.
+
 ### Columna de acciones en facturación
 
 Las listas por producto de facturación tienen el mismo menú **⋯** que Inventario:

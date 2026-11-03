@@ -6,6 +6,9 @@ import {
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import Pagination from '@/components/shared/Pagination';
+import { useDebounced } from '@/lib/useDebounced';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,6 +25,7 @@ import { mensajeDeError } from '@/lib/ajustes';
 import {
   parseLineas, nuevaClave, codigoBase, interpretarProceso, interpretarAnalisis,
   LINEAS_POR_DOCUMENTO, ETIQUETA_LINEA, lineasParaEnviar, paresHechos,
+  ESTADOS_CANDIDATO, ESTADOS_PROCESADO, etiquetaProcesado,
 } from '@/lib/procesamientos';
 import {
   listarCandidatos, listarProcesados, analizarProceso, procesar,
@@ -29,6 +33,8 @@ import {
 import { ErrorDeRed } from '@/services/ajustesService';
 import { SIN_SONDEO } from '@/lib/query-client';
 
+const PAGINA = 50;
+const SELECT_CLS = 'bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground';
 const COLOR_LINEA = { done: 'text-[var(--c-ok-dim)]', failed: 'text-[var(--c-bad)]', unverified: 'text-[var(--c-warn)]' };
 
 /**
@@ -97,16 +103,33 @@ export default function ProcesamientoForm() {
   }, [lines]);
 
   // ── Por procesar / procesados del almacén ─────────────────────────
+  // Los filtros los hace la API (`status`, `q`, `limit`/`offset`): ella dice
+  // cuántos hay en total y cuáles se pueden procesar, sin traerlo todo.
+  const [estadoCand, setEstadoCand] = useState('');
+  const [buscarCand, setBuscarCand] = useState('');
+  const [paginaCand, setPaginaCand] = useState(1);
+  const qCand = useDebounced(buscarCand.trim(), 400);
+  const [estadoProc, setEstadoProc] = useState('');
+  const [buscarProc, setBuscarProc] = useState('');
+  const [paginaProc, setPaginaProc] = useState(1);
+  const qProc = useDebounced(buscarProc.trim(), 400);
+
   const candidatos = useQuery({
-    queryKey: ['procesamientos', 'candidatos', almacen],
-    queryFn: () => listarCandidatos({ almacen, refresh: saltarCache.current }),
+    queryKey: ['procesamientos', 'candidatos', almacen, estadoCand, qCand, paginaCand],
+    queryFn: () => listarCandidatos({
+      almacen, status: estadoCand, q: qCand, refresh: saltarCache.current,
+      limit: PAGINA, offset: (paginaCand - 1) * PAGINA,
+    }),
     enabled: almacenValido && !sinTkc,
     staleTime: 60_000,
     ...SIN_SONDEO,
   });
   const procesados = useQuery({
-    queryKey: ['procesamientos', 'documentos', almacen],
-    queryFn: () => listarProcesados({ almacen, refresh: saltarCache.current }),
+    queryKey: ['procesamientos', 'documentos', almacen, estadoProc, qProc, paginaProc],
+    queryFn: () => listarProcesados({
+      almacen, status: estadoProc, q: qProc, refresh: saltarCache.current,
+      limit: PAGINA, offset: (paginaProc - 1) * PAGINA,
+    }),
     enabled: almacenValido && !sinTkc,
     staleTime: 60_000,
     ...SIN_SONDEO,
@@ -187,11 +210,28 @@ export default function ProcesamientoForm() {
     setTexto((t) => `${t.trimEnd()}${t.trim() ? '\n' : ''}${c.code}*${c.quantity}`);
   }
 
-  /** Todo lo que TKC dice que se puede procesar, sin teclear nada. */
-  const listos = useMemo(() => filasCandidatos.filter((c) => c.status === 'ready'), [filasCandidatos]);
-  function cargarTodos() {
-    setTexto(listos.map((c) => `${c.code}*${c.quantity}`).join('\n'));
-    setEntradaAbierta(true);
+  /**
+   * Todo lo que TKC dice que se puede procesar, sin teclear nada. Se pide a la
+   * API con `status=ready` y no se toma de la página que se está viendo: ahí
+   * puede haber solo una parte, o un filtro puesto.
+   */
+  const [cargandoListos, setCargandoListos] = useState(false);
+  const [errorListos, setErrorListos] = useState('');
+  async function cargarTodos() {
+    setCargandoListos(true);
+    setErrorListos('');
+    try {
+      const { status, body } = await listarCandidatos({ almacen, status: 'ready', limit: 500, offset: 0 });
+      if (!Array.isArray(body)) throw new Error(mensajeDeError(interpretarAnalisis(status, body)));
+      const listos = body.filter((c) => c.status === 'ready');
+      if (listos.length === 0) { setErrorListos('TKC no tiene ahora ningún producto procesable en este almacén.'); return; }
+      setTexto(listos.map((c) => `${c.code}*${c.quantity}`).join('\n'));
+      setEntradaAbierta(true);
+    } catch (e) {
+      setErrorListos(e.message);
+    } finally {
+      setCargandoListos(false);
+    }
   }
 
   // El modal se cierra cuando lo siguiente que hay que hacer está fuera: ver
@@ -299,15 +339,18 @@ export default function ProcesamientoForm() {
               <p className="text-sm font-medium flex items-center gap-2">
                 <ClipboardList className="w-4 h-4 text-muted-foreground" />
                 Productos NoMT con existencia
-                {filasCandidatos.length > 0 && (
-                  <span className="text-xs text-muted-foreground">({filasCandidatos.length})</span>
+                {candidatos.data?.total > 0 && (
+                  <span className="text-xs text-muted-foreground">({candidatos.data.total})</span>
                 )}
               </p>
               <div className="flex items-center gap-1">
-                {listos.length > 0 && (
-                  <Button type="button" variant="outline" size="sm" style={{ borderRadius: 'var(--r-ctl)' }} onClick={cargarTodos}>
-                    <ArrowDownToLine className="w-3.5 h-3.5 mr-1.5" />
-                    Pasarlos al formulario
+                {almacenValido && !sinTkc && (
+                  <Button type="button" variant="outline" size="sm" style={{ borderRadius: 'var(--r-ctl)' }}
+                    onClick={cargarTodos} disabled={cargandoListos}>
+                    {cargandoListos
+                      ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                      : <ArrowDownToLine className="w-3.5 h-3.5 mr-1.5" />}
+                    Pasar los procesables al formulario
                   </Button>
                 )}
                 <Button variant="ghost" size="sm" onClick={refrescar} title="Actualizar"
@@ -317,6 +360,21 @@ export default function ProcesamientoForm() {
               </div>
             </div>
 
+            {almacenValido && (
+              <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-border">
+                <select value={estadoCand} onChange={(e) => { setEstadoCand(e.target.value); setPaginaCand(1); }}
+                  className={SELECT_CLS} aria-label="Estado" style={{ borderRadius: 'var(--r-ctl)' }}>
+                  {ESTADOS_CANDIDATO.map((e) => <option key={e.valor} value={e.valor}>{e.label}</option>)}
+                </select>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <Input value={buscarCand} onChange={(e) => { setBuscarCand(e.target.value); setPaginaCand(1); }}
+                    placeholder="Buscar por código o nombre…" className="pl-8 w-64" style={{ borderRadius: 'var(--r-ctl)' }} />
+                </div>
+              </div>
+            )}
+            {errorListos && <div className="px-4 pt-3"><AlertBanner variant="warning" message={errorListos} /></div>}
+
             {!almacenValido ? (
               <p className="px-4 py-6 text-xs text-muted-foreground text-center">Elige un almacén para ver sus productos NoMT.</p>
             ) : errorCandidatos ? (
@@ -324,7 +382,9 @@ export default function ProcesamientoForm() {
             ) : candidatos.isLoading ? (
               <p className="px-4 py-6 text-xs text-muted-foreground text-center">Cargando…</p>
             ) : filasCandidatos.length === 0 ? (
-              <p className="px-4 py-6 text-xs text-muted-foreground text-center">No hay productos NoMT con existencia.</p>
+              <p className="px-4 py-6 text-xs text-muted-foreground text-center">
+                {estadoCand || qCand ? 'Ningún producto NoMT cumple estos filtros.' : 'No hay productos NoMT con existencia.'}
+              </p>
             ) : (
               <div className="max-h-80 overflow-y-auto">
                 <table className="w-full text-sm">
@@ -333,7 +393,8 @@ export default function ProcesamientoForm() {
                       <th className="px-4 py-2 text-left font-medium">Producto</th>
                       <th className="px-3 py-2 text-left font-medium hidden sm:table-cell">Código NoMT</th>
                       <th className="px-3 py-2 text-right font-medium">Existencia</th>
-                      <th className="px-3 py-2 text-left font-medium hidden md:table-cell">Destino</th>
+                      <th className="px-3 py-2 text-right font-medium hidden lg:table-cell">Precio</th>
+                      <th className="px-3 py-2 text-left font-medium hidden md:table-cell">Pasaría a</th>
                       <th className="px-3 py-2 text-left font-medium">Estado</th>
                       <th className="px-4 py-2" />
                     </tr>
@@ -344,7 +405,23 @@ export default function ProcesamientoForm() {
                         <td className="px-4 py-2 max-w-[18rem]"><p className="line-clamp-1" title={c.name}>{c.name}</p></td>
                         <td className="px-3 py-2 font-mono text-xs hidden sm:table-cell">{c.code}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{c.quantity}</td>
-                        <td className="px-3 py-2 font-mono text-xs hidden md:table-cell">{c.targetCode ?? '—'}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-xs hidden lg:table-cell">
+                          {c.price != null ? c.price : '—'}
+                          {c.targetPrice != null && c.targetPrice !== c.price && (
+                            <span className="block text-[11px] text-muted-foreground">destino {c.targetPrice}</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-xs hidden md:table-cell max-w-[14rem]">
+                          {c.targetCode ? (
+                            <>
+                              <span className="font-mono">{c.targetCode}</span>
+                              {c.targetQuantity != null && (
+                                <span className="text-[11px] text-muted-foreground"> · tiene {c.targetQuantity}</span>
+                              )}
+                              {c.targetName && <p className="line-clamp-1 text-[11px] text-muted-foreground" title={c.targetName}>{c.targetName}</p>}
+                            </>
+                          ) : '—'}
+                        </td>
                         <td className={`px-3 py-2 text-xs ${c.status === 'ready' ? 'text-[var(--c-ok-dim)]' : 'text-muted-foreground'}`}>{c.reason}</td>
                         <td className="px-4 py-2 text-right whitespace-nowrap">
                           <span className="inline-block align-middle">
@@ -361,21 +438,40 @@ export default function ProcesamientoForm() {
                     ))}
                   </tbody>
                 </table>
-                {candidatos.data?.total > filasCandidatos.length && (
-                  <p className="px-4 py-2 text-xs text-muted-foreground">Mostrando {filasCandidatos.length} de {candidatos.data.total}.</p>
-                )}
               </div>
             )}
+            <div className="px-4 pb-2">
+              <Pagination page={paginaCand} total={candidatos.data?.total ?? 0} pageSize={PAGINA} onPage={setPaginaCand} />
+            </div>
           </Card>
 
         </TabsContent>
 
         <TabsContent value="historial">
           <Card className="p-5 space-y-3">
-            <h2 className="text-sm font-medium">Procesados recientes en {almacenValido ? almacen : '—'}</h2>
+            <div className="flex flex-wrap items-end gap-2">
+              <h2 className="text-sm font-medium mr-auto">Procesamientos recientes en {almacenValido ? almacen : '—'}</h2>
+              <select value={estadoProc} onChange={(e) => { setEstadoProc(e.target.value); setPaginaProc(1); }}
+                className={SELECT_CLS} aria-label="Estado del documento" style={{ borderRadius: 'var(--r-ctl)' }}>
+                {ESTADOS_PROCESADO.map((e) => <option key={e.valor} value={e.valor}>{e.label}</option>)}
+              </select>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input value={buscarProc} onChange={(e) => { setBuscarProc(e.target.value); setPaginaProc(1); }}
+                  placeholder="Buscar por documento…" className="pl-8 w-56" style={{ borderRadius: 'var(--r-ctl)' }} />
+              </div>
+            </div>
+            {procesados.isLoading && almacenValido && !sinTkc && (
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Pidiendo los documentos a TKC…
+              </p>
+            )}
+            {procesados.error && <AlertBanner variant="danger" message={`No se pudieron cargar los procesamientos: ${procesados.error.message}`} />}
             {errorProcesados && <AlertBanner variant="danger" message={mensajeDeError(errorProcesados)} />}
-            {almacenValido && !sinTkc && !errorProcesados && !procesados.isLoading && filasProcesados.length === 0 && (
-              <p className="text-sm text-muted-foreground">Sin procesamientos recientes.</p>
+            {almacenValido && !sinTkc && !errorProcesados && !procesados.isLoading && !procesados.error && filasProcesados.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                {estadoProc || qProc ? 'Ningún procesamiento cumple estos filtros.' : 'Sin procesamientos recientes.'}
+              </p>
             )}
             {filasProcesados.length > 0 && (
               <div className="overflow-x-auto">
@@ -393,14 +489,19 @@ export default function ProcesamientoForm() {
                       <tr key={d.id} className="border-b last:border-0">
                         <td className="py-2 pr-3 font-mono text-xs">{d.code}</td>
                         <td className="py-2 pr-3">{d.date}</td>
-                        <td className="py-2 pr-3 capitalize">{d.status}</td>
-                        <td className="py-2 text-right">{d.totalProcessed} de {d.totalProducts}</td>
+                        <td className="py-2 pr-3">
+                          {etiquetaProcesado(d.status)}
+                          {d.canResume && <span className="block text-[11px] text-muted-foreground">Se puede reanudar en TKC</span>}
+                        </td>
+                        <td className="py-2 text-right tabular-nums">{d.totalProcessed} de {d.totalProducts}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                <Pagination page={paginaProc} total={procesados.data?.total ?? filasProcesados.length} pageSize={PAGINA} onPage={setPaginaProc} />
               </div>
             )}
+            <p className="text-xs text-muted-foreground">Se muestran los 100 más recientes del almacén.</p>
           </Card>
         </TabsContent>
       </Tabs>

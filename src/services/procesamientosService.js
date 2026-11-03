@@ -26,9 +26,14 @@ export function listarCandidatos({ almacen, status, q, refresh, limit = 100, off
   return pedir(`${RUTA}/candidatos?${consulta({ almacen, status, q, refresh: refresh ? 'true' : undefined, limit, offset })}`)
 }
 
-/** Los procesamientos (TKCP) más recientes de un almacén. */
-export function listarProcesados({ almacen, refresh, limit = 50, offset = 0 }) {
-  return pedir(`${RUTA}/documentos?${consulta({ almacen, refresh: refresh ? 'true' : undefined, limit, offset })}`)
+/**
+ * Los procesamientos (TKCP) más recientes de un almacén. `recent` son los N más
+ * recientes que se piden a TKC (por páginas de 100): sin acotar, un almacén
+ * llega a mil documentos y la lectura tarda más de un minuto.
+ * @param {{ almacen: string, status?: 'proceso'|'procesada'|'cancelada', q?: string, recent?: number, refresh?: boolean, limit?: number, offset?: number }} filtros
+ */
+export function listarProcesados({ almacen, status, q, recent = 100, refresh, limit = 50, offset = 0 }) {
+  return pedir(`${RUTA}/documentos?${consulta({ almacen, status, q, recent, refresh: refresh ? 'true' : undefined, limit, offset })}`)
 }
 
 /**
