@@ -154,6 +154,63 @@ export async function resumenVentas({ almacen, desde, hasta, dias, codigo }) {
   }
 }
 
+/** Cuántos meses hacia atrás, como máximo, en la serie mensual. */
+export const MAX_MESES = 24
+const MESES_POR_DEFECTO = 12
+
+/** Los parámetros de la serie mensual: el almacén y cuántos meses (el actual cuenta). */
+export function leerParametrosMensual(consulta) {
+  const almacen = consulta.get('almacen') ?? ''
+  if (!ALMACEN.test(almacen)) throw new ErrorParametro('Falta el almacén.')
+  const pedidos = consulta.get('meses')
+  const n = pedidos === null || pedidos === '' ? MESES_POR_DEFECTO : Number(pedidos)
+  if (!Number.isInteger(n) || n < 1 || n > MAX_MESES) {
+    throw new ErrorParametro(`Los meses son un entero de 1 a ${MAX_MESES}.`)
+  }
+  return { almacen, meses: n }
+}
+
+/**
+ * Lo vendido en cada mes de un almacén, de la vista con la última corrida de
+ * cada día (la misma razón que en `resumenVentas`: la tabla repite los días).
+ *
+ * Solo salen los meses que tienen datos; completar los vacíos es de quien pinta.
+ * `dias` son los días con datos del mes, para saber que el mes en curso está a
+ * medias.
+ */
+export async function ventasMensuales({ almacen, meses }) {
+  const [serie, cobertura] = await Promise.all([
+    query(
+      `SELECT to_char(date_trunc('month', r.report_date), 'YYYY-MM') AS mes,
+              SUM(r.cantidad)                    AS cantidad,
+              SUM(r.importe)                     AS importe,
+              SUM(r.cant_ordenes)                AS ordenes,
+              COUNT(DISTINCT r.report_date)      AS dias
+         FROM public.rdp_rows_latest r
+        WHERE r.almacen_key = $1
+          AND r.report_date >= date_trunc('month', current_date) - ($2::int - 1) * interval '1 month'
+        GROUP BY 1
+        ORDER BY 1`,
+      [almacen, meses],
+    ),
+    query(
+      `SELECT MAX(report_date)::text AS ultima FROM public.rdp_rows_latest WHERE almacen_key = $1`,
+      [almacen],
+    ),
+  ])
+  return {
+    almacen,
+    meses: serie.rows.map((f) => ({
+      mes: f.mes,
+      cantidad: num(f.cantidad),
+      importe: num(f.importe),
+      ordenes: num(f.ordenes),
+      dias: num(f.dias),
+    })),
+    ultima: cobertura.rows[0]?.ultima ?? null,
+  }
+}
+
 function responder(res, status, cuerpo) {
   res.statusCode = status
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
@@ -164,7 +221,8 @@ function responder(res, status, cuerpo) {
 export function createVentasApiMiddleware() {
   return async function ventasApiMiddleware(req, res, next) {
     const ruta = (req.url ?? '/').split('?')[0]
-    if (ruta !== '/api/ventas/resumen') return next()
+    const esMensual = ruta === '/api/ventas/mensual'
+    if (ruta !== '/api/ventas/resumen' && !esMensual) return next()
     if (req.method !== 'GET') return responder(res, 405, { error: { message: 'Método no permitido' } })
 
     try {
@@ -176,8 +234,9 @@ export function createVentasApiMiddleware() {
         return responder(res, 403, { error: { message: 'Tu rol no puede ver el resumen de ventas.' } })
       }
 
-      const params = leerParametros(new URL(req.url, 'http://local').searchParams)
-      return responder(res, 200, await resumenVentas(params))
+      const consulta = new URL(req.url, 'http://local').searchParams
+      if (esMensual) return responder(res, 200, await ventasMensuales(leerParametrosMensual(consulta)))
+      return responder(res, 200, await resumenVentas(leerParametros(consulta)))
     } catch (error) {
       if (error instanceof ErrorParametro) return responder(res, 400, { error: { message: error.message } })
       console.error('[ventas-api] error:', error)

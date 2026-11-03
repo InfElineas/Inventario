@@ -11,7 +11,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const db = vi.hoisted(() => ({ query: vi.fn() }));
 vi.mock('@/server/db', () => db);
 
-const { leerParametros, resumenVentas, ErrorParametro, MAX_DIAS } = await import('@/server/ventasApi');
+const sesion = vi.hoisted(() => ({ resolverSesion: vi.fn() }));
+vi.mock('@/server/session', () => sesion);
+
+const {
+  leerParametros, resumenVentas, ErrorParametro, MAX_DIAS,
+  leerParametrosMensual, ventasMensuales, MAX_MESES, createVentasApiMiddleware,
+} = await import('@/server/ventasApi');
 
 const q = (obj) => new URLSearchParams(obj);
 
@@ -122,5 +128,77 @@ describe('resumenVentas', () => {
       expect(sql).not.toContain('789');
       expect(valores[0]).toBe('789');
     }
+  });
+});
+
+describe('leerParametrosMensual', () => {
+  const q = (o) => new URLSearchParams(o);
+
+  it('almacén obligatorio, y doce meses si no se dice', () => {
+    expect(leerParametrosMensual(q({ almacen: '789' }))).toEqual({ almacen: '789', meses: 12 });
+    expect(leerParametrosMensual(q({ almacen: '789', meses: '6' })).meses).toBe(6);
+    expect(() => leerParametrosMensual(q({}))).toThrow(ErrorParametro);
+  });
+
+  it('los meses, un entero entre 1 y el máximo', () => {
+    for (const meses of ['0', '-1', '2.5', 'abc', String(MAX_MESES + 1)]) {
+      expect(() => leerParametrosMensual(q({ almacen: '789', meses }))).toThrow(/entero de 1 a/);
+    }
+    expect(leerParametrosMensual(q({ almacen: '789', meses: String(MAX_MESES) })).meses).toBe(MAX_MESES);
+  });
+});
+
+describe('ventasMensuales', () => {
+  beforeEach(() => {
+    db.query.mockReset();
+    db.query.mockImplementation(async (sql) => (/GROUP BY 1/.test(sql)
+      ? { rows: [
+        { mes: '2026-09', cantidad: '1620.0', importe: '9000.5', ordenes: '300', dias: '30' },
+        { mes: '2026-10', cantidad: '1812', importe: null, ordenes: '320', dias: '12' },
+      ] }
+      : { rows: [{ ultima: '2026-10-12' }] }));
+  });
+
+  it('lee de la vista de la última corrida, por mes y con el almacén y los meses como parámetros', async () => {
+    const r = await ventasMensuales({ almacen: '789', meses: 12 });
+    const [sql, valores] = db.query.mock.calls.find(([s]) => /GROUP BY 1/.test(s));
+    expect(sql).toMatch(/rdp_rows_latest/);
+    expect(valores).toEqual(['789', 12]);
+    expect(r.ultima).toBe('2026-10-12');
+  });
+
+  it('las cifras llegan como números, y un importe vacío es cero', async () => {
+    const r = await ventasMensuales({ almacen: '789', meses: 12 });
+    expect(r.meses).toEqual([
+      { mes: '2026-09', cantidad: 1620, importe: 9000.5, ordenes: 300, dias: 30 },
+      { mes: '2026-10', cantidad: 1812, importe: 0, ordenes: 320, dias: 12 },
+    ]);
+  });
+});
+
+describe('middleware de ventas', () => {
+  const mw = createVentasApiMiddleware();
+  async function llamar(url, role) {
+    sesion.resolverSesion.mockResolvedValue(role ? { usuario: { role } } : null);
+    const res = { statusCode: 0, cuerpo: null, setHeader() {}, end(c) { this.cuerpo = JSON.parse(c); } };
+    const sigue = vi.fn();
+    await mw({ url, method: 'GET' }, res, sigue);
+    return { res, sigue };
+  }
+
+  beforeEach(() => {
+    db.query.mockReset();
+    db.query.mockResolvedValue({ rows: [{ ultima: null }] });
+  });
+
+  it('la serie mensual: facturación la ve; inventario, no; sin sesión, 401', async () => {
+    expect((await llamar('/api/ventas/mensual?almacen=789', 'fact')).res.statusCode).toBe(200);
+    expect((await llamar('/api/ventas/mensual?almacen=789', 'inv')).res.statusCode).toBe(403);
+    expect((await llamar('/api/ventas/mensual?almacen=789', null)).res.statusCode).toBe(401);
+  });
+
+  it('parámetros malos, 400; otras rutas siguen su camino', async () => {
+    expect((await llamar('/api/ventas/mensual', 'fact')).res.statusCode).toBe(400);
+    expect((await llamar('/api/otra', 'fact')).sigue).toHaveBeenCalled();
   });
 });

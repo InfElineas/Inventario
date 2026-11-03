@@ -43,3 +43,35 @@ export function ventasACsv(productos) {
   });
   return [cabecera.map(celdaCsv).join(','), ...filas].join('\n');
 }
+
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+/** `2026-10` → `oct`. Lo que no es un mes, tal cual. */
+export function etiquetaMes(mes) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(mes ?? ''));
+  return m ? MESES_CORTOS[Number(m[2]) - 1] ?? mes : String(mes ?? '');
+}
+
+/**
+ * La serie mensual con todos los meses del rango, también los que no vendieron:
+ * el servidor solo trae los que tienen datos, y un hueco en el eje engaña.
+ * Acaba en el mes de `hoy`, que es el que está en curso.
+ *
+ * @param {Array<{ mes: string, cantidad: number, importe?: number, dias?: number }>} filas
+ * @param {number} meses  Cuántos meses, contando el actual.
+ * @returns {Array<{ mes: string, etiqueta: string, cantidad: number, importe: number, dias: number, enCurso: boolean }>}
+ */
+export function completarMeses(filas, meses, hoy = new Date()) {
+  const porMes = new Map((filas ?? []).map((f) => [f.mes, f]));
+  const salida = [];
+  for (let i = meses - 1; i >= 0; i -= 1) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const f = porMes.get(mes);
+    salida.push({
+      mes, etiqueta: etiquetaMes(mes), enCurso: i === 0,
+      cantidad: f?.cantidad ?? 0, importe: f?.importe ?? 0, dias: f?.dias ?? 0,
+    });
+  }
+  return salida;
+}

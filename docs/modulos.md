@@ -223,16 +223,22 @@ abajo:
 
 1. **Cuatro cifras urgentes**, cada una con su enlace: sin reserva, no en tienda,
    por facturar (con cuántos aumentos y disminuciones) y lotes críticos.
-2. **Tres tarjetas de tareas**: vencimientos, lo que **espera a facturación**
+2. **Ventas por mes** (barras, los últimos doce, con el mes en curso resaltado)
+   junto al estado de la tienda. Sale de `/api/ventas/mensual`, que suma
+   `rdp_rows_latest` por mes: la misma vista y la misma salvedad que el resumen de
+   ventas (el día en curso no está, y el mes en curso va a medias). Quien no ve las
+   ventas —solo `fact`, `auditor`, `jefe_depto` y administradores— no ve la
+   tarjeta, y el estado de la tienda ocupa todo el ancho.
+3. **Tres tarjetas de tareas**: vencimientos, lo que **espera a facturación**
    (repartido por la pantalla que lo resuelve: aumento, disminución,
    procesamientos, mermas, auditoría) y **lo que te devolvieron**, con su motivo.
    Lo que está en cero no se pinta.
-3. El resto del catálogo, qué hay que comprar hoy, el estado de la tienda y lo
-   último de inventarios y mermas.
+4. El resto del catálogo, qué hay que comprar hoy y lo último de inventarios y
+   mermas.
 
-Sin almacén elegido se ve la vista global de siempre. Entre las cifras y las
-tarjetas quedan sitio para los gráficos de tendencia (ventas por mes, existencia
-por almacén), que necesitan un endpoint de agregados que aún no existe.
+Sin almacén elegido se ve la vista global de siempre. Falta el gráfico de
+existencia por almacén, que necesita la fotografía diaria (`existencia_diaria`) y
+solo cubre desde que se activó.
 
 ## Las demás
 

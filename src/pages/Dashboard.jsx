@@ -10,6 +10,8 @@ import { ChevronDown, Clock, CalendarDays, X } from 'lucide-react'
 import { base44 } from '@/api/base44Client';
 import CriticosReabastecimiento from '@/components/dashboard/CriticosReabastecimiento'
 import { EsperanFacturacion, Devueltos } from '@/components/dashboard/TarjetasTareas'
+import VentasPorMes from '@/components/dashboard/VentasPorMes'
+import { fetchVentasMensuales } from '@/services/ventasService'
 import { devueltosDe, primerNombre, resumenFacturacion, saludoDe } from '@/lib/panelTareas'
 
 const PERIODS = [
@@ -507,6 +509,17 @@ export default function Dashboard() {
     monto:    mermas.filter(m => m.estado_tarea === 'completado').reduce((s, m) => s + (m.total_perdida || 0), 0),
   }), [mermas])
 
+  // Ventas de los últimos doce meses del almacén, para el gráfico. Quien no ve
+  // las ventas recibe un 403 y la tarjeta simplemente no sale.
+  const ventasMensual = useQuery({
+    queryKey: ['ventas-mensual', almacen],
+    queryFn: () => fetchVentasMensuales({ almacen, meses: 12 }),
+    enabled: Boolean(almacen),
+    retry: false,
+    staleTime: 10 * 60 * 1000,
+    ...SIN_SONDEO,
+  })
+
   // Lo que espera a facturación y lo que te devolvieron: son tareas, con a
   // dónde ir a resolverlas, no cifras del catálogo. Cada una vive en su tarjeta.
   const facturacion = useMemo(() => resumenFacturacion(inventarios, mermas), [inventarios, mermas])
@@ -666,8 +679,15 @@ export default function Dashboard() {
               sub: `${conteosLotes.vencido ?? 0} ya vencidos`, onClick: () => navigate('/lotes') },
           ]} />
 
+          {/* La tendencia: ventas por mes junto al estado de la tienda. Si el rol
+              no ve las ventas, el gráfico no sale y el estado ocupa todo el ancho. */}
+          <div className={`grid grid-cols-1 gap-4 ${ventasMensual.error?.status === 403 ? '' : 'lg:grid-cols-2'}`}>
+            <VentasPorMes meses={12} consulta={ventasMensual} />
+            <EstadoTiendaTable breakdown={stats.breakdown} total={stats.total} />
+          </div>
+
           {/* Las tareas: vencimientos, lo que espera a facturación y lo que te
-              devolvieron. Entre las cifras y estas tarjetas irán los gráficos. */}
+              devolvieron. */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <VencimientosWidget lotes={lotes} conteos={conteosLotes} />
             <EsperanFacturacion resumen={facturacion} />
@@ -690,8 +710,6 @@ export default function Dashboard() {
           {/* Qué comprar hoy. Los KPI dicen cómo está el almacén;
               esto dice qué hacer con él. */}
           <CriticosReabastecimiento almacen={almacen} />
-
-          <EstadoTiendaTable breakdown={stats.breakdown} total={stats.total} />
 
           {/* Lo más reciente, para mirar con calma. */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
