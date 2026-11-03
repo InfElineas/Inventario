@@ -1,4 +1,5 @@
 import { interpretar } from '@/lib/ajustes'
+import { observacionDe } from '@/lib/historialTkc'
 
 /**
  * Transferencias entre almacenes de facturación (API de elineas-transferencia,
@@ -71,7 +72,7 @@ export const destinoDe = (f) => f?.destinationName ?? f?.destination ?? ''
 export function transferenciasACsv(filas, celda) {
   const cabecera = ['Documento', 'Estado', 'Fecha', 'Origen', 'Destino', 'Observaciones']
   const cuerpo = filas.map((f) => [
-    f.code, f.status, f.date, origenDe(f), destinoDe(f), f.notes ?? f.observations,
+    f.code, f.status, f.date, origenDe(f), destinoDe(f), observacionDe(f),
   ].map(celda).join(','))
   return [cabecera.map(celda).join(','), ...cuerpo].join('\n')
 }

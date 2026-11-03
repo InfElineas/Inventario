@@ -141,6 +141,27 @@ describe('AjusteForm — aumento', () => {
     expect(svc.confirmarAjuste).not.toHaveBeenCalled();
   });
 
+  it('el historial dice de qué tipo es cada documento y enseña su observación', async () => {
+    svc.listarAjustes.mockResolvedValue({
+      status: 200, total: 2,
+      body: [
+        { id: 1, code: 'TKCS1', type: 'Ajuste', status: 'confirmada', date: '2026-11-03', observacion: 'RETIRO POR MERMA' },
+        { id: 2, code: 'TKCS2', type: 'Venta Directa', status: 'confirmada', date: '2026-11-03', client: 'Ana', observacion: 'FACT 5939' },
+      ],
+    });
+    const user = userEvent.setup();
+    montar('disminucion');
+    await user.selectOptions(screen.getAllByRole('combobox')[0], '789');
+    await user.click(screen.getByRole('tab', { name: /Historial/i }));
+
+    const ajuste = (await screen.findByText('TKCS1')).closest('tr');
+    expect(within(ajuste).getByText('Ajuste de disminución')).toBeInTheDocument();
+    expect(within(ajuste).getByText('RETIRO POR MERMA')).toBeInTheDocument();
+    const vd = screen.getByText('TKCS2').closest('tr');
+    expect(within(vd).getByText('Venta directa')).toBeInTheDocument();
+    expect(within(vd).getByText('FACT 5939')).toBeInTheDocument();
+  });
+
   it('desde el historial se puede confirmar un documento «editada»', async () => {
     const user = userEvent.setup();
     montar('aumento');

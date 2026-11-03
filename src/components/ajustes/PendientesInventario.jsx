@@ -152,7 +152,7 @@ export default function PendientesInventario({ tipo, almacen, onUsar }) {
                 <th className="px-3 py-2 text-right font-medium">Diferencia</th>
                 <th className="px-3 py-2 text-left font-medium hidden md:table-cell">Contó</th>
                 <th className="px-3 py-2 text-left font-medium hidden md:table-cell">Fecha</th>
-                <th className="px-3 py-2" />
+                <th className="px-3 py-2 text-right font-medium">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -183,22 +183,16 @@ export default function PendientesInventario({ tipo, almacen, onUsar }) {
                     {i.fecha_inv || '—'}
                   </td>
                   <td className="px-3 py-2 text-right whitespace-nowrap">
-                    <span className="inline-block align-middle">
-                      <CeldaAcciones inv={i} analizar onAccion={setAccion}
-                        puedeMoverTienda={tieneRol(user, ROLES_TIENDA)}
-                        extras={[{
+                    <CeldaAcciones inv={i} analizar onAccion={setAccion}
+                      puedeMoverTienda={tieneRol(user, ROLES_TIENDA)}
+                      extras={[
+                        {
                           clave: 'montar', etiqueta: `${cfg.montar} con este producto`, Icono: cfg.Icono,
                           color: 'text-[var(--c-ok)]', al: () => montarUno(i),
-                        }]} />
-                    </span>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setDetalle(i)}
-                      aria-label={`Ver detalle: ${i.producto_nombre}`} title="Ver detalle">
-                      <Eye className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setDevolviendo(i)}
-                      aria-label={`Devolver a inventario: ${i.producto_nombre}`} title="Devolver a inventario">
-                      <Undo2 className="w-3.5 h-3.5" />
-                    </Button>
+                        },
+                        { clave: 'detalle', etiqueta: 'Ver detalle del conteo', Icono: Eye, color: 'text-muted-foreground', al: () => setDetalle(i) },
+                        { clave: 'devolver', etiqueta: 'Devolver a inventario', Icono: Undo2, color: 'text-[var(--c-warn)]', al: () => setDevolviendo(i) },
+                      ]} />
                   </td>
                 </tr>
               ))}

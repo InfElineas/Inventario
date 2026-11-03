@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   rangoPorDefecto, esVentaDirecta, sePuedeConfirmar, filtrosDeHistorial, historialACsv,
+  tipoDeDocumento, observacionDe,
 } from '@/lib/historialTkc';
 
 describe('rangoPorDefecto', () => {
@@ -52,13 +53,37 @@ describe('historialACsv', () => {
         accountingDate: '2026-11-03', client: 'Elizabeth', warehouse: 'B23 Electrocuba', amount: '4.34' },
     ]);
     const [cab, fila] = csv.split('\n');
-    expect(cab).toBe('Documento,Tipo,Estado,Fecha,Fecha contable,Almacén,Cliente,Monto');
-    expect(fila).toBe('TKCS202646172,Venta Directa,confirmada,2026-11-03,2026-11-03,B23 Electrocuba,Elizabeth,4.34');
+    expect(cab).toBe('Documento,Tipo,Estado,Fecha,Fecha contable,Almacén,Cliente,Monto,Observaciones');
+    expect(fila).toBe('TKCS202646172,Venta Directa,confirmada,2026-11-03,2026-11-03,B23 Electrocuba,Elizabeth,4.34,');
+  });
+
+  it('con el tipo de la pantalla, el CSV lleva el tipo de documento y la observación', () => {
+    const [, ajuste, vd] = historialACsv([
+      { code: 'T1', type: '', status: 'editada', observacion: 'RETIRO POR MERMA' },
+      { code: 'T2', type: 'Venta Directa', status: 'confirmada' },
+    ], 'disminucion').split('\n');
+    expect(ajuste).toContain('Ajuste de disminución');
+    expect(ajuste).toContain('RETIRO POR MERMA');
+    expect(vd).toContain('Venta directa');
   });
 
   it('el monto con coma de miles va entrecomillado y las fórmulas se neutralizan', () => {
     const [, fila] = historialACsv([{ code: 'T1', type: '=X', amount: '1,094.85' }]).split('\n');
     expect(fila).toContain('"1,094.85"');
     expect(fila).toContain("'=X");
+  });
+});
+
+describe('tipoDeDocumento y observacionDe', () => {
+  it('una venta directa lo es; lo demás, el ajuste de la pantalla', () => {
+    expect(tipoDeDocumento({ type: 'Venta Directa' }, 'disminucion')).toBe('Venta directa');
+    expect(tipoDeDocumento({ type: 'Ajuste' }, 'disminucion')).toBe('Ajuste de disminución');
+    expect(tipoDeDocumento({}, 'aumento')).toBe('Ajuste de aumento');
+  });
+
+  it('la observación, con el nombre que la dé la API', () => {
+    expect(observacionDe({ observacion: ' FACT 5939 ' })).toBe('FACT 5939');
+    expect(observacionDe({ notes: 'Conteo' })).toBe('Conteo');
+    expect(observacionDe({})).toBe('');
   });
 });

@@ -13,6 +13,7 @@ import {
   ESTADOS_TRANSFERENCIA, SENTIDOS, destinoDe, esBorrador, filtrosDeTransferencias,
   interpretarTransferencia, mensajeDeError, origenDe, transferenciasACsv,
 } from '@/lib/transferencias';
+import { observacionDe } from '@/lib/historialTkc';
 import { listarTransferencias } from '@/services/transferenciasService';
 
 const PAGE_SIZE = 50;
@@ -119,6 +120,7 @@ export default function HistorialTransferencias({
                 <th className="py-2 pr-3 font-medium hidden sm:table-cell">Origen</th>
                 <th className="py-2 pr-3 font-medium hidden sm:table-cell">Destino</th>
                 <th className="py-2 pr-3 font-medium">Estado</th>
+                <th className="py-2 pr-3 font-medium hidden md:table-cell">Observación</th>
                 <th className="py-2 font-medium text-right">Acciones</th>
               </tr>
             </thead>
@@ -135,6 +137,9 @@ export default function HistorialTransferencias({
                     <td className="py-2 pr-3 text-xs hidden sm:table-cell">{origenDe(f) || '—'}</td>
                     <td className="py-2 pr-3 text-xs hidden sm:table-cell">{destinoDe(f) || '—'}</td>
                     <td className="py-2 pr-3 capitalize">{estado}</td>
+                    <td className="py-2 pr-3 text-xs text-muted-foreground max-w-[16rem] hidden md:table-cell">
+                      <span className="line-clamp-2" title={observacionDe(f)}>{observacionDe(f) || '—'}</span>
+                    </td>
                     <td className="py-2 text-right space-x-1 whitespace-nowrap">
                       <Button variant="ghost" size="sm" onClick={() => onVerLineas({ id: f.id, code: f.code })} title="Ver productos">
                         <Eye className="w-3.5 h-3.5" />

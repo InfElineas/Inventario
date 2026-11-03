@@ -11,7 +11,7 @@ import { SIN_SONDEO } from '@/lib/query-client';
 import { listarAjustes } from '@/services/ajustesService';
 import {
   ESTADOS_DOCUMENTO, TIPOS_SALIDA, filtrosDeHistorial,
-  historialACsv, rangoPorDefecto, sePuedeConfirmar,
+  historialACsv, observacionDe, rangoPorDefecto, sePuedeConfirmar, tipoDeDocumento,
 } from '@/lib/historialTkc';
 
 const PAGE_SIZE = 50;
@@ -34,7 +34,8 @@ export default function HistorialAjustes({
   const [hasta, setHasta] = useState(inicial.hasta);
   const [status, setStatus] = useState('');
   const [q, setQ] = useState('');
-  const [tipoSalida, setTipoSalida] = useState('decrease');
+  // Todas las salidas por defecto: así se ve de un vistazo cuáles son ventas directas y cuáles ajustes.
+  const [tipoSalida, setTipoSalida] = useState('all');
   const [page, setPage] = useState(1);
   const [exportando, setExportando] = useState(false);
 
@@ -60,7 +61,7 @@ export default function HistorialAjustes({
       const r = await listarAjustes(tipo, { almacen, ...filtros, limit: null });
       if (!Array.isArray(r.body)) throw new Error(mensajeDeError(interpretar(r.status, r.body)));
       // BOM al principio: sin él Excel abre el CSV en latin-1 y parte los acentos.
-      const blob = new Blob(['﻿', historialACsv(r.body)], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob(['﻿', historialACsv(r.body, tipo)], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -126,10 +127,11 @@ export default function HistorialAjustes({
             <thead>
               <tr className="text-left text-xs text-muted-foreground border-b">
                 <th className="py-2 pr-3 font-medium">Documento</th>
-                {conVd && <th className="py-2 pr-3 font-medium">Tipo</th>}
+                <th className="py-2 pr-3 font-medium">Tipo</th>
                 <th className="py-2 pr-3 font-medium">Fecha</th>
                 <th className="py-2 pr-3 font-medium">Estado</th>
                 {conVd && <th className="py-2 pr-3 font-medium">Cliente</th>}
+                <th className="py-2 pr-3 font-medium hidden md:table-cell">Observación</th>
                 <th className="py-2 pr-3 font-medium text-right">Monto</th>
                 <th className="py-2 font-medium text-right">Acciones</th>
               </tr>
@@ -138,7 +140,7 @@ export default function HistorialAjustes({
               {filas.map((f) => (
                 <tr key={f.id} className="border-b last:border-0">
                   <td className="py-2 pr-3 font-mono text-xs">{f.code}</td>
-                  {conVd && <td className="py-2 pr-3 text-xs">{f.type}</td>}
+                  <td className="py-2 pr-3 text-xs whitespace-nowrap">{tipoDeDocumento(f, tipo)}</td>
                   <td className="py-2 pr-3">
                     {f.date}
                     {f.accountingDate && f.accountingDate !== f.date && (
@@ -147,6 +149,9 @@ export default function HistorialAjustes({
                   </td>
                   <td className="py-2 pr-3 capitalize">{confirmado[f.id]?.tipo === 'confirmado' ? 'confirmada' : f.status}</td>
                   {conVd && <td className="py-2 pr-3 text-xs">{f.client || '—'}</td>}
+                  <td className="py-2 pr-3 text-xs text-muted-foreground max-w-[16rem] hidden md:table-cell">
+                    <span className="line-clamp-2" title={observacionDe(f)}>{observacionDe(f) || '—'}</span>
+                  </td>
                   <td className="py-2 pr-3 text-right">{f.amount}</td>
                   <td className="py-2 text-right space-x-1 whitespace-nowrap">
                     <Button variant="ghost" size="sm" onClick={() => onVerLineas({ id: f.id, code: f.code })} title="Ver productos">

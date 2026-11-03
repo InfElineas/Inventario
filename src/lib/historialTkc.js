@@ -40,6 +40,23 @@ export function rangoPorDefecto(hoy = new Date()) {
 export const esVentaDirecta = (fila) => /venta directa/i.test(String(fila?.type ?? ''));
 
 /**
+ * El tipo de documento que se enseña: venta directa, o el ajuste de la pantalla
+ * en que se mira. Una venta directa es una salida con otro `type`.
+ */
+export function tipoDeDocumento(fila, tipo) {
+  if (esVentaDirecta(fila)) return 'Venta directa';
+  return tipo === 'aumento' ? 'Ajuste de aumento' : 'Ajuste de disminución';
+}
+
+/**
+ * La observación del documento. TKC la llama `observacion`; la API la puede
+ * devolver con otro nombre, así que se aceptan los habituales.
+ */
+export const observacionDe = (fila) => String(
+  fila?.observation ?? fila?.observations ?? fila?.notes ?? fila?.observacion ?? fila?.observaciones ?? '',
+).trim();
+
+/**
  * Se confirma un documento «editada» y de un ajuste. Una venta directa es solo
  * lectura desde aquí: no la monta esta pantalla y confirmarla no es suyo.
  */
@@ -62,10 +79,11 @@ export function filtrosDeHistorial({ tipo, tipoSalida, desde, hasta, status, q }
 }
 
 /** El historial, en CSV. Sin el BOM: lo pone quien lo descarga. */
-export function historialACsv(filas) {
-  const cabecera = ['Documento', 'Tipo', 'Estado', 'Fecha', 'Fecha contable', 'Almacén', 'Cliente', 'Monto'];
+export function historialACsv(filas, tipo) {
+  const cabecera = ['Documento', 'Tipo', 'Estado', 'Fecha', 'Fecha contable', 'Almacén', 'Cliente', 'Monto', 'Observaciones'];
   const cuerpo = filas.map((f) => [
-    f.code, f.type, f.status, f.date, f.accountingDate, f.warehouse, f.client, f.amount,
+    f.code, tipo ? tipoDeDocumento(f, tipo) : f.type, f.status, f.date, f.accountingDate, f.warehouse, f.client, f.amount,
+    observacionDe(f),
   ].map(celdaCsv).join(','));
   return [cabecera.map(celdaCsv).join(','), ...cuerpo].join('\n');
 }

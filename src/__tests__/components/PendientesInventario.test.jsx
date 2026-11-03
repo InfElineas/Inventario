@@ -184,7 +184,8 @@ describe('PendientesInventario', () => {
     m.filter.mockResolvedValue([conteo()]);
     pintar({ tipo: 'aumento' });
 
-    await userEvent.click(await screen.findByRole('button', { name: /Devolver a inventario: Aceite 1 L/i }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Acciones: Aceite 1 L' }));
+    await userEvent.click(screen.getByText('Devolver a inventario'));
     const devolver = screen.getByRole('button', { name: /^Devolver$/ });
     expect(devolver).toBeDisabled();
 
@@ -202,7 +203,8 @@ describe('PendientesInventario', () => {
     m.filter.mockResolvedValue([conteo({ notas_inv: 'Estaba en otro pasillo', clasif_ajuste: 'Robo' })]);
     pintar({ tipo: 'aumento' });
 
-    await userEvent.click(await screen.findByRole('button', { name: /Ver detalle: Aceite 1 L/i }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Acciones: Aceite 1 L' }));
+    await userEvent.click(screen.getByText('Ver detalle del conteo'));
     expect(await screen.findByText(/Estaba en otro pasillo/)).toBeInTheDocument();
   });
 });

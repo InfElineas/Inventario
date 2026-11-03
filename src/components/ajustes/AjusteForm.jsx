@@ -157,15 +157,25 @@ export default function AjusteForm({ tipo }) {
 
       {sinTkc && <TkcBloqueoAviso funcion="montar o confirmar ajustes" />}
 
-      <label className="block space-y-1.5 text-xs text-muted-foreground max-w-xs">
-        Almacén
-        <Select value={almacenValido ? almacen : ''} onValueChange={setAlmacen}>
-          <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Elige un almacén" /></SelectTrigger>
-          <SelectContent>
-            {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </label>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <label className="block space-y-1.5 text-xs text-muted-foreground w-full max-w-xs">
+          Almacén
+          <Select value={almacenValido ? almacen : ''} onValueChange={setAlmacen}>
+            <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Elige un almacén" /></SelectTrigger>
+            <SelectContent>
+              {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </label>
+        {/* Encima del contenido, no debajo de la lista: es la acción de la pantalla.
+            No vacía el texto a propósito: tras un «se envió y no se pudo comprobar»
+            hay que poder reabrir y reenviar LO MISMO, para que la clave de
+            idempotencia se reutilice y TKC devuelva el documento ya hecho. */}
+        <Button disabled={!almacenValido} onClick={() => setMontarAbierto(true)}
+          style={{ borderRadius: 'var(--r-ctl)' }}>
+          Montar un ajuste a mano
+        </Button>
+      </div>
 
       {bloqueo && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-[var(--c-warn)]/30 bg-[var(--c-warn)]/6" style={{ borderRadius: 'var(--r-ctl)' }}>
@@ -194,21 +204,6 @@ export default function AjusteForm({ tipo }) {
             almacen={almacen}
             onUsar={(lineas, conteos) => { setTexto(lineas); setConteosUsados(conteos ?? []); setMontarAbierto(true); }}
           />
-          <div className="flex justify-end">
-            {/* No vacía el texto a propósito. Tras un «se envió y no se pudo
-                comprobar», hay que poder reabrir y reenviar LO MISMO: esa es
-                la condición para que la clave de idempotencia se reutilice y
-                TKC devuelva el documento ya hecho en vez de duplicarlo.
-                Montar con éxito sí lo vacía. */}
-            {/* Sin credenciales de TKC se puede abrir y preparar: lo que se
-                bloquea es el envío, y el aviso de dentro explica por qué.
-                Impedir abrirlo dejaría al usuario sin saber qué le falta. */}
-            <Button variant="outline" disabled={!almacenValido}
-              onClick={() => setMontarAbierto(true)}
-              style={{ borderRadius: 'var(--r-ctl)' }}>
-              Montar un ajuste a mano
-            </Button>
-          </div>
         </TabsContent>
 
       {/* ── Montar: en modal ───────────────────────────────────── */}

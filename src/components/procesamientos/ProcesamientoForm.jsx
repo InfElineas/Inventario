@@ -232,15 +232,25 @@ export default function ProcesamientoForm() {
       )}
 
       {/* El almacén manda en las dos pestañas y en el formulario: va fuera. */}
-      <label className="block space-y-1.5 text-xs text-muted-foreground max-w-xs">
-        Almacén
-        <Select value={almacenValido ? almacen : ''} onValueChange={setAlmacen}>
-          <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Elige un almacén" /></SelectTrigger>
-          <SelectContent>
-            {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </label>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <label className="block space-y-1.5 text-xs text-muted-foreground w-full max-w-xs">
+          Almacén
+          <Select value={almacenValido ? almacen : ''} onValueChange={setAlmacen}>
+            <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Elige un almacén" /></SelectTrigger>
+            <SelectContent>
+              {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </label>
+        {/* Encima del contenido, no debajo de la lista: es la acción de la pantalla.
+            No vacía el texto a propósito: tras un «se envió y no se pudo comprobar»
+            hay que poder reabrir y reenviar LO MISMO, para que la clave de
+            idempotencia se reutilice y TKC devuelva el documento ya hecho. */}
+        <Button disabled={!almacenValido} onClick={() => setEntradaAbierta(true)}
+          style={{ borderRadius: 'var(--r-ctl)' }}>
+          Procesar a mano
+        </Button>
+      </div>
 
       {/* ── Resultado ──────────────────────────────────────────── */}
       {resultado && <ResultadoProceso r={resultado} />}
@@ -358,16 +368,6 @@ export default function ProcesamientoForm() {
             )}
           </Card>
 
-          <div className="flex justify-end">
-            {/* No vacía el texto a propósito: tras un «se envió y no se pudo
-                comprobar» hay que poder reabrir y reenviar LO MISMO, que es la
-                condición para que la clave de idempotencia se reutilice en vez
-                de procesar dos veces. Procesar con éxito sí lo vacía. */}
-            <Button variant="outline" disabled={!almacenValido} onClick={() => setEntradaAbierta(true)}
-              style={{ borderRadius: 'var(--r-ctl)' }}>
-              Procesar a mano
-            </Button>
-          </div>
         </TabsContent>
 
         <TabsContent value="historial">

@@ -97,7 +97,7 @@ export default function ParesIntercambio({ almacen, onUsar }) {
                 className="w-3.5 h-3.5 accent-[var(--c-ok)] cursor-pointer shrink-0" />
               <div className="min-w-0 flex-1 grid gap-1 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
                 <div className="min-w-0 flex items-start gap-1">
-                  <Acciones conteo={p.origen} par={p} user={user} onAccion={setAccion} onMontar={onUsar} />
+                  <Acciones conteo={p.origen} par={p} user={user} onAccion={setAccion} onMontar={onUsar} onDetalle={setDetalle} onDevolver={setDevolviendo} />
                   <div className="min-w-0">
                     <p className="text-sm line-clamp-1">{p.origen.producto_nombre}</p>
                     <p className="text-[11px] text-muted-foreground font-mono">
@@ -109,7 +109,7 @@ export default function ParesIntercambio({ almacen, onUsar }) {
                   <ArrowRight className="w-3.5 h-3.5" /> {p.cantidad}
                 </span>
                 <div className="min-w-0 flex items-start gap-1">
-                  <Acciones conteo={p.destino} par={p} user={user} onAccion={setAccion} onMontar={onUsar} />
+                  <Acciones conteo={p.destino} par={p} user={user} onAccion={setAccion} onMontar={onUsar} onDetalle={setDetalle} onDevolver={setDevolviendo} />
                   <div className="min-w-0">
                     <p className="text-sm line-clamp-1">{p.destino.producto_nombre}</p>
                     <p className="text-[11px] text-muted-foreground font-mono">
@@ -119,15 +119,6 @@ export default function ParesIntercambio({ almacen, onUsar }) {
                 </div>
               </div>
               <div className="shrink-0 whitespace-nowrap">
-                <Button type="button" variant="ghost" size="sm" onClick={() => setDetalle(p.origen)}
-                  aria-label={`Ver detalle: ${p.origen.producto_nombre}`} title="Ver el conteo del que falta">
-                  <Eye className="w-3.5 h-3.5" />
-                </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setDevolviendo([p.origen, p.destino])}
-                  aria-label={`Devolver a inventario: ${p.origen.producto_nombre} y ${p.destino.producto_nombre}`}
-                  title="Devolver los dos conteos a inventario">
-                  <Undo2 className="w-3.5 h-3.5" />
-                </Button>
               </div>
             </div>
           ))}
@@ -159,13 +150,18 @@ export default function ParesIntercambio({ almacen, onUsar }) {
 }
 
 /** El menú ⋯ de un producto del par: analizar su diferencia y montar el procesamiento del par. */
-function Acciones({ conteo, par, user, onAccion, onMontar }) {
+function Acciones({ conteo, par, user, onAccion, onMontar, onDetalle, onDevolver }) {
   return (
     <CeldaAcciones inv={conteo} analizar onAccion={onAccion}
       puedeMoverTienda={tieneRol(user, ROLES_TIENDA)}
       extras={[{
         clave: 'montar', etiqueta: 'Montar procesamiento de este par', Icono: Repeat,
         color: 'text-[var(--c-ok)]', al: () => onMontar(lineasDePares([par]), [par]),
+      }, {
+        clave: 'detalle', etiqueta: 'Ver detalle del conteo', Icono: Eye, color: 'text-muted-foreground', al: () => onDetalle(conteo),
+      }, {
+        clave: 'devolver', etiqueta: 'Devolver los dos conteos a inventario', Icono: Undo2,
+        color: 'text-[var(--c-warn)]', al: () => onDevolver([par.origen, par.destino]),
       }]} />
   );
 }

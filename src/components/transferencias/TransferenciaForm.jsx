@@ -160,15 +160,25 @@ export default function TransferenciaForm() {
 
       {sinTkc && <TkcBloqueoAviso funcion="montar, confirmar o cancelar transferencias" />}
 
-      <label className="block space-y-1.5 text-xs text-muted-foreground max-w-xs">
-        Almacén de origen
-        <Select value={almacenValido ? almacen : ''} onValueChange={setAlmacen}>
-          <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Elige un almacén" /></SelectTrigger>
-          <SelectContent>
-            {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </label>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <label className="block space-y-1.5 text-xs text-muted-foreground w-full max-w-xs">
+          Almacén de origen
+          <Select value={almacenValido ? almacen : ''} onValueChange={setAlmacen}>
+            <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Elige un almacén" /></SelectTrigger>
+            <SelectContent>
+              {almacenes.map((w) => <SelectItem key={w.key} value={w.key}>{w.nombre}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </label>
+        {/* Encima del contenido, no debajo de la lista: es la acción de la pantalla.
+            No vacía el texto a propósito: tras un «se envió y no se pudo comprobar»
+            hay que poder reabrir y reenviar LO MISMO, para que la clave de
+            idempotencia se reutilice y TKC devuelva el documento ya hecho. */}
+        <Button disabled={!almacenValido} onClick={() => setMontarAbierto(true)}
+          style={{ borderRadius: 'var(--r-ctl)' }}>
+          Montar una transferencia a mano
+        </Button>
+      </div>
 
       {bloqueo && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-[var(--c-warn)]/30 bg-[var(--c-warn)]/6" style={{ borderRadius: 'var(--r-ctl)' }}>
@@ -195,15 +205,6 @@ export default function TransferenciaForm() {
             almacen={almacen}
             onUsar={(lineas, conteos) => { setTexto(lineas); setConteosUsados(conteos ?? []); setMontarAbierto(true); }}
           />
-          <div className="flex justify-end">
-            {/* No vacía el texto a propósito: tras un «no se pudo comprobar» hay que
-                poder reabrir y reenviar LO MISMO, para que la clave de idempotencia
-                se reutilice y TKC devuelva el documento ya hecho. */}
-            <Button variant="outline" disabled={!almacenValido} onClick={() => setMontarAbierto(true)}
-              style={{ borderRadius: 'var(--r-ctl)' }}>
-              Montar una transferencia a mano
-            </Button>
-          </div>
         </TabsContent>
 
         <TabsContent value="historial">
