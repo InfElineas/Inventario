@@ -204,6 +204,7 @@ export default function Lotes() {
   // El resumen es de todo el almacén, no de la pestaña: el aviso dice qué
   // viene aunque se esté mirando otra cosa.
   const porVencer = resumenPorVencer(lotes);
+  const informeAtrasado = lotes.find((l) => l.informe_actual === false)?.informe_fecha ?? null;
 
   // Lo que se ve, completo: no solo la página. Quien lo exporta quiere la
   // lista, y en la pestaña «Por vencer» eso es el reporte de lo que vence.
@@ -281,6 +282,13 @@ export default function Lotes() {
       )}
       {error && (
         <AlertBanner variant="warning" message={`No se pudieron cargar los vencimientos: ${error.message}`} />
+      )}
+      {/* Si el informe de hoy no trae este almacén, se enseña el anterior: sin
+          decirlo, parecería que los lotes de ayer son los de hoy. */}
+      {informeAtrasado && (
+        <AlertBanner variant="warning"
+          message={`Estos lotes son del informe del ${informeAtrasado.slice(0, 10)}: el último informe del servidor `
+            + 'no trae este almacén (la carga se cortó a medias). Se actualizarán solos cuando llegue uno completo.'} />
       )}
       {/* La alerta de lo que viene: es lo único que da tiempo a rebajar o
           devolver antes de que pase a crítico. */}

@@ -41,10 +41,12 @@ los de nombre hablado son los posteriores a la migración.
 `productos` tiene columnas **generadas**: `estado_tienda` y `prioridad_tienda`
 se calculan solas a partir de la existencia. No se escriben.
 
-Los **lotes ya no son una tabla nuestra**. Vienen de `lot_rows_latest`, la
-vista que mantiene el cron central en esta misma base. `inventario.lotes` y
-`lotes_vigencia` siguen existiendo, vacías, porque hay código que todavía las
-nombra.
+Los **lotes ya no son una tabla nuestra**. Los carga el cron central en esta
+misma base, en `lot_rows`, una corrida tras otra. Se lee de la última corrida
+**que trae cada almacén**, no de la vista `lot_rows_latest`: esta toma la última
+corrida sin más, y si sale a medias deja a los almacenes que le faltan en cero.
+`inventario.lotes` y `lotes_vigencia` siguen existiendo, vacías, porque hay
+código que todavía las nombra.
 
 ### Flujos de trabajo
 

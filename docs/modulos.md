@@ -72,8 +72,11 @@ anteriores quedan ocultos con un aviso.
 
 ## Vencimientos (`/lotes`)
 
-Los lotes salen del informe central (`lot_rows_latest`), no de una tabla
-nuestra. **Solo los que tienen existencia**: un lote en cero no es una tarea.
+Los lotes salen del informe central (`lot_rows`), no de una tabla nuestra. De
+cada almacén se lee **la corrida más reciente que lo trae**, no la última a
+secas: un día la última corrida del cron salió con 15 000 filas en vez de 47 000
+y sin el almacén 789, y la pantalla se quedó en cero. Si el informe de hoy no
+trae un almacén, se enseña el anterior y **un aviso dice de qué día es**. **Solo los que tienen existencia**: un lote en cero no es una tarea.
 
 | Estado | Cuándo |
 |---|---|

@@ -13,6 +13,9 @@ vi.mock('@/server/db', () => db);
 
 const { resumenLotes, lotesDe, olvidarLotes } = await import('@/server/lotesApi');
 
+/** Las consultas de lotes: cada llenado de la caché hace además una pequeña por la última corrida. */
+const deLotes = () => db.query.mock.calls.filter(([sql]) => /ultima AS/.test(sql));
+
 const dia = (n) => {
   const d = new Date(); d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
@@ -63,14 +66,14 @@ describe('caché de filas', () => {
   it('peticiones seguidas del mismo almacén hacen una sola consulta', async () => {
     db.query.mockResolvedValue({ rows: [fila(8)] });
     await Promise.all([resumenLotes({ almacen: '789' }), lotesDe({ almacen: '789' }), lotesDe({ almacen: '789' })]);
-    expect(db.query).toHaveBeenCalledTimes(1);
+    expect(deLotes()).toHaveLength(1);
   });
 
   it('otro almacén es otra consulta', async () => {
     db.query.mockResolvedValue({ rows: [] });
     await lotesDe({ almacen: '789' });
     await lotesDe({ almacen: '790' });
-    expect(db.query).toHaveBeenCalledTimes(2);
+    expect(deLotes()).toHaveLength(2);
   });
 
   it('olvidarLotes fuerza a leer de nuevo: una corrección recién guardada se ve', async () => {
@@ -80,7 +83,7 @@ describe('caché de filas', () => {
     db.query.mockResolvedValue({ rows: [fila(-5, { rev_fecha: dia(40) })] });
     const [l] = await lotesDe({ almacen: '789' });
     expect(l.estado_fv).toBe('vigente');
-    expect(db.query).toHaveBeenCalledTimes(2);
+    expect(deLotes()).toHaveLength(2);
   });
 
   it('un fallo no se queda guardado', async () => {
@@ -90,3 +93,44 @@ describe('caché de filas', () => {
     await expect(lotesDe({ almacen: '789' })).resolves.toHaveLength(1);
   });
 });
+
+describe('de qué corrida sale cada almacén', () => {
+  it('con un almacén, de la corrida más reciente que lo trae: no de la vista, que toma la última sin más', async () => {
+    db.query.mockResolvedValue({ rows: [] });
+    await lotesDe({ almacen: '789' });
+
+    const sql = deLotes()[0][0];
+    expect(sql).toMatch(/EXISTS/);
+    expect(sql).not.toMatch(/lot_rows_latest/);
+    expect(deLotes()[0][1]).toEqual(['789']);
+  });
+
+  it('sin almacén, la más reciente de cada uno', async () => {
+    db.query.mockResolvedValue({ rows: [] });
+    await lotesDe({});
+    expect(deLotes()[0][0]).toMatch(/DISTINCT ON/);
+    expect(deLotes()[0][1]).toEqual([null]);
+  });
+
+  const responder = (corridaSeq, ultima) => db.query.mockImplementation(async (sql) => (
+    /MAX\(seq\)/.test(sql)
+      ? { rows: [{ ultima }] }
+      : { rows: [fila(8, { corrida_seq: corridaSeq, corrida_inicio: '2026-11-02T20:01:47Z' })] }
+  ));
+
+  it('un lote de una corrida anterior a la última se marca: el último informe no traía ese almacén', async () => {
+    // Pasó con el 789: la corrida 96 salió con 15 000 filas y sin él, y la
+    // pantalla se quedó en cero aunque la 95 estaba entera.
+    responder(95, 96);
+    const [l] = await lotesDe({ almacen: '789' });
+    expect(l.informe_actual).toBe(false);
+    expect(l.informe_fecha).toBe('2026-11-02T20:01:47Z');
+  });
+
+  it('un lote de la última corrida no se marca', async () => {
+    responder(96, 96);
+    const [l] = await lotesDe({ almacen: '789' });
+    expect(l.informe_actual).toBe(true);
+  });
+});
+

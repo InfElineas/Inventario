@@ -60,7 +60,7 @@ export function temperaturaDe(clasificacion) {
  * que vence el 1 de mayo no vence el 30 de abril porque el contenedor esté en
  * Caracas.
  */
-const SQL = `
+const CUERPO_SQL = `
   SELECT l.id                                 AS fila_id,
          l.warehouse_key                      AS almacen_num,
          l.warehouse_name                     AS almacen_nombre,
@@ -76,8 +76,11 @@ const SQL = `
          to_char(r.fecha_vencimiento, 'YYYY-MM-DD') AS rev_fecha,
          r.nota                               AS rev_nota,
          r.revisado_por                       AS rev_por,
-         p.precio_costo
-    FROM lot_rows_latest l
+         p.precio_costo,
+         u.seq                                AS corrida_seq,
+         to_char(u.started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS corrida_inicio
+    FROM ultima u
+    JOIN public.lot_rows l ON l.run_id = u.run_id AND l.warehouse_key = u.warehouse_key
     -- La última corrección de inventario sobre este lote, si la hay. Cada
     -- corrección es una fila nueva; gana la más reciente.
     LEFT JOIN LATERAL (
@@ -105,6 +108,38 @@ const SQL = `
 `
 
 /**
+ * De QUÉ corrida se lee cada almacén.
+ *
+ * La vista `lot_rows_latest` toma la última corrida del cron sin más, esté
+ * completa o no. Un día la última salió con 15 000 filas en vez de 47 000 y sin
+ * el almacén 789 —el mayor—, y Vencimientos se quedó en cero aunque el informe
+ * del día anterior estaba entero.
+ *
+ * Por eso se lee, de cada almacén, **la corrida más reciente que lo trae**: si
+ * la de hoy lo omite, se usa la anterior y la pantalla dice de qué día es. Es
+ * mejor enseñar lotes de ayer, avisando, que ninguno.
+ *
+ * Con un almacén se prueba corrida a corrida desde la más reciente, que son
+ * pocas; para todos a la vez hay que recorrer las filas.
+ */
+const CORRIDA_DE_UN_ALMACEN = `
+  SELECT $1::text AS warehouse_key, r.id AS run_id, r.seq, r.started_at
+    FROM public.lot_runs r
+   WHERE EXISTS (SELECT 1 FROM public.lot_rows x WHERE x.run_id = r.id AND x.warehouse_key = $1)
+   ORDER BY r.seq DESC
+   LIMIT 1`
+
+const CORRIDA_DE_CADA_ALMACEN = `
+  SELECT DISTINCT ON (x.warehouse_key) x.warehouse_key, r.id AS run_id, r.seq, r.started_at
+    FROM public.lot_rows x
+    JOIN public.lot_runs r ON r.id = x.run_id
+   ORDER BY x.warehouse_key, r.seq DESC`
+
+/** El SQL de los lotes, para un almacén o para todos. */
+export const sqlLotes = (conAlmacen) =>
+  `WITH ultima AS (${conAlmacen ? CORRIDA_DE_UN_ALMACEN : CORRIDA_DE_CADA_ALMACEN})\n${CUERPO_SQL}`
+
+/**
  * Las filas de un almacén, guardadas un minuto.
  *
  * La consulta cruza la vista del cron con las correcciones y con el costo del
@@ -126,7 +161,14 @@ function filasDe(almacen) {
   const guardada = cacheFilas.get(clave)
   if (guardada && Date.now() - guardada.en < VIDA_CACHE_MS) return guardada.promesa
 
-  const promesa = query(SQL, [clave || null]).then(({ rows }) => rows)
+  const promesa = Promise.all([
+    query(sqlLotes(Boolean(clave)), [clave || null]),
+    // La última corrida que existe, para saber si lo que se lee es de ella.
+    query('SELECT MAX(seq) AS ultima FROM public.lot_runs'),
+  ]).then(([lotes, ultima]) => ({
+    rows: lotes.rows,
+    ultimaSeq: Number(ultima.rows[0]?.ultima ?? 0),
+  }))
   cacheFilas.set(clave, { en: Date.now(), promesa })
   // Un fallo no se recuerda: el siguiente intento tiene que volver a probar.
   promesa.catch(() => { if (cacheFilas.get(clave)?.promesa === promesa) cacheFilas.delete(clave) })
@@ -148,7 +190,7 @@ export function olvidarLotes() {
  * @param {{ almacen?: string, estados?: string[], limite?: number }} params
  */
 export async function lotesDe({ almacen, estados, limite } = {}) {
-  const rows = await filasDe(almacen)
+  const { rows, ultimaSeq } = await filasDe(almacen)
   const hoy = new Date()
 
   let lotes = rows.map((f) => {
@@ -168,6 +210,10 @@ export async function lotesDe({ almacen, estados, limite } = {}) {
       // revisiones y los casos de intervención comercial, y se mantiene
       // entre corridas (el id de arriba no).
       clave: `${f.almacen_num ?? ''}|${f.codigo ?? ''}|${f.no_lote ?? ''}`,
+      // De qué informe sale. Si no es el último, ese almacén no venía en él y se
+      // enseña el anterior: la pantalla tiene que decirlo.
+      informe_fecha: f.corrida_inicio ?? null,
+      informe_actual: f.corrida_seq === undefined || f.corrida_seq === null || Number(f.corrida_seq) === ultimaSeq,
       almacen_num: f.almacen_num ?? '',
       almacen_nombre: f.almacen_nombre ?? '',
       producto_nombre: f.producto ?? '',
