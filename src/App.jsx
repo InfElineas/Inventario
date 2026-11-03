@@ -13,7 +13,7 @@ import Login from '@/pages/Login';
 import { ROLES_PROCESAMIENTOS } from '@/lib/procesamientos';
 import { ROLES_AJUSTES, ROLES_VENTAS } from '@/lib/ajustes';
 import TkcCredencialesDialog from '@/components/shared/TkcCredencialesDialog';
-import EsqueletoApp, { EsqueletoContenido } from '@/components/shared/Esqueleto';
+import EsqueletoApp, { EsqueletoRuta } from '@/components/shared/Esqueleto';
 
 // Páginas autenticadas cargadas bajo demanda — cada una queda en su propio
 // chunk, así el login inicial no descarga el código de Reportes, Productos,
@@ -39,21 +39,6 @@ const SuperAdmin    = lazy(() => import('@/pages/SuperAdmin'));
 const Configuracion = lazy(() => import('@/pages/Configuracion'));
 const Supervision   = lazy(() => import('@/pages/Supervision'));
 const PageNotFound  = lazy(() => import('./lib/PageNotFound'));
-
-/**
- * Mientras llega el codigo de una pantalla.
- *
- * El armazon ya esta pintado, asi que solo falta el contenido: se dibuja su
- * forma —titulo, filtros, buscador, lista— y cuando entra no salta nada.
- */
-function RouteLoading() {
-  return (
-    <div role="status">
-      <span className="sr-only">Cargando la pantalla</span>
-      <EsqueletoContenido />
-    </div>
-  );
-}
 
 // ── Guard de rol: renderiza el elemento solo si el usuario tiene el rol requerido
 const RoleGuard = ({ element, roles }) => {
@@ -86,7 +71,7 @@ const AuthenticatedApp = () => {
   if (!isAuthenticated) return null;
 
   return (
-    <Suspense fallback={<RouteLoading />}>
+    <Suspense fallback={<EsqueletoRuta />}>
       <TkcCredencialesDialog />
       <Routes>
         <Route element={<AppLayout />}>
@@ -147,7 +132,12 @@ function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
-        <Router>
+        {/* Sin `startTransition`: por defecto el router envuelve cada navegación
+            en una transición, y React, mientras baja el código de la pantalla
+            nueva, se queda con la vieja sin enseñar nada. Parecía que la
+            aplicación no respondía y de pronto cambiaba. Sin transición, la
+            espera enseña el esqueleto de al lado (ver AppLayout). */}
+        <Router useTransitions={false}>
           <SyncProvider>
             {/* Último recurso: lo que falle fuera del layout —el login, la
                 propia carga de rutas— tampoco debe dejar la ventana en blanco. */}

@@ -132,3 +132,19 @@ export default function EsqueletoApp() {
     </div>
   );
 }
+
+/**
+ * Mientras llega el código de una pantalla, dentro del armazón.
+ *
+ * El menú y la cabecera se quedan; solo el contenido se sustituye por su forma
+ * —título, filtros, buscador, lista— y cuando entra no salta nada. Con `role`
+ * propio porque aquí sí es lo único que anuncia la espera.
+ */
+export function EsqueletoRuta() {
+  return (
+    <div role="status">
+      <span className="sr-only">Cargando la pantalla</span>
+      <EsqueletoContenido />
+    </div>
+  );
+}

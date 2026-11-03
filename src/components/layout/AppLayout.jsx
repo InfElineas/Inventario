@@ -14,6 +14,7 @@ import { useAlmacen } from '@/lib/useAlmacen';
 import { fetchResumenLotes } from '@/services/lotesService';
 import { SIN_SONDEO } from '@/lib/query-client';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
+import { EsqueletoRuta } from '@/components/shared/Esqueleto';
 import { ROLES } from '@/lib/constants';
 import { tieneRol } from '@/lib/roles';
 import { ROLES_RESPONDE_IC } from '@/lib/ic';
@@ -469,7 +470,14 @@ export default function AppLayout() {
                 cambiar de ruta; sin ella, el error se quedaría pegado y
                 navegar a otro sitio seguiría mostrándolo. */}
             <ErrorBoundary key={location.pathname}>
-              <Outlet />
+              {/* La espera del código de la pantalla se queda DENTRO del
+                  armazón: el menú y la cabecera siguen en pie y solo el
+                  contenido enseña su esqueleto. Antes el límite estaba por
+                  encima de todo, y al navegar o se veía la pantalla vieja
+                  como congelada o desaparecía hasta el menú. */}
+              <Suspense fallback={<EsqueletoRuta />}>
+                <Outlet />
+              </Suspense>
             </ErrorBoundary>
           </div>
         </main>
