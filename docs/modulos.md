@@ -80,20 +80,24 @@ productos sin existencia siguen saliendo, atenuados: contar uno en cero es legí
 ### Análisis automático de la diferencia
 
 Al registrar un conteo con diferencia, y al abrir su detalle, el sistema
-recomienda qué hacer con ella y cuántas unidades. Mover mercancía y ajustar son
-cosas distintas: si TKC la tiene en otro sitio se **mueve**, y si de verdad
-falta o sobra se **ajusta**. El conteo se compara con **A** (almacén), no con la
-existencia total, y con la T (tienda) que TKC tiene ahora mismo:
+recomienda qué hacer con ella y cuántas unidades. El conteo se compara con la
+**existencia física** (EF = A + T), no con el almacén. **A** (almacén) es la
+**reserva**: lo que no está a la venta, por si una unidad sufre algún cambio y
+hay que reponerla. **T** (tienda) es lo que está a la venta.
+
+Mover entre A y T no cambia EF, así que no arregla una diferencia: la arregla un
+**ajuste** (disminución si falta, aumento si sobra), y el ajuste opera sobre la
+reserva. De ahí sale cuándo conviene mover, con la A y la T de TKC ahora mismo:
 
 | Contó | Recomienda |
 |---|---|
-| **Más** que A | **Bajar** lo que hay de más en el almacén, sin pasar de T. Si aún sobra, sobrante real: ajuste de aumento |
-| **Igual** que A | Nada: la diferencia con el total son las unidades de la tienda, que no se contaron |
-| **Menos** que A | **Subir** lo que falta, como *posibilidad*: solo si están en el piso de la tienda; si no aparecen, faltante real: ajuste de disminución |
+| **Menos** que EF, y A cubre lo que falta | Nada que mover: ajuste de disminución, que sale de la reserva |
+| **Menos** que EF, y A no alcanza | **Bajar** de tienda lo que falta por cubrir (sin pasar de T) y luego ajustar |
+| **Más** que EF | Ajuste de aumento, que entra en la reserva. Si T está en cero, **subir** a tienda como *posibilidad*, si debe venderse |
+| **Igual** | Nada |
 
-El diálogo de subir o bajar de tienda abre con esa cantidad. **Supone que el
-conteo es el del almacén**; si se contara también el piso de tienda, la regla no
-vale tal cual. El código está en `src/lib/analisisConteo.js`.
+El diálogo de subir o bajar de tienda abre con esa cantidad. El código está en
+`src/lib/analisisConteo.js`.
 
 ## Vencimientos (`/lotes`)
 

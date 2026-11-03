@@ -41,6 +41,7 @@ export default function ExistenciaAhora({ inv }) {
   // mismo que lo que se veía al contar. Un conteo ya cerrado no necesita consejo.
   const analisis = inv.estado_tarea === 'completado' ? null : analizarConteo({
     conteo: conteoDeRegistro(inv),
+    existencia: submayor?.existencia?.fisica,
     enAlmacen: submayor?.existencia?.enAlmacen,
     enTienda: submayor?.existencia?.enTienda,
   });

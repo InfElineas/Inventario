@@ -164,7 +164,7 @@ export default function DialogosConteo({ accion, sugerir, onHecho, onClose }) {
   // bajar, o cuánto subir, o nada y por qué. Una pantalla con su propia regla
   // —vencimientos— la pasa en `sugerir` y manda. Y si la existencia cambió
   // desde el conteo, se dice: la diferencia es de aquel día.
-  const analisis = analizarConteo({ conteo: conteoDeRegistro(inv), enAlmacen, enTienda });
+  const analisis = analizarConteo({ conteo: conteoDeRegistro(inv), enAlmacen, enTienda, existencia: fisica });
   const base = tipo === 'bajar' && sugerir ? sugerir(enTienda)
     : (tipo === 'bajar' || tipo === 'subir') ? sugerenciaDeAnalisis(analisis, tipo) : null;
   const entonces = inv.exist_fisica_tkc;

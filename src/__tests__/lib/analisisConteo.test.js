@@ -2,59 +2,70 @@ import { describe, it, expect } from 'vitest';
 import { analizarConteo, sugerenciaDeAnalisis, conteoDeRegistro } from '@/lib/analisisConteo';
 
 /**
- * El análisis de la diferencia de un conteo. Supone que el conteo es el del
- * almacén y lo compara con A, no con la existencia total.
+ * El análisis de la diferencia de un conteo. El conteo se compara con la
+ * existencia física (EF = A + T); A es la reserva y T lo que está a la venta.
  */
 
-const analizar = (conteo, enAlmacen, enTienda) => analizarConteo({ conteo, enAlmacen, enTienda });
+const analizar = (conteo, enAlmacen, enTienda, existencia) => analizarConteo({ conteo, enAlmacen, enTienda, existencia });
 
-describe('hay en el almacén más de lo que TKC dice que tiene (conteo > A)', () => {
-  it('lo que sobra del almacén está en la tienda: bajar, sin pasar de lo que hay en tienda', () => {
-    // Contó 40 en el almacén; TKC: A 10, T 100. Esas 30 están en realidad en el almacén.
-    const a = analizar(40, 10, 100);
-    expect(a).toMatchObject({ accion: 'bajar', cantidad: 30, condicional: false, diferencia: -70 });
-    expect(a.resumen).toBe('Bajar 30 de tienda');
-  });
-
-  it('con menos en tienda de lo que sobra: baja lo que hay y el resto es un sobrante real', () => {
-    // Contó 40; A 10, T 5: puede bajar 5 y quedan 25 de más sobre el total (15).
-    const a = analizar(40, 10, 5);
-    expect(a).toMatchObject({ accion: 'bajar', cantidad: 5 });
-    expect(a.detalles.join(' ')).toMatch(/quedan 25 de más sobre la existencia total \(15\).*ajuste de aumento/);
-  });
-
-  it('con nada en tienda no hay qué bajar: es un sobrante real', () => {
-    const a = analizar(40, 10, 0);
-    expect(a).toMatchObject({ accion: 'ninguna', cantidad: 0 });
-    expect(a.resumen).toBe('Sobrante real de 30');
+describe('sin diferencia', () => {
+  it('el conteo es la existencia física: nada que hacer', () => {
+    expect(analizar(107, 21, 86)).toMatchObject({ accion: 'ninguna', resumen: 'Sin diferencia', diferencia: 0 });
   });
 });
 
-describe('el conteo coincide con el almacén (conteo = A)', () => {
-  it('con tienda: la diferencia son las unidades de la tienda, que no se contaron', () => {
-    // El caso de la captura: EF 107, contó 21, el almacén tiene 21 y la tienda 86.
-    const a = analizar(21, 21, 86);
-    expect(a).toMatchObject({ accion: 'ninguna', diferencia: -86 });
-    expect(a.resumen).toBe('No hay faltante en el almacén');
-    expect(a.detalles[0]).toMatch(/86 de la tienda, que no se contaron/);
+describe('faltante (conteo < EF)', () => {
+  it('la reserva cubre lo que falta: ajuste de disminución, sin mover nada', () => {
+    // EF 1575 (A 98, T 1477), contó 1500: faltan 75 y la reserva tiene 98.
+    const a = analizar(1500, 98, 1477, 1575);
+    expect(a).toMatchObject({ accion: 'ninguna', cantidad: 0, diferencia: -75 });
+    expect(a.resumen).toBe('Faltan 75: no hay que mover nada');
   });
 
-  it('sin tienda: sin diferencia', () => {
-    expect(analizar(21, 21, 0)).toMatchObject({ accion: 'ninguna', resumen: 'Sin diferencia', diferencia: 0 });
+  it('la reserva no alcanza: baja de tienda lo que falta por cubrir', () => {
+    // Faltan 30, A 10, T 100: 20 hay que bajarlas para que el ajuste las tenga de dónde restar.
+    const a = analizar(80, 10, 100);
+    expect(a).toMatchObject({ accion: 'bajar', cantidad: 20, condicional: false, diferencia: -30 });
+    expect(a.resumen).toBe('Faltan 30: hay que bajar 20 de tienda');
+  });
+
+  it('con la reserva vacía baja todo lo que falta', () => {
+    expect(analizar(21, 0, 107)).toMatchObject({ accion: 'bajar', cantidad: 86 });
+  });
+
+  it('nunca propone bajar más de lo que hay en tienda', () => {
+    // Contó 0 con A 5 y T 3: faltan 8, la reserva cubre 5 y quedan 3, que son toda la tienda.
+    expect(analizar(0, 5, 3)).toMatchObject({ accion: 'bajar', cantidad: 3 });
+    // La EF de TKC es mayor que A + T: aun así, no se baja más de lo que hay en tienda.
+    expect(analizar(0, 5, 3, 20)).toMatchObject({ accion: 'bajar', cantidad: 3 });
+  });
+
+  it('contar cero con todo en la reserva: nada que mover', () => {
+    expect(analizar(0, 40, 0)).toMatchObject({ accion: 'ninguna', diferencia: -40 });
   });
 });
 
-describe('faltan unidades en el almacén (conteo < A)', () => {
-  it('propone subir lo que falta, pero solo como posibilidad: depende de dónde estén', () => {
-    // Contó 21; TKC: A 107, T 0. Faltan 86 en el almacén.
-    const a = analizar(21, 107, 0);
-    expect(a).toMatchObject({ accion: 'subir', cantidad: 86, condicional: true, diferencia: -86 });
-    expect(a.resumen).toBe('Faltan 86 en el almacén');
-    expect(a.detalles[0]).toMatch(/si esas 86 están en el piso de la tienda.*faltante real.*ajuste de disminución/i);
+describe('sobrante (conteo > EF)', () => {
+  it('con tienda: ajuste de aumento y nada más', () => {
+    const a = analizar(130, 21, 86);
+    expect(a).toMatchObject({ accion: 'ninguna', diferencia: 23 });
+    expect(a.resumen).toBe('Sobran 23: ajuste de aumento');
   });
 
-  it('avisa de que lo que hay en tienda no entra en el conteo', () => {
-    expect(analizar(21, 107, 5).detalles.join(' ')).toMatch(/Las 5 que TKC tiene en tienda no entran/);
+  it('con la tienda agotada, subir es una posibilidad, no una orden', () => {
+    const a = analizar(30, 10, 0);
+    expect(a).toMatchObject({ accion: 'subir', cantidad: 20, condicional: true, diferencia: 20 });
+    expect(a.detalles.join(' ')).toMatch(/tienda está agotada/);
+  });
+});
+
+describe('la existencia física de TKC manda sobre A + T', () => {
+  it('si TKC da EF distinta de A + T, se compara con EF', () => {
+    expect(analizar(100, 10, 20, 100)).toMatchObject({ diferencia: 0, existencia: 100 });
+  });
+
+  it('sin EF, es A + T', () => {
+    expect(analizar(100, 10, 20)).toMatchObject({ diferencia: 70, existencia: 30 });
   });
 });
 
@@ -66,27 +77,27 @@ describe('sin datos fiables no se recomienda nada', () => {
   });
 
   it('las cantidades que vienen como texto se leen', () => {
-    expect(analizar('40', '10', '100')).toMatchObject({ accion: 'bajar', cantidad: 30 });
+    expect(analizar('80', '10', '100')).toMatchObject({ accion: 'bajar', cantidad: 20 });
   });
 });
 
 describe('sugerenciaDeAnalisis', () => {
   it('para el movimiento que se recomienda, la cantidad y el porqué', () => {
-    const s = sugerenciaDeAnalisis(analizar(40, 10, 100), 'bajar');
-    expect(s.cantidad).toBe(30);
-    expect(s.motivo).toMatch(/^Bajar 30 de tienda\. Hay 40 en el almacén y TKC dice 10/);
+    const s = sugerenciaDeAnalisis(analizar(80, 10, 100), 'bajar');
+    expect(s.cantidad).toBe(20);
+    expect(s.motivo).toMatch(/^Faltan 30: hay que bajar 20 de tienda\. El ajuste de disminución resta de la reserva/);
   });
 
   it('subir es una posibilidad, y lo dice', () => {
-    const s = sugerenciaDeAnalisis(analizar(21, 107, 0), 'subir');
-    expect(s.cantidad).toBe(86);
-    expect(s.motivo).toMatch(/^Posible: faltan 86 en el almacén; solo si están en el piso de la tienda/);
+    const s = sugerenciaDeAnalisis(analizar(30, 10, 0), 'subir');
+    expect(s.cantidad).toBe(20);
+    expect(s.motivo).toMatch(/^Posible: sobran 20: ajuste de aumento/);
   });
 
-  it('para el movimiento contrario no propone cantidad, pero dice por qué no', () => {
-    const s = sugerenciaDeAnalisis(analizar(21, 107, 0), 'bajar');
+  it('para el movimiento que no se recomienda no propone cantidad, pero dice por qué', () => {
+    const s = sugerenciaDeAnalisis(analizar(1500, 98, 1477, 1575), 'bajar');
     expect(s.cantidad).toBeUndefined();
-    expect(s.motivo).toMatch(/no recomienda bajar: faltan 86 en el almacén/);
+    expect(s.motivo).toMatch(/no recomienda bajar: faltan 75: no hay que mover nada/);
   });
 
   it('sin análisis, nada', () => {

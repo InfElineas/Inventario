@@ -124,7 +124,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
   // El análisis solo cuando ya se escribió una cantidad: con el formulario recién
   // abierto el conteo vale cero y saldría un faltante entero que nadie ha contado.
   const analisis = desglose && contado
-    ? analizarConteo({ conteo: conteoReal, enAlmacen: desglose.enAlmacen, enTienda: desglose.enTienda })
+    ? analizarConteo({ conteo: conteoReal, enAlmacen: desglose.enAlmacen, enTienda: desglose.enTienda, existencia: desglose.fisica })
     : null;
 
   // Sin el dato de TKC no se cuenta. Nuestra copia puede llevar horas, y una

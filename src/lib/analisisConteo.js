@@ -1,31 +1,39 @@
 /**
  * Qué hacer con la diferencia de un conteo: el análisis automático.
  *
- * Cuando una persona cuenta un producto y sale una diferencia, hay dos
- * explicaciones muy distintas y se resuelven de manera distinta:
+ * Cómo se reparte la existencia en TKC:
  *
- *   · La mercancía existe pero TKC la tiene en otro sitio —en la tienda y no en
- *     el almacén, o al revés—: se arregla MOVIÉNDOLA, subiendo o bajando de
- *     tienda. No es un ajuste.
- *   · La mercancía de verdad falta o sobra: se arregla con un ajuste de
- *     disminución o de aumento.
+ *   · EF, la existencia física: TODO lo que hay físicamente. Es lo que se cuenta
+ *     y contra lo que se compara el conteo. EF = A + T.
+ *   · A, el almacén: la **reserva**. Lo que no está a la venta y se guarda por si
+ *     una unidad sufre algún cambio y hay que reponerla.
+ *   · T, la tienda: lo que está **a la venta**.
  *
- * Un número solo no distingue una de otra, pero TKC reparte su existencia entre
- * almacén (A) y tienda (T), y comparar el conteo con cada una sí lo hace.
+ * Por eso la diferencia de un conteo es `conteo − EF`, y mover mercancía entre A
+ * y T no la cambia: ni subir ni bajar de tienda arreglan un faltante o un
+ * sobrante. Lo que arregla la diferencia es un ajuste —de disminución si falta,
+ * de aumento si sobra—, y el ajuste opera sobre la **reserva** (A).
  *
- * SUPUESTO QUE HAY QUE CONOCER: el conteo es el del **almacén**, no el de la
- * tienda. Se compara con A, no con la existencia total, para saber cuánto de lo
- * que hay en el almacén TKC lo tiene apuntado en la tienda. Si algún día se
- * cuenta también el piso de tienda, esta regla no vale tal cual.
+ * De ahí sale cuándo conviene mover:
+ *
+ *   · FALTANTE. El ajuste de disminución resta de A. Si A cubre lo que falta, no
+ *     hay que mover nada. Si no, las unidades que faltan por cubrir están
+ *     contadas en la tienda, y hay que **bajarlas** a la reserva antes de ajustar;
+ *     si no, el ajuste no tiene de dónde restar. Es la misma razón por la que una
+ *     merma se baja de tienda antes de darla de baja.
+ *   · SOBRANTE. El ajuste de aumento suma a A: lo que sobra entra en la reserva.
+ *     Si la tienda está agotada, quizá convenga **subirlo** para que se pueda
+ *     vender, pero eso es una decisión, no una necesidad.
  *
  * Lógica pura, sin red ni React.
  */
 
-const entero = (n) => Number.isFinite(n) ? Math.round(n) : NaN;
+const entero = (n) => (Number.isFinite(n) ? Math.round(n) : NaN);
 
 /**
- * @param {{ conteo: number, enAlmacen: number, enTienda: number }} datos
- *   Lo contado, y A y T de TKC en este momento.
+ * @param {{ conteo: number, enAlmacen: number, enTienda: number, existencia?: number }} datos
+ *   Lo contado, y A y T de TKC en este momento. `existencia` es la EF que dice TKC;
+ *   sin ella, A + T.
  * @returns {null | {
  *   conteo: number, enAlmacen: number, enTienda: number, existencia: number,
  *   diferencia: number,
@@ -36,75 +44,69 @@ const entero = (n) => Number.isFinite(n) ? Math.round(n) : NaN;
  *   detalles: string[],
  * }}
  *   `null` si falta algún dato: sin A y T no se recomienda nada.
- *   `condicional` es una recomendación que depende de algo que el sistema no
- *   puede saber —«si esas unidades están en la tienda»— y por eso se dice como
- *   posibilidad, no como orden.
+ *   `condicional` es una recomendación que depende de una decisión —subir lo que
+ *   sobra a la venta— y por eso se dice como posibilidad, no como orden.
  */
-export function analizarConteo({ conteo, enAlmacen, enTienda }) {
+export function analizarConteo({ conteo, enAlmacen, enTienda, existencia }) {
   const C = entero(Number(conteo));
   const A = entero(Number(enAlmacen));
   const T = entero(Number(enTienda));
   if (![C, A, T].every(Number.isFinite) || C < 0 || A < 0 || T < 0) return null;
 
-  const existencia = A + T;
+  const EF = Number.isFinite(Number(existencia)) && existencia !== null && existencia !== undefined
+    ? entero(Number(existencia)) : A + T;
+  const diferencia = C - EF;
+
   const base = {
-    conteo: C, enAlmacen: A, enTienda: T, existencia, diferencia: C - existencia,
+    conteo: C, enAlmacen: A, enTienda: T, existencia: EF, diferencia,
     accion: 'ninguna', cantidad: 0, condicional: false, resumen: '', detalles: [],
   };
 
-  // Lo que hay en el almacén de más o de menos respecto a lo que TKC dice que
-  // hay EN EL ALMACÉN. No respecto a la existencia total.
-  const enMasDelAlmacen = C - A;
+  if (diferencia === 0) {
+    base.resumen = 'Sin diferencia';
+    return base;
+  }
 
-  if (enMasDelAlmacen > 0) {
-    const bajar = Math.min(enMasDelAlmacen, T);
-    const sobrante = enMasDelAlmacen - bajar;
+  if (diferencia < 0) {
+    const faltan = -diferencia;
+    // Lo que la reserva no cubre. Nunca más de lo que hay en tienda: si faltan
+    // menos unidades que EF, la cuenta no puede pedir más de T.
+    const sinCubrir = Math.max(0, faltan - A);
+    const bajar = Math.min(sinCubrir, T);
 
     if (bajar > 0) {
       base.accion = 'bajar';
       base.cantidad = bajar;
-      base.resumen = `Bajar ${bajar} de tienda`;
+      base.resumen = `Faltan ${faltan}: hay que bajar ${bajar} de tienda`;
       base.detalles.push(
-        `Hay ${C} en el almacén y TKC dice ${A}: ${bajar} de las ${T} que TKC tiene en tienda están en realidad en el almacén.`,
+        `El ajuste de disminución resta de la reserva (A), que solo tiene ${A}. Las ${bajar} que faltan por cubrir `
+        + 'están contadas en la tienda: bájalas a la reserva primero y ajusta después.',
+        `Después, un ajuste de disminución de ${faltan} (EF ${EF}, contaste ${C}).`,
       );
     } else {
-      base.resumen = `Sobrante real de ${sobrante}`;
-      base.detalles.push(`Hay ${C} en el almacén y TKC dice ${A}, y no hay nada en tienda que bajar.`);
-    }
-    if (sobrante > 0) {
+      base.resumen = `Faltan ${faltan}: no hay que mover nada`;
       base.detalles.push(
-        bajar > 0
-          ? `Aun así quedan ${sobrante} de más sobre la existencia total (${existencia}): sobrante real, se resuelve con un ajuste de aumento.`
-          : `Es un sobrante sobre la existencia total (${existencia}): se resuelve con un ajuste de aumento.`,
+        `La reserva (A = ${A}) cubre lo que falta. Se resuelve con un ajuste de disminución de ${faltan}, `
+        + 'que sale de ella; la tienda no se toca.',
       );
     }
     return base;
   }
 
-  if (enMasDelAlmacen === 0) {
-    if (T > 0) {
-      base.resumen = 'No hay faltante en el almacén';
-      base.detalles.push(
-        `El conteo coincide con lo que TKC tiene en el almacén (${A}). La diferencia con la existencia total `
-        + `(${base.diferencia}) son las ${T} de la tienda, que no se contaron.`,
-      );
-    } else {
-      base.resumen = 'Sin diferencia';
-    }
-    return base;
-  }
-
-  // Faltan unidades en el almacén.
-  const faltan = A - C;
-  base.accion = 'subir';
-  base.cantidad = faltan;
-  base.condicional = true;
-  base.resumen = `Faltan ${faltan} en el almacén`;
+  // Sobrante
+  const sobran = diferencia;
+  base.resumen = `Sobran ${sobran}: ajuste de aumento`;
   base.detalles.push(
-    `Hay ${C} en el almacén y TKC dice ${A}. Si esas ${faltan} están en el piso de la tienda, súbelas en TKC; `
-    + 'si no aparecen, es un faltante real y se resuelve con un ajuste de disminución.',
+    `Se resuelve con un ajuste de aumento de ${sobran} (EF ${EF}, contaste ${C}). Las unidades entran en la reserva (A).`,
   );
-  if (T > 0) base.detalles.push(`Las ${T} que TKC tiene en tienda no entran en este conteo.`);
+  if (T === 0) {
+    base.accion = 'subir';
+    base.cantidad = sobran;
+    base.condicional = true;
+    base.detalles.push(
+      `La tienda está agotada: si esas ${sobran} deben venderse, súbelas a tienda después del ajuste.`,
+    );
+  }
   return base;
 }
 
@@ -126,7 +128,7 @@ export function sugerenciaDeAnalisis(analisis, movimiento) {
     return {
       cantidad: analisis.cantidad,
       motivo: analisis.condicional
-        ? `Posible: ${analisis.resumen.toLowerCase()}; solo si están en el piso de la tienda.`
+        ? `Posible: ${analisis.resumen.toLowerCase()}. ${primero ?? ''}`.trim()
         : `${analisis.resumen}. ${primero ?? ''}`.trim(),
     };
   }

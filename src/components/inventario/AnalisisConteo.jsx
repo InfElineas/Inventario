@@ -6,8 +6,8 @@ import { ArrowDownToLine, ArrowUpFromLine, CheckCircle2, ScanSearch } from 'luci
  *
  * Dice qué hacer —bajar de tienda, subir, o nada— y cuántas unidades, y el
  * porqué en una o dos frases, porque una recomendación sin razón no se puede
- * comprobar con lo que se tiene delante. Y dice el supuesto sobre el que se
- * apoya: que el conteo es el del almacén.
+ * comprobar con lo que se tiene delante. El conteo se compara con la existencia
+ * física total; A es la reserva y T lo que está a la venta.
  *
  * @param {{ analisis: ReturnType<typeof import('@/lib/analisisConteo').analizarConteo> }} props
  */
@@ -35,7 +35,7 @@ export default function AnalisisConteo({ analisis }) {
       </p>
       {detalles.map((d) => <p key={d} className="text-xs text-muted-foreground leading-snug">{d}</p>)}
       <p className="text-[11px] text-muted-foreground/80">
-        Supone que el conteo es el del almacén: compara con A, no con la existencia total.
+        Compara con la existencia física (EF = A + T). El almacén es la reserva; la tienda, lo que está a la venta.
       </p>
     </div>
   );
