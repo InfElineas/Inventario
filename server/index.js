@@ -30,6 +30,7 @@ import { createAuthApiMiddleware } from '../src/server/authApi.js'
 import { createDatosApiMiddleware } from '../src/server/datosApi.js'
 import { createSyncApiMiddleware } from '../src/server/syncApi.js'
 import { createVentasApiMiddleware } from '../src/server/ventasApi.js'
+import { createPreciosApiMiddleware } from '../src/server/preciosApi.js'
 import { createTransferenciasApiMiddleware } from '../src/server/transferenciasApi.js'
 import { isIdentityConfigured } from '../src/server/identity.js'
 import { aplicarCabecerasSeguridad } from '../src/server/securityHeaders.js'
@@ -64,6 +65,7 @@ const authMiddleware = createAuthApiMiddleware({ tkcBase: tkc.tkcBase })
 const datosMiddleware = createDatosApiMiddleware()
 const syncMiddleware = createSyncApiMiddleware()
 const ventasMiddleware = createVentasApiMiddleware()
+const preciosMiddleware = createPreciosApiMiddleware()
 const transferenciasMiddleware = createTransferenciasApiMiddleware()
 
 const MIME_TYPES = {
@@ -136,8 +138,10 @@ const server = createServer((req, res) => {
     datosMiddleware(req, res, () =>
       syncMiddleware(req, res, () =>
         ventasMiddleware(req, res, () =>
-          transferenciasMiddleware(req, res, () =>
-            tkcMiddleware(req, res, () => serveStatic(req, res)),
+          preciosMiddleware(req, res, () =>
+            transferenciasMiddleware(req, res, () =>
+              tkcMiddleware(req, res, () => serveStatic(req, res)),
+            ),
           ),
         ),
       ),

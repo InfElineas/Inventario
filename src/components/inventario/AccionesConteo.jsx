@@ -6,6 +6,7 @@ import MenuAcciones from '@/components/productos/MenuAcciones';
 import MoverTiendaDialog, { sugerirBajada } from '@/components/productos/MoverTiendaDialog';
 import HistorialSubmayorDialog from '@/components/productos/HistorialSubmayorDialog';
 import HistorialInventarioDialog from '@/components/productos/HistorialInventarioDialog';
+import PreciosProductoDialog from '@/components/productos/PreciosProductoDialog';
 import { fetchExistenciaTkc } from '@/services/tkcService';
 import { SIN_SONDEO } from '@/lib/query-client';
 import { warehouseName } from '@/services/tkc/warehouses';
@@ -37,6 +38,7 @@ export function CeldaAcciones({ inv, puedeMoverTienda, modulos, puedeEliminar, o
         onMover={(modulo) => onAccion({ tipo: modulo, inv })}
         onHistorial={() => onAccion({ tipo: 'historial', inv })}
         onConteos={() => onAccion({ tipo: 'conteos', inv })}
+        onPrecios={() => onAccion({ tipo: 'precios', inv })}
         onEliminar={puedeEliminar ? () => onAccion({ tipo: 'eliminar', inv }) : undefined}
       />
     </div>
@@ -88,7 +90,8 @@ export default function DialogosConteo({ accion, sugerir, onHecho, onClose }) {
       // la que tenga id de anuncio.
       : base44.entities.Producto.filter(
         { codigo_producto: inv.producto_codigo, almacen_num: inv.almacen_num, activo: true }, '-updated_date', 5)),
-    enabled: Boolean(inv?.producto_id || (inv?.producto_codigo && inv?.almacen_num)) && tipo !== 'conteos',
+    enabled: Boolean(inv?.producto_id || (inv?.producto_codigo && inv?.almacen_num))
+      && tipo !== 'conteos' && tipo !== 'precios',
     select: (d) => (Array.isArray(d) ? (d.find((p) => p.id_tienda) ?? d[0] ?? null) : null),
     ...SIN_SONDEO,
   });
@@ -105,6 +108,17 @@ export default function DialogosConteo({ accion, sugerir, onHecho, onClose }) {
   });
 
   if (!accion) return null;
+
+  // Los precios se buscan por código y almacén: no necesitan el producto.
+  if (tipo === 'precios') {
+    return (
+      <PreciosProductoDialog
+        producto={{ nombre: inv.producto_nombre, codigo: inv.producto_codigo }}
+        almacen={inv.almacen_num}
+        onClose={onClose}
+      />
+    );
+  }
 
   if (tipo === 'conteos') {
     return (

@@ -344,7 +344,7 @@ export default function Lotes() {
           onAccion: (a) => {
             // Bajar de tienda, el historial y los conteos son los diálogos
             // compartidos; el resto, los de esta página.
-            if (['bajar', 'historial', 'conteos'].includes(a)) { setAccionFila({ tipo: a, inv: l }); return; }
+            if (['bajar', 'historial', 'conteos', 'precios'].includes(a)) { setAccionFila({ tipo: a, inv: l }); return; }
             setSelectedId(l.id); setAccion(a);
           },
         })}
@@ -528,6 +528,7 @@ function MenuDeLote({ lote, puedeGestionar, puedeMoverTienda, onAccion }) {
       onMover={() => onAccion('bajar')}
       onHistorial={() => onAccion('historial')}
       onConteos={() => onAccion('conteos')}
+      onPrecios={() => onAccion('precios')}
     />
   );
 }

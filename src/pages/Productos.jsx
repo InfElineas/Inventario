@@ -15,6 +15,7 @@ import MenuAcciones from '@/components/productos/MenuAcciones';
 import MoverTiendaDialog from '@/components/productos/MoverTiendaDialog';
 import HistorialSubmayorDialog from '@/components/productos/HistorialSubmayorDialog';
 import HistorialInventarioDialog from '@/components/productos/HistorialInventarioDialog';
+import PreciosProductoDialog from '@/components/productos/PreciosProductoDialog';
 import { ROLES_TIENDA } from '@/lib/ajustes';
 import { fetchAllProductos } from '@/lib/paginacion';
 import { notifToast } from '@/lib/notifToast';
@@ -365,6 +366,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   const [mover, setMover] = useState(null);   // { modulo, producto }
   const [historial, setHistorial] = useState(null);  // producto del catálogo
   const [conteos, setConteos] = useState(null);      // producto del catálogo
+  const [precios, setPrecios] = useState(null);      // producto del catálogo
   // Solo decide si se ven los botones. El permiso de verdad lo comprueba la
   // API de transferencias contra el Identity Server (`up-shop:execute`).
   const puedeMoverTienda = tieneRol(user, ROLES_TIENDA);
@@ -1247,6 +1249,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                                       onMover={(modulo) => setMover({ modulo, producto: p })}
                                       onHistorial={() => setHistorial(p)}
                                       onConteos={() => setConteos(p)}
+                                      onPrecios={() => setPrecios(p)}
                                     />
                                   </td>
                                 );
@@ -1295,6 +1298,14 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                   almacen={almacen}
                   onHecho={refrescarVistaTkc}
                   onClose={() => setMover(null)}
+                />
+              )}
+
+              {precios && (
+                <PreciosProductoDialog
+                  producto={precios}
+                  almacen={almacen}
+                  onClose={() => setPrecios(null)}
                 />
               )}
 

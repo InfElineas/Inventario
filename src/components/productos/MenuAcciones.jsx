@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowUpFromLine, ArrowDownToLine, MoreHorizontal, History, ClipboardList, Trash2 } from 'lucide-react';
+import { ArrowUpFromLine, ArrowDownToLine, MoreHorizontal, History, ClipboardList, Trash2, DollarSign } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 /**
@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
  *
  * Lo que una persona no puede hacer no se le enseña apagado: se le quita.
  */
-export default function MenuAcciones({ producto, puedeMoverTienda, modulos = ['subir', 'bajar'], extras = [], onMover, onHistorial, onConteos, onEliminar }) {
+export default function MenuAcciones({ producto, puedeMoverTienda, modulos = ['subir', 'bajar'], extras = [], onMover, onHistorial, onConteos, onPrecios, onEliminar }) {
   const [abierto, setAbierto] = useState(false);
 
   const acciones = [];
@@ -41,6 +41,15 @@ export default function MenuAcciones({ producto, puedeMoverTienda, modulos = ['s
     clave: 'conteos', etiqueta: 'Conteos de inventario', Icono: ClipboardList,
     color: 'text-[var(--c-purple)]', al: onConteos,
   });
+
+  // Todos los precios del producto, cada uno con su fuente. Es leer, así que
+  // la ve cualquiera; solo falta donde la pantalla no la ofrece.
+  if (onPrecios) {
+    acciones.push({
+      clave: 'precios', etiqueta: 'Ver todos los precios', Icono: DollarSign,
+      color: 'text-[var(--c-ok-dim)]', al: onPrecios,
+    });
+  }
 
   // Solo donde quien llama la ofrece, y solo a quien puede: borrar no se
   // enseña apagado, se quita.
