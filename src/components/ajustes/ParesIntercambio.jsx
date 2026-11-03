@@ -7,6 +7,9 @@ import AlertBanner from '@/components/shared/AlertBanner';
 import { ArrowDownToLine, ArrowRight, Eye, Repeat, Undo2 } from 'lucide-react';
 import { CLASIF_INTERCAMBIO, lineasDePares, paresDeIntercambio } from '@/lib/conteosFact';
 import { DetalleConteo, DevolverConteo } from '@/components/ajustes/PendientesInventario';
+import DialogosConteo, { CeldaAcciones } from '@/components/inventario/AccionesConteo';
+import { tieneRol } from '@/lib/roles';
+import { ROLES_TIENDA } from '@/lib/ajustes';
 
 /**
  * Los intercambios que esperan su procesamiento.
@@ -33,6 +36,9 @@ export default function ParesIntercambio({ almacen, onUsar }) {
   const [excluidos, setExcluidos] = useState(() => new Set());   // por defecto van todos
   const [detalle, setDetalle] = useState(null);
   const [devolviendo, setDevolviendo] = useState(null);
+  const [accion, setAccion] = useState(null);     // { tipo, inv } del menú ⋯
+
+  const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
 
   const { data: filas = [], isLoading } = useQuery({
     queryKey: ['pend-fact', 'intercambio', almacen],
@@ -90,20 +96,26 @@ export default function ParesIntercambio({ almacen, onUsar }) {
                 checked={!excluidos.has(clave(p))} onChange={() => alternar(clave(p))}
                 className="w-3.5 h-3.5 accent-[var(--c-ok)] cursor-pointer shrink-0" />
               <div className="min-w-0 flex-1 grid gap-1 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-                <div className="min-w-0">
-                  <p className="text-sm line-clamp-1">{p.origen.producto_nombre}</p>
-                  <p className="text-[11px] text-muted-foreground font-mono">
-                    {p.origen.producto_codigo} · <span className="text-[var(--c-bad)]">{p.origen.diferencia}</span>
-                  </p>
+                <div className="min-w-0 flex items-start gap-1">
+                  <Acciones conteo={p.origen} par={p} user={user} onAccion={setAccion} onMontar={onUsar} />
+                  <div className="min-w-0">
+                    <p className="text-sm line-clamp-1">{p.origen.producto_nombre}</p>
+                    <p className="text-[11px] text-muted-foreground font-mono">
+                      {p.origen.producto_codigo} · <span className="text-[var(--c-bad)]">{p.origen.diferencia}</span>
+                    </p>
+                  </div>
                 </div>
                 <span className="text-xs text-muted-foreground flex items-center gap-1 sm:justify-center">
                   <ArrowRight className="w-3.5 h-3.5" /> {p.cantidad}
                 </span>
-                <div className="min-w-0">
-                  <p className="text-sm line-clamp-1">{p.destino.producto_nombre}</p>
-                  <p className="text-[11px] text-muted-foreground font-mono">
-                    {p.destino.producto_codigo} · <span className="text-[var(--c-warn)]">+{p.destino.diferencia}</span>
-                  </p>
+                <div className="min-w-0 flex items-start gap-1">
+                  <Acciones conteo={p.destino} par={p} user={user} onAccion={setAccion} onMontar={onUsar} />
+                  <div className="min-w-0">
+                    <p className="text-sm line-clamp-1">{p.destino.producto_nombre}</p>
+                    <p className="text-[11px] text-muted-foreground font-mono">
+                      {p.destino.producto_codigo} · <span className="text-[var(--c-warn)]">+{p.destino.diferencia}</span>
+                    </p>
+                  </div>
                 </div>
               </div>
               <div className="shrink-0 whitespace-nowrap">
@@ -140,7 +152,20 @@ export default function ParesIntercambio({ almacen, onUsar }) {
       )}
 
       <DetalleConteo conteo={detalle} onClose={() => setDetalle(null)} />
+      <DialogosConteo accion={accion} onHecho={() => setAccion(null)} onClose={() => setAccion(null)} />
       <DevolverConteo conteos={devolviendo} onClose={() => setDevolviendo(null)} onHecho={hecho} />
     </Card>
+  );
+}
+
+/** El menú ⋯ de un producto del par: analizar su diferencia y montar el procesamiento del par. */
+function Acciones({ conteo, par, user, onAccion, onMontar }) {
+  return (
+    <CeldaAcciones inv={conteo} analizar onAccion={onAccion}
+      puedeMoverTienda={tieneRol(user, ROLES_TIENDA)}
+      extras={[{
+        clave: 'montar', etiqueta: 'Montar procesamiento de este par', Icono: Repeat,
+        color: 'text-[var(--c-ok)]', al: () => onMontar(lineasDePares([par]), [par]),
+      }]} />
   );
 }

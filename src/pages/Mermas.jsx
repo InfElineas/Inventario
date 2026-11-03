@@ -365,6 +365,7 @@ export default function Mermas({ ambito = 'inventario' }) {
               // Solo se baja lo que sigue contado en el piso de tienda.
               puedeMoverTienda={puedeBajar && Boolean(f.producto_codigo) && Number(f.cantidad) > 0 && !f.rebaja_confirmada}
               modulos={['bajar']}
+              analizar={ambito === 'facturacion'}
               puedeEliminar={puedeEliminarMerma(f, user)} />
           ),
         })}

@@ -11,7 +11,8 @@ import PreciosProductoDialog from '@/components/productos/PreciosProductoDialog'
 import { fetchExistenciaTkc } from '@/services/tkcService';
 import { SIN_SONDEO } from '@/lib/query-client';
 import { warehouseName } from '@/services/tkc/warehouses';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ScanSearch } from 'lucide-react';
+import AnalisisDiferenciaDialog from '@/components/inventario/AnalisisDiferenciaDialog';
 
 /**
  * Las acciones del catálogo, sobre la fila de un conteo.
@@ -29,13 +30,23 @@ import { Loader2 } from 'lucide-react';
  * la pinta —cada una tiene su regla— y `modulos` qué movimientos de tienda
  * se ofrecen.
  */
-export function CeldaAcciones({ inv, puedeMoverTienda, modulos, puedeEliminar, onAccion }) {
+export function CeldaAcciones({ inv, puedeMoverTienda, modulos, puedeEliminar, analizar, extras, onAccion }) {
+  // En facturación, además: analizar de dónde viene la diferencia. Va antes de
+  // las consultas, con lo que cada pantalla añada (montar un ajuste, p. ej.).
+  const propios = [
+    ...(extras ?? []),
+    ...(analizar ? [{
+      clave: 'analizar', etiqueta: 'Analizar diferencia', Icono: ScanSearch,
+      color: 'text-[var(--c-info-2)]', al: () => onAccion({ tipo: 'analizar', inv }),
+    }] : []),
+  ];
   return (
     <div onClick={(e) => e.stopPropagation()}>
       <MenuAcciones
         producto={{ nombre: inv.producto_nombre }}
         puedeMoverTienda={puedeMoverTienda}
         modulos={modulos}
+        extras={propios}
         onMover={(modulo) => onAccion({ tipo: modulo, inv })}
         onHistorial={() => onAccion({ tipo: 'historial', inv })}
         onConteos={() => onAccion({ tipo: 'conteos', inv })}
@@ -138,6 +149,10 @@ export default function DialogosConteo({ accion, sugerir, onHecho, onClose }) {
   if (!idTienda) {
     return <Espera inv={inv} onClose={onClose}
       error={producto ? 'El producto no tiene id de anuncio en TKC: no se puede consultar.' : 'No se encontró el producto en el catálogo de este almacén.'} />;
+  }
+
+  if (tipo === 'analizar') {
+    return <AnalisisDiferenciaDialog inv={inv} idTienda={idTienda} onClose={onClose} />;
   }
 
   if (tipo === 'historial') {

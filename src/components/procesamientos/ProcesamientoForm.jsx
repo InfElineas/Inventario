@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ParesIntercambio from '@/components/ajustes/ParesIntercambio';
 import CerrarConteos from '@/components/ajustes/CerrarConteos';
 import AlertBanner from '@/components/shared/AlertBanner';
+import DialogosConteo, { CeldaAcciones } from '@/components/inventario/AccionesConteo';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { useConfirm } from '@/lib/useConfirm';
 import { useAccesoTkc } from '@/lib/useAccesoTkc';
@@ -59,6 +60,7 @@ export default function ProcesamientoForm() {
   // la pantalla entera para lo que menos se hace. Lo habitual es mirar qué
   // queda por procesar.
   const [entradaAbierta, setEntradaAbierta] = useState(false);
+  const [accion, setAccion] = useState(null);   // { tipo, inv } del menú ⋯ de un candidato
 
   // Un envío distinto, una clave distinta; repetir el mismo reutiliza la clave.
   const claveProcesar = useRef({ firma: '', clave: '' });
@@ -334,7 +336,11 @@ export default function ProcesamientoForm() {
                         <td className="px-3 py-2 text-right tabular-nums">{c.quantity}</td>
                         <td className="px-3 py-2 font-mono text-xs hidden md:table-cell">{c.targetCode ?? '—'}</td>
                         <td className={`px-3 py-2 text-xs ${c.status === 'ready' ? 'text-[var(--c-ok-dim)]' : 'text-muted-foreground'}`}>{c.reason}</td>
-                        <td className="px-4 py-2 text-right">
+                        <td className="px-4 py-2 text-right whitespace-nowrap">
+                          <span className="inline-block align-middle">
+                            <CeldaAcciones inv={{ almacen_num: almacen, producto_codigo: c.code, producto_nombre: c.name }}
+                              analizar onAccion={setAccion} />
+                          </span>
                           {c.status === 'ready' && (
                             <Button size="sm" variant="ghost" title="Agregar al formulario" aria-label={`Agregar ${c.code}`} onClick={() => agregar(c)}>
                               <Plus className="w-3.5 h-3.5" />
@@ -478,6 +484,7 @@ export default function ProcesamientoForm() {
       </Dialog>
 
       {ConfirmDialogNode}
+      <DialogosConteo accion={accion} onHecho={() => setAccion(null)} onClose={() => setAccion(null)} />
     </div>
   );
 }

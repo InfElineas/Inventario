@@ -25,6 +25,7 @@ export const MAX_PRODUCTOS = 20000
 
 const FECHA = /^\d{4}-\d{2}-\d{2}$/
 const ALMACEN = /^[A-Za-z0-9_-]{1,20}$/
+const CODIGO = /^[A-Za-z0-9._-]{1,64}$/
 
 export class ErrorParametro extends Error {}
 
@@ -54,6 +55,12 @@ export function leerParametros(consulta) {
   const dias = Math.round((h - d) / 86400000) + 1
   if (dias > MAX_DIAS) throw new ErrorParametro(`El período máximo es de ${MAX_DIAS} días (pediste ${dias}).`)
 
+  // Un solo producto: lo pide el análisis de una diferencia. Sin él, todos.
+  const codigo = consulta.get('codigo')
+  if (codigo) {
+    if (!CODIGO.test(codigo)) throw new ErrorParametro('El código del producto no es válido.')
+    return { almacen, desde, hasta, dias, codigo }
+  }
   return { almacen, desde, hasta, dias }
 }
 
@@ -65,7 +72,10 @@ const num = (v) => Number(v) || 0
  *
  * El nombre sale del catálogo: el informe solo trae el código.
  */
-export async function resumenVentas({ almacen, desde, hasta, dias }) {
+export async function resumenVentas({ almacen, desde, hasta, dias, codigo }) {
+  // El mismo informe, acotado a un producto cuando se pide: el parámetro $4 solo existe entonces.
+  const soloProducto = codigo ? 'AND r.codigo = $4' : ''
+  const parametros = codigo ? [almacen, desde, hasta, codigo] : [almacen, desde, hasta]
   const [porProducto, porDia, cobertura] = await Promise.all([
     query(
       `SELECT r.codigo,
@@ -77,11 +87,11 @@ export async function resumenVentas({ almacen, desde, hasta, dias }) {
          FROM public.rdp_rows_latest r
          LEFT JOIN productos p
                 ON p.almacen_num = r.almacen_key AND p.codigo_producto = r.codigo
-        WHERE r.almacen_key = $1 AND r.report_date BETWEEN $2 AND $3
+        WHERE r.almacen_key = $1 AND r.report_date BETWEEN $2 AND $3 ${soloProducto}
         GROUP BY r.codigo
         ORDER BY SUM(r.cantidad) DESC, r.codigo
         LIMIT ${MAX_PRODUCTOS + 1}`,
-      [almacen, desde, hasta],
+      parametros,
     ),
     query(
       `SELECT r.report_date::text          AS fecha,
@@ -90,10 +100,10 @@ export async function resumenVentas({ almacen, desde, hasta, dias }) {
               SUM(r.importe)               AS importe,
               SUM(r.costo_total)           AS costo
          FROM public.rdp_rows_latest r
-        WHERE r.almacen_key = $1 AND r.report_date BETWEEN $2 AND $3
+        WHERE r.almacen_key = $1 AND r.report_date BETWEEN $2 AND $3 ${soloProducto}
         GROUP BY r.report_date
         ORDER BY r.report_date`,
-      [almacen, desde, hasta],
+      parametros,
     ),
     query(
       `SELECT MIN(report_date)::text AS primera, MAX(report_date)::text AS ultima

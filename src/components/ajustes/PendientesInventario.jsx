@@ -8,7 +8,10 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import AlertBanner from '@/components/shared/AlertBanner';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
 import ExistenciaAhora from '@/components/inventario/ExistenciaAhora';
-import { ClipboardList, ArrowDownToLine, Eye, Undo2 } from 'lucide-react';
+import { ClipboardList, ArrowDownToLine, Eye, PackageMinus, PackagePlus, Undo2, ArrowLeftRight } from 'lucide-react';
+import DialogosConteo, { CeldaAcciones } from '@/components/inventario/AccionesConteo';
+import { tieneRol } from '@/lib/roles';
+import { ROLES_TIENDA } from '@/lib/ajustes';
 import {
   anterioresDe, esAjustable, esIntercambio, lineasDeConteos, ultimoPorProducto,
 } from '@/lib/conteosFact';
@@ -39,9 +42,9 @@ import { esDeTransferencia } from '@/lib/transferencias';
  */
 
 const POR_TIPO = {
-  aumento:       { resultado: 'sobrante', etiqueta: 'sobrantes', panel: 'este ajuste' },
-  disminucion:   { resultado: 'faltante', etiqueta: 'faltantes', panel: 'este ajuste' },
-  transferencia: { resultado: 'faltante', etiqueta: 'faltantes por transferencia', panel: 'esta transferencia', filtro: esDeTransferencia },
+  aumento:       { resultado: 'sobrante', etiqueta: 'sobrantes', panel: 'este ajuste', montar: 'Montar ajuste de aumento', Icono: PackagePlus },
+  disminucion:   { resultado: 'faltante', etiqueta: 'faltantes', panel: 'este ajuste', montar: 'Montar ajuste de disminución', Icono: PackageMinus },
+  transferencia: { resultado: 'faltante', etiqueta: 'faltantes por transferencia', panel: 'esta transferencia', filtro: esDeTransferencia, montar: 'Montar transferencia', Icono: ArrowLeftRight },
 };
 
 const colorDe = (d) => (Number(d) > 0 ? 'var(--c-warn)' : 'var(--c-bad)');
@@ -61,6 +64,9 @@ export default function PendientesInventario({ tipo, almacen, onUsar }) {
   const [excluidos, setExcluidos] = useState(() => new Set());   // desmarcados; por defecto van todos
   const [detalle, setDetalle] = useState(null);
   const [devolviendo, setDevolviendo] = useState(null);
+  const [accion, setAccion] = useState(null);     // { tipo, inv } del menú ⋯
+
+  const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
 
   const { data: filas = [], isLoading } = useQuery({
     queryKey: ['pend-fact', tipo, almacen],
@@ -94,6 +100,12 @@ export default function PendientesInventario({ tipo, almacen, onUsar }) {
   const usar = () => onUsar(
     lineasDeConteos(marcados),
     marcados.map((conteo) => ({ conteo, anteriores: anterioresDe(anteriores, conteo) })),
+  );
+
+  // Un solo conteo al formulario, desde el menú de su fila.
+  const montarUno = (conteo) => onUsar(
+    lineasDeConteos([conteo]),
+    [{ conteo, anteriores: anterioresDe(anteriores, conteo) }],
   );
 
   return (
@@ -171,6 +183,14 @@ export default function PendientesInventario({ tipo, almacen, onUsar }) {
                     {i.fecha_inv || '—'}
                   </td>
                   <td className="px-3 py-2 text-right whitespace-nowrap">
+                    <span className="inline-block align-middle">
+                      <CeldaAcciones inv={i} analizar onAccion={setAccion}
+                        puedeMoverTienda={tieneRol(user, ROLES_TIENDA)}
+                        extras={[{
+                          clave: 'montar', etiqueta: `${cfg.montar} con este producto`, Icono: cfg.Icono,
+                          color: 'text-[var(--c-ok)]', al: () => montarUno(i),
+                        }]} />
+                    </span>
                     <Button type="button" variant="ghost" size="sm" onClick={() => setDetalle(i)}
                       aria-label={`Ver detalle: ${i.producto_nombre}`} title="Ver detalle">
                       <Eye className="w-3.5 h-3.5" />
@@ -188,6 +208,7 @@ export default function PendientesInventario({ tipo, almacen, onUsar }) {
       )}
 
       <DetalleConteo conteo={detalle} onClose={() => setDetalle(null)} />
+      <DialogosConteo accion={accion} onHecho={() => setAccion(null)} onClose={() => setAccion(null)} />
       <DevolverConteo conteos={devolviendo ? [devolviendo] : null} onClose={() => setDevolviendo(null)}
         onHecho={() => {
           setDevolviendo(null);

@@ -128,6 +128,24 @@ describe('PendientesInventario', () => {
     expect(onUsar.mock.calls[0][1]).toHaveLength(1);
   });
 
+  it('el menú ⋯ de la fila monta el ajuste con ESE producto y ofrece analizar la diferencia', async () => {
+    m.filter.mockResolvedValue([
+      conteo({ producto_codigo: '7501', diferencia: 3 }),
+      conteo({ id: 'c2', producto_id: 'p2', producto_nombre: 'Arroz', producto_codigo: '7502', diferencia: 2 }),
+    ]);
+    const onUsar = vi.fn();
+    pintar({ tipo: 'aumento', onUsar });
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Acciones: Arroz' }));
+    expect(await screen.findByText('Analizar diferencia')).toBeInTheDocument();
+    expect(screen.getByText('Historial del submayor')).toBeInTheDocument();
+    await userEvent.click(screen.getByText('Montar ajuste de aumento con este producto'));
+
+    expect(onUsar).toHaveBeenCalledTimes(1);
+    expect(onUsar.mock.calls[0][0]).toBe('7502*2');
+    expect(onUsar.mock.calls[0][1].map((x) => x.conteo.id)).toEqual(['c2']);
+  });
+
   it('sin ninguno marcado no se puede pasar nada', async () => {
     m.filter.mockResolvedValue([conteo()]);
     pintar({ tipo: 'aumento' });

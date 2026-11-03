@@ -9,6 +9,7 @@ import CabeceraLista from '@/components/shared/CabeceraLista';
 import ListaResponsive from '@/components/shared/ListaResponsive';
 import Pagination from '@/components/shared/Pagination';
 import { SelectorAlmacen } from '@/components/shared/ControlesLista';
+import DialogosConteo, { CeldaAcciones } from '@/components/inventario/AccionesConteo';
 import { Boxes, DollarSign, Download, Receipt, Search, TrendingUp } from 'lucide-react';
 import { useAlmacen } from '@/lib/useAlmacen';
 import { SIN_SONDEO } from '@/lib/query-client';
@@ -34,10 +35,11 @@ const VACIO = { total: null, productos: [], dias: [], cobertura: null, recortado
 const numero = new Intl.NumberFormat('es-CU');
 const dinero = new Intl.NumberFormat('es-CU', { style: 'currency', currency: 'USD' });
 
-const COLUMNAS_PRODUCTO = ['producto', 'cantidad', 'ordenes', 'importe', 'costo'];
+const COLUMNAS_PRODUCTO = ['producto', 'cantidad', 'ordenes', 'importe', 'costo', 'acciones'];
 const COLUMNAS_DIA = ['fecha', 'cantidad', 'ordenes', 'importe', 'costo'];
 const TITULOS = {
   producto: { label: 'Producto' },
+  acciones: { label: 'Acciones' },
   fecha: { label: 'Día' },
   cantidad: { label: 'Unidades', align: 'right' },
   ordenes: { label: 'Órdenes', align: 'right', className: 'hidden sm:table-cell' },
@@ -53,6 +55,7 @@ export default function ResumenVentas() {
   const [vista, setVista] = useState('productos');
   const [buscar, setBuscar] = useState('');
   const [page, setPage] = useState(1);
+  const [accion, setAccion] = useState(null);   // { tipo, inv } del menú ⋯ de un producto
 
   const dias = diasDelRango(desde, hasta);
   const rangoValido = dias !== null && dias <= 366;
@@ -169,8 +172,10 @@ export default function ResumenVentas() {
         vacio={almacen ? 'Sin ventas en este período.' : 'Elige un almacén.'}
         claveDe={(f) => f.codigo ?? f.fecha}
         encabezado={vista === 'productos' ? 'producto' : 'fecha'}
-        celda={(f, k, enTabla) => celdaVenta(f, k, enTabla)}
+        accion={vista === 'productos' ? 'acciones' : undefined}
+        celda={(f, k, enTabla) => celdaVenta(f, k, enTabla, { almacen, onAccion: setAccion })}
       />
+      <DialogosConteo accion={accion} onHecho={() => setAccion(null)} onClose={() => setAccion(null)} />
 
       <Pagination page={page} total={filas.length} pageSize={PAGE_SIZE} onPage={setPage} />
     </div>
@@ -178,7 +183,7 @@ export default function ResumenVentas() {
 }
 
 /** Una celda: la misma para la tabla y para la ficha del móvil. */
-function celdaVenta(f, clave, enTabla) {
+function celdaVenta(f, clave, enTabla, { almacen, onAccion }) {
   const env = (contenido, clases = '') => (enTabla
     ? <td key={clave} className={`px-2.5 py-1.5 ${clases}`}>{contenido}</td>
     : contenido);
@@ -193,6 +198,12 @@ function celdaVenta(f, clave, enTabla) {
       );
     case 'fecha':
       return env(<span className="font-medium tabular-nums">{f.fecha}</span>);
+    case 'acciones':
+      return env(
+        <CeldaAcciones inv={{ almacen_num: almacen, producto_codigo: f.codigo, producto_nombre: f.nombre || f.codigo }}
+          analizar onAccion={onAccion} />,
+        'whitespace-nowrap',
+      );
     case 'cantidad':
       return env(<span className="font-medium tabular-nums">{numero.format(f.cantidad)}</span>, 'text-right');
     case 'ordenes':

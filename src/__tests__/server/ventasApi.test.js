@@ -41,6 +41,12 @@ describe('leerParametros', () => {
     expect(() => leerParametros(q({ ...ok, desde: '2026-11-01' }))).toThrow(/posterior/);
   });
 
+  it('un producto concreto: el código se valida y se devuelve', () => {
+    expect(leerParametros(q({ ...ok, codigo: 'A-1.2' })).codigo).toBe('A-1.2');
+    expect(leerParametros(q(ok))).not.toHaveProperty('codigo');
+    expect(() => leerParametros(q({ ...ok, codigo: "x'; DROP TABLE y;--" }))).toThrow(ErrorParametro);
+  });
+
   it('más de un año, error', () => {
     expect(() => leerParametros(q({ ...ok, desde: '2025-01-01' }))).toThrow(new RegExp(String(MAX_DIAS)));
     expect(leerParametros(q({ ...ok, desde: '2025-11-01', hasta: '2026-10-31' })).dias).toBe(365);
@@ -67,6 +73,23 @@ describe('resumenVentas', () => {
       }
       return { rows: [{ primera: '2025-01-02', ultima: '2026-10-02' }] };
     });
+  });
+
+  it('con código, acota por producto con un parámetro y sin él no', async () => {
+    await resumenVentas({ ...params, codigo: 'A1' });
+    const conProducto = db.query.mock.calls.filter(([sql]) => /GROUP BY/.test(sql));
+    expect(conProducto).toHaveLength(2);
+    for (const [sql, valores] of conProducto) {
+      expect(sql).toMatch(/r\.codigo = \$4/);
+      expect(valores).toEqual(['789', '2026-10-01', '2026-10-03', 'A1']);
+    }
+
+    db.query.mockClear();
+    await resumenVentas(params);
+    for (const [sql, valores] of db.query.mock.calls) {
+      expect(sql).not.toMatch(/\$4/);
+      expect(valores.length).toBeLessThanOrEqual(3);
+    }
   });
 
   it('lee de la vista de la última corrida, no de la tabla con todas', async () => {

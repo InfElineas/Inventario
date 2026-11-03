@@ -9,8 +9,10 @@
  *   cobertura: { diasPedidos: number, diasConDatos: number, primera: string|null, ultima: string|null },
  * }>}
  */
-export async function fetchResumenVentas({ almacen, desde, hasta }) {
+export async function fetchResumenVentas({ almacen, desde, hasta, codigo }) {
   const params = new URLSearchParams({ almacen, desde, hasta })
+  // Un solo producto, si se pide.
+  if (codigo) params.set('codigo', codigo)
   const res = await fetch(`/api/ventas/resumen?${params}`, { credentials: 'include' })
   const datos = await res.json().catch(() => null)
   if (!res.ok) {

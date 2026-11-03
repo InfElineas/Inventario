@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 /**
@@ -11,12 +12,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
  */
 
 const mocks = vi.hoisted(() => ({
-  producto: vi.fn(), existencia: vi.fn(),
+  producto: vi.fn(), existencia: vi.fn(), historial: vi.fn(), ventas: vi.fn(),
 }));
 vi.mock('@/api/base44Client', () => ({
   base44: { entities: { Producto: { filter: mocks.producto } } },
 }));
-vi.mock('@/services/tkcService', () => ({ fetchExistenciaTkc: mocks.existencia }));
+vi.mock('@/services/tkcService', () => ({ fetchExistenciaTkc: mocks.existencia, fetchHistorialTkc: mocks.historial }));
+vi.mock('@/services/ventasService', () => ({ fetchResumenVentas: mocks.ventas }));
 vi.mock('@/services/tiendaService', () => ({
   planearTienda: vi.fn(() => new Promise(() => {})), ejecutarTienda: vi.fn(), esperarTrabajo: vi.fn(),
 }));
@@ -41,6 +43,8 @@ beforeEach(() => {
   cleanup();
   mocks.producto.mockReset().mockResolvedValue([{ id: 'p1', id_tienda: 'T1' }]);
   mocks.existencia.mockReset();
+  mocks.historial.mockReset();
+  mocks.ventas.mockReset();
 });
 
 describe('DialogosConteo', () => {
@@ -110,5 +114,79 @@ describe('DialogosConteo', () => {
     expect(screen.getByRole('spinbutton', { name: /cantidad a mover/i })).toHaveValue(4);
     expect(mocks.producto).toHaveBeenCalledWith(
       { codigo_producto: 'SC1', almacen_num: '789', activo: true }, '-updated_date', 5);
+  });
+});
+
+describe('DialogosConteo — analizar diferencia', () => {
+  const MOVS = [
+    { fecha: '05/10/2026', documento: 'Salida - Despacho - 541493', saldoInicial: 8, entrada: null, salida: 1, saldoFinal: 7, usuario: 'luism.pavia' },
+    { fecha: '06/10/2026', documento: 'Subida a Tienda', saldoInicial: null, entrada: 1, salida: null, saldoFinal: null, usuario: 'luism.pavia' },
+    { fecha: '07/10/2026', documento: 'Salida - Despacho - 543829', saldoInicial: 7, entrada: null, salida: 2, saldoFinal: 5, usuario: 'alba.rosa' },
+    { fecha: '30/10/2026', documento: 'Entrada - Ajuste Aumento - TKCE202668743', saldoInicial: 5, entrada: 180, salida: null, saldoFinal: 185, usuario: 'yeraldind.perez' },
+  ];
+  const CONTEO = { ...INV, fecha_inv: '2026-10-06', conteo_real: 20, exist_fisica_tkc: 25, diferencia: -5 };
+
+  beforeEach(() => {
+    mocks.historial.mockResolvedValue({ titulo: 'x', desde: '', hasta: '', movimientos: MOVS });
+    mocks.ventas.mockResolvedValue({ total: { cantidad: 5 }, cobertura: { diasPedidos: 30, diasConDatos: 30, ultima: '2026-11-02' } });
+  });
+
+  it('pide el historial del producto, y enseña la diferencia del conteo', async () => {
+    montar({ tipo: 'analizar', inv: CONTEO });
+
+    expect(await screen.findByText(/Analizar diferencia/i)).toBeInTheDocument();
+    expect(await screen.findByText(/se contó/i)).toHaveTextContent(/TKC tenía 25.*se contó 20.*diferencia -5/);
+    expect(mocks.historial).toHaveBeenCalledWith(expect.objectContaining({ almacen: '789', idTienda: 'T1' }));
+    expect(mocks.ventas).toHaveBeenCalledWith(expect.objectContaining({ almacen: '789', codigo: 'SC1' }));
+  });
+
+  it('desde el conteo: solo lo posterior, y avisa de que la existencia ya cambió', async () => {
+    montar({ tipo: 'analizar', inv: CONTEO });
+
+    // 07/10 y 30/10: −2 +180 = +178. El despacho del 05/10 es anterior al conteo.
+    expect(await screen.findByText(/ha cambiado en \+178/)).toBeInTheDocument();
+    expect(screen.queryByText('Salida - Despacho - 541493')).not.toBeInTheDocument();
+    expect(screen.getByText('Salida - Despacho - 543829')).toBeInTheDocument();
+  });
+
+  it('origen: totales por tipo, sin contar las subidas de tienda', async () => {
+    montar({ tipo: 'analizar', inv: CONTEO });
+    await userEvent.click(await screen.findByRole('tab', { name: /^Origen/ }));
+
+    expect(await screen.findByText('Ajustes de aumento')).toBeInTheDocument();
+    expect(screen.getByText('Ventas (despachos)')).toBeInTheDocument();
+    expect(screen.getByText(/1 subida o bajada de tienda no se cuentan/)).toBeInTheDocument();
+  });
+
+  it('ventas directas y ajustes: solo esos documentos', async () => {
+    montar({ tipo: 'analizar', inv: CONTEO });
+    await userEvent.click(await screen.findByRole('tab', { name: /Ventas directas y ajustes/ }));
+
+    expect(await screen.findByText('Entrada - Ajuste Aumento - TKCE202668743')).toBeInTheDocument();
+    expect(screen.queryByText('Salida - Despacho - 543829')).not.toBeInTheDocument();
+  });
+
+  it('ventas vs despachos: la plataforma contra las salidas «Despacho»', async () => {
+    montar({ tipo: 'analizar', inv: CONTEO });
+    await userEvent.click(await screen.findByRole('tab', { name: /Ventas vs despachos/ }));
+
+    // Vendió 5; despachos del período: 1 + 2 = 3.
+    const caja = (await screen.findByText('Salió como despacho')).parentElement;
+    expect(within(caja).getByText('3')).toBeInTheDocument();
+    expect(screen.getByText(/5 unidades más de las que salieron como despacho|2 unidades más/)).toBeInTheDocument();
+  });
+
+  it('si las ventas fallan, lo dice y el resto sigue sirviendo', async () => {
+    mocks.ventas.mockRejectedValue(new Error('Tu rol no puede ver el resumen de ventas.'));
+    montar({ tipo: 'analizar', inv: CONTEO });
+    await userEvent.click(await screen.findByRole('tab', { name: /Ventas vs despachos/ }));
+    expect(await screen.findByText(/No se pudieron leer las ventas: Tu rol/)).toBeInTheDocument();
+  });
+
+  it('una merma, sin conteo: no hay cabecera de diferencia pero sí movimientos', async () => {
+    montar({ tipo: 'analizar', inv: { producto_id: 'p1', producto_nombre: 'Abrazadera', producto_codigo: 'SC1', almacen_num: '789' } });
+    await userEvent.click(await screen.findByRole('tab', { name: /^Origen/ }));
+    expect(await screen.findByText('Ventas (despachos)')).toBeInTheDocument();
+    expect(screen.queryByText(/se contó/)).not.toBeInTheDocument();
   });
 });

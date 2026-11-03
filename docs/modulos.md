@@ -309,6 +309,40 @@ se bloquea reintentar hasta revisarlo en TKC.
   otro almacén sin mover existencia, y el lote de hasta 20 transferencias
   (`/transfers/batch`).
 
+### Columna de acciones en facturación
+
+Las listas por producto de facturación tienen el mismo menú **⋯** que Inventario:
+los conteos de *Por ajustar* (aumento, disminución) y *Por transferir*, los
+intercambios y los candidatos de Procesamientos, las mermas por facturar y los
+productos del Resumen de ventas. Trae, además de lo de siempre (historial del
+submayor, conteos de inventario, precios, subir y bajar de tienda):
+
+- **Montar ajuste / transferencia / procesamiento con este producto**: pasa esa
+  fila —y su conteo— al formulario, como «Pasarlos al formulario» pero de uno.
+- **Analizar diferencia**: de dónde viene un faltante o un sobrante.
+
+**Analizar diferencia** lee el submayor de TKC, que guarda cada movimiento del
+producto con su documento (`Salida - Despacho - …`, `Entrada - Ajuste Aumento - …`,
+`Salida - Transferencia Salida - …`) y su usuario, y lo ordena en cuatro pestañas:
+
+| Pestaña | Qué dice |
+|---|---|
+| Desde el conteo | Los movimientos posteriores al conteo, y si la existencia ya cambió desde entonces: la diferencia sería de aquel día |
+| Origen | Entradas y salidas del período por tipo de documento y por usuario |
+| Ventas directas y ajustes | Solo esos documentos |
+| Ventas vs despachos | Lo que vendió la plataforma (`rdp_rows`) contra las salidas «Despacho» del submayor |
+
+El tipo se saca **del texto del documento** (`src/lib/movimientosSubmayor.js`). Lo
+que no se reconoce sale como «Otros» con su texto a la vista, y subir o bajar de
+tienda se muestra aparte: solo reparte la existencia entre almacén y tienda, así
+que no explica ninguna diferencia. «Despacho» es venta. El período es el último
+mes (o desde una semana antes del conteo, si es más viejo) y se puede cambiar.
+
+- Cada apertura hace una petición al submayor de TKC y otra a nuestras ventas.
+- Los textos de documento que aún no se han visto (ajuste de disminución, venta
+  directa, procesamiento, recepción) se reconocen por palabras clave y **no se han
+  comprobado contra TKC**: si alguno sale en «Otros», hay que añadir su regla.
+
 ### Resumen de ventas (`/facturacion/ventas`)
 
 Lo que vendió la plataforma en un almacén entre dos fechas, por producto y por
