@@ -68,6 +68,35 @@ Nota sobre los conteos: son **estimados** de Postgres (`reltuples`); los de `rdp
 
 No hay `pg_cron` en la base: el cron que la alimenta es externo (los documentos de contexto de TKC hablan de n8n).
 
+### Resultado de la segunda consulta
+
+| Tabla | Qué es | Cubre | Volumen |
+|---|---|---|---|
+| `rdp_rows` | Ventas de la plataforma por día, producto y almacén | 2025-01-02 a 2026-11-02 (649 días) | 1,5 M filas, **25 almacenes**, 19,3 M unidades |
+| `rdp_vd_rows` | Líneas de ventas directas por factura | **Solo 2026-09-25 a 2026-11-02** (33 corridas) | 208 líneas, 96 facturas, 50 719 unidades |
+| `RDP_VD` | Probable histórico anterior de lo mismo | **No se sabe** (la consulta no la miró) | 18 594 filas (estimado) |
+| `fleet.orden` | Pedidos que reparte la flota, con su despacho | 2026-05-19 a 2026-10-31 | 64 758 órdenes, **4 039 despachos** |
+| `sub_rows` | Existencia por producto y almacén en cada corrida del submayor | 18 corridas | Ver más abajo |
+
+Y confirmado: **ninguna columna de la base guarda el número de documento de
+TKC** (`TKCE…`/`TKCS…`).
+
+Lo que se sigue de ahí:
+
+- **«Despacho» tiene dos significados en la base.** `rdp_rows` cuenta **ventas
+  por día de la plataforma**; `fleet.orden` cuenta **entregas** con su
+  `fecha_despacho` (y solo desde mayo). No son el mismo número. De cuál habla
+  Facturación es **la pregunta 1 de Janet**, y ahora se ve por qué importa.
+- **Las ventas directas en la base son recientes** (desde el 25 de septiembre).
+  Para períodos anteriores hay que mirar `RDP_VD`, o leer los documentos
+  `TKCS` de tipo *Venta Directa* de TKC.
+- **El submayor guardado son 18 fotografías**, no un diario: sirve de punto de
+  partida o de llegada de una conciliación, pero no para reconstruir la
+  existencia de cualquier día. Para eso hay que partir de documentos
+  (entradas y salidas) y de ventas.
+
+A falta de la tercera consulta (`supabase/diagnostico_fuentes_3.sql`), que mira `RDP_VD`, las fechas de las corridas del submayor y los almacenes.
+
 ## 4. Qué cambia en el plan
 
 | Tarea | Antes | Ahora |
