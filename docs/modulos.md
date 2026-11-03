@@ -214,6 +214,41 @@ departamento.
 Los ajustes de aumento y disminución y los procesamientos viven en
 `/ajustes/*` y `/procesamientos`, y hablan con elineas-transferencia.
 
+### Conteos con diferencia: se resuelven en las pantallas de ajustes
+
+«Conteos por facturar» daba buena información pero no era operativa: facturación
+hacía el ajuste en TKC en otra pantalla y volvía a teclear el número del
+documento en cada conteo. Ahora cada conteo con diferencia se resuelve donde se
+hace el trabajo:
+
+| El conteo es… | Se resuelve en | Con |
+|---|---|---|
+| Un **sobrante** | Ajuste de aumento | Un ajuste de aumento por la cantidad medida |
+| Un **faltante** | Ajuste de disminución | Un ajuste de disminución |
+| Un **intercambio** (un producto vendido por otro: uno falta y el otro sobra) | Procesamientos | Un procesamiento `ORIGEN>DESTINO`: el origen es el que **falta**, el destino el que **sobra** |
+
+En cada pantalla, la pestaña *Por ajustar* / *Por procesar* enseña los conteos
+con lo que hace falta para decidir (existencia al contar, clasificación, nota de
+quien contó, existencia ahora), se eligen cuáles y se pasan al formulario. Lo que
+no procede se **devuelve a inventario con su motivo** (los dos conteos de un
+intercambio, juntos). Cuando el documento se confirma —o el procesamiento sale
+bien—, un botón **da por procesados los conteos**: cada uno guarda el documento
+que lo resolvió, cómo, quién y cuándo, y pasa a auditoría.
+
+- Solo entran los conteos que TKC **aceptó** en el documento; los rechazados se
+  quedan pendientes y se dice.
+- De cada producto solo cuenta el conteo **más reciente**; los anteriores se
+  cierran sin ajuste.
+- Un reintento no vuelve a procesar los conteos que ya se hicieron.
+- «Conteos por facturar» sigue existiendo como seguimiento.
+- **Los procesamientos de intercambio no se han probado contra la API real.**
+  Se envía `ORIGEN>DESTINO*CANTIDAD` como documenta su colección; conviene
+  empezar con un solo par y comprobar el resultado en TKC.
+
+El **historial de TKC** de los ajustes tiene fechas, estado, búsqueda, páginas y
+exportación a CSV. En disminuciones se puede ver el tipo de salida: ajustes,
+**ventas directas** (con su cliente, solo lectura) o todas.
+
 ### Resumen de ventas (`/facturacion/ventas`)
 
 Lo que vendió la plataforma en un almacén entre dos fechas, por producto y por

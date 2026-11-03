@@ -14,6 +14,7 @@ import { useConfirm } from '@/lib/useConfirm';
 import { useAccesoTkc } from '@/lib/useAccesoTkc';
 import PendientesInventario from '@/components/ajustes/PendientesInventario';
 import HistorialAjustes from '@/components/ajustes/HistorialAjustes';
+import CerrarConteos from '@/components/ajustes/CerrarConteos';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import { WAREHOUSES } from '@/services/tkc/warehouses';
@@ -51,6 +52,9 @@ export default function AjusteForm({ tipo }) {
   const [confirmado, setConfirmado] = useState({});    // id → resultado de «Confirmar»
   const [bloqueo, setBloqueo] = useState(null);        // 'crear' | id de documento sin verificar
   const [verLineas, setVerLineas] = useState(null);    // { id, code }
+  // Los conteos de los que salen las líneas del formulario: cuando el documento
+  // se confirme, son los que se dan por procesados.
+  const [conteosUsados, setConteosUsados] = useState([]);
   // Montar el documento vive en un modal: ocupaba la pantalla entera para una
   // tarea que no es la habitual. Lo habitual es mirar qué falta por ajustar.
   const [montarAbierto, setMontarAbierto] = useState(false);
@@ -95,9 +99,12 @@ export default function AjusteForm({ tipo }) {
       return escribir(() => crearAjuste(tipo, { ...payload, idempotencyKey: claveCrear.current.clave }));
     },
     onSuccess: (r) => {
-      setResultado({ ...r, almacen });
+      // Los conteos van con el documento que montan: el siguiente empieza limpio
+      // y no arrastra los de este.
+      setResultado({ ...r, almacen, conteos: conteosUsados });
       if (r.tipo === 'sin_verificar') setBloqueo('crear');
       if (r.tipo === 'creado') {
+        setConteosUsados([]);
         setTexto('');                       // ya está montado: no se reenvía por error
         claveCrear.current = { firma: '', clave: '' };
         refrescar();
@@ -185,7 +192,7 @@ export default function AjusteForm({ tipo }) {
           <PendientesInventario
             tipo={tipo}
             almacen={almacen}
-            onUsar={(lineas) => { setTexto(lineas); setMontarAbierto(true); }}
+            onUsar={(lineas, conteos) => { setTexto(lineas); setConteosUsados(conteos ?? []); setMontarAbierto(true); }}
           />
           <div className="flex justify-end">
             {/* No vacía el texto a propósito. Tras un «se envió y no se pudo
@@ -288,6 +295,16 @@ export default function AjusteForm({ tipo }) {
                 />
               ) : (
                 <AlertBanner variant="warning" message="TKC creó el documento pero no se pudo averiguar su id. Confírmalo desde el historial." />
+              )}
+              {/* Con el documento ya confirmado, los conteos de los que salió
+                  se dan por procesados de una vez: antes había que ir a otra
+                  pantalla a teclear el número en cada uno. */}
+              {documento?.code && confirmado[documento.id]?.tipo === 'confirmado' && resultado.conteos?.length > 0 && (
+                <CerrarConteos
+                  conteos={resultado.conteos}
+                  aceptadas={resultado.aceptadas}
+                  documento={documento.code}
+                />
               )}
               <TablaLineas titulo="Aceptadas" filas={resultado.aceptadas} />
               <TablaLineas titulo="Rechazadas (no se montaron)" filas={resultado.rechazadas} conMotivo />

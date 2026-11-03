@@ -96,3 +96,45 @@ export const ETIQUETA_LINEA = {
   failed: 'No se procesó',
   unverified: 'Sin confirmar',
 }
+
+/**
+ * Las líneas que se mandan a procesar, a partir de lo que se escribió y de lo
+ * que dijo el análisis.
+ *
+ * El análisis dice qué línea se puede procesar, pero una línea de intercambio
+ * (`ORIGEN>DESTINO`) puede volver con solo el origen en `code` y el destino en
+ * `targetCode`. Mandar lo que vuelve perdería el destino y procesaría otra
+ * cosa, así que se manda lo que se ESCRIBIÓ y se usa el análisis solo para
+ * decidir cuáles pasan y con qué cantidad.
+ *
+ * @param {Array<{ code: string, quantity: number }>} escritas
+ * @param {Array<{ code: string, targetCode?: string, processable?: boolean, requested?: number }>} analizadas
+ */
+export function lineasParaEnviar(escritas, analizadas) {
+  const enviar = []
+  for (const l of escritas) {
+    const [origen, destino] = String(l.code).split('>')
+    const a = analizadas.find((x) =>
+      x.code === l.code || (destino !== undefined && x.code === origen && x.targetCode === destino))
+    if (a && a.processable === true && Number.isInteger(a.requested) && a.requested > 0) {
+      enviar.push({ code: l.code, quantity: a.requested })
+    }
+  }
+  return enviar
+}
+
+/**
+ * Los pares que salieron bien, de lo que devuelve `POST /process`.
+ *
+ * Una línea hecha puede traer `code` de dos maneras —`ORIGEN>DESTINO` o solo el
+ * origen con `targetCode`—, y se reconocen las dos.
+ *
+ * @param {Array<{ origen: object, destino: object }>} pares
+ * @param {Array<{ code: string, targetCode?: string|null, status: string }>} lineas  Las de un grupo.
+ */
+export function paresHechos(pares, lineas) {
+  const hechas = lineas.filter((l) => l.status === 'done')
+  return pares.filter(({ origen, destino }) => hechas.some((l) =>
+    l.code === `${origen.producto_codigo}>${destino.producto_codigo}`
+    || (l.code === origen.producto_codigo && l.targetCode === destino.producto_codigo)))
+}

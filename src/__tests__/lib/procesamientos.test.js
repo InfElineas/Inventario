@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   interpretarProceso, interpretarAnalisis, codigoBase, ROLES_PROCESAMIENTOS,
+  lineasParaEnviar, paresHechos,
 } from '@/lib/procesamientos';
 import { ROLES_AJUSTES } from '@/lib/ajustes';
 
@@ -72,3 +73,52 @@ describe('codigoBase', () => {
 it('los roles son los de facturación (ajustes)', () => {
   expect(ROLES_PROCESAMIENTOS).toEqual(ROLES_AJUSTES);
 });
+
+describe('lineasParaEnviar', () => {
+  const escritas = [{ code: 'NoMT1', quantity: 2 }, { code: 'A>B', quantity: 5 }, { code: 'C>D', quantity: 1 }];
+
+  it('manda lo que se escribió, y del análisis solo toma cuáles pasan y con qué cantidad', () => {
+    const analizadas = [
+      { code: 'NoMT1', processable: true, requested: 2 },
+      { code: 'A>B', processable: true, requested: 5 },
+      { code: 'C>D', processable: false, requested: 1 },
+    ];
+    expect(lineasParaEnviar(escritas, analizadas)).toEqual([
+      { code: 'NoMT1', quantity: 2 }, { code: 'A>B', quantity: 5 },
+    ]);
+  });
+
+  it('un par que vuelve con solo el origen y su destino aparte sigue mandándose entero', () => {
+    // Mandar lo que vuelve perdería el destino y procesaría otra cosa.
+    const analizadas = [{ code: 'A', targetCode: 'B', processable: true, requested: 5 }];
+    expect(lineasParaEnviar([{ code: 'A>B', quantity: 5 }], analizadas)).toEqual([{ code: 'A>B', quantity: 5 }]);
+  });
+
+  it('un par con el destino equivocado no se confunde con otro del mismo origen', () => {
+    const analizadas = [{ code: 'A', targetCode: 'OTRO', processable: true, requested: 5 }];
+    expect(lineasParaEnviar([{ code: 'A>B', quantity: 5 }], analizadas)).toEqual([]);
+  });
+
+  it('una cantidad que no es un entero positivo no se manda', () => {
+    expect(lineasParaEnviar([{ code: 'X', quantity: 1 }], [{ code: 'X', processable: true, requested: 0 }])).toEqual([]);
+  });
+});
+
+describe('paresHechos', () => {
+  const par = (o, d) => ({ origen: { producto_codigo: o }, destino: { producto_codigo: d }, cantidad: 1 });
+
+  it('reconoce una línea hecha escrita como par o como origen con destino', () => {
+    const lineas = [
+      { code: 'A>B', status: 'done' },
+      { code: 'C', targetCode: 'D', status: 'done' },
+      { code: 'E>F', status: 'failed' },
+    ];
+    const r = paresHechos([par('A', 'B'), par('C', 'D'), par('E', 'F'), par('G', 'H')], lineas);
+    expect(r.map((p) => p.origen.producto_codigo)).toEqual(['A', 'C']);
+  });
+
+  it('una línea sin confirmar no cuenta: no se da por procesado lo que no se sabe', () => {
+    expect(paresHechos([par('A', 'B')], [{ code: 'A>B', status: 'unverified' }])).toEqual([]);
+  });
+});
+

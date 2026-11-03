@@ -2,9 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import AlertBanner from '@/components/shared/AlertBanner';
 import { Check, Loader2 } from 'lucide-react';
+import { CLASIF_INTERCAMBIO } from '@/lib/conteosFact';
 
-/** La clasificación que obliga a declarar el par. */
-export const CLASIF_INTERCAMBIO = 'Intercambio de Producto';
+// Una sola definición: la usan también las pantallas de ajustes para reconocer
+// los intercambios. Ver src/lib/conteosFact.js.
+export { CLASIF_INTERCAMBIO };
 
 /**
  * Lo que hay que escribirle a la otra mitad cuando se declara el intercambio.

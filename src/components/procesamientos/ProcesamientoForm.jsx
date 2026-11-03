@@ -9,6 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ParesIntercambio from '@/components/ajustes/ParesIntercambio';
+import CerrarConteos from '@/components/ajustes/CerrarConteos';
 import AlertBanner from '@/components/shared/AlertBanner';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { useConfirm } from '@/lib/useConfirm';
@@ -18,7 +20,7 @@ import { WAREHOUSES } from '@/services/tkc/warehouses';
 import { mensajeDeError } from '@/lib/ajustes';
 import {
   parseLineas, nuevaClave, codigoBase, interpretarProceso, interpretarAnalisis,
-  LINEAS_POR_DOCUMENTO, ETIQUETA_LINEA,
+  LINEAS_POR_DOCUMENTO, ETIQUETA_LINEA, lineasParaEnviar, paresHechos,
 } from '@/lib/procesamientos';
 import {
   listarCandidatos, listarProcesados, analizarProceso, procesar,
@@ -50,6 +52,9 @@ export default function ProcesamientoForm() {
   const [analisis, setAnalisis] = useState(null);   // { firma, ...interpretarAnalisis }
   const [resultado, setResultado] = useState(null); // de «Procesar»
   const [bloqueo, setBloqueo] = useState(false);    // se envió y no se pudo comprobar
+  // Los pares de intercambio de los que salen las líneas del formulario: cuando
+  // el documento salga bien, sus conteos se dan por procesados.
+  const [paresUsados, setParesUsados] = useState([]);
   // Escribir los códigos vive en un modal, igual que montar un ajuste: ocupaba
   // la pantalla entera para lo que menos se hace. Lo habitual es mirar qué
   // queda por procesar.
@@ -70,9 +75,11 @@ export default function ProcesamientoForm() {
   // Lo que hay escrito, tal cual: si cambia, el análisis ya no corresponde.
   const firma = JSON.stringify({ almacen, lines });
   const analisisVigente = analisis?.tipo === 'analizado' && analisis.firma === firma ? analisis : null;
+  // Se manda lo que se escribió, no lo que vuelve del análisis: una línea de
+  // intercambio (`ORIGEN>DESTINO`) puede volver sin su destino en `code`.
   const aProcesar = useMemo(
-    () => (analisisVigente?.lineas ?? []).filter(esProcesable).map((l) => ({ code: l.code, quantity: l.requested })),
-    [analisisVigente],
+    () => (analisisVigente ? lineasParaEnviar(lines, analisisVigente.lineas) : []),
+    [analisisVigente, lines],
   );
 
   const entradaValida = almacenValido && lines.length > 0 && errores.length === 0;
@@ -147,11 +154,13 @@ export default function ProcesamientoForm() {
       }
     },
     onSuccess: (r) => {
-      setResultado({ ...r, almacen });
+      // Los pares van con el documento que procesan: el siguiente empieza limpio.
+      setResultado({ ...r, almacen, pares: paresUsados });
       setAnalisis(null);                       // lo que se procesó ya no es lo analizado
       if (r.tipo === 'sin_verificar') setBloqueo(true);
       if (r.tipo === 'procesado' || r.tipo === 'parcial' || r.tipo === 'sin_verificar') {
         claveProcesar.current = { firma: '', clave: '' };
+        setParesUsados([]);
         setTexto('');
         invalidar();
       }
@@ -162,7 +171,7 @@ export default function ProcesamientoForm() {
     const unidades = aProcesar.reduce((s, l) => s + l.quantity, 0);
     const ok = await confirmDialog(
       `Esto pasará ${unidades} ${unidades === 1 ? 'unidad' : 'unidades'} de ${aProcesar.length} ` +
-      `${aProcesar.length === 1 ? 'producto' : 'productos'} NoMT a su código normal en la existencia de TKC del ` +
+      `${aProcesar.length === 1 ? 'producto' : 'productos'} a su código de destino en la existencia de TKC del ` +
       `almacén ${almacen}, y queda a nombre de tu usuario de TKC. No se puede deshacer desde aquí.`,
       { title: 'Confirmar procesamiento', destructive: true },
     );
@@ -234,6 +243,31 @@ export default function ProcesamientoForm() {
       {/* ── Resultado ──────────────────────────────────────────── */}
       {resultado && <ResultadoProceso r={resultado} />}
 
+      {/* Con el documento hecho, los conteos del intercambio se dan por
+          procesados de una vez: antes había que teclear el número en cada uno. */}
+      {resultado?.pares?.length > 0 && resultado.grupos?.map((g) => {
+        const hechos = g.processId ? paresHechos(resultado.pares, g.lines) : [];
+        if (hechos.length === 0) return null;
+        const conteos = hechos.flatMap(({ origen, destino }) => [
+          { conteo: origen, anteriores: [] }, { conteo: destino, anteriores: [] },
+        ]);
+        // El listado de procesados trae el TKCP; hasta que llegue, el id.
+        const documento = filasProcesados.find((f) => String(f.id) === String(g.processId))?.code
+          ?? `proceso ${g.processId}`;
+        return (
+          <CerrarConteos
+            key={g.processId}
+            conteos={conteos}
+            aceptadas={conteos.map(({ conteo }) => ({ code: conteo.producto_codigo }))}
+            documento={documento}
+            estado="Procesamiento"
+            notasPorDefecto={hechos
+              .map(({ origen, destino, cantidad }) => `Intercambio: ${cantidad} de ${origen.producto_codigo} a ${destino.producto_codigo}.`)
+              .join(' ')}
+          />
+        );
+      })}
+
       {/* Dos pestañas, como en los ajustes: lo que falta por procesar y lo que
           TKC ya tiene. Lo primero es lo que se mira a diario. */}
       <Tabs defaultValue="pendientes" className="space-y-4">
@@ -243,6 +277,11 @@ export default function ProcesamientoForm() {
         </TabsList>
 
         <TabsContent value="pendientes" className="space-y-4">
+          <ParesIntercambio
+            almacen={almacenValido ? almacen : ''}
+            onUsar={(lineas, pares) => { setTexto(lineas); setParesUsados(pares); setEntradaAbierta(true); }}
+          />
+
           <Card className="overflow-hidden" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
             <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border">
               <p className="text-sm font-medium flex items-center gap-2">
@@ -441,11 +480,6 @@ export default function ProcesamientoForm() {
       {ConfirmDialogNode}
     </div>
   );
-}
-
-/** ¿Se envía esta línea? La API ya dice `processable`; lo demás no sale. */
-function esProcesable(l) {
-  return l.processable === true && Number.isInteger(l.requested) && l.requested > 0;
 }
 
 function motivo(l) {
