@@ -218,11 +218,21 @@ los conteos que ha tenido el producto.
 
 ## Panel (`/`)
 
-Lo primero es **qué te está esperando**: casos devueltos, lotes por vencer,
-conteos sin enviar, lo que espera a facturación. Cada uno con su enlace. Lo
-que está en cero no se pinta.
+Saluda por la hora y por el nombre, y con un almacén elegido se lee de arriba
+abajo:
 
-Debajo, las cifras del almacén y qué hay que comprar hoy.
+1. **Cuatro cifras urgentes**, cada una con su enlace: sin reserva, no en tienda,
+   por facturar (con cuántos aumentos y disminuciones) y lotes críticos.
+2. **Tres tarjetas de tareas**: vencimientos, lo que **espera a facturación**
+   (repartido por la pantalla que lo resuelve: aumento, disminución,
+   procesamientos, mermas, auditoría) y **lo que te devolvieron**, con su motivo.
+   Lo que está en cero no se pinta.
+3. El resto del catálogo, qué hay que comprar hoy, el estado de la tienda y lo
+   último de inventarios y mermas.
+
+Sin almacén elegido se ve la vista global de siempre. Entre las cifras y las
+tarjetas quedan sitio para los gráficos de tendencia (ventas por mes, existencia
+por almacén), que necesitan un endpoint de agregados que aún no existe.
 
 ## Las demás
 

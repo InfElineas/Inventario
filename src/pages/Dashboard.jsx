@@ -1,16 +1,16 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen'
 import BloqueMetricas from '@/components/shared/BloqueMetricas'
-import AvisosPendientes from '@/components/shared/AvisosPendientes'
 import { fetchResumenLotes } from '@/services/lotesService'
 import { SIN_SONDEO } from '@/lib/query-client'
 import { isExternaConfigured, fetchAlmacenes } from '@/services/syncService'
-import { ChevronDown, Clock, CalendarDays, X, Undo2, AlertTriangle, ClipboardList,
-  FileText, ShieldCheck } from 'lucide-react'
+import { ChevronDown, Clock, CalendarDays, X } from 'lucide-react'
 import { base44 } from '@/api/base44Client';
 import CriticosReabastecimiento from '@/components/dashboard/CriticosReabastecimiento'
+import { EsperanFacturacion, Devueltos } from '@/components/dashboard/TarjetasTareas'
+import { devueltosDe, primerNombre, resumenFacturacion, saludoDe } from '@/lib/panelTareas'
 
 const PERIODS = [
   { key: '7D',  label: '7D',  days: 7   },
@@ -51,23 +51,6 @@ function fmtDate(raw) {
       hour: '2-digit', minute: '2-digit',
     })
   } catch { return null }
-}
-
-// ── KPI card ─────────────────────────────────────────────────
-function DashKPI({ title, value, sub, color, alert, onClick }) {
-  return (
-    <div
-      onClick={onClick}
-      className={`rounded-xl border p-4 bg-card transition-colors select-none
-        ${onClick ? 'cursor-pointer hover:bg-accent/40 active:scale-[.98]' : ''}`}
-      style={{ borderColor: alert ? `${color}44` : undefined, background: alert ? `${color}0d` : undefined }}
-    >
-      <p className="text-xs text-muted-foreground mb-1 truncate">{title}</p>
-      <p className="text-2xl font-bold tabular-nums leading-none" style={{ color }}>{value ?? '—'}</p>
-      {sub && <p className="text-[10px] text-muted-foreground mt-1 leading-tight">{sub}</p>}
-      {onClick && <p className="text-[9px] text-muted-foreground/60 mt-1">↗ ver detalle</p>}
-    </div>
-  )
 }
 
 // ── Modal genérico de breakdown por almacén ───────────────────
@@ -381,6 +364,10 @@ export default function Dashboard() {
   const [showCustom, setShowCustom]   = useState(false)
   const [kpiModal, setKpiModal]       = useState(null)   // null | 'conStock' | 'enTienda' | ...
   const { almacen, setAlmacen, almacenesConfig } = useAlmacen()
+  const navigate = useNavigate()
+
+  // Para el saludo. La misma clave que usa el resto de la aplicación.
+  const { data: usuario } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me(), staleTime: 5 * 60 * 1000 })
 
   const { data: allAlmacenesRaw } = useQuery({
     queryKey: ['almacenes_externos'],
@@ -518,52 +505,13 @@ export default function Dashboard() {
   const mermaStats = useMemo(() => ({
     total:    mermas.length,
     monto:    mermas.filter(m => m.estado_tarea === 'completado').reduce((s, m) => s + (m.total_perdida || 0), 0),
-    pendFact: mermas.filter(m => m.estado_tarea === 'pend_fact').length,
   }), [mermas])
 
-  const invStats = useMemo(() => ({
-    total:    inventarios.length,
-    enAudit:  inventarios.filter(i => i.estado_tarea === 'en_auditoria').length,
-    pendFact: inventarios.filter(i => i.estado_tarea === 'pend_fact').length,
-  }), [inventarios])
-
-  /**
-   * Lo que te esta esperando.
-   *
-   * No son cifras del catalogo —cuantos SKU hay, cuantos agotados— que desde
-   * aqui no se pueden tocar: son tareas, con a donde ir a resolverlas. Lo que
-   * esta en cero no se pinta, que una lista de «0 pendientes» repetida cinco
-   * veces esconde al unico que si tiene algo.
-   */
-  const pendientes = useMemo(() => {
-    // Los recuentos reales, no los de la muestra que se pinta.
-    const porVencer = (conteosLotes.critico ?? 0) + (conteosLotes.por_vencer ?? 0)
-    const vencidos = conteosLotes.vencido ?? 0
-    const devueltos = inventarios.filter(i => i.estado_tarea === 'devuelto').length
-                    + mermas.filter(m => m.estado_tarea === 'devuelto').length
-    const enCurso = inventarios.filter(i => i.estado_tarea === 'en_curso').length
-
-    return [
-      { clave: 'devueltos', cantidad: devueltos, color: TAREA_COLOR.devuelto, Icono: Undo2,
-        texto: devueltos === 1 ? 'caso te lo devolvieron' : 'casos te los devolvieron',
-        accion: 'Corregir y volver a enviar', enlace: '/inventario' },
-      { clave: 'vencidos', cantidad: vencidos, color: 'var(--c-bad)', Icono: AlertTriangle,
-        texto: vencidos === 1 ? 'lote ya vencido con existencia' : 'lotes ya vencidos con existencia',
-        accion: 'Darles salida como merma', enlace: '/lotes' },
-      { clave: 'porVencer', cantidad: porVencer, color: 'var(--c-warn)', Icono: Clock,
-        texto: porVencer === 1 ? 'lote se vence en menos de 30 dias' : 'lotes se vencen en menos de 30 dias',
-        accion: 'Revisar vencimientos', enlace: '/lotes' },
-      { clave: 'enCurso', cantidad: enCurso, color: 'var(--c-info)', Icono: ClipboardList,
-        texto: enCurso === 1 ? 'conteo sin enviar a facturacion' : 'conteos sin enviar a facturacion',
-        accion: 'Terminarlos y enviarlos', enlace: '/inventario' },
-      { clave: 'pendFact', cantidad: invStats.pendFact + mermaStats.pendFact, color: 'var(--c-orange)', Icono: FileText,
-        texto: 'esperando a facturacion',
-        accion: 'Ver que falta', enlace: '/ajustes/disminucion' },
-      { clave: 'enAudit', cantidad: invStats.enAudit, color: 'var(--c-purple)', Icono: ShieldCheck,
-        texto: invStats.enAudit === 1 ? 'caso en auditoria' : 'casos en auditoria',
-        accion: 'Seguir su estado', enlace: '/auditoria' },
-    ]
-  }, [conteosLotes, inventarios, mermas, invStats, mermaStats])
+  // Lo que espera a facturación y lo que te devolvieron: son tareas, con a
+  // dónde ir a resolverlas, no cifras del catálogo. Cada una vive en su tarjeta.
+  const facturacion = useMemo(() => resumenFacturacion(inventarios, mermas), [inventarios, mermas])
+  const devueltos = useMemo(() => devueltosDe(inventarios, mermas), [inventarios, mermas])
+  const lotesCriticos = (conteosLotes.vencido ?? 0) + (conteosLotes.critico ?? 0)
 
   const syncLabel = fmtDate(lastSync?.fecha)
   const openModal = key => setKpiModal(key)
@@ -584,12 +532,13 @@ export default function Dashboard() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 flex-wrap">
           <div>
-            <h1 className="text-xl font-medium text-foreground">Panel de Control General</h1>
-            {syncLabel && (
-              <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Sync TKC: {syncLabel}
-              </p>
-            )}
+            <h1 className="text-xl font-medium text-foreground">
+              {saludoDe()}{primerNombre(usuario?.full_name) ? `, ${primerNombre(usuario.full_name)}` : ''}
+            </h1>
+            <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
+              Esto es lo que pide atención hoy.
+              {syncLabel && <><Clock className="w-3 h-3 ml-2" /> Sync TKC: {syncLabel}</>}
+            </p>
           </div>
           <div className="relative">
             <select
@@ -707,48 +656,44 @@ export default function Dashboard() {
       {/* ══════════════════ VISTA POR ALMACÉN ══════════════════ */}
       {almacen && (
         <>
-          {/* Primero lo que hay que hacer, despues como esta el almacen. Las
-              cifras del catalogo no se pueden tocar desde aqui; estas si. */}
-          <div className="space-y-2">
-            <h2 className="text-sm font-medium">Te esta esperando</h2>
-            <AvisosPendientes avisos={pendientes} />
+          {/* Lo urgente arriba: cuatro cifras, cada una lleva a donde se resuelve. */}
+          <BloqueMetricas columnas="sm:grid-cols-4" metricas={[
+            { clave: 'sinReserva', titulo: 'Sin reserva',  valor: stats.sinReserva, sub: 'urgente · A=0 y T>6', color: 'var(--c-bad)', alerta: stats.sinReserva > 0, onClick: () => navigate('/reabastecimiento') },
+            { clave: 'noTienda',   titulo: 'No en tienda', valor: stats.noTienda,   sub: 'EF>0 · T=0',          color: 'var(--c-orange)', alerta: stats.noTienda > 0, onClick: () => navigate('/productos') },
+            { clave: 'porFacturar', titulo: 'Por facturar', valor: facturacion.total, color: 'var(--c-info)', alerta: facturacion.total > 0,
+              sub: `${facturacion.aumento} aumentos · ${facturacion.disminucion} disminuciones`, onClick: () => navigate('/ajustes/disminucion') },
+            { clave: 'lotes',      titulo: 'Lotes críticos', valor: lotesCriticos, color: 'var(--c-warn)', alerta: lotesCriticos > 0,
+              sub: `${conteosLotes.vencido ?? 0} ya vencidos`, onClick: () => navigate('/lotes') },
+          ]} />
+
+          {/* Las tareas: vencimientos, lo que espera a facturación y lo que te
+              devolvieron. Entre las cifras y estas tarjetas irán los gráficos. */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <VencimientosWidget lotes={lotes} conteos={conteosLotes} />
+            <EsperanFacturacion resumen={facturacion} />
+            <Devueltos devueltos={devueltos} enCurso={facturacion.enCurso} />
           </div>
 
-          {/* KPI Row 1 — 6 tarjetas igual que global */}
+          {/* El resto del catálogo, más callado: no se puede resolver desde aquí. */}
           <BloqueMetricas metricas={[
-            { clave: 'sinReserva', titulo: 'Sin Reserva',  valor: stats.sinReserva, sub: 'urgente · A=0 y T>6', color: 'var(--c-bad)', alerta: stats.sinReserva > 0 },
-            { clave: 'noTienda',   titulo: 'No en Tienda', valor: stats.noTienda,   sub: 'EF>0 · T=0',          color: 'var(--c-orange)', alerta: stats.noTienda > 0 },
-            { clave: 'sinId',      titulo: 'Sin ID c/EF',  valor: stats.sinId,      sub: 'sin anuncio TKC',     color: 'var(--c-warn)', alerta: stats.sinId > 0 },
             { clave: 'conStock',   titulo: 'Con stock',    valor: stats.conStock,   color: 'var(--c-ok)',
               sub: `EF > 0 · ${stats.enTienda.toLocaleString()} en tienda` },
             { clave: 'enTienda',   titulo: 'En tienda',    valor: stats.enTienda,   color: 'var(--c-info-2)',
               sub: `T > 0 · ${stats.total > 0 ? ((stats.enTienda / stats.total) * 100).toFixed(0) : 0}% del catálogo` },
+            { clave: 'agotados',   titulo: 'Agotados',     valor: stats.agotados,   color: 'var(--c-bad)', sub: 'con ID · EF=0' },
+            { clave: 'sinId',      titulo: 'Sin ID c/EF',  valor: stats.sinId,      sub: 'sin anuncio TKC', color: 'var(--c-warn)' },
             { clave: 'total',      titulo: 'Total SKUs',   valor: stats.total,      color: 'var(--c-gray)',
-              sub: `${stats.agotados.toLocaleString()} agotados · ${stats.sinIdEf0.toLocaleString()} sin ID/EF` },
+              sub: `${stats.sinIdEf0.toLocaleString()} sin ID/EF` },
+            { clave: 'monto',      titulo: 'Monto mermas', valor: `$${mermaStats.monto.toFixed(2)}`, sub: `período ${periodLabel} completado`, color: 'var(--c-purple)' },
           ]} />
 
-          {/* KPI Row 2 — Workflow */}
-          <BloqueMetricas columnas="sm:grid-cols-4" metricas={[
-            { clave: 'inv',    titulo: `Inventarios (${periodLabel})`, valor: invStats.total,   sub: `${invStats.pendFact} pend. FACT`,   color: 'var(--c-info)' },
-            { clave: 'audit',  titulo: 'En auditoría', color: 'var(--c-warn)', sub: 'total pendiente',
-              valor: mermas.filter(m => m.estado_tarea === 'en_auditoria').length + invStats.enAudit },
-            { clave: 'mermas', titulo: `Mermas (${periodLabel})`,      valor: mermaStats.total, sub: `${mermaStats.pendFact} pend. FACT`, color: 'var(--c-orange)' },
-            { clave: 'monto',  titulo: 'Monto mermas', valor: `$${mermaStats.monto.toFixed(2)}`, sub: 'período completado', color: 'var(--c-purple)' },
-          ]} />
-
-          {/* Row 2.5 — Qué comprar hoy. Los KPI dicen cómo está el almacén;
+          {/* Qué comprar hoy. Los KPI dicen cómo está el almacén;
               esto dice qué hacer con él. */}
           <CriticosReabastecimiento almacen={almacen} />
 
-          {/* Row 3 — Estado Tienda + Vencimientos */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2">
-              <EstadoTiendaTable breakdown={stats.breakdown} total={stats.total} />
-            </div>
-            <VencimientosWidget lotes={lotes} conteos={conteosLotes} />
-          </div>
+          <EstadoTiendaTable breakdown={stats.breakdown} total={stats.total} />
 
-          {/* Row 4 — Tablas */}
+          {/* Lo más reciente, para mirar con calma. */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <InventariosTable inventarios={inventarios.slice(0, 8)} period={periodLabel} />
             <MermasTable mermas={mermas.slice(0, 8)} period={periodLabel} />
