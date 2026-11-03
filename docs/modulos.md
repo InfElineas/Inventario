@@ -70,6 +70,13 @@ tienes a medias.
 Cuando hay varios conteos del mismo producto, solo cuenta el último: los
 anteriores quedan ocultos con un aviso.
 
+El **buscador de productos** de los formularios (nuevo conteo, merma, recepción)
+pone **primero los que tienen existencia** y detrás el resto: pide por separado
+lo que tiene y todo, y los junta. Antes ordenaba solo por nombre y con quince
+resultados una búsqueda como «café» se llenaba de productos en cero. Busca también
+por marca, ID de tienda y código PYME, y enseña A y T como el catálogo. Los
+productos sin existencia siguen saliendo, atenuados: contar uno en cero es legítimo.
+
 ### Análisis automático de la diferencia
 
 Al registrar un conteo con diferencia, y al abrir su detalle, el sistema

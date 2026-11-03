@@ -3,6 +3,9 @@ import { useAlmacen } from '@/lib/useAlmacen';
 import { Input } from '@/components/ui/input';
 import { Search, Package } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import {
+  CAMPOS_BUSQUEDA_FORMULARIO, LIMITE_RESULTADOS, priorizarExistencia, tieneExistencia,
+} from '@/lib/buscarProductos';
 
 /** Lo que se espera a que dejen de escribir antes de preguntar. */
 const ESPERA_MS = 250;
@@ -39,15 +42,18 @@ export default function ProductSearch({ onSelect, placeholder: placeholderRaw })
     const mia = ++ultima.current;
     const t = setTimeout(async () => {
       try {
-        const data = await base44.entities.Producto.buscar(
-          val,
-          ['nombre', 'codigo_producto'],
-          { activo: true, ...(almacen ? { almacen_num: almacen } : {}) },
-          'nombre',
-          15,
-        );
+        // Los que tienen existencia primero: con solo el orden por nombre y los
+        // quince primeros, una búsqueda como «café» se llenaba de productos en
+        // cero y los que sí había quedaban fuera de la lista.
+        const base = { activo: true, ...(almacen ? { almacen_num: almacen } : {}) };
+        const [conExistencia, todos] = await Promise.all([
+          base44.entities.Producto.buscar(
+            val, CAMPOS_BUSQUEDA_FORMULARIO, { ...base, exist_fisica: { gt: 0 } }, 'nombre', LIMITE_RESULTADOS,
+          ),
+          base44.entities.Producto.buscar(val, CAMPOS_BUSQUEDA_FORMULARIO, base, 'nombre', LIMITE_RESULTADOS),
+        ]);
         if (mia !== ultima.current) return;
-        setResults(data ?? []); setError(''); setOpen(true);
+        setResults(priorizarExistencia(conExistencia, todos)); setError(''); setOpen(true);
       } catch (e) {
         if (mia !== ultima.current) return;
         // Antes el fallo se tragaba entero: la lista salía vacía y parecía
@@ -109,14 +115,16 @@ export default function ProductSearch({ onSelect, placeholder: placeholderRaw })
               <button
                 key={p.id}
                 type="button"
-                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-accent transition-colors text-left"
+                className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-accent transition-colors text-left ${
+                  tieneExistencia(p) ? '' : 'opacity-60'
+                }`}
                 onClick={() => elegir(p)}
               >
                 <Package className="w-4 h-4 text-muted-foreground shrink-0" />
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{p.nombre}</p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {p.codigo_producto} · {p.suministrador?.replace('SEL ', '') || '—'} · EF: {p.exist_fisica ?? 0} · ${(p.precio_costo ?? 0).toFixed(2)}
+                    {p.codigo_producto} · {p.suministrador?.replace('SEL ', '') || '—'} · EF: {p.exist_fisica ?? 0} · A: {p.almacen ?? 0} · T: {p.tienda ?? 0} · ${(p.precio_costo ?? 0).toFixed(2)}
                   </p>
                 </div>
               </button>
