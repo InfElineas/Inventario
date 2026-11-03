@@ -58,9 +58,9 @@ export async function pedir(url, { method = 'GET', body } = {}) {
  * @param {string} tipo
  * @param {{ almacen?: string, from?: string, to?: string, status?: string, limit?: number, offset?: number }} [filtros]
  */
-export function listarAjustes(tipo, { almacen, from, to, status, limit = 50, offset = 0 } = {}) {
+export function listarAjustes(tipo, { almacen, from, to, status, q: texto, type, limit = 50, offset = 0 } = {}) {
   const q = new URLSearchParams()
-  for (const [k, v] of Object.entries({ almacen, from, to, status, limit, offset })) {
+  for (const [k, v] of Object.entries({ almacen, from, to, status, q: texto, type, limit, offset })) {
     if (v !== undefined && v !== '' && v !== null) q.set(k, String(v))
   }
   return pedir(`${ruta(tipo)}?${q}`)

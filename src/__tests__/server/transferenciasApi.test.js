@@ -295,6 +295,25 @@ describe('listar y líneas', () => {
     expect(res.cabeceras['x-next-offset']).toBe('20');
   });
 
+  it('las disminuciones pasan el tipo de salida: ahí están las ventas directas', async () => {
+    apiResponde(200, []);
+    await llamar('/api/ajustes/disminuciones?almacen=789&type=direct-sale&q=FACT');
+    const { url } = ultimaLlamada();
+    expect(url.pathname).toBe('/api/v1/decreases');
+    expect(url.searchParams.get('type')).toBe('direct-sale');
+    expect(url.searchParams.get('q')).toBe('FACT');
+  });
+
+  it('un tipo de salida que no es suyo no se reenvía, ni a un aumento', async () => {
+    apiResponde(200, []);
+    await llamar('/api/ajustes/disminuciones?almacen=789&type=cualquier-cosa');
+    expect(ultimaLlamada().url.searchParams.has('type')).toBe(false);
+
+    apiResponde(200, []);
+    await llamar('/api/ajustes/aumentos?almacen=789&type=direct-sale');
+    expect(ultimaLlamada().url.searchParams.has('type')).toBe(false);
+  });
+
   it('líneas de un documento', async () => {
     apiResponde(200, { headers: [], rows: [] });
     await llamar('/api/ajustes/disminuciones/9/lines');

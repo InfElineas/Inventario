@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { AlertTriangle, Check, CheckCircle2, Eye, Loader2, RefreshCw, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Check, CheckCircle2, Loader2, ShieldAlert } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,15 +13,15 @@ import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { useConfirm } from '@/lib/useConfirm';
 import { useAccesoTkc } from '@/lib/useAccesoTkc';
 import PendientesInventario from '@/components/ajustes/PendientesInventario';
+import HistorialAjustes from '@/components/ajustes/HistorialAjustes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import { WAREHOUSES } from '@/services/tkc/warehouses';
 import {
-  TIPOS_AJUSTE, parseLineas, nuevaClave, interpretar, puedeConfirmar, mensajeDeError,
+  TIPOS_AJUSTE, parseLineas, nuevaClave, interpretar, mensajeDeError,
 } from '@/lib/ajustes';
 import { SIN_SONDEO } from '@/lib/query-client';
-import {
-  listarAjustes, lineasAjuste, crearAjuste, confirmarAjuste, ErrorDeRed,
+import { lineasAjuste, crearAjuste, confirmarAjuste, ErrorDeRed,
 } from '@/services/ajustesService';
 
 const hoy = () => format(new Date(), 'yyyy-MM-dd');
@@ -71,17 +71,6 @@ export default function AjusteForm({ tipo }) {
     !sinTkc && almacenValido && lines.length > 0 && errores.length === 0 &&
     !faltaClasificacion && bloqueo !== 'crear';
 
-  // ── Historial del almacén ──────────────────────────────────────────
-  const historial = useQuery({
-    queryKey: ['ajustes', tipo, almacen],
-    queryFn: () => listarAjustes(tipo, { almacen, limit: 50 }),
-    enabled: almacenValido,
-    staleTime: 15_000,
-    ...SIN_SONDEO,
-  });
-  const filas = Array.isArray(historial.data?.body) ? historial.data.body : [];
-  const errorHistorial = historial.data && !Array.isArray(historial.data.body)
-    ? interpretar(historial.data.status, historial.data.body) : null;
   const refrescar = () => queryClient.invalidateQueries({ queryKey: ['ajustes', tipo] });
 
   /** Ejecuta una escritura y la traduce a un resultado de pantalla. */
@@ -317,65 +306,17 @@ export default function AjusteForm({ tipo }) {
       )}
 
         <TabsContent value="historial">
-      <Card className="p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium">Recientes en {almacenValido ? almacen : '—'} <span className="text-muted-foreground font-normal">(últimos 7 días)</span></h2>
-          <Button variant="ghost" size="sm" onClick={refrescar} disabled={!almacenValido || historial.isFetching}>
-            <RefreshCw className={`w-3.5 h-3.5 ${historial.isFetching ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
-        {!almacenValido && <p className="text-sm text-muted-foreground">Elige un almacén para ver sus documentos.</p>}
-        {errorHistorial && <AlertBanner variant="danger" message={mensajeDeError(errorHistorial)} />}
-        {almacenValido && !errorHistorial && !historial.isLoading && filas.length === 0 && (
-          <p className="text-sm text-muted-foreground">Sin documentos en este rango.</p>
-        )}
-        {filas.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-muted-foreground border-b">
-                  <th className="py-2 pr-3 font-medium">Documento</th>
-                  <th className="py-2 pr-3 font-medium">Fecha</th>
-                  <th className="py-2 pr-3 font-medium">Estado</th>
-                  <th className="py-2 pr-3 font-medium text-right">Monto</th>
-                  <th className="py-2 font-medium text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filas.map((f) => (
-                  <tr key={f.id} className="border-b last:border-0">
-                    <td className="py-2 pr-3 font-mono text-xs">{f.code}</td>
-                    <td className="py-2 pr-3">{f.date}</td>
-                    <td className="py-2 pr-3 capitalize">{confirmado[f.id]?.tipo === 'confirmado' ? 'confirmada' : f.status}</td>
-                    <td className="py-2 pr-3 text-right">{f.amount}</td>
-                    <td className="py-2 text-right space-x-1 whitespace-nowrap">
-                      <Button variant="ghost" size="sm" onClick={() => setVerLineas({ id: f.id, code: f.code })} title="Ver productos">
-                        <Eye className="w-3.5 h-3.5" />
-                      </Button>
-                      {puedeConfirmar(f.status) && confirmado[f.id]?.tipo !== 'confirmado' && (
-                        <Button
-                          size="sm" variant="outline" style={{ borderRadius: 'var(--r-ctl)' }}
-                          disabled={sinTkc || estaOcupado || bloqueo === f.id}
-                          onClick={() => pedirConfirmacion(f.id, f.code)}
-                          title="Confirmar" aria-label="Confirmar"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
-                      {confirmado[f.id] && confirmado[f.id].tipo !== 'confirmado' && (
-                        <span className="text-xs text-[var(--c-bad)]">{confirmado[f.id].mensaje}</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {historial.data?.total > filas.length && (
-              <p className="text-xs text-muted-foreground mt-2">Mostrando {filas.length} de {historial.data.total}.</p>
-            )}
-          </div>
-        )}
-      </Card>
+          <HistorialAjustes
+            tipo={tipo}
+            almacen={almacen}
+            almacenValido={almacenValido}
+            confirmado={confirmado}
+            sinTkc={sinTkc}
+            ocupado={estaOcupado}
+            bloqueo={bloqueo}
+            onVerLineas={setVerLineas}
+            onConfirmar={pedirConfirmacion}
+          />
         </TabsContent>
       </Tabs>
 

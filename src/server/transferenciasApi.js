@@ -93,6 +93,9 @@ const PROCESOS = {
   analizar: { metodo: 'POST', ruta: 'process/analyze' },
 }
 
+/** Los tipos de salida que lista `GET /decreases`. */
+const TIPOS_SALIDA = ['decrease', 'direct-sale', 'all']
+
 const MAX_BODY = 512 * 1024
 const MAX_LINEAS = 500
 /** Montar analiza cada código en TKC: puede tardar. */
@@ -395,6 +398,9 @@ async function atenderProceso(res, req, ctx, operacion, consulta) {
       consulta: {
         warehouse: consulta.get('almacen') ? almacenId(consulta.get('almacen')) : undefined,
         refresh: consulta.get('refresh') === 'true' ? 'true' : undefined,
+        // Solo los N más recientes de cada almacén: sin él, todos, y un almacén
+        // llega a mil documentos.
+        recent: /^\d{1,4}$/.test(consulta.get('recent') ?? '') ? consulta.get('recent') : undefined,
         status: consulta.get('status') ?? undefined,
         q: consulta.get('q') ?? undefined,
         limit: consulta.get('limit') ?? undefined,
@@ -601,6 +607,11 @@ export function createTransferenciasApiMiddleware() {
             to: consulta.get('to') ?? undefined,
             status: consulta.get('status') ?? undefined,
             q: consulta.get('q') ?? undefined,
+            // El tipo de salida solo existe en las disminuciones: ahí también
+            // están las ventas directas (solo lectura). Un valor que no es
+            // suyo no se reenvía.
+            type: tipo.ruta === 'decreases' && TIPOS_SALIDA.includes(consulta.get('type'))
+              ? consulta.get('type') : undefined,
             limit: consulta.get('limit') ?? undefined,
             offset: consulta.get('offset') ?? undefined,
           },
