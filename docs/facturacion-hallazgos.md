@@ -95,17 +95,41 @@ Lo que se sigue de ahí:
   existencia de cualquier día. Para eso hay que partir de documentos
   (entradas y salidas) y de ventas.
 
-A falta de la tercera consulta (`supabase/diagnostico_fuentes_3.sql`), que mira `RDP_VD`, las fechas de las corridas del submayor y los almacenes.
+### Resultado de la tercera consulta
+
+| Hallazgo | Detalle |
+|---|---|
+| **Las ventas directas tienen un hueco de dos meses** | `RDP_VD` cubre 2025-01-02 a **2026-07-20** (18 594 líneas, 5 772 facturas). `rdp_vd_rows` cubre desde **2026-09-25**. **Del 21 de julio al 24 de septiembre no hay nada** en la base |
+| **Las ventas directas no dicen de qué almacén son** | Ni `RDP_VD` ni `rdp_vd_rows` tienen columna de almacén. Los documentos `TKCS` de TKC sí (`almacen`, `locacion`) |
+| **El submayor guardado es de una semana** | 18 corridas, del 2026-10-27 al 2026-11-03, dos o tres al día. `sub_changelog` cubre lo mismo (38 218 cambios). **No se puede saber la existencia de hace un mes** con lo que hay |
+| **Los despachos de la flota no traen código de producto** | `fleet.orden_producto.producto` es el **nombre** («Gas licuado GLP (10 kg / 22 lb)»), no el código. Cruzarlos con el catálogo es por nombre: frágil |
+| **Un despacho sin fecha** | 4 039 despachos distintos entre todas las órdenes, pero solo **1 317** tienen `fecha_despacho` (199 010 líneas, 429 502 unidades). 2 722 despachos no tienen fecha: ¿pendientes, o dato que falta? |
+| **Los almacenes** | 25 en las ventas. El 789 (*ELíneas Electrocuba*) lleva 15,6 de los 19,3 millones de unidades. `sub_*` tiene 30 |
+
+Lo que cambia:
+
+- **F5 (ventas directas) no puede salir solo de la base**: tiene un hueco y no
+  sabe el almacén. **La fuente buena son los documentos `TKCS` de TKC**, que
+  tienen fecha, almacén y observación con el número de factura. La base sirve
+  para completar cada factura con sus líneas, precios y cliente, donde exista.
+- **F6 (ANÁLISIS) no puede reconstruir la existencia pasada desde la base.**
+  Con documentos de entrada y salida y un punto de partida sí se puede, pero ese
+  punto hay que sacarlo de TKC (el historial del submayor trae saldo inicial y
+  final por movimiento). Alternativa: **guardar una fotografía diaria propia**
+  de la existencia desde hoy, y que el ANÁLISIS sea fiable hacia adelante.
+- **F3 (despachos) con la flota no cuadra por producto** (sin código), y solo
+  cubre desde mayo con 2 722 despachos sin fecha. Para «cantidades por
+  período y producto», `rdp_rows` es mucho más sólido, si «despacho» es venta.
 
 ## 4. Qué cambia en el plan
 
 | Tarea | Antes | Ahora |
 |---|---|---|
 | **F1** Observaciones de A/D | Depende de la API | **Salidas: resuelto** (vienen en el listado de TKC). **Entradas: hay que leer `/info/{id}`** |
-| **F5** Reporte de VD | Sin fuente | **Fuente doble:** documentos `TKCS` de tipo Venta Directa (de TKC) + líneas por factura en `rdp_vd_rows` (nuestra base) |
+| **F5** Reporte de VD | Sin fuente | **Documentos `TKCS` de tipo Venta Directa, de TKC** (con almacén y fecha). La base solo completa con líneas por factura, y tiene un hueco del 21-jul al 24-sep |
 | **F3** Resumen de despachos | Sin fuente | Candidatos: `rdp_rows` (plataforma) y `fleet.orden` (flota). **Falta definir cuál es «despacho»** |
 | **F4** Transferencias | Sin fuente | El equipo dice que **existe** el listado, **sin dar la ruta**. No están entre los tipos de entrada |
-| **F6** ANÁLISIS | Muy incierto | **Viable:** existencias de `sub_*`, ventas de `rdp_*`, entradas y salidas de TKC. Cada movimiento, identificado por su `TKCE`/`TKCS` |
+| **F6** ANÁLISIS | Muy incierto | **Viable, con una condición:** la existencia pasada no está en la base (solo una semana). Hace falta partir del saldo del submayor de TKC o empezar a guardar una fotografía diaria propia |
 | **F2** Trazabilidad | Dependía de F4 | Igual |
 
 ## 5. Lo que falta, con su razón
@@ -137,7 +161,9 @@ nada de lo ya contestado.
 
 ### B. Del servidor (una consulta de solo lectura)
 
-6. **Qué es cada tabla.** Ejecuta la segunda consulta, que **no muestra
+6. ~~**Qué es cada tabla.**~~ **Contestado** (resultados arriba, partes 2 y 3). Lo que sigue pendiente se resume en la sección 7.
+
+   Original: **Qué es cada tabla.** Ejecuta la segunda consulta, que **no muestra
    datos**, solo columnas, conteos y rangos de fechas:
 
    ```bash
@@ -176,3 +202,20 @@ en cuanto llegue el punto 1 de arriba. Lo demás espera a Janet (punto 7), que
 es quien decide qué suma ANÁLISIS.
 
 **Orden:** punto 1 y 2 de A → empiezo F1/F5. Punto 6 y 7 → dimensiono F3 y F6.
+
+## 7. Pendiente, con el estado de hoy
+
+| # | Qué | De quién | Bloquea |
+|---|---|---|---|
+| A1 | La **URL y parámetros** de los listados de entradas y de salidas de TKC (F12 → Red → Carga útil; sin cookies) | Tú, en TKC | **F1 y F5.** Sin esto no puedo pedir «las VD de octubre» |
+| A2 | Captura del desplegable **Tipos de salida** | Tú, en TKC | F4: ver si una transferencia es un tipo de salida |
+| A3 | **Dónde están** las transferencias y los despachos en TKC (menú y captura) | Tú, en TKC | F3 y F4 |
+| A4 | Un documento de entrada **por dentro** (`/info/{id}`) | Tú, en TKC | Observaciones de las entradas |
+| C7 | Las **siete preguntas de Janet**, sobre todo la primera (qué es un despacho) | Janet | F3 y F6 |
+| D8 | La **ruta** de los listados de transferencias y despachos, y la documentación | Equipo de las APIs | F4 y F3 |
+| — | ~~Tablas de la base~~ | — | **Hecho** |
+
+Una decisión que no es de nadie más que de quien lleva el proyecto: ¿se
+empieza a **guardar una fotografía diaria de la existencia** desde ya? Sin ella,
+el ANÁLISIS de un mes entero depende de reconstruir el saldo desde TKC, producto
+por producto. Con ella, cada día que pasa mejora el ANÁLISIS.
