@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -119,7 +119,9 @@ const COL_TITULO = {
   acciones:      { label: 'Acciones' },
 }
 
-export default function Inventario({ ambito = 'inventario' }) {
+export default function Inventario() {
+  // Lo de facturación se resuelve en las pantallas de ajustes, procesamientos y transferencias.
+  const ambito = 'inventario';
   const [showForm, setShowForm] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [accionFila, setAccionFila] = useState(null);   // { tipo, inv } del menú de la fila
@@ -326,30 +328,7 @@ export default function Inventario({ ambito = 'inventario' }) {
         && (i.fecha_inv ?? '') <= (selected.fecha_inv ?? ''))
     : [];
 
-  // En facturación, un producto sale UNA vez: el conteo más reciente. Si
-  // inventario cuenta el lunes, nadie lo procesa y el miércoles vuelve a
-  // contar, antes salían los dos y se podían aplicar dos ajustes por la misma
-  // mercancía.
-  //
-  // Se hace sobre la página que está a la vista, no sobre toda la tabla: para
-  // lo segundo haría falta un DISTINCT ON que la API de datos no expone. En la
-  // práctica alcanza —lo pendiente de facturar son decenas de filas, no
-  // miles— y el detalle avisa igualmente antes de procesar.
-  const { visibles: sorted, tapados } = useMemo(() => {
-    if (ambito !== 'facturacion') return { visibles: inventarios, tapados: 0 };
-
-    const ultimoPorProducto = new Map();
-    for (const i of inventarios) {
-      const clave = `${i.almacen_num}|${i.producto_id ?? i.producto_codigo}`;
-      const previo = ultimoPorProducto.get(clave);
-      if (!previo || (i.fecha_inv ?? '') > (previo.fecha_inv ?? '')
-        || ((i.fecha_inv ?? '') === (previo.fecha_inv ?? '') && (i.created_date ?? '') > (previo.created_date ?? ''))) {
-        ultimoPorProducto.set(clave, i);
-      }
-    }
-    const visibles = [...ultimoPorProducto.values()];
-    return { visibles, tapados: inventarios.length - visibles.length };
-  }, [inventarios, ambito]);
+  const sorted = inventarios;
 
   const difColor = (d) => d === 0 ? 'text-[var(--c-ok-dim)]' : d > 0 ? 'text-[var(--c-warn)]' : 'text-[var(--c-bad)]';
 
@@ -359,9 +338,7 @@ export default function Inventario({ ambito = 'inventario' }) {
       {ConfirmDialogNode}
       <CabeceraLista
         titulo="Inventario"
-        subtitulo={ambito === 'facturacion'
-          ? 'Conteos con diferencia, a la espera de facturación'
-          : 'Conteos y ajustes de inventario'}
+        subtitulo="Conteos y ajustes de inventario"
         recuento={`${total} ${total === 1 ? 'resultado' : 'resultados'}`}
         buscador={(
           <div className="relative">
@@ -418,13 +395,6 @@ export default function Inventario({ ambito = 'inventario' }) {
           <InventarioForm user={user} onSubmit={(d) => createMutation.mutate(d)} onCancel={() => setShowForm(false)} isPending={createMutation.isPending} />
         </DialogContent>
       </Dialog>
-
-      {tapados > 0 && (
-        <p className="text-xs text-muted-foreground px-1">
-          {tapados} {tapados === 1 ? 'conteo anterior queda oculto' : 'conteos anteriores quedan ocultos'} porque
-          hay uno más reciente del mismo producto. Procesa el último: es el que refleja lo que hay.
-        </p>
-      )}
 
       <MisPendientes
         inventarios={inventarios}

@@ -2,7 +2,7 @@ import { useEffect, Suspense, lazy } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
-import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useNavigate, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { tieneRol } from '@/lib/roles';
 import { SyncProvider } from '@/lib/SyncContext';
@@ -30,6 +30,7 @@ const Anuncios      = lazy(() => import('@/pages/Anuncios'));
 const AjusteAumento     = lazy(() => import('@/pages/AjusteAumento'));
 const AjusteDisminucion = lazy(() => import('@/pages/AjusteDisminucion'));
 const Procesamientos    = lazy(() => import('@/pages/Procesamientos'));
+const Transferencias    = lazy(() => import('@/pages/Transferencias'));
 const Reportes      = lazy(() => import('@/pages/Reportes'));
 const Notificaciones= lazy(() => import('@/pages/Notificaciones'));
 const Productos     = lazy(() => import('@/pages/Productos'));
@@ -90,12 +91,15 @@ const AuthenticatedApp = () => {
           <Route path="/anuncios"       element={<RoleGuard element={<Anuncios />} roles={['inv','ca','auditor','jefe_depto','administrador','superadmin']} />} />
           {/* Las mismas pantallas, abiertas desde facturación y con su filtro
               puesto: lo que le toca a esa área. Ver src/lib/ambito.js. */}
-          <Route path="/facturacion/inventario" element={<RoleGuard element={<Inventario ambito="facturacion" />} roles={ROLES_AJUSTES} />} />
+          {/* «Conteos por facturar» ya no existe: cada conteo se resuelve en la
+              pantalla de su ajuste. El enlace viejo (marcadores, avisos) sigue llegando. */}
+          <Route path="/facturacion/inventario" element={<Navigate to="/ajustes/disminucion" replace />} />
           <Route path="/facturacion/mermas"     element={<RoleGuard element={<Mermas ambito="facturacion" />} roles={ROLES_AJUSTES} />} />
           <Route path="/facturacion/ventas"    element={<RoleGuard element={<ResumenVentas />} roles={ROLES_VENTAS} />} />
           <Route path="/ajustes/aumento"     element={<RoleGuard element={<AjusteAumento />} roles={ROLES_AJUSTES} />} />
           <Route path="/ajustes/disminucion" element={<RoleGuard element={<AjusteDisminucion />} roles={ROLES_AJUSTES} />} />
           <Route path="/procesamientos"      element={<RoleGuard element={<Procesamientos />} roles={ROLES_PROCESAMIENTOS} />} />
+          <Route path="/transferencias"      element={<RoleGuard element={<Transferencias />} roles={ROLES_AJUSTES} />} />
           <Route path="/notificaciones" element={<Notificaciones />} />
           <Route path="/productos"      element={<Productos />} />
           <Route path="/bd-tkc"          element={<Productos initialSource="tkc" />} />

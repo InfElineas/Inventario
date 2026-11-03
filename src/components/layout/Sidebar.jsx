@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ClipboardList, TrendingDown, Clock, PackageOpen,
   Megaphone, BarChart3, Package, ShieldCheck, Users, Warehouse,
   ChevronsLeft, ChevronsRight, Settings2, Eye, Crown, ChevronDown,
-  PackagePlus, PackageMinus, Repeat, ShoppingCart,
+  PackagePlus, PackageMinus, Repeat, ShoppingCart, ArrowLeftRight,
 } from 'lucide-react';
 import { tieneRol } from '@/lib/roles';
 // Una sola lista para las dos barras: ver src/lib/navegacion.js.
@@ -13,7 +13,7 @@ import { NAV_GROUPS } from '@/lib/navegacion';
 const ICONS = {
   LayoutDashboard, ClipboardList, TrendingDown, Clock, PackageOpen,
   Megaphone, BarChart3, Package, ShieldCheck, Users, Settings2, Eye, Crown,
-  PackagePlus, PackageMinus, Repeat, ShoppingCart,
+  PackagePlus, PackageMinus, Repeat, ShoppingCart, ArrowLeftRight,
 };
 
 // Devuelve el label del grupo que contiene la ruta activa

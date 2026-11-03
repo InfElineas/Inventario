@@ -249,6 +249,9 @@ export const ESTADO_FACT = [
   // Intercambio entre productos similares. Con qué producto se intercambió y
   // a qué precio va en las notas de FACT: el registro guarda un solo producto.
   'Procesamiento',
+  // Un faltante que salió hacia otro almacén sin documento: se resuelve montando
+  // la transferencia.
+  'Transferencia',
   'Recontar',
 ]
 

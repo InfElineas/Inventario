@@ -14,6 +14,14 @@
  *   POST /api/procesamientos/analizar                        solo lectura: lo que haría procesar
  *   POST /api/procesamientos                                 procesa: MUEVE EXISTENCIA
  *
+ * y las transferencias entre almacenes (`/api/v1/transfers`):
+ *
+ *   GET  /api/transferencias                                 listado (origen, destino, fechas, estado)
+ *   GET  /api/transferencias/:id/lines                       productos del documento
+ *   POST /api/transferencias                                 monta el documento («editada»)
+ *   POST /api/transferencias/:id/confirm                     lo confirma: pasa a «en tránsito»
+ *   POST /api/transferencias/:id/cancel                      cancela el borrador
+ *
  * Middleware Connect `(req, res, next)`, como `tkcApi.js`: lo comparten dev
  * (`vite-plugin-tkc.js`) y producción (`server/index.js`).
  *
@@ -431,6 +439,62 @@ async function atenderProceso(res, req, ctx, operacion, consulta) {
 }
 
 /**
+ * Las transferencias entre almacenes. Mismas garantías que los ajustes: rol,
+ * credenciales de la persona en las escrituras y cuerpo reconstruido campo a
+ * campo. A diferencia de ellos, el documento tiene origen y destino.
+ */
+async function atenderTransferencia(res, req, ctx, operacion, id, consulta) {
+  if (operacion === 'listar') {
+    return reenviar(res, await llamarApi(ctx, {
+      metodo: 'GET',
+      ruta: 'transfers',
+      consulta: {
+        origin: consulta.get('origen') ? almacenId(consulta.get('origen')) : undefined,
+        destination: consulta.get('destino') ? almacenId(consulta.get('destino')) : undefined,
+        from: consulta.get('from') ?? undefined,
+        to: consulta.get('to') ?? undefined,
+        status: consulta.get('status') ?? undefined,
+        q: consulta.get('q') ?? undefined,
+        limit: consulta.get('limit') ?? undefined,
+        offset: consulta.get('offset') ?? undefined,
+      },
+    }))
+  }
+  if (operacion === 'lineas') {
+    return reenviar(res, await llamarApi(ctx, { metodo: 'GET', ruta: `transfers/${id}/lines` }))
+  }
+
+  const cuerpo = await leerCuerpo(req)
+  const idempotencia = texto(cuerpo.idempotencyKey, 'idempotencyKey', 128) ?? randomUUID()
+  if (!CLAVE_IDEMPOTENCIA.test(idempotencia)) {
+    throw new ErrorPeticion(400, '`idempotencyKey`: 8 a 128 caracteres (letras, números y . _ : -).')
+  }
+
+  if (operacion === 'crear') {
+    const origin = almacenId(cuerpo.origen)
+    const destination = almacenId(cuerpo.destino)
+    if (origin === destination) {
+      throw new ErrorPeticion(400, 'El origen y el destino son el mismo almacén.')
+    }
+    return reenviar(res, await llamarApi(ctx, {
+      metodo: 'POST',
+      ruta: 'transfers',
+      cuerpo: { origin, destination, lines: lineas(cuerpo.lines), notes: texto(cuerpo.notes, 'notes', 500) },
+      idempotencia,
+    }))
+  }
+
+  // confirmar | cancelar: el almacén solo sirve para el registro de actividad.
+  const aPeticion = cuerpo.almacen ? { warehouse: almacenId(cuerpo.almacen) } : {}
+  return reenviar(res, await llamarApi(ctx, {
+    metodo: 'POST',
+    ruta: `transfers/${id}/${operacion === 'confirmar' ? 'confirm' : 'cancel'}`,
+    cuerpo: aPeticion,
+    idempotencia,
+  }))
+}
+
+/**
  * @returns {(req: object, res: object, next: () => any) => Promise<void>}
  */
 export function createTransferenciasApiMiddleware() {
@@ -444,13 +508,24 @@ export function createTransferenciasApiMiddleware() {
     const esPedidos = ruta === '/api/pedidos' && req.method === 'GET'
     // Los lotes del informe central. Solo lectura, como la rotación.
     const esLotes = ruta === '/api/lotes' && req.method === 'GET'
-    if (!esProceso && !esTienda && !esRotacion && !esPedidos && !esLotes && !ruta.startsWith('/api/ajustes/')) return next()
+    const esTransferencia = ruta === '/api/transferencias' || ruta.startsWith('/api/transferencias/')
+    if (!esProceso && !esTienda && !esTransferencia && !esRotacion && !esPedidos && !esLotes && !ruta.startsWith('/api/ajustes/')) return next()
 
     let tipo
     let id
     let operacion
     let modulo
-    if (esTienda) {
+    if (esTransferencia) {
+      // /api/transferencias  ·  /api/transferencias/:id/{lines|confirm|cancel}
+      const partes = ruta.split('/').slice(3).filter(Boolean) // [id?, accion?]
+      id = partes[0]
+      if (partes.length === 0) operacion = req.method === 'GET' ? 'listar' : req.method === 'POST' ? 'crear' : null
+      else if (partes.length === 2 && /^\d+$/.test(id)) {
+        if (partes[1] === 'lines' && req.method === 'GET') operacion = 'lineas'
+        if (partes[1] === 'confirm' && req.method === 'POST') operacion = 'confirmar'
+        if (partes[1] === 'cancel' && req.method === 'POST') operacion = 'cancelar'
+      }
+    } else if (esTienda) {
       // /api/tienda/{subir|bajar}/{plan|ejecutar}  ·  /api/tienda/trabajo
       const [uno, dos] = ruta.split('/').slice(3).filter(Boolean)
       if (uno === 'trabajo' && req.method === 'GET') { modulo = 'subir'; operacion = 'trabajo' }
@@ -577,7 +652,7 @@ export function createTransferenciasApiMiddleware() {
       }
 
       const escritura = operacion === 'crear' || operacion === 'confirmar'
-        || operacion === 'procesar' || operacion === 'ejecutar'
+        || operacion === 'cancelar' || operacion === 'procesar' || operacion === 'ejecutar'
       const credenciales = leerCredenciales(req, sesion.email)
       if (escritura && !credenciales) {
         return fallo(
@@ -592,6 +667,7 @@ export function createTransferenciasApiMiddleware() {
       const ctx = { jwt: sesion.jwt, sub: sesion.sub, credenciales }
       const consulta = new URL(req.url, 'http://local').searchParams
 
+      if (esTransferencia) return await atenderTransferencia(res, req, ctx, operacion, id, consulta)
       if (esTienda) return await atenderTienda(res, req, ctx, modulo, operacion, consulta)
       if (esProceso) return await atenderProceso(res, req, ctx, operacion, consulta)
 

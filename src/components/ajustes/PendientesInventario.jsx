@@ -13,6 +13,7 @@ import {
   anterioresDe, esAjustable, esIntercambio, lineasDeConteos, ultimoPorProducto,
 } from '@/lib/conteosFact';
 import { devolverConteo } from '@/services/conteosFactService';
+import { esDeTransferencia } from '@/lib/transferencias';
 
 /**
  * Los conteos de inventario que esperan este ajuste.
@@ -31,11 +32,16 @@ import { devolverConteo } from '@/services/conteosFactService';
  * Un sobrante se resuelve con un ajuste de AUMENTO y un faltante con uno de
  * DISMINUCIÓN. Por eso cada pantalla pide un `resultado` distinto. Los
  * intercambios entre productos no entran aquí: van a Procesamientos.
+ *
+ * Y un faltante cuya clasificación es una transferencia («Transferencia a Latino
+ * no registrada»…) es mercancía que salió hacia otro almacén sin documento: se
+ * resuelve montando esa transferencia, en su pantalla.
  */
 
 const POR_TIPO = {
-  aumento:     { resultado: 'sobrante', etiqueta: 'sobrantes' },
-  disminucion: { resultado: 'faltante', etiqueta: 'faltantes' },
+  aumento:       { resultado: 'sobrante', etiqueta: 'sobrantes', panel: 'este ajuste' },
+  disminucion:   { resultado: 'faltante', etiqueta: 'faltantes', panel: 'este ajuste' },
+  transferencia: { resultado: 'faltante', etiqueta: 'faltantes por transferencia', panel: 'esta transferencia', filtro: esDeTransferencia },
 };
 
 const colorDe = (d) => (Number(d) > 0 ? 'var(--c-warn)' : 'var(--c-bad)');
@@ -43,7 +49,7 @@ const conSigno = (d) => `${Number(d) > 0 ? '+' : ''}${d}`;
 
 /**
  * @param {object} props
- * @param {'aumento'|'disminucion'} props.tipo
+ * @param {'aumento'|'disminucion'|'transferencia'} props.tipo
  * @param {string} props.almacen
  * @param {(lineas: string, conteos: Array<{ conteo: object, anteriores: object[] }>) => void} props.onUsar
  *   Las líneas `CODIGO*CANTIDAD` y los conteos de los que salen, para poder darlos por
@@ -68,13 +74,14 @@ export default function PendientesInventario({ tipo, almacen, onUsar }) {
 
   // Los intercambios son de la pantalla de Procesamientos. Y de cada producto
   // solo vale el conteo más reciente: los anteriores se cierran al procesar.
-  const { vigentes, anteriores } = useMemo(
-    () => ultimoPorProducto(filas.filter((c) => !esIntercambio(c))),
-    [filas],
+  const propios = useMemo(
+    () => filas.filter((c) => !esIntercambio(c) && (cfg?.filtro?.(c) ?? true)),
+    [filas, cfg],
   );
+  const { vigentes, anteriores } = useMemo(() => ultimoPorProducto(propios), [propios]);
   const ajustables = vigentes.filter(esAjustable);
   const marcados = ajustables.filter((c) => !excluidos.has(c.id));
-  const ocultos = filas.filter((c) => !esIntercambio(c)).length - vigentes.length;
+  const ocultos = propios.length - vigentes.length;
 
   if (!cfg || !almacen) return null;
 
@@ -94,7 +101,7 @@ export default function PendientesInventario({ tipo, almacen, onUsar }) {
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border">
         <p className="text-sm font-medium flex items-center gap-2">
           <ClipboardList className="w-4 h-4 text-muted-foreground" />
-          Conteos esperando este ajuste
+          Conteos esperando {cfg.panel}
           {ajustables.length > 0 && (
             <span className="text-xs text-muted-foreground">({ajustables.length})</span>
           )}

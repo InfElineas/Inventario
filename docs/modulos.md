@@ -238,13 +238,16 @@ Debajo, las cifras del almacén y qué hay que comprar hoy.
 
 ## Facturación
 
-Las mismas pantallas de Inventario y Mermas, abiertas con su filtro puesto:
-`/facturacion/inventario` y `/facturacion/mermas`. Separarlas fue a petición:
-con todo junto, el administrador no distinguía lo suyo de lo del otro
-departamento.
+Las mermas por facturar son la pantalla de Mermas con su filtro puesto
+(`/facturacion/mermas`). Separarlas fue a petición: con todo junto, el
+administrador no distinguía lo suyo de lo del otro departamento.
 
-Los ajustes de aumento y disminución y los procesamientos viven en
-`/ajustes/*` y `/procesamientos`, y hablan con elineas-transferencia.
+Los ajustes de aumento y disminución, los procesamientos y las transferencias
+viven en `/ajustes/*`, `/procesamientos` y `/transferencias`, y hablan con
+elineas-transferencia.
+
+**«Conteos por facturar» ya no existe** (`/facturacion/inventario` redirige a
+Ajuste de disminución): todo lo que hacía se hace en esas pantallas, como sigue.
 
 ### Conteos con diferencia: se resuelven en las pantallas de ajustes
 
@@ -258,8 +261,9 @@ hace el trabajo:
 | Un **sobrante** | Ajuste de aumento | Un ajuste de aumento por la cantidad medida |
 | Un **faltante** | Ajuste de disminución | Un ajuste de disminución |
 | Un **intercambio** (un producto vendido por otro: uno falta y el otro sobra) | Procesamientos | Un procesamiento `ORIGEN>DESTINO`: el origen es el que **falta**, el destino el que **sobra** |
+| Un **faltante clasificado como transferencia** («Transferencia a Latino no registrada»…): salió hacia otro almacén sin documento | Transferencias | Una transferencia desde el almacén del conteo hacia el destino que se elija |
 
-En cada pantalla, la pestaña *Por ajustar* / *Por procesar* enseña los conteos
+En cada pantalla, la pestaña *Por ajustar* / *Por procesar* / *Por transferir* enseña los conteos
 con lo que hace falta para decidir (existencia al contar, clasificación, nota de
 quien contó, existencia ahora), se eligen cuáles y se pasan al formulario. Lo que
 no procede se **devuelve a inventario con su motivo** (los dos conteos de un
@@ -272,7 +276,7 @@ que lo resolvió, cómo, quién y cuándo, y pasa a auditoría.
 - De cada producto solo cuenta el conteo **más reciente**; los anteriores se
   cierran sin ajuste.
 - Un reintento no vuelve a procesar los conteos que ya se hicieron.
-- «Conteos por facturar» sigue existiendo como seguimiento.
+- El contador del menú de cada ajuste son los conteos que esperan en él.
 - **Los procesamientos de intercambio no se han probado contra la API real.**
   Se envía `ORIGEN>DESTINO*CANTIDAD` como documenta su colección; conviene
   empezar con un solo par y comprobar el resultado en TKC.
@@ -280,6 +284,30 @@ que lo resolvió, cómo, quién y cuándo, y pasa a auditoría.
 El **historial de TKC** de los ajustes tiene fechas, estado, búsqueda, páginas y
 exportación a CSV. En disminuciones se puede ver el tipo de salida: ajustes,
 **ventas directas** (con su cliente, solo lectura) o todas.
+
+### Transferencias (`/transferencias`)
+
+Mover productos de un almacén a otro, con la API de elineas-transferencia
+(`/api/v1/transfers`). El almacén de arriba es el **origen**; el destino se elige
+al montar. Dos pasos separados, como los ajustes: **Montar** crea el documento en
+TKC como borrador («editada») y no mueve nada; **Confirmar** —con su propio
+diálogo— lo pasa a «en tránsito»; un borrador también se puede **cancelar**. Las
+líneas son `CODIGO*CANTIDAD`.
+
+El **historial de TKC** muestra las transferencias que salen del almacén o las
+que le llegan, con fechas, estado, búsqueda, páginas, exportación a CSV y los
+productos de cada documento. Cada escritura sale con la cuenta de TKC de quien la
+hace y con clave de idempotencia; si se corta, se dice que no se sabe si llegó y
+se bloquea reintentar hasta revisarlo en TKC.
+
+- **Sin probar contra la API real.** La respuesta del listado no está documentada
+  campo a campo: la pantalla muestra `code`, `date`, `status` y el origen y destino
+  con los nombres habituales (`originName`/`origin`, `destinationName`/`destination`).
+  Si TKC los llama de otra manera, salen vacíos y hay que ajustar
+  `origenDe`/`destinoDe` en `src/lib/transferencias.js`.
+- Queda fuera «Transferir códigos» (`/code-transfer`), que da de alta códigos en
+  otro almacén sin mover existencia, y el lote de hasta 20 transferencias
+  (`/transfers/batch`).
 
 ### Resumen de ventas (`/facturacion/ventas`)
 

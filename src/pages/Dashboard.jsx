@@ -558,7 +558,7 @@ export default function Dashboard() {
         accion: 'Terminarlos y enviarlos', enlace: '/inventario' },
       { clave: 'pendFact', cantidad: invStats.pendFact + mermaStats.pendFact, color: 'var(--c-orange)', Icono: FileText,
         texto: 'esperando a facturacion',
-        accion: 'Ver que falta', enlace: '/facturacion/inventario' },
+        accion: 'Ver que falta', enlace: '/ajustes/disminucion' },
       { clave: 'enAudit', cantidad: invStats.enAudit, color: 'var(--c-purple)', Icono: ShieldCheck,
         texto: invStats.enAudit === 1 ? 'caso en auditoria' : 'casos en auditoria',
         accion: 'Seguir su estado', enlace: '/auditoria' },

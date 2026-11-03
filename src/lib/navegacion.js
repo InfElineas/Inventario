@@ -67,7 +67,6 @@ export const NAV_GROUPS = [
     label: 'FACTURACIÓN',
     groupIcon: 'Megaphone',
     items: [
-      { path: '/facturacion/inventario', label: 'Conteos por facturar', corto: 'Conteos', icon: 'ClipboardList', roles: ROLES_AJUSTES, prioridad: 20 },
       { path: '/facturacion/mermas',     label: 'Mermas por facturar',  corto: 'M. fact.', icon: 'TrendingDown',  roles: ROLES_AJUSTES, prioridad: 21 },
       { path: '/facturacion/ventas', label: 'Resumen de ventas', corto: 'Ventas', icon: 'BarChart3', roles: ROLES_VENTAS, prioridad: 26 },
       { path: '/anuncios', label: 'Anuncios', icon: 'Megaphone', prioridad: 22,
@@ -75,6 +74,7 @@ export const NAV_GROUPS = [
       { path: '/ajustes/aumento',     label: 'Ajuste de aumento',     corto: 'Aumento',  icon: 'PackagePlus',  roles: ROLES_AJUSTES, prioridad: 23 },
       { path: '/ajustes/disminucion', label: 'Ajuste de disminución', corto: 'Disminuc.', icon: 'PackageMinus', roles: ROLES_AJUSTES, prioridad: 24 },
       { path: '/procesamientos',      label: 'Procesamientos',        corto: 'Proces.',  icon: 'Repeat',       roles: ROLES_PROCESAMIENTOS, prioridad: 25 },
+      { path: '/transferencias',      label: 'Transferencias',        corto: 'Transf.',  icon: 'ArrowLeftRight', roles: ROLES_AJUSTES, prioridad: 27 },
     ],
   },
   {

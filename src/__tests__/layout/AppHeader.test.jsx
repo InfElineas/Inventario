@@ -255,7 +255,7 @@ describe('AppLayout — contadores del menú', () => {
       // mock devuelve una cifra por entidad, así que repiten la suya.
       expect(await leerCounts()).toEqual({
         '/mermas': 3, '/inventario': 1, '/anuncios': 7, '/lotes': 2,
-        '/facturacion/mermas': 3, '/facturacion/inventario': 1,
+        '/facturacion/mermas': 3, '/ajustes/aumento': 1, '/ajustes/disminucion': 1,
       });
     });
   });

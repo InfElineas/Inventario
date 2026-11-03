@@ -638,3 +638,90 @@ describe('subir y bajar de tienda', () => {
     expect(res.statusCode).toBe(404);
   });
 });
+
+describe('transferencias entre almacenes', () => {
+  const MONTAR = {
+    origen: '789', destino: '1005', notes: ' Reposición ',
+    lines: [{ code: '7622210833662', quantity: 3 }], idempotencyKey: 'envio-0001-abcd',
+  };
+
+  it('monta: traduce origen y destino, y reconstruye el cuerpo', async () => {
+    apiResponde(201, { status: 'created', draft: { id: 77 }, accepted: [], rejected: [] });
+    const { res } = await llamar('/api/transferencias', { ...MONTAR, otro: 'no pasa' }, 'POST');
+
+    const { url, opts, cuerpo } = ultimaLlamada();
+    expect(url.href).toBe('https://api.test/api/v1/transfers');
+    expect(opts.headers['Idempotency-Key']).toBe('envio-0001-abcd');
+    expect(cuerpo).toEqual({
+      origin: '351', destination: '726', notes: 'Reposición',
+      lines: [{ code: '7622210833662', quantity: 3 }],
+    });
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('origen y destino iguales o desconocidos: 400 sin llamar a la API', async () => {
+    for (const cuerpo of [
+      { ...MONTAR, destino: '789' },
+      { ...MONTAR, destino: 'nadie' },
+      { ...MONTAR, origen: undefined },
+    ]) {
+      const { res } = await llamar('/api/transferencias', cuerpo, 'POST');
+      expect(res.statusCode).toBe(400);
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('confirmar y cancelar van a su ruta, con el almacén traducido si llega', async () => {
+    apiResponde(200, { status: 'confirmed' });
+    await llamar('/api/transferencias/77/confirm', { almacen: '789', idempotencyKey: 'conf-0001-abcd' }, 'POST');
+    let { url, cuerpo } = ultimaLlamada();
+    expect(url.pathname).toBe('/api/v1/transfers/77/confirm');
+    expect(cuerpo).toEqual({ warehouse: '351' });
+
+    apiResponde(200, { status: 'cancelled' });
+    await llamar('/api/transferencias/77/cancel', { idempotencyKey: 'canc-0001-abcd' }, 'POST');
+    ({ url, cuerpo } = ultimaLlamada());
+    expect(url.pathname).toBe('/api/v1/transfers/77/cancel');
+    expect(cuerpo).toEqual({});
+  });
+
+  it('lista con origen, destino y filtros, y líneas de un documento', async () => {
+    apiResponde(200, [{ id: 77 }], { 'X-Total-Count': '1' });
+    const { res } = await llamar('/api/transferencias?origen=789&destino=1005&from=2026-10-01&status=editada&limit=50');
+    let { url } = ultimaLlamada();
+    expect(url.pathname).toBe('/api/v1/transfers');
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      origin: '351', destination: '726', from: '2026-10-01', status: 'editada', limit: '50',
+    });
+    expect(res.cabeceras['x-total-count']).toBe('1');
+
+    apiResponde(200, { headers: [], rows: [] });
+    await llamar('/api/transferencias/77/lines');
+    ({ url } = ultimaLlamada());
+    expect(url.pathname).toBe('/api/v1/transfers/77/lines');
+  });
+
+  it('rutas o métodos que no existen: 404; un rol ajeno a facturación: 403', async () => {
+    for (const [url, metodo] of [
+      ['/api/transferencias/abc/confirm', 'POST'],
+      ['/api/transferencias/77', 'GET'],
+      ['/api/transferencias', 'DELETE'],
+      ['/api/transferencias/77/lines', 'POST'],
+    ]) {
+      const { res } = await llamar(url, {}, metodo);
+      expect(res.statusCode, `${metodo} ${url}`).toBe(404);
+    }
+    resolverSesion.mockResolvedValue(SESION('inv'));
+    const { res } = await llamar('/api/transferencias', MONTAR, 'POST');
+    expect(res.statusCode).toBe(403);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('escribir sin credenciales de TKC se rechaza: firmaría a nombre de otro', async () => {
+    leerCredenciales.mockReturnValue(null);
+    const { res } = await llamar('/api/transferencias', MONTAR, 'POST');
+    expect(res.statusCode).toBe(403);
+    expect(res.cuerpo.error.code).toBe('no_tkc_credentials');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});
