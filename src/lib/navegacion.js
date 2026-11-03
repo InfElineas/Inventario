@@ -14,7 +14,7 @@
  * con las suyas delante sin que haya que decidirlo rol por rol.
  */
 
-import { ROLES_AJUSTES } from '@/lib/ajustes';
+import { ROLES_AJUSTES, ROLES_VENTAS } from '@/lib/ajustes';
 import { ROLES_PROCESAMIENTOS } from '@/lib/procesamientos';
 import { tieneRol } from '@/lib/roles';
 
@@ -69,6 +69,7 @@ export const NAV_GROUPS = [
     items: [
       { path: '/facturacion/inventario', label: 'Conteos por facturar', corto: 'Conteos', icon: 'ClipboardList', roles: ROLES_AJUSTES, prioridad: 20 },
       { path: '/facturacion/mermas',     label: 'Mermas por facturar',  corto: 'M. fact.', icon: 'TrendingDown',  roles: ROLES_AJUSTES, prioridad: 21 },
+      { path: '/facturacion/ventas', label: 'Resumen de ventas', corto: 'Ventas', icon: 'BarChart3', roles: ROLES_VENTAS, prioridad: 26 },
       { path: '/anuncios', label: 'Anuncios', icon: 'Megaphone', prioridad: 22,
         roles: ['inv','ca','auditor','jefe_depto','administrador','superadmin'] },
       { path: '/ajustes/aumento',     label: 'Ajuste de aumento',     corto: 'Aumento',  icon: 'PackagePlus',  roles: ROLES_AJUSTES, prioridad: 23 },

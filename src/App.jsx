@@ -11,7 +11,7 @@ import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import AppLayout from '@/components/layout/AppLayout';
 import Login from '@/pages/Login';
 import { ROLES_PROCESAMIENTOS } from '@/lib/procesamientos';
-import { ROLES_AJUSTES } from '@/lib/ajustes';
+import { ROLES_AJUSTES, ROLES_VENTAS } from '@/lib/ajustes';
 import TkcCredencialesDialog from '@/components/shared/TkcCredencialesDialog';
 import EsqueletoApp, { EsqueletoContenido } from '@/components/shared/Esqueleto';
 
@@ -23,6 +23,7 @@ const Inventario    = lazy(() => import('@/pages/Inventario'));
 const Mermas        = lazy(() => import('@/pages/Mermas'));
 const Lotes         = lazy(() => import('@/pages/Lotes'));
 const CasosIC       = lazy(() => import('@/pages/CasosIC'));
+const ResumenVentas = lazy(() => import('@/pages/ResumenVentas'));
 const Recepciones   = lazy(() => import('@/pages/Recepciones'));
 const Reabastecimiento   = lazy(() => import('@/pages/Reabastecimiento'));
 const Anuncios      = lazy(() => import('@/pages/Anuncios'));
@@ -106,6 +107,7 @@ const AuthenticatedApp = () => {
               puesto: lo que le toca a esa área. Ver src/lib/ambito.js. */}
           <Route path="/facturacion/inventario" element={<RoleGuard element={<Inventario ambito="facturacion" />} roles={ROLES_AJUSTES} />} />
           <Route path="/facturacion/mermas"     element={<RoleGuard element={<Mermas ambito="facturacion" />} roles={ROLES_AJUSTES} />} />
+          <Route path="/facturacion/ventas"    element={<RoleGuard element={<ResumenVentas />} roles={ROLES_VENTAS} />} />
           <Route path="/ajustes/aumento"     element={<RoleGuard element={<AjusteAumento />} roles={ROLES_AJUSTES} />} />
           <Route path="/ajustes/disminucion" element={<RoleGuard element={<AjusteDisminucion />} roles={ROLES_AJUSTES} />} />
           <Route path="/procesamientos"      element={<RoleGuard element={<Procesamientos />} roles={ROLES_PROCESAMIENTOS} />} />

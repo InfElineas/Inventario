@@ -213,3 +213,55 @@ departamento.
 
 Los ajustes de aumento y disminución y los procesamientos viven en
 `/ajustes/*` y `/procesamientos`, y hablan con elineas-transferencia.
+
+### Resumen de ventas (`/facturacion/ventas`)
+
+Lo que vendió la plataforma en un almacén entre dos fechas, por producto y por
+día, con unidades, órdenes, importe, costo y margen, y exportación a CSV. Es
+lo primero que pidió Facturación para conciliar. Lo ven `fact`, `auditor`,
+`jefe_depto` y los administradores.
+
+- Sale del informe RDP de la base (`public.rdp_rows_latest`), **la vista de la
+  última corrida de cada día**: la tabla guarda todas las corridas y sumarla
+  cuenta cada día varias veces.
+- Por defecto, los últimos 30 días **hasta ayer**: el informe se calcula una vez
+  al día y hoy no está. El máximo es un año.
+- Si el período tiene días sin datos, **lo avisa** antes de que alguien compare
+  el total con otra cifra.
+- **No son despachos de la flota ni ventas directas.** Eso queda pendiente de
+  que Facturación diga qué cuenta como despacho. Ver
+  [facturacion-hallazgos.md](facturacion-hallazgos.md).
+
+### Fotografía diaria de la existencia
+
+La base solo guarda una semana del submayor, y sin la existencia de hace un mes
+no se puede conciliar un período largo. `inventario.existencia_diaria` guarda
+**una fotografía por día** (la primera del día), solo de lo que no está a cero.
+La toma el servidor tras cada sincronización del catálogo; no recupera el
+pasado, solo cubre desde que se ejecuta.
+
+### Resumen de ventas (`/facturacion/ventas`)
+
+Lo que vendió la plataforma en un almacén entre dos fechas, por producto y por
+día, con unidades, órdenes, importe, costo y margen, y exportación a CSV. Es
+lo primero que pidió Facturación para conciliar. Lo ven `fact`, `auditor`,
+`jefe_depto` y los administradores.
+
+- Sale del informe RDP de la base (`public.rdp_rows_latest`), **la vista de la
+  última corrida de cada día**: la tabla guarda todas las corridas y sumarla
+  cuenta cada día varias veces.
+- Por defecto, los últimos 30 días **hasta ayer**: el informe se calcula una vez
+  al día y hoy no está. El máximo es un año.
+- Si el período tiene días sin datos, **lo avisa** antes de que alguien compare
+  el total con otra cifra.
+- **No son despachos de la flota ni ventas directas.** Eso queda pendiente de
+  que Facturación diga qué cuenta como despacho. Ver
+  [facturacion-hallazgos.md](facturacion-hallazgos.md).
+
+### Fotografía diaria de la existencia
+
+La base solo guarda una semana del submayor, y sin la existencia de hace un mes
+no se puede conciliar un período largo. `inventario.existencia_diaria` guarda
+**una fotografía por día** (la primera del día), solo de lo que no está a cero.
+La toma el servidor tras cada sincronización del catálogo; no recupera el
+pasado, solo cubre desde que se ejecuta.

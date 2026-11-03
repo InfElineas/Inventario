@@ -66,6 +66,13 @@ export function createSyncApiMiddleware() {
           .then((f) => { resultado.casos_abiertos = f?.resultado?.abiertos ?? 0 })
           .catch((e) => console.warn('[sync-api] no se pudieron detectar casos de anuncio:', e.message))
 
+        // La fotografía diaria de la existencia: la primera del día se queda.
+        // Aparte y sin esperar su fallo, por lo mismo que la detección: si la
+        // función no existe todavía o falla, el catálogo ya sincronizado no
+        // se pierde. Es idempotente, así que repetirla en cada sync no cuesta.
+        await queryOne('SELECT inventario.fotografiar_existencias() AS resultado')
+          .catch((e) => console.warn('[sync-api] no se pudo fotografiar la existencia:', e.message))
+
         // El registro lo lleva el servidor: antes lo escribía el navegador,
         // que era quien hacía el sync.
         await queryOne(

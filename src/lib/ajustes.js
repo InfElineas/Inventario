@@ -9,6 +9,9 @@
 /** Quién puede montar y confirmar ajustes. Lo comparten el menú, la ruta y el servidor. */
 export const ROLES_AJUSTES = ['fact', 'administrador', 'superadmin']
 
+/** Quién ve el resumen de ventas: facturación y quien la supervisa o audita. */
+export const ROLES_VENTAS = ['fact', 'auditor', 'jefe_depto', 'administrador', 'superadmin']
+
 /**
  * Quién puede subir y bajar de tienda.
  *
