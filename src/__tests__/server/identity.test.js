@@ -21,7 +21,7 @@ beforeEach(() => {
   process.env.SYSTEM_SLUG = 'inventario';
   vi.stubGlobal('fetch', vi.fn());
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); delete process.env.AUTH_SERVICE_KEY; });
 
 describe('signIn', () => {
   it('manda email, password y el systemSlug del sistema', async () => {
@@ -31,6 +31,30 @@ describe('signIn', () => {
     const [destino, opts] = fetch.mock.calls[0];
     expect(String(destino)).toBe(`${IS}/api/auth/sign-in`);
     expect(JSON.parse(opts.body)).toEqual({ email: 'a@x.com', password: 'pw', systemSlug: 'inventario' });
+  });
+
+  it('envía X-Service-Key cuando AUTH_SERVICE_KEY está definida', async () => {
+    process.env.AUTH_SERVICE_KEY = 'sk-test';
+    fetch.mockResolvedValue(resp(200, { user: {}, token: 'jwt' }, { 'set-auth-token': 'sess' }));
+    await signIn('a@x.com', 'pw');
+    expect(fetch.mock.calls[0][1].headers['X-Service-Key']).toBe('sk-test');
+    // la clave solo va en cabecera, nunca en el cuerpo
+    expect(fetch.mock.calls[0][1].body).not.toContain('sk-test');
+  });
+
+  it('sin AUTH_SERVICE_KEY no manda la cabecera', async () => {
+    delete process.env.AUTH_SERVICE_KEY;
+    fetch.mockResolvedValue(resp(401, {}));
+    await signIn('a@x.com', 'pw');
+    expect(fetch.mock.calls[0][1].headers).not.toHaveProperty('X-Service-Key');
+  });
+
+  it.each(['SERVICE_KEY_INVALID', 'CAPTCHA_FAILED'])('403 %s → error de configuración, no "sin acceso"', async (code) => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    fetch.mockResolvedValue(resp(403, { code }));
+    const r = await signIn('a@x.com', 'pw');
+    expect(r).toMatchObject({ ok: false, status: 502 });
+    expect(r.error).not.toMatch(/no tiene acceso/);
   });
 
   it('devuelve el session token de la cabecera y el JWT del cuerpo', async () => {

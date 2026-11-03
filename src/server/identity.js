@@ -21,6 +21,10 @@ import { createRemoteJWKSet, jwtVerify } from 'jose'
 // módulo ya se importó, así que capturarlas arriba daría siempre vacío.
 const authApiUrl = () => (process.env.AUTH_API_URL ?? '').replace(/\/+$/, '')
 const systemSlug = () => process.env.SYSTEM_SLUG ?? 'inventario'
+// Clave de servicio de ESTE sistema en el IS. El IS exige captcha en sign-in y
+// un backend no puede generar el token del widget: la clave en `X-Service-Key`
+// (junto con `systemSlug`) lo sustituye. Solo vive en el servidor.
+const serviceKey = () => process.env.AUTH_SERVICE_KEY ?? ''
 // El IS tal como lo ve el NAVEGADOR: puede diferir de AUTH_API_URL si este
 // servidor lo alcanza por una dirección interna.
 const authPublicUrl = () => (process.env.AUTH_PUBLIC_URL || authApiUrl()).replace(/\/+$/, '')
@@ -85,13 +89,27 @@ export function ipCliente(req) {
 export async function signIn(email, password, { ip } = {}) {
   const res = await fetch(url('/api/auth/sign-in'), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...cabeceraIp(ip) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(serviceKey() ? { 'X-Service-Key': serviceKey() } : {}),
+      ...cabeceraIp(ip),
+    },
     body: JSON.stringify({ email, password, systemSlug: systemSlug() }),
   })
 
   const datos = await res.json().catch(() => null)
 
   if (!res.ok) {
+    // Fallos de configuración, no de la persona: que no se confundan con
+    // "credenciales inválidas" ni con "sin rol". Se loguea el motivo real.
+    if (res.status === 403 && (datos?.code === 'SERVICE_KEY_INVALID' || datos?.code === 'CAPTCHA_FAILED')) {
+      console.error(`[identity] sign-in rechazado por el IS: ${datos.code}. Revisa AUTH_SERVICE_KEY.`)
+      return {
+        ok: false,
+        status: 502,
+        error: 'El inicio de sesión no está disponible por un problema de configuración. Avisa a soporte.',
+      }
+    }
     return {
       ok: false,
       status: res.status,
