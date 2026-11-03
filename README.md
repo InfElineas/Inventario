@@ -47,6 +47,7 @@ el bundle del navegador no incrusta ninguna variable.
 |---|---|
 | `AUTH_API_URL` | URL base del IS, alcanzable desde el servidor |
 | `SYSTEM_SLUG` | Slug del sistema en el IS (`inventario`) |
+| `AUTH_SERVICE_KEY` | Clave de servicio del sistema en el IS (`X-Service-Key` en sign-in); sustituye al captcha |
 | `AUTH_PUBLIC_URL` | URL del IS vista desde el navegador (login con Google); por defecto `AUTH_API_URL` |
 | `APP_URL` | Origen público de esta app; debe estar en `GOOGLE_REDIRECT_ORIGINS` del IS |
 | `DATABASE_URL` | ELINEAS_BD como `elineas_backend_app` (solo DML) |
