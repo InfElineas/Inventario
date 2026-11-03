@@ -15,7 +15,7 @@ const svc = vi.hoisted(() => ({
 }));
 vi.mock('@/services/tiendaService', () => svc);
 
-const { default: MoverTiendaDialog, sugerirBajada, sugerirBajadaLote } = await import('@/components/productos/MoverTiendaDialog');
+const { default: MoverTiendaDialog, sugerirBajadaLote } = await import('@/components/productos/MoverTiendaDialog');
 
 const PRODUCTO = {
   codigo: 'SC78913092601',
@@ -126,36 +126,12 @@ describe('MoverTiendaDialog', () => {
   });
 });
 
-describe('sugerirBajada', () => {
-  it('un sobrante propone lo que sobra, sin pasar de lo que hay en tienda', () => {
-    expect(sugerirBajada(5, 10)).toMatchObject({ cantidad: 5 });
-    expect(sugerirBajada(5, 3)).toMatchObject({ cantidad: 3 });
-  });
-
-  it('un faltante no propone cantidad: mover mercancía no lo corrige', () => {
-    const s = sugerirBajada(-4, 10);
-    expect(s.cantidad).toBeUndefined();
-    expect(s.motivo).toMatch(/faltante de 4/i);
-  });
-
-  it('un sobrante sin nada en tienda lo dice y no propone cantidad', () => {
-    const s = sugerirBajada(5, 0);
-    expect(s.cantidad).toBeUndefined();
-    expect(s.motivo).toMatch(/nada en tienda/i);
-  });
-
-  it('sin diferencia no hay sugerencia', () => {
-    expect(sugerirBajada(0, 10)).toBeNull();
-    expect(sugerirBajada(undefined, 10)).toBeNull();
-  });
-});
-
 describe('MoverTiendaDialog con sugerencia', () => {
   it('abre con la cantidad sugerida y explica de dónde sale', () => {
     montar({
       modulo: 'bajar',
       producto: { ...PRODUCTO, enTienda: 10 },
-      sugerencia: sugerirBajada(5, 10),
+      sugerencia: { cantidad: 5, motivo: 'Bajar 5 de tienda. Se propone bajar 5.' },
     });
     expect(screen.getByRole('spinbutton', { name: /cantidad a mover/i })).toHaveValue(5);
     expect(screen.getByText(/se propone bajar 5/i)).toBeInTheDocument();

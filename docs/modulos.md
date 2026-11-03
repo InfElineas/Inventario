@@ -70,6 +70,24 @@ tienes a medias.
 Cuando hay varios conteos del mismo producto, solo cuenta el último: los
 anteriores quedan ocultos con un aviso.
 
+### Análisis automático de la diferencia
+
+Al registrar un conteo con diferencia, y al abrir su detalle, el sistema
+recomienda qué hacer con ella y cuántas unidades. Mover mercancía y ajustar son
+cosas distintas: si TKC la tiene en otro sitio se **mueve**, y si de verdad
+falta o sobra se **ajusta**. El conteo se compara con **A** (almacén), no con la
+existencia total, y con la T (tienda) que TKC tiene ahora mismo:
+
+| Contó | Recomienda |
+|---|---|
+| **Más** que A | **Bajar** lo que hay de más en el almacén, sin pasar de T. Si aún sobra, sobrante real: ajuste de aumento |
+| **Igual** que A | Nada: la diferencia con el total son las unidades de la tienda, que no se contaron |
+| **Menos** que A | **Subir** lo que falta, como *posibilidad*: solo si están en el piso de la tienda; si no aparecen, faltante real: ajuste de disminución |
+
+El diálogo de subir o bajar de tienda abre con esa cantidad. **Supone que el
+conteo es el del almacén**; si se contara también el piso de tienda, la regla no
+vale tal cual. El código está en `src/lib/analisisConteo.js`.
+
 ## Vencimientos (`/lotes`)
 
 Los lotes salen del informe central (`lot_rows`), no de una tabla nuestra. De

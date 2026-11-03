@@ -44,11 +44,11 @@ beforeEach(() => {
 });
 
 describe('DialogosConteo', () => {
-  it('bajar: abre con el sobrante del conteo como cantidad, tope lo que hay en tienda', async () => {
+  it('bajar: el análisis propone lo que hay de más en el almacén, con tope lo que hay en tienda', async () => {
     mocks.existencia.mockResolvedValue({ existencia: { fisica: 20, enAlmacen: 15, enTienda: 3 } });
     montar({ tipo: 'bajar', inv: INV });
 
-    expect(await screen.findByText(/se propone bajar 3/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Bajar 3 de tienda\. Hay 25 en el almacén y TKC dice 15/i)).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: /cantidad a mover/i })).toHaveValue(3);
     expect(mocks.existencia).toHaveBeenCalledWith({ almacen: '789', idTienda: 'T1' });
   });
@@ -73,6 +73,32 @@ describe('DialogosConteo', () => {
 
     expect(await screen.findByText(/no está ligada a un producto/i)).toBeInTheDocument();
     expect(mocks.existencia).not.toHaveBeenCalled();
+  });
+
+  it('un faltante sin nada que bajar: no propone cantidad y dice por qué', async () => {
+    // Contó 21 y TKC dice que el almacén tiene 107 y la tienda 0: es un faltante real.
+    mocks.existencia.mockResolvedValue({ existencia: { fisica: 107, enAlmacen: 107, enTienda: 0 } });
+    montar({ tipo: 'bajar', inv: { ...INV, diferencia: -86, exist_fisica_tkc: 107, conteo_real: 21 } });
+
+    expect(await screen.findByText(/no recomienda bajar: faltan 86 en el almacén/i)).toBeInTheDocument();
+    // Sin sugerencia: la cantidad de siempre (con nada en tienda, 1).
+    expect(screen.getByRole('spinbutton', { name: /cantidad a mover/i })).toHaveValue(1);
+  });
+
+  it('un faltante en el almacén: subir propone la cantidad que falta, como posibilidad', async () => {
+    mocks.existencia.mockResolvedValue({ existencia: { fisica: 107, enAlmacen: 107, enTienda: 0 } });
+    montar({ tipo: 'subir', inv: { ...INV, diferencia: -86, exist_fisica_tkc: 107, conteo_real: 21 } });
+
+    expect(await screen.findByText(/posible: faltan 86 en el almacén; solo si están en el piso de la tienda/i)).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: /cantidad a mover/i })).toHaveValue(86);
+  });
+
+  it('el conteo coincide con el almacén: la diferencia es la tienda y no se propone bajar', async () => {
+    // El caso de la captura: EF 107, contó 21. Si el almacén tiene 21 y la tienda 86, no falta nada.
+    mocks.existencia.mockResolvedValue({ existencia: { fisica: 107, enAlmacen: 21, enTienda: 86 } });
+    montar({ tipo: 'bajar', inv: { ...INV, diferencia: -86, exist_fisica_tkc: 107, conteo_real: 21 } });
+
+    expect(await screen.findByText(/no recomienda bajar: no hay faltante en el almacén/i)).toBeInTheDocument();
   });
 
   it('un lote del informe, sin id de producto, se busca por código y usa su propia sugerencia', async () => {

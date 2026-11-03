@@ -21,6 +21,8 @@ import { SIN_SONDEO } from '@/lib/query-client';
 import { CLASIF_AJUSTE } from '@/lib/constants';
 import SugerenciasNota from '@/components/shared/SugerenciasNota';
 import SelectorIntercambio, { CLASIF_INTERCAMBIO } from '@/components/inventario/SelectorIntercambio';
+import AnalisisConteo from '@/components/inventario/AnalisisConteo';
+import { analizarConteo } from '@/lib/analisisConteo';
 
 
 // Extraída del formulario para poder probarla sin renderizar el componente.
@@ -52,6 +54,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
   const { almacen }         = useAlmacen();
   const [producto, setProducto] = useState(null);
   const [detalles, setDetalles] = useState([{ fecha_vencimiento: '', no_lote: '', cantidad: 0 }]);
+  const [contado, setContado] = useState(false);   // ya se tecleó una cantidad
   const [clasifAjuste, setClasifAjuste] = useState('');
   // El conteo con el que se intercambió, cuando la clasificación lo pide.
   const [intercambio, setIntercambio] = useState(null);
@@ -118,6 +121,11 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
   const efTkc = desglose ? desglose.fisica : efLocal;
   const desfase = desglose && desglose.fisica !== efLocal;
   const diferencia = conteoReal - efTkc;
+  // El análisis solo cuando ya se escribió una cantidad: con el formulario recién
+  // abierto el conteo vale cero y saldría un faltante entero que nadie ha contado.
+  const analisis = desglose && contado
+    ? analizarConteo({ conteo: conteoReal, enAlmacen: desglose.enAlmacen, enTienda: desglose.enTienda })
+    : null;
 
   // Sin el dato de TKC no se cuenta. Nuestra copia puede llevar horas, y una
   // diferencia calculada contra un número viejo es un ajuste equivocado: hace
@@ -127,6 +135,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
   const addDetalle = () => setDetalles([...detalles, { fecha_vencimiento: '', no_lote: '', cantidad: 0 }]);
   const removeDetalle = (i) => setDetalles(detalles.filter((_, idx) => idx !== i));
   const updateDetalle = (i, field, val) => {
+    if (field === 'cantidad') setContado(true);
     const copy = [...detalles];
     copy[i] = { ...copy[i], [field]: val };
     setDetalles(copy);
@@ -201,6 +210,9 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
             <p><span className="font-medium text-foreground">Clasificación:</span> {pendingData.clasif_ajuste || '—'}</p>
           </div>
         </div>
+
+        {/* Con la diferencia delante, lo que el análisis recomienda hacer con ella. */}
+        <AnalisisConteo analisis={analisis} />
 
         {/* Explicación del siguiente paso */}
         <div className="rounded-lg bg-secondary/60 border border-border p-4 space-y-2">
@@ -326,6 +338,9 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
               ahora mismo; el catálogo lleva sin sincronizar desde la última vez.
             </p>
           )}
+          {/* Qué hacer con la diferencia: mover mercancía, o ajustar. */}
+          <AnalisisConteo analisis={analisis} />
+
           {/* Sin el dato de TKC no se cuenta: la copia puede llevar horas y la
               diferencia saldría contra un número que ya no es. */}
           {sinSubmayor && (

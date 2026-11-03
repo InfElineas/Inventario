@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { fetchExistenciaTkc } from '@/services/tkcService';
 import { SIN_SONDEO } from '@/lib/query-client';
+import AnalisisConteo from '@/components/inventario/AnalisisConteo';
+import { analizarConteo, conteoDeRegistro } from '@/lib/analisisConteo';
 
 /**
  * De cuándo es el conteo y cómo está la existencia ahora.
@@ -35,8 +37,16 @@ export default function ExistenciaAhora({ inv }) {
     ? Math.round((Date.now() - new Date(inv.fecha_inv).getTime()) / 86400000)
     : null;
   const cambio = Number.isFinite(ahora) && Number.isFinite(entonces) && ahora !== entonces;
+  // Con A y T de AHORA: lo que recomienda quien procesa días después no es lo
+  // mismo que lo que se veía al contar. Un conteo ya cerrado no necesita consejo.
+  const analisis = inv.estado_tarea === 'completado' ? null : analizarConteo({
+    conteo: conteoDeRegistro(inv),
+    enAlmacen: submayor?.existencia?.enAlmacen,
+    enTienda: submayor?.existencia?.enTienda,
+  });
 
   return (
+    <>
     <div className="px-4 py-3 rounded-lg border border-border bg-secondary/40 text-xs space-y-1" style={{ borderRadius: 'var(--r-ctl)' }}>
       <p className="font-medium text-foreground">
         Conteo del {inv.fecha_inv?.slice(0, 10) ?? '—'}
@@ -54,5 +64,7 @@ export default function ExistenciaAhora({ inv }) {
         </p>
       )}
     </div>
+    <AnalisisConteo analisis={analisis} />
+    </>
   );
 }

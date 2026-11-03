@@ -3,7 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import AlertBanner from '@/components/shared/AlertBanner';
 import MenuAcciones from '@/components/productos/MenuAcciones';
-import MoverTiendaDialog, { sugerirBajada } from '@/components/productos/MoverTiendaDialog';
+import MoverTiendaDialog from '@/components/productos/MoverTiendaDialog';
+import { analizarConteo, conteoDeRegistro, sugerenciaDeAnalisis } from '@/lib/analisisConteo';
 import HistorialSubmayorDialog from '@/components/productos/HistorialSubmayorDialog';
 import HistorialInventarioDialog from '@/components/productos/HistorialInventarioDialog';
 import PreciosProductoDialog from '@/components/productos/PreciosProductoDialog';
@@ -159,16 +160,19 @@ export default function DialogosConteo({ accion, sugerir, onHecho, onClose }) {
 
   const { fisica, enAlmacen, enTienda } = submayor.existencia;
 
-  // La sugerencia es de bajar; subir se queda como en el catálogo. Y si la
-  // existencia cambió desde el conteo, se dice: la diferencia es de aquel día.
-  const base = tipo !== 'bajar' ? null
-    : sugerir ? sugerir(enTienda) : sugerirBajada(inv.diferencia, enTienda);
+  // Qué propone el análisis del conteo con A y T de TKC ahora mismo: cuánto
+  // bajar, o cuánto subir, o nada y por qué. Una pantalla con su propia regla
+  // —vencimientos— la pasa en `sugerir` y manda. Y si la existencia cambió
+  // desde el conteo, se dice: la diferencia es de aquel día.
+  const analisis = analizarConteo({ conteo: conteoDeRegistro(inv), enAlmacen, enTienda });
+  const base = tipo === 'bajar' && sugerir ? sugerir(enTienda)
+    : (tipo === 'bajar' || tipo === 'subir') ? sugerenciaDeAnalisis(analisis, tipo) : null;
   const entonces = inv.exist_fisica_tkc;
   const cambio = Number.isFinite(fisica) && Number.isFinite(entonces) && fisica !== entonces;
   const aviso = cambio
     ? `La existencia cambió desde el conteo (${entonces} → ${fisica}); la diferencia es la de aquel día.`
     : '';
-  const motivo = [base?.motivo, tipo === 'bajar' ? aviso : ''].filter(Boolean).join(' ');
+  const motivo = [base?.motivo, tipo === 'bajar' || tipo === 'subir' ? aviso : ''].filter(Boolean).join(' ');
   const sugerencia = motivo ? { ...(base ?? {}), motivo } : undefined;
 
   return (

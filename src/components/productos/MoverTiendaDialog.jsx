@@ -52,34 +52,6 @@ const MODULOS = {
 };
 
 /**
- * Cuánto bajar de tienda a la vista de la diferencia de un conteo.
- *
- * Solo un SOBRANTE se atiende bajando: lo que sobra se encontró de más y
- * está en el piso de tienda. Un faltante no se arregla moviendo mercancía de
- * sitio, y proponer una cantidad ahí invitaría a mover lo que no corrige
- * nada. Nunca más de lo que hay en tienda: TKC lo recortaría igualmente, pero
- * quien confirma tiene que ver desde el principio la cantidad real.
- *
- * @returns {{ cantidad?: number, motivo: string } | null}
- */
-export function sugerirBajada(diferencia, enTienda) {
-  const dif = Number(diferencia);
-  if (!Number.isFinite(dif) || dif === 0) return null;
-  if (dif < 0) {
-    return { motivo: `El conteo tiene un faltante de ${-dif}: mover mercancía entre almacén y tienda no lo corrige.` };
-  }
-  const tienda = Number(enTienda ?? 0);
-  if (tienda <= 0) {
-    return { motivo: `El conteo tiene un sobrante de ${dif}, pero no hay nada en tienda que bajar.` };
-  }
-  const cantidad = Math.min(dif, tienda);
-  return {
-    cantidad,
-    motivo: `Sobrante de ${dif} en el conteo, ${tienda} en tienda: se propone bajar ${cantidad}.`,
-  };
-}
-
-/**
  * Cuánto bajar de tienda de un lote crítico o vencido.
  *
  * Lo que tiene el lote, sin pasar de lo que hay en tienda: el resto del lote
