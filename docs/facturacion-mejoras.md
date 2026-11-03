@@ -41,6 +41,10 @@ dónde está el dato, con qué campos y con qué límite de peticiones.
   sabe cuáles obligan a leer HTML de TKC (frágil, lento, una petición por
   documento).
 - Depende de: acceso a la documentación o a un ejemplo de respuesta de cada API.
+- **Estado: a medias.** Lo que se puede saber leyendo el código está en
+  [facturacion-fuentes.md](facturacion-fuentes.md), junto con cuatro preguntas
+  que solo se contestan mirando el servidor (con el comando para cada una).
+  Falta que se ejecuten.
 
 ### Fase 1 — Sobre lo que ya existe
 
