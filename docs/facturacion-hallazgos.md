@@ -212,15 +212,6 @@ es quien decide qué suma ANÁLISIS.
   el punto de partida que le falta a F6. Cada día que pasa se puede conciliar
   un día más hacia atrás desde hoy.
 
-## 6 bis. Ya implementado con lo que había
-
-- **Resumen de ventas** (`/facturacion/ventas`): ventas de la plataforma por
-  período, desde `rdp_rows_latest`. Sin definir «despacho» no se puede ir más
-  allá, pero «lo que se vendió» no tiene ambigüedad.
-- **Fotografía diaria de la existencia** (`inventario.existencia_diaria`): es
-  el punto de partida que le falta a F6. Cada día que pasa se puede conciliar
-  un día más hacia atrás desde hoy.
-
 ## 7. Pendiente, con el estado de hoy
 
 | # | Qué | De quién | Bloquea |

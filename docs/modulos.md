@@ -232,31 +232,21 @@ lo primero que pidió Facturación para conciliar. Lo ven `fact`, `auditor`,
   que Facturación diga qué cuenta como despacho. Ver
   [facturacion-hallazgos.md](facturacion-hallazgos.md).
 
-### Fotografía diaria de la existencia
+### Ver todos los precios de un producto
 
-La base solo guarda una semana del submayor, y sin la existencia de hace un mes
-no se puede conciliar un período largo. `inventario.existencia_diaria` guarda
-**una fotografía por día** (la primera del día), solo de lo que no está a cero.
-La toma el servidor tras cada sincronización del catálogo; no recupera el
-pasado, solo cubre desde que se ejecuta.
+El menú de acciones de la fila —en catálogo, inventario, mermas y
+vencimientos— tiene **Ver todos los precios**. El catálogo enseña un solo
+precio, el que TKC guarda como precio (`precio_costo`); un producto tiene más,
+cada uno en una tabla distinta. El diálogo los junta, uno por fuente, cada una
+con su nota de dónde sale:
 
-### Resumen de ventas (`/facturacion/ventas`)
+- **Catálogo:** `precio_costo`, y el precio propio de la aplicación si lo tiene.
+- **Lista de precios (VD):** `costo`, `venta`, `directa` y `precio_tienda` de
+  `vd_rows_latest`. Los nombres son los de las columnas: no se ha confirmado
+  con Facturación qué significa cada una.
 
-Lo que vendió la plataforma en un almacén entre dos fechas, por producto y por
-día, con unidades, órdenes, importe, costo y margen, y exportación a CSV. Es
-lo primero que pidió Facturación para conciliar. Lo ven `fact`, `auditor`,
-`jefe_depto` y los administradores.
-
-- Sale del informe RDP de la base (`public.rdp_rows_latest`), **la vista de la
-  última corrida de cada día**: la tabla guarda todas las corridas y sumarla
-  cuenta cada día varias veces.
-- Por defecto, los últimos 30 días **hasta ayer**: el informe se calcula una vez
-  al día y hoy no está. El máximo es un año.
-- Si el período tiene días sin datos, **lo avisa** antes de que alguien compare
-  el total con otra cifra.
-- **No son despachos de la flota ni ventas directas.** Eso queda pendiente de
-  que Facturación diga qué cuenta como despacho. Ver
-  [facturacion-hallazgos.md](facturacion-hallazgos.md).
+Cada fuente falla por separado. **Falta el precio de proveedor**: no se sabe
+en qué tabla está; la consulta `supabase/diagnostico_precios.sql` lo busca.
 
 ### Fotografía diaria de la existencia
 
@@ -265,3 +255,4 @@ no se puede conciliar un período largo. `inventario.existencia_diaria` guarda
 **una fotografía por día** (la primera del día), solo de lo que no está a cero.
 La toma el servidor tras cada sincronización del catálogo; no recupera el
 pasado, solo cubre desde que se ejecuta.
+

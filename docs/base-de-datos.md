@@ -130,4 +130,3 @@ Siguen en Postgres porque son reglas de la base, no de la aplicación:
 | `lote_revisiones.sql` | La fecha que inventario lee del envase |
 | `casos_ic.sql` | Quién respondió un caso de IC y cuándo, y el índice por estado |
 | `existencia_diaria.sql` | Una fotografía diaria de la existencia, y el permiso sobre el informe de ventas |
-| `existencia_diaria.sql` | Una fotografía diaria de la existencia, y el permiso sobre el informe de ventas |
