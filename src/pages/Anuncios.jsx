@@ -338,12 +338,12 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
             <SelectContent>{MOTIVOS_ELINEAS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={invForm.accion_inv} onValueChange={(v) => setInvForm({ ...invForm, accion_inv: v })}>
-            <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Acción INV" /></SelectTrigger>
+            <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Enviar a Anuncios" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="reactivar">Reactivar</SelectItem>
-              <SelectItem value="escalar_ca">Escalar a CA</SelectItem>
-              <SelectItem value="dar_de_baja">Dar de baja</SelectItem>
-              <SelectItem value="mantener">Mantener</SelectItem>
+              <SelectItem value="reactivar">Reactivar (lo hace Anuncios)</SelectItem>
+              <SelectItem value="escalar_ca">Escalar a Anuncios (CA)</SelectItem>
+              <SelectItem value="dar_de_baja">Dar de baja (no pasa a Anuncios)</SelectItem>
+              <SelectItem value="mantener">Mantener (no pasa a Anuncios)</SelectItem>
             </SelectContent>
           </Select>
           <Textarea value={invForm.nota_inv} onChange={(e) => setInvForm({ ...invForm, nota_inv: e.target.value })} placeholder="Nota INV" style={{ borderRadius: 'var(--r-ctl)' }} />
@@ -356,7 +356,9 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
               fecha_inv: format(new Date(), 'yyyy-MM-dd'),
               estado_tarea: needsCaAction ? 'pend_ca' : 'en_auditoria',
             });
-          }} disabled={!invForm.accion_inv} style={{ borderRadius: 'var(--r-ctl)' }}>Confirmar</Button>
+          }} disabled={!invForm.accion_inv} style={{ borderRadius: 'var(--r-ctl)' }}>
+            {['reactivar', 'escalar_ca'].includes(invForm.accion_inv) ? 'Enviar a Anuncios' : 'Confirmar'}
+          </Button>
         </div>
       )}
 
