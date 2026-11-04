@@ -1,4 +1,4 @@
-import { rolesDe } from '@/lib/roles';
+import { departamentosACargo, rolesDe } from '@/lib/roles';
 
 /**
  * Los comentarios de supervisión: a quién van y quién los ve. Lógica pura.
@@ -47,7 +47,7 @@ export function departamentosDe(usuario) {
   for (const [depto, roles] of Object.entries(ROLES_DE_DESTINO)) {
     if (roles.some((r) => suyos.includes(r))) deptos.add(depto);
   }
-  if (suyos.includes('jefe_depto') && usuario?.departamento) deptos.add(usuario.departamento);
+  for (const d of departamentosACargo(usuario)) deptos.add(d);
   return [...deptos];
 }
 

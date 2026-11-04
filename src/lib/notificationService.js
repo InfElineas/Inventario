@@ -1,13 +1,13 @@
 import { base44 } from '@/api/base44Client';
+import { jefesDe } from '@/lib/jefesDeDepartamento';
+import { departamentosACargo, rolesDe } from '@/lib/roles';
 
 // ── Notificar a los jefes de departamento ─────────────────────
 // Inserta una notificación directamente para cada jefe activo
 // del departamento indicado. Sin deduplicación: es por evento real.
 export async function notifyJefeDepto(departamento, tipo, titulo, mensaje, link) {
   try {
-    const jefes = await base44.entities.Usuario.filter({
-      role: 'jefe_depto', departamento, activo: true,
-    });
+    const jefes = await jefesDe(departamento);
     await avisar(jefes, tipo, titulo, mensaje, link);
   } catch {}
 }
@@ -41,7 +41,7 @@ export async function notifyUsuario(email, tipo, titulo, mensaje, link) {
 export async function notificarComentario({ para, roles, autor, titulo, mensaje, enlace }) {
   const [porRol, jefes] = await Promise.all([
     base44.entities.Usuario.filter({ role: roles, activo: true }),
-    base44.entities.Usuario.filter({ role: 'jefe_depto', departamento: para, activo: true }),
+    jefesDe(para),
   ]);
   const gente = [...(porRol ?? []), ...(jefes ?? [])].filter((u) => u.email && u.email !== autor);
   await avisar(gente, 'comentario', titulo, mensaje, enlace);
@@ -241,8 +241,8 @@ export async function runSmartNotifications({
   }
 
   // 8. Jefe de departamento — resumen diario según depto asignado
-  if (role === 'jefe_depto' && user.departamento) {
-    const dept = user.departamento;
+  // Uno por cada departamento que dirige: quien lleva dos recibe los dos resúmenes.
+  for (const dept of rolesDe(user).includes('jefe_depto') ? departamentosACargo(user) : []) {
 
     if (dept === 'inventario') {
       const devueltos = inventarios.filter(i => i.estado_tarea === 'devuelto').length

@@ -9,6 +9,18 @@
 // último no resuelve alias.
 
 /**
+ * Los roles de jefe, uno por departamento. El departamento va en el nombre del
+ * rol, que es como se asigna en el Identity Server: `jefe_facturacion` es jefe de
+ * Facturación. Quien lo es de dos departamentos tiene los dos roles.
+ */
+export const DEPARTAMENTO_DE_JEFE = {
+  jefe_inventario:  'inventario',
+  jefe_facturacion: 'facturacion',
+  jefe_ca:          'ca',
+};
+const JEFES_DE_DEPARTAMENTO = Object.keys(DEPARTAMENTO_DE_JEFE);
+
+/**
  * De mayor a menor autoridad. Los nombres coinciden exactamente con los roles
  * creados en el IS para el sistema "inventario" y con las claves de ROLES en
  * constants.js, así que el mapeo es directo y no hay tabla de equivalencias.
@@ -20,6 +32,9 @@ export const ROLE_PRECEDENCE = [
   'superadmin',
   'administrador',
   'jefe_depto',
+  'jefe_inventario',
+  'jefe_facturacion',
+  'jefe_ca',
   'auditor',
   'supervisor',
   'fact',
@@ -66,6 +81,11 @@ export function resolveRoles(isRoles) {
       .map((n) => n.trim().toLowerCase())
   );
 
+  // Ser jefe de un departamento es ser jefe de departamento: todo lo que mira
+  // `jefe_depto` —el menú, Supervisión, los permisos— sigue funcionando sin
+  // enterarse de que ahora el rol dice de cuál.
+  if (JEFES_DE_DEPARTAMENTO.some((r) => nombres.has(r))) nombres.add('jefe_depto');
+
   return ROLE_PRECEDENCE.filter((rol) => nombres.has(rol));
 }
 
@@ -96,4 +116,21 @@ export function tieneRol(usuario, permitidos) {
   const suyos = rolesDe(usuario);
   if (suyos.includes('superadmin')) return true;
   return (permitidos ?? []).some((r) => suyos.includes(r));
+}
+
+/**
+ * Los departamentos que tiene a su cargo, por sus roles de jefe (`jefe_inventario`,
+ * `jefe_facturacion`, `jefe_ca`). Un jefe de dos departamentos los tiene los dos.
+ *
+ * Un `jefe_depto` de antes, sin rol de departamento, conserva el `departamento`
+ * que se le puso a mano: así nadie pierde su departamento mientras el Identity
+ * Server se reorganiza.
+ *
+ * @returns {string[]} `inventario`, `facturacion` y/o `ca`. Vacío si no es jefe.
+ */
+export function departamentosACargo(usuario) {
+  const suyos = rolesDe(usuario);
+  const deRoles = JEFES_DE_DEPARTAMENTO.filter((r) => suyos.includes(r)).map((r) => DEPARTAMENTO_DE_JEFE[r]);
+  if (deRoles.length > 0) return deRoles;
+  return suyos.includes('jefe_depto') && usuario?.departamento ? [usuario.departamento] : [];
 }

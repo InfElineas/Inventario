@@ -19,15 +19,16 @@ describe('notificarComentario', () => {
   };
 
   it('avisa a quienes tienen los roles del departamento y a su jefe, con el enlace al registro', async () => {
-    m.usuarios.mockImplementation(async (cond) => (cond.role === 'jefe_depto'
-      ? [{ email: 'jefefact@x.com' }]
-      : [{ email: 'fact1@x.com' }, { email: 'fact2@x.com' }]));
+    m.usuarios.mockImplementation(async (cond) => (cond.role
+      ? [{ email: 'fact1@x.com' }, { email: 'fact2@x.com' }]
+      // Los activos: de ahí salen los jefes, por sus roles de jefe.
+      : [{ email: 'jefefact@x.com', roles: ['jefe_depto', 'jefe_facturacion'] },
+        { email: 'jefeinv@x.com', roles: ['jefe_depto', 'jefe_inventario'] }]));
 
     await notificarComentario(datos);
 
     // Se busca por roles y, aparte, el jefe del departamento.
     expect(m.usuarios).toHaveBeenCalledWith({ role: ['fact'], activo: true });
-    expect(m.usuarios).toHaveBeenCalledWith({ role: 'jefe_depto', departamento: 'facturacion', activo: true });
     const para = m.crear.mock.calls.map(([n]) => n.usuario_id).sort();
     expect(para).toEqual(['fact1@x.com', 'fact2@x.com', 'jefefact@x.com']);
     expect(m.crear.mock.calls[0][0]).toMatchObject({
@@ -36,9 +37,10 @@ describe('notificarComentario', () => {
   });
 
   it('no avisa al autor, que ya lo sabe, ni dos veces a quien sale por dos vías', async () => {
-    m.usuarios.mockImplementation(async (cond) => (cond.role === 'jefe_depto'
-      ? [{ email: 'jefe@x.com' }, { email: 'fact1@x.com' }]
-      : [{ email: 'fact1@x.com' }]));
+    m.usuarios.mockImplementation(async (cond) => (cond.role
+      ? [{ email: 'fact1@x.com' }]
+      : [{ email: 'jefe@x.com', roles: ['jefe_depto', 'jefe_facturacion'] },
+        { email: 'fact1@x.com', roles: ['jefe_depto', 'jefe_facturacion'] }]));
 
     await notificarComentario(datos);
 

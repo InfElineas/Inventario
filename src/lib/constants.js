@@ -7,6 +7,9 @@ export const ROLES = {
   ic:           { label: 'Intervención',    color: 'bg-warning text-warning-foreground' },
   supervisor:   { label: 'Supervisor',      color: 'bg-neutral text-neutral-foreground' },
   jefe_depto:   { label: 'Jefe de Depto.', color: 'bg-[#6366F1] text-white' },
+  jefe_inventario:  { label: 'Jefe de Inventario',   color: 'bg-[#6366F1] text-white' },
+  jefe_facturacion: { label: 'Jefe de Facturación',  color: 'bg-[#6366F1] text-white' },
+  jefe_ca:          { label: 'Jefe de Creación de Anuncio', color: 'bg-[#6366F1] text-white' },
   administrador:{ label: 'Administrador',   color: 'bg-purple text-purple-foreground' },
   superadmin:   { label: 'Super Admin',     color: 'bg-[var(--c-bad)] text-white' },
 };

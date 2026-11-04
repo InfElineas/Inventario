@@ -11,7 +11,7 @@
  * Para que sea inmediato, se revoca la sesión desde el propio IS.
  */
 
-import { resolveRole, resolveRoles } from '../lib/roles.js'
+import { resolveRole, resolveRoles, departamentosACargo } from '../lib/roles.js'
 import { verifyJwt, refreshJwt, getRoles } from './identity.js'
 import { leerCookies, fijarCookiesSesion, COOKIE_SESSION, COOKIE_JWT } from './cookies.js'
 import { queryOne } from './db.js'
@@ -32,22 +32,29 @@ export async function sincronizarUsuario({ email, nombre, roles }) {
   // que elegir UNO (ver src/lib/roles.js).
   const lista = resolveRoles(roles)
   const rol = resolveRole(roles)
+  // Los departamentos que dirige, según sus roles de jefe. Solo se escriben si
+  // el IS los da: un jefe de antes, con el departamento puesto a mano, lo conserva.
+  const departamentos = departamentosACargo({ roles: lista })
 
   // Sin rol conocido en este sistema no se crea ni actualiza nada: que el IS
   // haya autenticado no implica acceso a Inventario.
   if (!rol) return null
 
   return queryOne(
-    `INSERT INTO usuarios (email, full_name, role, roles, activo)
-          VALUES ($1, $2, $3, $4, true)
+    `INSERT INTO usuarios (email, full_name, role, roles, departamentos, activo)
+          VALUES ($1, $2, $3, $4, $5, true)
      ON CONFLICT (email) DO UPDATE
             SET role = EXCLUDED.role,
                 roles = EXCLUDED.roles,
+                departamentos = CASE WHEN cardinality(EXCLUDED.departamentos) > 0
+                                     THEN EXCLUDED.departamentos ELSE usuarios.departamentos END,
+                departamento = CASE WHEN cardinality(EXCLUDED.departamentos) > 0
+                                    THEN EXCLUDED.departamentos[1] ELSE usuarios.departamento END,
                 full_name = COALESCE(NULLIF(usuarios.full_name, ''), EXCLUDED.full_name)
       RETURNING id, email, full_name, role, roles, activo, almacen_num,
                 almacenes_config, sync_config, anuncio_config, nickname,
-                avatar_url, departamento`,
-    [email, nombre ?? '', rol, lista],
+                avatar_url, departamento, departamentos`,
+    [email, nombre ?? '', rol, lista, departamentos],
   )
 }
 
@@ -56,7 +63,7 @@ export async function cargarUsuario(email) {
   return queryOne(
     `SELECT id, email, full_name, role, roles, activo, almacen_num,
             almacenes_config, sync_config, anuncio_config, nickname,
-            avatar_url, departamento
+            avatar_url, departamento, departamentos
        FROM usuarios
       WHERE email = $1`,
     [email],

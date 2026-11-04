@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client'
+import { jefesDe } from '@/lib/jefesDeDepartamento'
 
 // ── Labels ─────────────────────────────────────────────────
 
@@ -45,9 +46,7 @@ async function notificarRol(rol, tipo, titulo, mensaje, excluirEmail = null, lin
 }
 
 async function notificarJefe(departamento, tipo, titulo, mensaje, link = null) {
-  const jefes = await base44.entities.Usuario.filter({
-    role: 'jefe_depto', departamento, activo: true,
-  })
+  const jefes = await jefesDe(departamento)
   if (!jefes.length) return
   await Promise.all(jefes.map(j => insertNotif(j.email, tipo, titulo, mensaje, link)))
 }

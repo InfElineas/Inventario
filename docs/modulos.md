@@ -10,11 +10,26 @@
 | `ca` | Comercial. Decide rebajas y reactivaciones |
 | `esp_anuncio` | Especialista de anuncios |
 | `supervisor` | Resuelve incidencias de recepción |
-| `jefe_depto` | Sigue el trabajo de su departamento |
+| `jefe_inventario`, `jefe_facturacion`, `jefe_ca` | Jefe de **ese** departamento: siguen su trabajo y lo comentan en Supervisión. El departamento va en el nombre del rol |
+| `jefe_depto` | Lo que miran el menú y los permisos: **cualquier `jefe_*` lo incluye solo**. Un `jefe_depto` suelto, de antes, conserva el departamento puesto a mano |
 | `administrador`, `superadmin` | Pasan por encima de todo |
 
 Una persona puede tener **varios**, y lo que puede hacer es la suma. En el
 código se comprueba siempre con `tieneRol(user, [...])`.
+
+**Jefes de departamento.** El departamento forma parte del rol, y se asigna en el
+Identity Server (sistema `inventario`): `jefe_facturacion` es jefe de
+Facturación. Quien dirige dos departamentos tiene los dos roles; quien además
+cuenta o factura, tiene también `inv` o `fact` —un rol operativo no hace jefe—.
+En cada login la aplicación lee esos roles y guarda los departamentos
+(`usuarios.departamentos`); de ahí salen los avisos al jefe, el selector de
+Supervisión y a quién se le dirige un comentario. Para el cambio:
+
+1. Ejecutar **antes de desplegar** `supabase/jefes_departamentos.sql`.
+2. Crear en el IS los roles `jefe_inventario`, `jefe_facturacion` y `jefe_ca`, y
+   asignarlos. Mientras tanto, los jefes de antes siguen funcionando con su
+   departamento de siempre.
+3. El cambio de rol surte efecto en el siguiente inicio de sesión.
 
 ## Estados compartidos
 

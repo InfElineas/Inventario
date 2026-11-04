@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
+import { departamentosACargo, tieneRol } from '@/lib/roles';
 import { DEPARTAMENTOS } from '@/lib/constants';
 import { sanitizeText } from '@/lib/security';
 import StatusBadge from '@/components/shared/StatusBadge';
@@ -99,9 +100,13 @@ const DETAIL_FIELDS = {
 // ── Componente principal ──────────────────────────────────────
 export default function Supervision() {
   const { user } = useAuth();
-  const role = user?.role;
 
-  const defaultDept = role === 'jefe_depto' ? (user?.departamento || 'inventario') : 'inventario';
+  // Los departamentos que dirige, de sus roles de jefe: `jefe_facturacion` es jefe
+  // de Facturación. Un administrador puede mirar cualquiera.
+  const suyos = departamentosACargo(user);
+  const esAdmin = tieneRol(user, ['administrador']);
+  const defaultDept = suyos[0] || 'inventario';
+  const elegibles = esAdmin ? Object.entries(DEPARTAMENTOS) : Object.entries(DEPARTAMENTOS).filter(([k]) => suyos.includes(k));
 
   const [viewDept, setViewDept]     = useState(defaultDept);
   const [activeTab, setActiveTab]   = useState(() => DEPT_TABS[defaultDept]?.[0]?.key || 'inventarios');
@@ -203,13 +208,13 @@ export default function Supervision() {
             </p>
           </div>
         </div>
-        {role === 'administrador' && (
+        {elegibles.length > 1 && (
           <Select value={viewDept} onValueChange={handleDeptChange}>
             <SelectTrigger className="w-[150px] h-9 text-xs" style={{ borderRadius: 'var(--r-ctl)' }}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(DEPARTAMENTOS).map(([k, v]) => (
+              {elegibles.map(([k, v]) => (
                 <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>
               ))}
             </SelectContent>

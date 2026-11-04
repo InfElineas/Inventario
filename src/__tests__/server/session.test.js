@@ -28,7 +28,7 @@ describe('sincronizarUsuario — espejado del rol', () => {
     await sincronizarUsuario({ email: USUARIO.email, nombre: 'A', roles: [{ name: 'inv' }] });
 
     const [, valores] = queryOne.mock.calls[0];
-    expect(valores).toEqual([USUARIO.email, 'A', 'inv', ['inv']]);
+    expect(valores).toEqual([USUARIO.email, 'A', 'inv', ['inv'], []]);
   });
 
   it('con varios roles guarda TODOS, y como principal el de mayor precedencia', async () => {
@@ -43,6 +43,21 @@ describe('sincronizarUsuario — espejado del rol', () => {
     const [, valores] = queryOne.mock.calls[0];
     expect(valores[2]).toBe('administrador');
     expect(valores[3]).toEqual(['administrador', 'inv']);
+  });
+
+  it('un jefe: sus departamentos salen de sus roles de jefe, y es también jefe_depto', async () => {
+    queryOne.mockResolvedValue({ ...USUARIO, role: 'jefe_depto' });
+    await sincronizarUsuario({
+      email: USUARIO.email, nombre: 'A',
+      roles: [{ name: 'jefe_facturacion' }, { name: 'fact' }, { name: 'jefe_ca' }],
+    });
+
+    const [sql, valores] = queryOne.mock.calls[0];
+    expect(valores[2]).toBe('jefe_depto');
+    expect(valores[3]).toEqual(['jefe_depto', 'jefe_facturacion', 'jefe_ca', 'fact']);
+    expect(valores[4]).toEqual(['facturacion', 'ca']);
+    // Sin roles de jefe en el IS se conserva lo que ya había: un jefe de antes no pierde su departamento.
+    expect(sql).toMatch(/CASE WHEN cardinality\(EXCLUDED\.departamentos\) > 0/);
   });
 
   it('un rol que el sistema no conoce no se guarda', async () => {

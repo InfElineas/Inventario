@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveRole, resolveRoles, tieneRol, ROLE_PRECEDENCE } from '@/lib/roles';
+import { resolveRole, resolveRoles, tieneRol, departamentosACargo, ROLE_PRECEDENCE } from '@/lib/roles';
 import { ROLES } from '@/lib/constants';
 
 describe('ROLE_PRECEDENCE', () => {
@@ -100,5 +100,50 @@ describe('resolveRoles y tieneRol', () => {
     expect(tieneRol({ role: 'inv' }, ['inv'])).toBe(true);
     expect(tieneRol({ role: 'inv' }, ['fact'])).toBe(false);
     expect(tieneRol({}, ['inv'])).toBe(false);
+  });
+});
+
+describe('jefes de departamento, con su departamento en el rol', () => {
+  it('los roles jefe_inventario, jefe_facturacion y jefe_ca existen y tienen precedencia', () => {
+    for (const r of ['jefe_inventario', 'jefe_facturacion', 'jefe_ca']) {
+      expect(ROLE_PRECEDENCE).toContain(r);
+      expect(ROLES[r]).toBeDefined();
+    }
+  });
+
+  it('ser jefe de un departamento es ser también jefe_depto, que es lo que mira todo lo demás', () => {
+    expect(resolveRoles([{ name: 'jefe_facturacion' }])).toEqual(['jefe_depto', 'jefe_facturacion']);
+    expect(resolveRole([{ name: 'jefe_ca' }, { name: 'inv' }])).toBe('jefe_depto');
+  });
+
+  it('un jefe puede tener además un rol operativo, y un administrador gana al jefe', () => {
+    expect(resolveRoles([{ name: 'inv' }, { name: 'jefe_inventario' }])).toEqual(['jefe_depto', 'jefe_inventario', 'inv']);
+    expect(resolveRole([{ name: 'jefe_inventario' }, { name: 'administrador' }])).toBe('administrador');
+  });
+
+  it('un jefe_depto de antes no se duplica ni cambia', () => {
+    expect(resolveRoles([{ name: 'jefe_depto' }])).toEqual(['jefe_depto']);
+  });
+});
+
+describe('departamentosACargo', () => {
+  it('sale del rol de jefe, no de una columna', () => {
+    expect(departamentosACargo({ roles: ['jefe_depto', 'jefe_facturacion'] })).toEqual(['facturacion']);
+    expect(departamentosACargo({ roles: ['jefe_depto', 'jefe_inventario', 'jefe_ca'] })).toEqual(['inventario', 'ca']);
+  });
+
+  it('un rol operativo no hace jefe: ser de facturación no es dirigirla', () => {
+    expect(departamentosACargo({ roles: ['jefe_depto', 'jefe_facturacion', 'inv'] })).toEqual(['facturacion']);
+    expect(departamentosACargo({ roles: ['fact'] })).toEqual([]);
+  });
+
+  it('un jefe de antes conserva el departamento puesto a mano; sin rol de jefe, nada', () => {
+    expect(departamentosACargo({ role: 'jefe_depto', departamento: 'ca' })).toEqual(['ca']);
+    expect(departamentosACargo({ role: 'inv', departamento: 'ca' })).toEqual([]);
+    expect(departamentosACargo(undefined)).toEqual([]);
+  });
+
+  it('los roles de jefe mandan sobre el departamento de antes', () => {
+    expect(departamentosACargo({ roles: ['jefe_depto', 'jefe_facturacion'], departamento: 'inventario' })).toEqual(['facturacion']);
   });
 });

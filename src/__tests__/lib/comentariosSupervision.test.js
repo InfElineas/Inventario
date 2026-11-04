@@ -14,6 +14,11 @@ describe('departamentosDe', () => {
     expect(departamentosDe(persona('auditor'))).toEqual(['auditoria']);
   });
 
+  it('un jefe, los departamentos de sus roles de jefe', () => {
+    expect(departamentosDe({ email: 'j@x.com', roles: ['jefe_depto', 'jefe_facturacion'] })).toEqual(['facturacion']);
+    expect(departamentosDe({ email: 'j@x.com', roles: ['jefe_depto', 'jefe_inventario', 'jefe_ca'] }).sort()).toEqual(['ca', 'inventario']);
+  });
+
   it('un jefe de departamento, el suyo; quien tiene dos roles, los dos', () => {
     expect(departamentosDe(persona('jefe_depto', { departamento: 'facturacion' }))).toEqual(['facturacion']);
     expect(departamentosDe({ email: 'a@x.com', roles: ['inv', 'fact'] }).sort()).toEqual(['facturacion', 'inventario']);

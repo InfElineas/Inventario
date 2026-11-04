@@ -74,6 +74,8 @@ function perfilPublico(usuario, tkc = {}) {
     nickname: usuario.nickname ?? '',
     avatar_url: usuario.avatar_url ?? '',
     departamento: usuario.departamento ?? null,
+    // Los que dirige, según sus roles de jefe en el IS.
+    departamentos: Array.isArray(usuario.departamentos) ? usuario.departamentos : [],
     // Solo el estado: la contraseña de TKC no sale nunca del servidor.
     tiene_tkc: Boolean(tkc.tiene),
     tkc_expira: tkc.expira ?? null,
