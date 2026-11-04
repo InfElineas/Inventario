@@ -22,11 +22,12 @@
  * @param {object} props
  * @param {string} props.titulo
  * @param {string} [props.subtitulo]   Una línea. Si no cabe, se recorta.
+ * @param {React.ReactNode} [props.pestanas]  Las pestañas de la pantalla, bajo el título.
  * @param {React.ReactNode} [props.filtros]
  * @param {React.ReactNode} [props.buscador]
  * @param {React.ReactNode} [props.recuento]
  */
-export default function CabeceraLista({ titulo, subtitulo, filtros, buscador, recuento }) {
+export default function CabeceraLista({ titulo, subtitulo, pestanas, filtros, buscador, recuento }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -42,6 +43,8 @@ export default function CabeceraLista({ titulo, subtitulo, filtros, buscador, re
           <div className="flex flex-wrap items-center gap-2">{filtros}</div>
         )}
       </div>
+
+      {pestanas}
 
       {buscador}
 

@@ -70,6 +70,14 @@ tienes a medias.
 Cuando hay varios conteos del mismo producto, solo cuenta el último: los
 anteriores quedan ocultos con un aviso.
 
+La pestaña **Historial por usuario** enseña todos los conteos que ha hecho una
+persona, en cualquier estado —lo ya completado también—, con filtros de almacén,
+estado y fechas, búsqueda por producto, y un resumen (conteos, sin diferencia,
+sobrantes y faltantes) que cuenta la base entera y no solo la página. Un
+inventarista ve los suyos; el jefe de departamento, facturación, auditoría y los
+administradores eligen de quién. La lista de la pestaña *Conteos* sigue siendo lo
+que está en manos de inventario.
+
 El **buscador de productos** de los formularios (nuevo conteo, merma, recepción)
 pone **primero los que tienen existencia** y detrás el resto: pide por separado
 lo que tiene y todo, y los junta. Antes ordenaba solo por nombre y con quince

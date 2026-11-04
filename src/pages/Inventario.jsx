@@ -5,7 +5,6 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import StatusBadge from '@/components/shared/StatusBadge';
 import AlertBanner from '@/components/shared/AlertBanner';
 import SugerenciasNota from '@/components/shared/SugerenciasNota';
 import InventarioForm from '@/components/inventario/InventarioForm';
@@ -15,11 +14,11 @@ import { ChevronRight, ClipboardList, ListFilter, Plus, Search, ShoppingCart, Tr
 import { ESTADOS_AMBITO, ETIQUETA_AMBITO } from '@/lib/ambito';
 import { useTablaPaginada } from '@/lib/useTablaPaginada';
 import { useAlmacen } from '@/lib/useAlmacen';
-import { warehouseName } from '@/services/tkc/warehouses';
 import { Textarea } from '@/components/ui/textarea';
 import ColPicker, { loadColsWithOrder, saveColsWithOrder } from '@/components/shared/ColPicker';
 import Pagination from '@/components/shared/Pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { notifyJefeDepto } from '@/lib/notificationService';
 import { logTransicion, logBorrado, notificarTransicion, avisarConteoReemplazado, avisarIntercambioEmparejado } from '@/lib/workflowService';
 import { useConfirm } from '@/lib/useConfirm';
@@ -35,6 +34,8 @@ import CabeceraLista from '@/components/shared/CabeceraLista';
 import ListaResponsive from '@/components/shared/ListaResponsive';
 import SelectorIntercambio, { CLASIF_INTERCAMBIO, cambiosDelPar } from '@/components/inventario/SelectorIntercambio';
 import ExistenciaAhora from '@/components/inventario/ExistenciaAhora';
+import HistorialPorUsuario from '@/components/inventario/HistorialPorUsuario';
+import { celdaConteo } from '@/components/inventario/celdasConteo';
 
 const PAGE_SIZE = 50
 
@@ -127,6 +128,7 @@ export default function Inventario() {
   const [accionFila, setAccionFila] = useState(null);   // { tipo, inv } del menú de la fila
   // Por defecto, lo que le toca a esta sección. Ver src/lib/ambito.js.
   const { almacen, setAlmacen, almacenesConfig } = useAlmacen();
+  const [vista, setVista] = useState('conteos');   // 'conteos' | 'historial'
   const [filterEstado, setFilterEstado] = useState('ambito');
   const [searchQ, setSearchQ] = useState('');
   const [cols, setCols] = useState(() => loadColsWithOrder(INV_COLS_KEY, INV_COL_DEFS).visible);
@@ -333,12 +335,31 @@ export default function Inventario() {
   const difColor = (d) => d === 0 ? 'text-[var(--c-ok-dim)]' : d > 0 ? 'text-[var(--c-warn)]' : 'text-[var(--c-bad)]';
 
 
+  // Las mismas dos pestañas bajo el título en las dos vistas.
+  const pestanas = (
+    <Tabs value={vista} onValueChange={setVista}>
+      <TabsList>
+        <TabsTrigger value="conteos">Conteos</TabsTrigger>
+        <TabsTrigger value="historial">Historial por usuario</TabsTrigger>
+      </TabsList>
+    </Tabs>
+  );
+
+  if (vista === 'historial') {
+    return (
+      <div className="space-y-6">
+        <HistorialPorUsuario user={user} vistaGlobal={vistaGlobal} pestanas={pestanas} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {ConfirmDialogNode}
       <CabeceraLista
         titulo="Inventario"
         subtitulo="Conteos y ajustes de inventario"
+        pestanas={pestanas}
         recuento={`${total} ${total === 1 ? 'resultado' : 'resultados'}`}
         buscador={(
           <div className="relative">
@@ -844,55 +865,6 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
     </div>
     </>
   );
-}
-
-/** Una celda del listado de conteos, la misma para tabla y ficha. */
-function celdaConteo(inv, clave, enTabla, difColor, acciones) {
-  // `py-1.5`: la fila baja de 44 px a 32. En una pantalla de portátil eso
-  // son seis filas más sin desplazar, que es de lo que va un listado de
-  // trabajo. La ficha del teléfono no cambia: ahí el dedo manda.
-  const env = (contenido, clases = '') => (enTabla
-    ? <td key={clave} className={`px-2.5 py-1.5 ${clases}`}>{contenido}</td>
-    : contenido);
-
-  switch (clave) {
-    case 'producto':
-      return env(
-        <>
-          <p className="font-medium leading-snug">{inv.producto_nombre}</p>
-          <p className="text-xs text-muted-foreground font-mono">{inv.producto_codigo}</p>
-        </>,
-      );
-    case 'almacen':
-      return env(
-        <span className="text-xs text-muted-foreground">
-          {warehouseName(inv.almacen_num) || inv.almacen_num || '—'}
-        </span>,
-      );
-    case 'ef_tkc':
-      return env(<span className="tabular-nums">{inv.exist_fisica_tkc ?? '—'}</span>, 'text-right');
-    case 'conteo':
-      return env(<span className="font-medium tabular-nums">{inv.conteo_real}</span>, 'text-right');
-    case 'diferencia':
-      return env(
-        <span className={`font-medium tabular-nums ${difColor(inv.diferencia)}`}>
-          {inv.diferencia > 0 ? '+' : ''}{inv.diferencia}
-        </span>,
-        'text-right',
-      );
-    case 'clasificacion':
-      return env(<span className="text-xs text-muted-foreground">{inv.clasif_ajuste || '—'}</span>);
-    case 'especialista':
-      return env(<span className="text-xs text-muted-foreground">{inv.especialista_nombre || '—'}</span>);
-    case 'estado':
-      return env(<StatusBadge status={inv.estado_tarea} />, 'text-center');
-    case 'fecha':
-      return env(<span className="text-muted-foreground">{inv.fecha_inv?.slice(0, 10)}</span>);
-    case 'acciones':
-      return env(acciones(inv), 'whitespace-nowrap');
-    default:
-      return env(null);
-  }
 }
 
 
