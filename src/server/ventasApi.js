@@ -42,8 +42,10 @@ function fechaValida(texto) {
  * un mensaje que dice qué falta, no un error de SQL.
  */
 export function leerParametros(consulta) {
+  // Las ventas directas no dicen de qué almacén son: sin almacén, de todos.
+  const fuente = consulta.get('fuente') === 'directas' ? 'directas' : 'plataforma'
   const almacen = consulta.get('almacen') ?? ''
-  if (!ALMACEN.test(almacen)) throw new ErrorParametro('Falta el almacén.')
+  if (fuente === 'plataforma' && !ALMACEN.test(almacen)) throw new ErrorParametro('Falta el almacén.')
 
   const desde = consulta.get('desde')
   const hasta = consulta.get('hasta')
@@ -57,11 +59,19 @@ export function leerParametros(consulta) {
 
   // Un solo producto: lo pide el análisis de una diferencia. Sin él, todos.
   const codigo = consulta.get('codigo')
-  if (codigo) {
-    if (!CODIGO.test(codigo)) throw new ErrorParametro('El código del producto no es válido.')
-    return { almacen, desde, hasta, dias, codigo }
-  }
-  return { almacen, desde, hasta, dias }
+  if (codigo && !CODIGO.test(codigo)) throw new ErrorParametro('El código del producto no es válido.')
+  const base = fuente === 'directas' ? { desde, hasta, dias, fuente } : { almacen, desde, hasta, dias }
+  return codigo ? { ...base, codigo } : base
+}
+
+/** El día cuyos productos se piden, y de qué fuente. */
+export function leerParametrosDia(consulta) {
+  const fuente = consulta.get('fuente') === 'directas' ? 'directas' : 'plataforma'
+  const almacen = consulta.get('almacen') ?? ''
+  if (fuente === 'plataforma' && !ALMACEN.test(almacen)) throw new ErrorParametro('Falta el almacén.')
+  const fecha = consulta.get('fecha')
+  if (fechaValida(fecha) === null) throw new ErrorParametro('La fecha es AAAA-MM-DD.')
+  return fuente === 'directas' ? { fecha, fuente } : { fecha, almacen }
 }
 
 const num = (v) => Number(v) || 0
@@ -85,8 +95,9 @@ export async function resumenVentas({ almacen, desde, hasta, dias, codigo }) {
               SUM(r.importe)                AS importe,
               SUM(r.costo_total)            AS costo
          FROM public.rdp_rows_latest r
-         LEFT JOIN productos p
-                ON p.almacen_num = r.almacen_key AND p.codigo_producto = r.codigo
+         LEFT JOIN (SELECT codigo_producto, MAX(nombre) AS nombre
+                      FROM productos WHERE almacen_num = $1 GROUP BY codigo_producto) p
+                ON p.codigo_producto = r.codigo
         WHERE r.almacen_key = $1 AND r.report_date BETWEEN $2 AND $3 ${soloProducto}
         GROUP BY r.codigo
         ORDER BY SUM(r.cantidad) DESC, r.codigo
@@ -151,6 +162,131 @@ export async function resumenVentas({ almacen, desde, hasta, dias, codigo }) {
       primera: cobertura.rows[0]?.primera ?? null,
       ultima: cobertura.rows[0]?.ultima ?? null,
     },
+  }
+}
+
+/**
+ * Las ventas directas del período: la misma forma que `resumenVentas`, de
+ * `rdp_vd_rows_latest` (la última corrida de cada día, como en el informe de la
+ * plataforma).
+ *
+ * No dicen de qué almacén son —ni esa tabla ni el histórico guardan ese dato—, así
+ * que son de todos, y no traen costo: `costo` va en cero y el margen no se calcula.
+ * Una «orden» es una factura. El importe es cantidad por precio final.
+ */
+export async function resumenDirectas({ desde, hasta, codigo }) {
+  const soloProducto = codigo ? 'AND r.code = $3' : ''
+  const parametros = codigo ? [desde, hasta, codigo] : [desde, hasta]
+  const [porProducto, porDia, cobertura] = await Promise.all([
+    query(
+      `SELECT r.code                              AS codigo,
+              MAX(p.nombre)                       AS nombre,
+              SUM(r.quantity)                     AS cantidad,
+              COUNT(DISTINCT r.invoice_number)    AS ordenes,
+              SUM(r.quantity * r.final_price)     AS importe
+         FROM public.rdp_vd_rows_latest r
+         LEFT JOIN (SELECT codigo_producto, MAX(nombre) AS nombre
+                      FROM productos GROUP BY codigo_producto) p
+                ON p.codigo_producto = r.code
+        WHERE r.sell_date BETWEEN $1 AND $2 ${soloProducto}
+        GROUP BY r.code
+        ORDER BY SUM(r.quantity) DESC, r.code
+        LIMIT ${MAX_PRODUCTOS + 1}`,
+      parametros,
+    ),
+    query(
+      `SELECT r.sell_date::text                   AS fecha,
+              SUM(r.quantity)                     AS cantidad,
+              COUNT(DISTINCT r.invoice_number)    AS ordenes,
+              SUM(r.quantity * r.final_price)     AS importe
+         FROM public.rdp_vd_rows_latest r
+        WHERE r.sell_date BETWEEN $1 AND $2 ${soloProducto}
+        GROUP BY r.sell_date
+        ORDER BY r.sell_date`,
+      parametros,
+    ),
+    query(`SELECT MIN(sell_date)::text AS primera, MAX(sell_date)::text AS ultima FROM public.rdp_vd_rows_latest`),
+  ])
+
+  const productos = porProducto.rows.slice(0, MAX_PRODUCTOS).map((f) => ({
+    codigo: f.codigo, nombre: f.nombre ?? '', cantidad: num(f.cantidad),
+    ordenes: num(f.ordenes), importe: num(f.importe), costo: 0,
+  }))
+  const dia = porDia.rows.map((f) => ({
+    fecha: f.fecha, cantidad: num(f.cantidad), ordenes: num(f.ordenes), importe: num(f.importe), costo: 0,
+  }))
+  const total = dia.reduce(
+    (t, d) => ({ cantidad: t.cantidad + d.cantidad, ordenes: t.ordenes + d.ordenes, importe: t.importe + d.importe, costo: 0 }),
+    { cantidad: 0, ordenes: 0, importe: 0, costo: 0 },
+  )
+  const dias = Math.round((Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`)) / 86400000) + 1
+  return {
+    fuente: 'directas', desde, hasta, total, productos,
+    recortado: porProducto.rows.length > MAX_PRODUCTOS,
+    dias: dia,
+    cobertura: {
+      diasPedidos: dias, diasConDatos: dia.length,
+      primera: cobertura.rows[0]?.primera ?? null, ultima: cobertura.rows[0]?.ultima ?? null,
+    },
+  }
+}
+
+/**
+ * Los productos de UN día, para abrirlo en la lista de días: una cifra de seis
+ * mil unidades no dice nada hasta que se ve qué se vendió. De la plataforma
+ * (de un almacén) o de las ventas directas (de todos).
+ *
+ * @returns {Promise<{ fecha: string, fuente: string, productos: Array<{ codigo, nombre, cantidad, ordenes, importe, costo }> }>}
+ */
+export async function productosDelDia({ fecha, almacen, fuente = 'plataforma' }) {
+  if (fuente === 'directas') {
+    const r = await query(
+      `SELECT r.code                              AS codigo,
+              MAX(p.nombre)                       AS nombre,
+              SUM(r.quantity)                     AS cantidad,
+              COUNT(DISTINCT r.invoice_number)    AS ordenes,
+              SUM(r.quantity * r.final_price)     AS importe
+         FROM public.rdp_vd_rows_latest r
+         LEFT JOIN (SELECT codigo_producto, MAX(nombre) AS nombre
+                      FROM productos GROUP BY codigo_producto) p
+                ON p.codigo_producto = r.code
+        WHERE r.sell_date = $1
+        GROUP BY r.code
+        ORDER BY SUM(r.quantity) DESC, r.code
+        LIMIT ${MAX_PRODUCTOS}`,
+      [fecha],
+    )
+    return {
+      fecha, fuente,
+      productos: r.rows.map((f) => ({
+        codigo: f.codigo, nombre: f.nombre ?? '', cantidad: num(f.cantidad),
+        ordenes: num(f.ordenes), importe: num(f.importe), costo: 0,
+      })),
+    }
+  }
+  const r = await query(
+    `SELECT r.codigo,
+            MAX(p.nombre)           AS nombre,
+            SUM(r.cantidad)         AS cantidad,
+            SUM(r.cant_ordenes)     AS ordenes,
+            SUM(r.importe)          AS importe,
+            SUM(r.costo_total)      AS costo
+       FROM public.rdp_rows_latest r
+       LEFT JOIN (SELECT codigo_producto, MAX(nombre) AS nombre
+                    FROM productos WHERE almacen_num = $1 GROUP BY codigo_producto) p
+              ON p.codigo_producto = r.codigo
+      WHERE r.almacen_key = $1 AND r.report_date = $2
+      GROUP BY r.codigo
+      ORDER BY SUM(r.cantidad) DESC, r.codigo
+      LIMIT ${MAX_PRODUCTOS}`,
+    [almacen, fecha],
+  )
+  return {
+    fecha, fuente: 'plataforma',
+    productos: r.rows.map((f) => ({
+      codigo: f.codigo, nombre: f.nombre ?? '', cantidad: num(f.cantidad),
+      ordenes: num(f.ordenes), importe: num(f.importe), costo: num(f.costo),
+    })),
   }
 }
 
@@ -222,7 +358,8 @@ export function createVentasApiMiddleware() {
   return async function ventasApiMiddleware(req, res, next) {
     const ruta = (req.url ?? '/').split('?')[0]
     const esMensual = ruta === '/api/ventas/mensual'
-    if (ruta !== '/api/ventas/resumen' && !esMensual) return next()
+    const esDia = ruta === '/api/ventas/dia'
+    if (ruta !== '/api/ventas/resumen' && !esMensual && !esDia) return next()
     if (req.method !== 'GET') return responder(res, 405, { error: { message: 'Método no permitido' } })
 
     try {
@@ -236,7 +373,9 @@ export function createVentasApiMiddleware() {
 
       const consulta = new URL(req.url, 'http://local').searchParams
       if (esMensual) return responder(res, 200, await ventasMensuales(leerParametrosMensual(consulta)))
-      return responder(res, 200, await resumenVentas(leerParametros(consulta)))
+      if (esDia) return responder(res, 200, await productosDelDia(leerParametrosDia(consulta)))
+      const params = leerParametros(consulta)
+      return responder(res, 200, params.fuente === 'directas' ? await resumenDirectas(params) : await resumenVentas(params))
     } catch (error) {
       if (error instanceof ErrorParametro) return responder(res, 400, { error: { message: error.message } })
       console.error('[ventas-api] error:', error)

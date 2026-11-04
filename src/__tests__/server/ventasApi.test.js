@@ -17,6 +17,7 @@ vi.mock('@/server/session', () => sesion);
 const {
   leerParametros, resumenVentas, ErrorParametro, MAX_DIAS,
   leerParametrosMensual, ventasMensuales, MAX_MESES, createVentasApiMiddleware,
+  leerParametrosDia, resumenDirectas, productosDelDia,
 } = await import('@/server/ventasApi');
 
 const q = (obj) => new URLSearchParams(obj);
@@ -201,5 +202,105 @@ describe('middleware de ventas', () => {
   it('parámetros malos, 400; otras rutas siguen su camino', async () => {
     expect((await llamar('/api/ventas/mensual', 'fact')).res.statusCode).toBe(400);
     expect((await llamar('/api/otra', 'fact')).sigue).toHaveBeenCalled();
+  });
+});
+
+describe('ventas directas y productos de un día', () => {
+  const q = (o) => new URLSearchParams(o);
+  const ok = { desde: '2026-10-01', hasta: '2026-10-31' };
+
+  it('las ventas directas no piden almacén y lo dicen con la fuente', () => {
+    expect(leerParametros(q({ ...ok, fuente: 'directas' }))).toEqual({ ...ok, dias: 31, fuente: 'directas' });
+    expect(leerParametros(q({ ...ok, fuente: 'directas', codigo: 'A1' })).codigo).toBe('A1');
+    // La plataforma sigue pidiéndolo, y una fuente desconocida es la plataforma.
+    expect(() => leerParametros(q({ ...ok, fuente: 'otra' }))).toThrow(/almacén/);
+  });
+
+  it('el día: fecha válida, y almacén solo para la plataforma', () => {
+    expect(leerParametrosDia(q({ almacen: '789', fecha: '2026-10-05' }))).toEqual({ almacen: '789', fecha: '2026-10-05' });
+    expect(leerParametrosDia(q({ fuente: 'directas', fecha: '2026-10-05' }))).toEqual({ fuente: 'directas', fecha: '2026-10-05' });
+    expect(() => leerParametrosDia(q({ almacen: '789', fecha: '5/10/2026' }))).toThrow(/AAAA-MM-DD/);
+    expect(() => leerParametrosDia(q({ fecha: '2026-10-05' }))).toThrow(/almacén/);
+  });
+
+  describe('resumenDirectas', () => {
+    beforeEach(() => {
+      db.query.mockReset();
+      db.query.mockImplementation(async (sql) => {
+        if (/GROUP BY r\.code\b/.test(sql)) return { rows: [{ codigo: 'A1', nombre: 'Arroz', cantidad: '8', ordenes: '3', importe: '40.5' }] };
+        if (/GROUP BY r\.sell_date/.test(sql)) return { rows: [{ fecha: '2026-10-05', cantidad: '8', ordenes: '3', importe: '40.5' }] };
+        return { rows: [{ primera: '2026-09-25', ultima: '2026-11-02' }] };
+      });
+    });
+
+    it('lee de la vista de la última corrida de cada día, sin almacén y con el costo en cero', async () => {
+      const r = await resumenDirectas({ ...ok, dias: 31 });
+      for (const [sql] of db.query.mock.calls.filter(([s]) => /GROUP BY/.test(s))) {
+        expect(sql).toMatch(/rdp_vd_rows_latest/);
+        expect(sql).not.toMatch(/almacen/i);
+      }
+      expect(r.fuente).toBe('directas');
+      expect(r.productos).toEqual([{ codigo: 'A1', nombre: 'Arroz', cantidad: 8, ordenes: 3, importe: 40.5, costo: 0 }]);
+      expect(r.total).toEqual({ cantidad: 8, ordenes: 3, importe: 40.5, costo: 0 });
+      expect(r.cobertura).toEqual({ diasPedidos: 31, diasConDatos: 1, primera: '2026-09-25', ultima: '2026-11-02' });
+    });
+
+    it('un producto: el código es un parámetro', async () => {
+      await resumenDirectas({ ...ok, dias: 31, codigo: 'A1' });
+      const [sql, valores] = db.query.mock.calls.find(([s]) => /GROUP BY r\.code\b/.test(s));
+      expect(sql).toMatch(/r\.code = \$3/);
+      expect(valores).toEqual(['2026-10-01', '2026-10-31', 'A1']);
+    });
+
+    it('el nombre sale de una subconsulta ya agrupada: unir productos tal cual repite filas y infla las sumas', async () => {
+      await resumenDirectas({ ...ok, dias: 31 });
+      const [sql] = db.query.mock.calls.find(([s]) => /GROUP BY r\.code\b/.test(s));
+      expect(sql).toMatch(/SELECT codigo_producto, MAX\(nombre\)[\s\S]*GROUP BY codigo_producto/);
+    });
+  });
+
+  describe('productosDelDia', () => {
+    beforeEach(() => {
+      db.query.mockReset();
+      db.query.mockResolvedValue({ rows: [
+        { codigo: 'A1', nombre: 'Arroz', cantidad: '6500.0', ordenes: '40', importe: '900', costo: '700' },
+        { codigo: 'B2', nombre: null, cantidad: '3', ordenes: '1', importe: null, costo: null },
+      ] });
+    });
+
+    it('la plataforma: los productos de UN día de un almacén, con números', async () => {
+      const r = await productosDelDia({ fecha: '2026-10-05', almacen: '789' });
+      const [sql, valores] = db.query.mock.calls[0];
+      expect(sql).toMatch(/rdp_rows_latest/);
+      expect(valores).toEqual(['789', '2026-10-05']);
+      expect(r.productos).toEqual([
+        { codigo: 'A1', nombre: 'Arroz', cantidad: 6500, ordenes: 40, importe: 900, costo: 700 },
+        { codigo: 'B2', nombre: '', cantidad: 3, ordenes: 1, importe: 0, costo: 0 },
+      ]);
+    });
+
+    it('las ventas directas: de la vista de directas y sin almacén', async () => {
+      const r = await productosDelDia({ fecha: '2026-10-05', fuente: 'directas' });
+      const [sql, valores] = db.query.mock.calls[0];
+      expect(sql).toMatch(/rdp_vd_rows_latest/);
+      expect(valores).toEqual(['2026-10-05']);
+      expect(r.fuente).toBe('directas');
+    });
+  });
+
+  it('el middleware: /api/ventas/dia sigue las mismas reglas de acceso', async () => {
+    const mw = createVentasApiMiddleware();
+    const llamar = async (url, role) => {
+      sesion.resolverSesion.mockResolvedValue(role ? { usuario: { role } } : null);
+      const res = { statusCode: 0, cuerpo: null, setHeader() {}, end(c) { this.cuerpo = JSON.parse(c); } };
+      await mw({ url, method: 'GET' }, res, vi.fn());
+      return res;
+    };
+    db.query.mockReset().mockResolvedValue({ rows: [] });
+    expect((await llamar('/api/ventas/dia?almacen=789&fecha=2026-10-05', 'inv')).statusCode).toBe(200);
+    expect((await llamar('/api/ventas/dia?fuente=directas&fecha=2026-10-05', 'fact')).statusCode).toBe(200);
+    expect((await llamar('/api/ventas/dia?almacen=789&fecha=mal', 'fact')).statusCode).toBe(400);
+    expect((await llamar('/api/ventas/dia?almacen=789&fecha=2026-10-05', null)).statusCode).toBe(401);
+    expect((await llamar('/api/ventas/dia?almacen=789&fecha=2026-10-05', 'visitante')).statusCode).toBe(403);
   });
 });

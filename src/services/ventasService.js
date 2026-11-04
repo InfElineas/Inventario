@@ -9,8 +9,11 @@
  *   cobertura: { diasPedidos: number, diasConDatos: number, primera: string|null, ultima: string|null },
  * }>}
  */
-export async function fetchResumenVentas({ almacen, desde, hasta, codigo }) {
-  const params = new URLSearchParams({ almacen, desde, hasta })
+export async function fetchResumenVentas({ almacen, desde, hasta, codigo, fuente }) {
+  const params = new URLSearchParams({ desde, hasta })
+  // Las ventas directas no son de ningún almacén: sin él, de todos.
+  if (almacen && fuente !== 'directas') params.set('almacen', almacen)
+  if (fuente === 'directas') params.set('fuente', 'directas')
   // Un solo producto, si se pide.
   if (codigo) params.set('codigo', codigo)
   const res = await fetch(`/api/ventas/resumen?${params}`, { credentials: 'include' })
@@ -40,5 +43,22 @@ export async function fetchVentasMensuales({ almacen, meses = 12 }) {
     error.status = res.status
     throw error
   }
+  return datos
+}
+
+/**
+ * Los productos de UN día: lo que hay detrás de «ese día se vendieron 6.500
+ * unidades». De la plataforma de un almacén o de las ventas directas.
+ *
+ * @returns {Promise<{ fecha: string, fuente: string,
+ *   productos: Array<{ codigo: string, nombre: string, cantidad: number, ordenes: number, importe: number, costo: number }> }>}
+ */
+export async function fetchVentasDia({ almacen, fecha, fuente }) {
+  const params = new URLSearchParams({ fecha })
+  if (fuente === 'directas') params.set('fuente', 'directas')
+  else params.set('almacen', almacen)
+  const res = await fetch(`/api/ventas/dia?${params}`, { credentials: 'include' })
+  const datos = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(datos?.error?.message ?? `Error ${res.status} al consultar el día`)
   return datos
 }

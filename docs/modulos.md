@@ -406,9 +406,29 @@ viejo `/facturacion/ventas` redirige aquí.
   al día y hoy no está. El máximo es un año.
 - Si el período tiene días sin datos, **lo avisa** antes de que alguien compare
   el total con otra cifra.
-- **No son despachos de la flota ni ventas directas.** Eso queda pendiente de
-  que Facturación diga qué cuenta como despacho. Ver
-  [facturacion-hallazgos.md](facturacion-hallazgos.md).
+- Dos pestañas que no se mezclan: **Plataforma** (de un almacén) y **Ventas
+  directas** (de todos). «Despacho» es venta: la flota queda fuera.
+
+**Por día.** Cada día se abre y enseña **los productos que lo componen**, pedidos
+solo al abrirlo (`/api/ventas/dia`): «el día 5 se vendieron 6.500 unidades» no
+dice nada hasta saber de qué. Un selector de producto —con buscador por código o
+nombre, entre los que vendieron en el período— deja solo **los días en que se
+vendió ese producto**, con sus totales; pulsar un producto dentro de un día hace
+lo mismo.
+
+**Ventas directas** (`public.rdp_vd_rows_latest`, también la última corrida de cada
+día). Hay cosas que esa tabla no tiene, y la pantalla lo dice:
+
+- **No dice de qué almacén es cada venta**, así que se cuentan todas y el selector
+  de almacén no aplica.
+- **No trae costo**: no hay margen, y el importe es cantidad por precio final.
+  Una «orden» es una factura.
+- **Tiene un hueco** del 21 de julio al 24 de septiembre de 2026 (la tabla
+  histórica `RDP_VD`, anterior, no se lee todavía).
+
+Los nombres de producto salen de una subconsulta agrupada por código: unir el
+catálogo directamente repetía la fila de cada producto con más de un anuncio y
+las sumas salían infladas.
 
 ### Ver todos los precios de un producto
 

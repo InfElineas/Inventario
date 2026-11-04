@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rangoPorDefecto, diasDelRango, margen, ventasACsv, etiquetaMes, completarMeses } from '@/lib/ventas';
+import { rangoPorDefecto, diasDelRango, margen, ventasACsv, etiquetaMes, completarMeses, filtrarProductos } from '@/lib/ventas';
 
 describe('rangoPorDefecto', () => {
   it('treinta días terminados ayer: hoy no, que el informe no lo tiene', () => {
@@ -83,5 +83,26 @@ describe('completarMeses', () => {
 
   it('sin filas, ceros', () => {
     expect(completarMeses(undefined, 2, hoy).every((m) => m.cantidad === 0)).toBe(true);
+  });
+});
+
+describe('filtrarProductos', () => {
+  const lista = [
+    { codigo: '7501', nombre: 'Aceite de oliva' },
+    { codigo: '7502', nombre: 'Arroz grano largo' },
+    { codigo: 'NoMT9', nombre: 'Café molido' },
+  ];
+
+  it('por nombre o por código, sin mirar mayúsculas ni acentos', () => {
+    expect(filtrarProductos(lista, 'cafe').map((p) => p.codigo)).toEqual(['NoMT9']);
+    expect(filtrarProductos(lista, 'ARROZ').map((p) => p.codigo)).toEqual(['7502']);
+    expect(filtrarProductos(lista, '7501').map((p) => p.codigo)).toEqual(['7501']);
+    expect(filtrarProductos(lista, 'nomt').map((p) => p.codigo)).toEqual(['NoMT9']);
+  });
+
+  it('sin texto, los primeros hasta el límite; sin coincidencias, nada', () => {
+    expect(filtrarProductos(lista, '', 2).map((p) => p.codigo)).toEqual(['7501', '7502']);
+    expect(filtrarProductos(lista, 'zzz')).toEqual([]);
+    expect(filtrarProductos(undefined, 'a')).toEqual([]);
   });
 });

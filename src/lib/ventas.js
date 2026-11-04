@@ -75,3 +75,21 @@ export function completarMeses(filas, meses, hoy = new Date()) {
   }
   return salida;
 }
+
+/**
+ * Los productos que coinciden con lo escrito, por código o por nombre y sin
+ * mirar mayúsculas ni acentos. Sin texto, los primeros: una lista de miles no se
+ * pinta entera, se busca.
+ *
+ * @param {Array<{ codigo: string, nombre?: string }>} productos
+ * @param {string} texto
+ * @param {number} [limite]
+ */
+export function filtrarProductos(productos, texto, limite = 100) {
+  const plano = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const q = plano(texto).trim();
+  const lista = q
+    ? (productos ?? []).filter((p) => plano(`${p.codigo} ${p.nombre}`).includes(q))
+    : (productos ?? []);
+  return lista.slice(0, limite);
+}
