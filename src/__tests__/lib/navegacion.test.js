@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { destinosDeMovil, TODOS_LOS_DESTINOS, esRutaActiva } from '@/lib/navegacion';
+import { destinosDeMovil, TODOS_LOS_DESTINOS, esRutaActiva, NAV_GROUPS } from '@/lib/navegacion';
 
 /**
  * La navegación del teléfono.
@@ -119,5 +119,21 @@ describe('Mermas, dentro de Ajuste de disminución', () => {
     // El aumento sigue siendo de facturación.
     const aumento = TODOS_LOS_DESTINOS.find((d) => d.path === '/ajustes/aumento');
     expect(aumento.roles).not.toContain('inv');
+  });
+});
+
+describe('el grupo ANÁLISIS es de auditoría', () => {
+  const analisis = NAV_GROUPS.find((g) => g.label === 'ANÁLISIS');
+
+  it('solo lo ven auditoría y los administradores', () => {
+    const roles = new Set(analisis.items.flatMap((i) => i.roles));
+    expect([...roles].sort()).toEqual(['administrador', 'auditor', 'superadmin']);
+  });
+
+  it('Supervisión, que es de los jefes de departamento, ya no está dentro', () => {
+    expect(analisis.items.some((i) => i.path === '/supervision')).toBe(false);
+    const supervision = TODOS_LOS_DESTINOS.find((d) => d.path === '/supervision');
+    expect(supervision.roles).toEqual(['jefe_depto', 'administrador', 'superadmin']);
+    expect(supervision.grupo).toBeNull();
   });
 });

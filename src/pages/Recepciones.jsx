@@ -33,6 +33,7 @@ import { FiltroIcono } from '@/components/shared/ControlesLista';
 import CabeceraLista from '@/components/shared/CabeceraLista';
 import ListaResponsive from '@/components/shared/ListaResponsive';
 
+import ComentariosDeSupervision from '@/components/supervision/ComentariosDeSupervision';
 const RECEP_COL_DEFS = [
   { key: 'no_recepcion',      label: 'No. Recepción', defaultOn: true, required: true  },
   { key: 'proveedor',         label: 'Proveedor',     defaultOn: true, required: false },
@@ -763,6 +764,8 @@ function RecepcionDetail({ recepcion, user, onUpdate, onDelete }) {
           </Button>
         )}
       </div>
+
+      <ComentariosDeSupervision tabla="recepciones" registroId={recepcion.id} usuario={user} />
 
       {/* Proveedor editable */}
       <div className="flex items-center gap-2 text-sm">

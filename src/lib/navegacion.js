@@ -41,6 +41,8 @@ export const NAV_GROUPS = [
       // Para todos, junto al catálogo. La prioridad es alta a propósito: en el
       // móvil no le quita sitio en la barra a lo que se usa cada día.
       { path: '/ventas', label: 'Resumen de ventas', corto: 'Ventas', icon: 'BarChart3', roles: ROLES_VENTAS, prioridad: 26 },
+      // Es de los jefes de departamento, no del grupo ANÁLISIS: ese es de auditoría.
+      { path: '/supervision', label: 'Supervisión', corto: 'Superv.', icon: 'Eye', prioridad: 30, roles: ['jefe_depto','administrador','superadmin'] },
     ],
   },
   {
@@ -81,7 +83,6 @@ export const NAV_GROUPS = [
     label: 'ANÁLISIS',
     groupIcon: 'BarChart3',
     items: [
-      { path: '/supervision', label: 'Supervisión', corto: 'Superv.', icon: 'Eye',         prioridad: 30, roles: ['jefe_depto','administrador','superadmin'] },
       { path: '/reportes',    label: 'Reportes',    icon: 'BarChart3',   prioridad: 31, roles: ['auditor','administrador','superadmin'] },
       { path: '/auditoria',   label: 'Auditoría',   icon: 'ShieldCheck', prioridad: 32, roles: ['auditor','administrador','superadmin'] },
     ],

@@ -12,6 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MessageSquare, Send, ClipboardList, TrendingDown, PackageOpen, Megaphone, Clock, X, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { base44 } from '@/api/base44Client';
+import { notificarComentario } from '@/lib/notificationService';
+import {
+  DESTINOS_COMENTARIO, ROLES_DE_DESTINO, avisoDeComentario, nuevoComentario,
+} from '@/lib/comentariosSupervision';
 
 // Las pestañas trabajan con nombres de tabla; la API los expone por entidad.
 const ENTIDAD_DE = {
@@ -103,6 +107,9 @@ export default function Supervision() {
   const [activeTab, setActiveTab]   = useState(() => DEPT_TABS[defaultDept]?.[0]?.key || 'inventarios');
   const [selectedId, setSelectedId] = useState(null);
   const [comment, setComment]       = useState('');
+  // A qué departamento va el comentario: sin elegirlo no se envía, porque un
+  // comentario sin destinatario no le llega a nadie.
+  const [para, setPara]             = useState('');
 
   const tabs      = DEPT_TABS[viewDept] || DEPT_TABS.inventario;
   const activeTabCfg = tabs.find(t => t.key === activeTab) || tabs[0];
@@ -149,21 +156,27 @@ export default function Supervision() {
   });
   const comments = commentsRaw ?? [];
 
+  const selected = tasks.find(t => t.id === selectedId);
+
   // ── Agregar comentario ──
   const addCommentMut = useMutation({
     mutationFn: async (text) => {
-      await base44.entities.ComentarioSupervision.create({
-        tabla,
-        registro_id:  selectedId,
-        autor_id:     user.email,
-        autor_nombre: user.full_name || user.email,
-        comentario:   sanitizeText(text, 1000),
+      const texto = sanitizeText(text, 1000);
+      await base44.entities.ComentarioSupervision.create(nuevoComentario({
+        tabla, registroId: selectedId, usuario: user, para, texto,
+      }));
+      // El aviso al departamento. Que falle no deshace el comentario, que ya
+      // está guardado y lo verá igual dentro del registro.
+      const aviso = avisoDeComentario({
+        tabla, registroId: selectedId, autor: user.full_name || user.email, para,
+        producto: selected?.[cols.name], texto,
       });
+      await notificarComentario({
+        para, roles: ROLES_DE_DESTINO[para] ?? [], autor: user.email, ...aviso,
+      }).catch(() => {});
     },
     onSuccess: () => { setComment(''); refetchComments(); },
   });
-
-  const selected = tasks.find(t => t.id === selectedId);
 
   // Estadísticas rápidas de tareas activas
   const stats = {
@@ -333,7 +346,16 @@ export default function Supervision() {
                 {comments.map(c => (
                   <div key={c.id} className="rounded-lg p-3" style={{ background: 'hsl(var(--secondary) / 0.5)' }}>
                     <div className="flex items-center justify-between mb-1.5">
-                      <p className="text-xs font-semibold text-foreground">{c.autor_nombre}</p>
+                      <p className="text-xs font-semibold text-foreground flex flex-wrap items-center gap-x-2">
+                        {c.autor_nombre}
+                        {c.para_depto
+                          ? (
+                            <span className="text-[10px] font-normal px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
+                              para {DESTINOS_COMENTARIO[c.para_depto] ?? c.para_depto}
+                            </span>
+                          )
+                          : <span className="text-[10px] font-normal text-muted-foreground">sin destinatario</span>}
+                      </p>
                       <p className="text-[10px] text-muted-foreground">
                         {format(new Date(c.created_date), 'dd/MM/yy HH:mm')}
                       </p>
@@ -342,23 +364,39 @@ export default function Supervision() {
                   </div>
                 ))}
 
+                {/* A quién va. Es lo que decide quién lo recibe y quién lo ve. */}
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-xs text-muted-foreground">Para</span>
+                  <Select value={para} onValueChange={setPara}>
+                    <SelectTrigger className="h-8 w-[190px] text-xs" aria-label="Para" style={{ borderRadius: 'var(--r-ctl)' }}>
+                      <SelectValue placeholder="Elige un departamento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(DESTINOS_COMENTARIO).map(([k, v]) => (
+                        <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Input de nuevo comentario */}
-                <div className="flex gap-2 pt-1">
+                <div className="flex gap-2">
                   <Textarea
                     value={comment}
                     onChange={e => setComment(e.target.value)}
-                    placeholder="Escribe un comentario para tu equipo..."
+                    placeholder={para ? `Escribe un comentario para ${DESTINOS_COMENTARIO[para]}...` : 'Elige para quién es y escribe tu comentario...'}
                     className="text-sm resize-none flex-1"
                     style={{ borderRadius: 'var(--r-ctl)', minHeight: '68px' }}
                     onKeyDown={e => {
-                      if (e.key === 'Enter' && e.ctrlKey && comment.trim()) {
+                      if (e.key === 'Enter' && e.ctrlKey && comment.trim() && para) {
                         addCommentMut.mutate(comment.trim());
                       }
                     }}
                   />
                   <Button
                     size="sm"
-                    disabled={!comment.trim() || addCommentMut.isPending}
+                    disabled={!comment.trim() || !para || addCommentMut.isPending}
+                    aria-label="Enviar comentario"
                     onClick={() => addCommentMut.mutate(comment.trim())}
                     className="self-end"
                     style={{ borderRadius: 'var(--r-ctl)' }}
@@ -366,7 +404,12 @@ export default function Supervision() {
                     <Send className="w-3.5 h-3.5" />
                   </Button>
                 </div>
-                <p className="text-[10px] text-muted-foreground">Ctrl + Enter para enviar</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {para
+                    ? `Le llegará un aviso a ${DESTINOS_COMENTARIO[para]}, y lo verá dentro del registro. `
+                    : 'Sin elegir un destinatario no se puede enviar. '}
+                  Ctrl + Enter para enviar
+                </p>
               </div>
             </Card>
 

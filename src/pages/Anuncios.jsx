@@ -26,6 +26,7 @@ import CabeceraLista from '@/components/shared/CabeceraLista';
 import ListaResponsive from '@/components/shared/ListaResponsive';
 
 /** Casos por página. 1.185 no caben, y 50 es lo que usan las demás tablas. */
+import ComentariosDeSupervision from '@/components/supervision/ComentariosDeSupervision';
 const PAGE_SIZE = 50;
 
 const ANUNCIO_COL_DEFS = [
@@ -298,6 +299,8 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
           </p>
         </div>
       )}
+
+      <ComentariosDeSupervision tabla="anuncios_desact" registroId={anuncio.id} usuario={user} />
 
       <ReadOnlyBlock title="Datos del producto">
         <ReadOnlyField label="Producto" value={anuncio.producto_nombre} />

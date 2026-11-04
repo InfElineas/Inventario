@@ -261,13 +261,38 @@ solo cubre desde que se activó.
 
 | Pantalla | Para qué |
 |---|---|
-| `/supervision` | El jefe sigue el trabajo de su departamento |
+| `/supervision` | El jefe sigue el trabajo de su departamento y comenta los registros (ver abajo) |
 | `/auditoria` | Historial de cambios en productos, con filtros y rango de fechas |
 | `/reportes` | Resúmenes del periodo, con PDF |
 | `/notificaciones` | Todos los avisos |
 | `/superadmin` | Operabilidad, diagnóstico, sincronización, mantenimiento |
 | `/configuracion` | Preferencias y almacenes visibles |
 | `/admin/usuarios` | Altas y permisos |
+
+### Supervisión: comentarios con destinatario
+
+Un jefe o un administrador abre un registro —conteo, merma, recepción, anuncio,
+caso de IC— y lo comenta **para un departamento**: Inventario, Facturación,
+Creación de Anuncio o Auditoría. El selector **Para** es obligatorio: sin
+destinatario no se envía, porque un comentario que no es para nadie no le llega a
+nadie.
+
+- **Aviso.** Al enviarlo, los roles del departamento y su jefe reciben una
+  notificación («Fulana comentó un conteo para Facturación», con el producto y el
+  texto) que lleva a la pantalla del registro. No se avisa al autor. Que falle el
+  aviso no deshace el comentario.
+- **Dentro del registro.** El detalle del conteo, la merma, la recepción, el
+  anuncio o el caso de IC enseña un bloque **Comentarios de supervisión** con lo
+  que se le dijo a quien lo abre: lo dirigido a su departamento y lo que escribió.
+  Quien supervisa (jefes, administradores) los ve todos. Si no hay nada para esa
+  persona, no sale el bloque.
+- Los comentarios anteriores a esto no tienen destinatario (`para_depto` vacío):
+  los ven solo quienes supervisan, y salen marcados como «sin destinatario».
+- Requiere la migración `supabase/comentarios_para.sql` (columna `para_depto`).
+
+El grupo **ANÁLISIS** del menú es de auditoría (Reportes y Auditoría) y de los
+administradores. Supervisión, que es de los jefes de departamento, sale de él y
+está junto a Catálogo y Resumen de ventas.
 
 ## Facturación
 

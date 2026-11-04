@@ -32,6 +32,21 @@ export async function notifyUsuario(email, tipo, titulo, mensaje, link) {
   await avisar([{ email }], tipo, titulo, mensaje, link);
 }
 
+/**
+ * Avisar a un departamento de un comentario de supervisión: a quienes tienen sus
+ * roles y a su jefe. No al autor, que ya lo sabe.
+ *
+ * @param {{ para: string, roles: string[], autor: string, titulo: string, mensaje: string, enlace?: string|null }} p
+ */
+export async function notificarComentario({ para, roles, autor, titulo, mensaje, enlace }) {
+  const [porRol, jefes] = await Promise.all([
+    base44.entities.Usuario.filter({ role: roles, activo: true }),
+    base44.entities.Usuario.filter({ role: 'jefe_depto', departamento: para, activo: true }),
+  ]);
+  const gente = [...(porRol ?? []), ...(jefes ?? [])].filter((u) => u.email && u.email !== autor);
+  await avisar(gente, 'comentario', titulo, mensaje, enlace);
+}
+
 async function avisar(gente, tipo, titulo, mensaje, link) {
   if (!gente?.length) return;
   // Alguien puede salir por dos vías —jefe de facturación y rol fact—; una

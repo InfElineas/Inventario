@@ -35,6 +35,7 @@ import {
  * se guardaba y no lo veía nadie salvo un jefe, en Supervisión.
  */
 
+import ComentariosDeSupervision from '@/components/supervision/ComentariosDeSupervision';
 const PAGE_SIZE = 50;
 
 const COL_DEFS = [
@@ -244,6 +245,7 @@ export default function CasosIC() {
           {selected && (
             <DetalleCaso
               caso={selected}
+              usuario={user}
               puedeResponder={puedeResponderIC(selected, user)}
               puedeEliminar={puedeEliminarIC(selected, user)}
               respondiendo={responder.isPending}
@@ -262,7 +264,7 @@ export default function CasosIC() {
   );
 }
 
-function DetalleCaso({ caso, puedeResponder, puedeEliminar, respondiendo, onResponder, onEliminar }) {
+function DetalleCaso({ caso, usuario, puedeResponder, puedeEliminar, respondiendo, onResponder, onEliminar }) {
   const [nota, setNota] = useState('');
   const d = descuentoIC(caso);
   const respondido = caso.estado_tarea !== 'pendiente';
@@ -277,6 +279,8 @@ function DetalleCaso({ caso, puedeResponder, puedeEliminar, respondiendo, onResp
           {warehouseName(caso.almacen_num) || caso.almacen_num} · enviado el {caso.fecha_deteccion?.slice(0, 10) ?? '—'}
         </DialogDescription>
       </DialogHeader>
+
+      <ComentariosDeSupervision tabla="lotes_ic" registroId={caso.id} usuario={usuario} />
 
       <ReadOnlyBlock title="Lote">
         <ReadOnlyField label="Producto" value={caso.producto_nombre} />

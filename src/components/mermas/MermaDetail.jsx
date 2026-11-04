@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DialogTitle } from '@/components/ui/dialog';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
 import Timeline from '@/components/shared/Timeline';
+import ComentariosDeSupervision from '@/components/supervision/ComentariosDeSupervision';
 import AlertBanner from '@/components/shared/AlertBanner';
 import { Trash2 } from 'lucide-react';
 import { MOTIVOS_RECONTEO, CLASIF_MERMA_SIN_FACT, ALL_CLASIF_MERMA, DESTINOS_MERMA, CLASIF_FACT, ESTADO_FACT, conValorActual } from '@/lib/constants';
@@ -138,6 +139,8 @@ export default function MermaDetail({ merma, role, user, onUpdate, onDelete, isU
       </div>
 
       <Timeline steps={steps} currentStep={currentStep} />
+
+      <ComentariosDeSupervision tabla="mermas" registroId={merma.id} usuario={user} />
 
       <ReadOnlyBlock title="Registro INV">
         <ReadOnlyField label="Fecha" value={merma.fecha_inv || (merma.created_date ? format(new Date(merma.created_date), 'dd/MM/yyyy') : '—')} />

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell, Package, Clock, Truck, RefreshCw, Undo2, CheckCheck,
-  ArrowRight, Database, UserPlus, AlertTriangle, Send, ExternalLink,
+  ArrowRight, Database, UserPlus, AlertTriangle, Send, ExternalLink, MessageSquare,
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
@@ -15,6 +15,7 @@ const TYPE_CFG = {
   recepcion: { Icon: Truck,         color: 'var(--c-info)', defaultLink: '/recepciones'},
   reconteo:  { Icon: RefreshCw,     color: 'var(--c-warn)', defaultLink: '/ajustes/disminucion?tab=mermas' },
   devuelto:  { Icon: Undo2,         color: 'var(--c-bad)', defaultLink: '/ajustes/disminucion?tab=mermas' },
+  comentario:{ Icon: MessageSquare, color: 'var(--c-info-2)', defaultLink: null },
   sistema:   { Icon: Database,      color: 'var(--c-ok)', defaultLink: null         },
   usuario:   { Icon: UserPlus,      color: 'var(--c-purple)', defaultLink: '/admin/usuarios' },
   Merma:     { Icon: Package,       color: 'var(--c-bad)', defaultLink: '/ajustes/disminucion?tab=mermas' },

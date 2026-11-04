@@ -34,6 +34,7 @@ import CabeceraLista from '@/components/shared/CabeceraLista';
 import ListaResponsive from '@/components/shared/ListaResponsive';
 import SelectorIntercambio, { CLASIF_INTERCAMBIO, cambiosDelPar } from '@/components/inventario/SelectorIntercambio';
 import ExistenciaAhora from '@/components/inventario/ExistenciaAhora';
+import ComentariosDeSupervision from '@/components/supervision/ComentariosDeSupervision';
 import HistorialPorUsuario from '@/components/inventario/HistorialPorUsuario';
 import { celdaConteo } from '@/components/inventario/celdasConteo';
 
@@ -722,6 +723,9 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
           {statusHint.msg}
         </p>
       )}
+
+      {/* Lo que la supervisión le dijo a quien lo abre sobre este conteo. */}
+      <ComentariosDeSupervision tabla="inventarios" registroId={inv.id} usuario={user} />
 
       <ReadOnlyBlock title="Registro INV">
         <ReadOnlyField label="Fecha" value={inv.fecha_inv || '—'} />
