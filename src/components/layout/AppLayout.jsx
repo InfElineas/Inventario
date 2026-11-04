@@ -304,8 +304,10 @@ export default function AppLayout() {
   // junto a los faltantes. Facturación cuenta las que esperan su ajuste; el
   // resto, las que le tocan por su rol.
   const mermasDeAqui = (role === 'fact' ? mermasFact : mermasPending) ?? 0;
-  const disminucion = (faltantesFact ?? 0) + mermasDeAqui;
+  const disminucion = (faltantesFact ?? 0) + (role === 'fact' ? mermasDeAqui : 0);
   if (disminucion > 0) pendingCounts['/ajustes/disminucion'] = disminucion;
+  // Quien no es facturación las ve en su propia entrada de Inventario.
+  if (role !== 'fact' && mermasDeAqui > 0) pendingCounts['/ajustes/disminucion?tab=mermas'] = mermasDeAqui;
 
   return (
     <div className="min-h-screen bg-background">

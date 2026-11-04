@@ -51,6 +51,11 @@ export const NAV_GROUPS = [
     items: [
       { path: '/inventario',  label: 'Inventario',  icon: 'ClipboardList', prioridad: 10,
         roles: ['inv','fact','auditor','jefe_depto','administrador','superadmin'] },
+      // Las mermas son ajustes de disminución y viven en su pestaña, pero quien
+      // las registra es inventario y no mira en el grupo de Facturación: esta
+      // entrada lleva directa a la pestaña. Facturación ya la tiene en su grupo.
+      { path: '/ajustes/disminucion?tab=mermas', label: 'Mermas', icon: 'PackageMinus', prioridad: 11,
+        roles: ['inv','auditor','jefe_depto','administrador','superadmin'] },
       { path: '/lotes',       label: 'Vencimientos', corto: 'Vencim.', icon: 'Clock', prioridad: 12,
         roles: ['inv','ca','auditor','jefe_depto','administrador','superadmin'] },
       // Lo que inventario manda a comercial desde Vencimientos y lo que
