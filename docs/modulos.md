@@ -132,6 +132,33 @@ reserva. De ahí sale cuándo conviene mover, con la A y la T de TKC ahora mismo
 El diálogo de subir o bajar de tienda abre con esa cantidad. El código está en
 `src/lib/analisisConteo.js`.
 
+### Cerrar despachos de TKC
+
+Botón **Cerrar despachos** en la cabecera (inventario, jefe de inventario,
+administrador). Sustituye al flujo n8n «10 – CIERRE DESPACHOS TKC», pero con las
+credenciales de TKC **de quien lo pulsa** y el almacén que elija.
+
+1. Se elige el almacén y **Revisar pendientes** lee de TKC qué se cerraría (no toca nada).
+2. Solo entonces aparecen *Cerrar solo el más antiguo* y *Cerrar los N pendientes*,
+   con confirmación que dice cuántos y de qué almacén. Cambiar de almacén invalida la revisión.
+3. El cierre corre en el servidor (`src/server/cierreDespachos.js`) y la ventana
+   muestra el avance; se puede parar entre un despacho y el siguiente.
+
+Barreras: solo despachos activos hasta **ayer**; en cola del más antiguo al más
+nuevo, de uno en uno (TKC solo da el formulario al primero); los incompletos
+(«Productos a despachar x/y») se omiten y se dice por qué; un despacho fallido no
+se reintenta en la pasada; 3 fallos seguidos o un cambio en la página de TKC
+detienen el cierre; un cierre a la vez por almacén; máximo 200. Cada cierre
+queda en `historial_movimientos` (`cierre_despachos`).
+
+**Configuración:** `DESPACHOS_PROVEEDORES` en el `.env` del servidor, JSON
+`{"789":"1508"}` (almacén → proveedor de TKC). Sin ella el botón avisa.
+
+**Sin verificar:** el HTML de TKC se dedujo de las expresiones del workflow n8n (no
+hay capturas reales) y no se sabe si las cuentas personales ven
+`/admin/shop-provider-dispatch/` (si no, el servidor responde `tkc_sin_acceso`).
+La primera vez, usar «solo el más antiguo». n8n puede seguir como red de seguridad nocturna.
+
 ## Vencimientos (`/lotes`)
 
 Los lotes salen del informe central (`lot_rows`), no de una tabla nuestra. De

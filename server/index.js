@@ -32,6 +32,7 @@ import { createSyncApiMiddleware } from '../src/server/syncApi.js'
 import { createVentasApiMiddleware } from '../src/server/ventasApi.js'
 import { createPreciosApiMiddleware } from '../src/server/preciosApi.js'
 import { createTransferenciasApiMiddleware } from '../src/server/transferenciasApi.js'
+import { createDespachosApiMiddleware } from '../src/server/despachosApi.js'
 import { isIdentityConfigured } from '../src/server/identity.js'
 import { aplicarCabecerasSeguridad } from '../src/server/securityHeaders.js'
 
@@ -67,6 +68,7 @@ const syncMiddleware = createSyncApiMiddleware()
 const ventasMiddleware = createVentasApiMiddleware()
 const preciosMiddleware = createPreciosApiMiddleware()
 const transferenciasMiddleware = createTransferenciasApiMiddleware()
+const despachosMiddleware = createDespachosApiMiddleware()
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -133,14 +135,16 @@ async function serveStatic(req, res) {
 
 const server = createServer((req, res) => {
   aplicarCabecerasSeguridad(res)
-  // Cadena: /api/auth/* → datos → sync → /api/ventas/* → /api/ajustes/* → /api/tkc/* → estáticos de dist/.
+  // Cadena: /api/auth/* → datos → sync → /api/ventas/* → /api/ajustes/* → /api/despachos/* → /api/tkc/* → estáticos de dist/.
   authMiddleware(req, res, () =>
     datosMiddleware(req, res, () =>
       syncMiddleware(req, res, () =>
         ventasMiddleware(req, res, () =>
           preciosMiddleware(req, res, () =>
             transferenciasMiddleware(req, res, () =>
-              tkcMiddleware(req, res, () => serveStatic(req, res)),
+              despachosMiddleware(req, res, () =>
+                tkcMiddleware(req, res, () => serveStatic(req, res)),
+              ),
             ),
           ),
         ),

@@ -25,7 +25,8 @@ import { useConfirm } from '@/lib/useConfirm';
 import { CLASIF_AJUSTE, CLASIF_FACT, ESTADO_FACT, conValorActual } from '@/lib/constants'
 import { ESTADO_POR_RESULTADO, estadoContradictorio } from '@/lib/ajusteFact'
 import { useSortable } from '@/lib/useSortable';
-import { tieneRol } from '@/lib/roles';
+import { tieneRol, puedeCerrarDespachos } from '@/lib/roles';
+import CierreDespachos from '@/components/inventario/CierreDespachos';
 import { ROLES_TIENDA } from '@/lib/ajustes';
 import { puedeEliminarConteo, revisionesDeConteo } from '@/lib/conteos';
 import DialogosConteo, { CeldaAcciones } from '@/components/inventario/AccionesConteo';
@@ -400,6 +401,7 @@ export default function Inventario() {
               <span className="hidden lg:inline">Reabastecimiento</span>
             </Link>
           </Button>
+          {puedeCerrarDespachos(user) && <CierreDespachos almacenInicial={almacen} />}
           {tieneRol(user, ['inv', 'administrador', 'superadmin']) && (
             <Button onClick={() => { setShowForm(true); setSelectedId(null); }} style={{ borderRadius: 'var(--r-ctl)' }}>
               <Plus className="w-4 h-4 lg:mr-1.5" /><span className="hidden lg:inline"> Nuevo conteo</span>

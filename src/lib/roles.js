@@ -134,3 +134,8 @@ export function departamentosACargo(usuario) {
   if (deRoles.length > 0) return deRoles;
   return suyos.includes('jefe_depto') && usuario?.departamento ? [usuario.departamento] : [];
 }
+
+/** Quién puede cerrar despachos de TKC: inventario, su jefe y los administradores. */
+export function puedeCerrarDespachos(usuario) {
+  return tieneRol(usuario, ['administrador', 'inv']) || departamentosACargo(usuario).includes('inventario');
+}
