@@ -114,9 +114,9 @@ function ProductosDelDia({ fuente, almacen, fecha, onElegir }) {
       <table className="w-full text-xs">
         <thead>
           <tr className="text-muted-foreground text-left">
-            <th className="sticky top-0 bg-secondary/40 py-1.5 pr-3 font-medium">Producto</th>
-            <th className="sticky top-0 bg-secondary/40 py-1.5 pr-3 font-medium text-right">Unidades</th>
-            <th className="sticky top-0 bg-secondary/40 py-1.5 font-medium text-right">Importe</th>
+            <th className="sticky top-0 z-10 bg-card py-1.5 pr-3 font-medium">Producto</th>
+            <th className="sticky top-0 z-10 bg-card py-1.5 pr-3 font-medium text-right">Unidades</th>
+            <th className="sticky top-0 z-10 bg-card py-1.5 font-medium text-right">Importe</th>
           </tr>
         </thead>
         <tbody>
