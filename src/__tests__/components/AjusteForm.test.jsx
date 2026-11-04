@@ -25,6 +25,11 @@ const svc = vi.hoisted(() => ({
 }));
 vi.mock('@/services/ajustesService', () => ({ ...svc, ErrorDeRed: class ErrorDeRed extends Error {} }));
 
+// La comprobación de existencia contra TKC: aquí hay de sobra de todo. Su propio
+// comportamiento se prueba en ComprobacionLineas.test.jsx.
+const comprobar = vi.hoisted(() => ({ fn: vi.fn() }));
+vi.mock('@/services/comprobacionLineas', () => ({ comprobarLineas: comprobar.fn }));
+
 // Las mermas tienen su propia pantalla de pruebas: aquí solo importa dónde se montan.
 vi.mock('@/components/mermas/MermasPanel', () => ({
   default: ({ embebida }) => <div data-testid="mermas" data-embebida={String(embebida)}>panel de mermas</div>,
@@ -74,6 +79,9 @@ beforeEach(() => {
     status: 200, total: 1,
     body: [{ id: 55, code: 'TKCE0000055', status: 'editada', date: '2026-10-20', amount: '10.00' }],
   });
+  comprobar.fn.mockReset().mockImplementation(async ({ lines }) => lines.map((l) => ({
+    code: l.code, quantity: l.quantity, existencia: { fisica: 100, enAlmacen: 100, enTienda: 0 },
+  })));
   svc.crearAjuste.mockResolvedValue(CREADO);
   svc.confirmarAjuste.mockResolvedValue({ status: 200, body: { status: 'confirmed', message: 'Ajuste confirmado', state: 'confirmada' } });
 });
@@ -262,6 +270,47 @@ describe('AjusteForm — aumento', () => {
 });
 
 describe('AjusteForm — disminución', () => {
+  it('poka-yoke: no deja montar lo que resta más de lo que hay en la reserva, y dice cuánto bajar de tienda', async () => {
+    comprobar.fn.mockResolvedValue([{ code: 'A', quantity: 70, existencia: { fisica: 100, enAlmacen: 40, enTienda: 60 } }]);
+    const user = userEvent.setup();
+    montar('disminucion');
+    await rellenar(user, { texto: 'A*70' });
+    const combos = screen.getAllByRole('combobox');
+    await user.selectOptions(combos[combos.length - 1], 'Merma');
+    await user.click(boton(/comprobar existencia/i));
+
+    expect(await screen.findByText(/hay que bajar 30 de tienda antes/)).toBeInTheDocument();
+    expect(screen.getByText(/Hay líneas que no se pueden montar/)).toBeInTheDocument();
+    expect(boton(/montar ajuste/i)).toBeDisabled();
+  });
+
+  it('poka-yoke: lo que se pide más que lo que hay en total tampoco, y cambiar las líneas invalida la comprobación', async () => {
+    const user = userEvent.setup();
+    montar('disminucion');
+    await rellenar(user, { texto: 'A*2' });
+    const combos = screen.getAllByRole('combobox');
+    await user.selectOptions(combos[combos.length - 1], 'Merma');
+    await user.click(boton(/comprobar existencia/i));
+    await screen.findByText(/Comprobado contra TKC/);
+    expect(boton(/montar ajuste/i)).toBeEnabled();
+
+    // Se cambia una cantidad: la comprobación era de otras líneas y ya no vale.
+    await user.clear(screen.getByPlaceholderText(/7622210833662\*3/));
+    await user.click(screen.getByPlaceholderText(/7622210833662\*3/));
+    await user.paste('A*5');
+    expect(screen.queryByText(/Comprobado contra TKC/)).not.toBeInTheDocument();
+    expect(boton(/montar ajuste/i)).toBeDisabled();
+    expect(screen.getByText(/Comprueba la existencia para poder montar/)).toBeInTheDocument();
+  });
+
+  it('el ajuste de aumento no necesita comprobar nada: sumar no puede quedarse corto', async () => {
+    const user = userEvent.setup();
+    montar('aumento');
+    await rellenar(user, { texto: 'A*2' });
+    expect(screen.queryByRole('button', { name: /comprobar existencia/i })).not.toBeInTheDocument();
+    expect(boton(/montar ajuste/i)).toBeEnabled();
+  });
+
   it('exige clasificación (no hay valor por defecto) y la manda', async () => {
     const user = userEvent.setup();
     montar('disminucion');
@@ -272,6 +321,10 @@ describe('AjusteForm — disminución', () => {
     // el desplegable de clasificación es el único que queda visible.
     const combos = screen.getAllByRole('combobox');
     await user.selectOptions(combos[combos.length - 1], 'Merma');
+    // Con clasificación aún no: falta comprobar la existencia.
+    expect(boton(/montar ajuste/i)).toBeDisabled();
+    await user.click(boton(/comprobar existencia/i));
+    await screen.findByText(/Comprobado contra TKC/);
     expect(boton(/montar ajuste/i)).toBeEnabled();
     await user.click(boton(/montar ajuste/i));
 

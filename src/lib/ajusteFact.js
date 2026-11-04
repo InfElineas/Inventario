@@ -17,6 +17,24 @@ export const ESTADO_POR_RESULTADO = {
   faltante: 'Ajuste de disminución',
 }
 
+/**
+ * Qué resultado de conteo admite cada documento. Un sobrante se resuelve subiendo
+ * la existencia (ajuste de aumento) y un faltante bajándola (ajuste de
+ * disminución, o una transferencia que salió sin documento). Lo contrario no es
+ * un ajuste: es multiplicar el error.
+ */
+export const RESULTADO_DEL_SENTIDO = {
+  aumento:       'sobrante',
+  disminucion:   'faltante',
+  transferencia: 'faltante',
+}
+
+/** ¿Puede este documento resolver un conteo con este resultado? Sin sentido conocido, sí. */
+export function sentidoValido(sentido, resultado) {
+  const esperado = RESULTADO_DEL_SENTIDO[sentido]
+  return !esperado || resultado === esperado
+}
+
 /** true si el ajuste elegido va en sentido contrario al conteo. */
 export function estadoContradictorio(resultado, estado) {
   if (!estado) return false

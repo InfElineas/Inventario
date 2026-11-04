@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import AlertBanner from '@/components/shared/AlertBanner';
 import { Loader2, Send } from 'lucide-react';
 import { procesarConteos } from '@/services/conteosFactService';
+import { sentidoValido } from '@/lib/ajusteFact';
 
 /**
  * Dar por procesados los conteos que el documento acaba de resolver.
@@ -23,10 +24,11 @@ import { procesarConteos } from '@/services/conteosFactService';
  * @param {Array<{ code: string }>} props.aceptadas  Las líneas que TKC montó.
  * @param {string} props.documento  El `TKCE…`/`TKCS…`/`TKCP…` del documento.
  * @param {string} [props.estado]   Cómo se resolvió, si no es lo que sugiere el resultado del conteo.
+ * @param {'aumento'|'disminucion'|'transferencia'} [props.sentido]  Qué documento es: solo resuelve los conteos de su sentido.
  * @param {string} [props.notasPorDefecto]  Lo que va escrito en las notas, que se puede cambiar.
  * @param {() => void} [props.onHecho]
  */
-export default function CerrarConteos({ conteos, aceptadas, documento, estado, notasPorDefecto, onHecho }) {
+export default function CerrarConteos({ conteos, aceptadas, documento, estado, sentido, notasPorDefecto, onHecho }) {
   const queryClient = useQueryClient();
   const [notas, setNotas] = useState(notasPorDefecto ?? '');
   const [resultado, setResultado] = useState(null);
@@ -37,11 +39,13 @@ export default function CerrarConteos({ conteos, aceptadas, documento, estado, n
 
   const aceptados = new Set((aceptadas ?? []).map((l) => String(l.code)));
   const cubiertos = conteos.filter(({ conteo }) => aceptados.has(String(conteo.producto_codigo)));
-  const porHacer = cubiertos.filter(({ conteo }) => !hechos.has(conteo.id));
+  // Poka-yoke: lo que va en sentido contrario al documento no se da por procesado.
+  const contrarios = cubiertos.filter(({ conteo }) => !sentidoValido(sentido, conteo.resultado));
+  const porHacer = cubiertos.filter(({ conteo }) => !hechos.has(conteo.id) && sentidoValido(sentido, conteo.resultado));
   const fuera = conteos.filter(({ conteo }) => !aceptados.has(String(conteo.producto_codigo)));
 
   const cerrar = useMutation({
-    mutationFn: () => procesarConteos({ conteos: porHacer, documento, estado, notas: notas.trim(), user }),
+    mutationFn: () => procesarConteos({ conteos: porHacer, documento, estado, sentido, notas: notas.trim(), user }),
     onSuccess: (r) => {
       setResultado(r);
       setHechos((prev) => new Set([...prev, ...r.hechos.map((c) => c.id)]));
@@ -76,6 +80,11 @@ export default function CerrarConteos({ conteos, aceptadas, documento, estado, n
         <AlertBanner variant="warning"
           message={`${fuera.length} ${fuera.length === 1 ? 'conteo no entró' : 'conteos no entraron'} en el documento `
             + `(${fuera.map(({ conteo }) => conteo.producto_codigo).join(', ')}) y se ${fuera.length === 1 ? 'queda pendiente' : 'quedan pendientes'}.`} />
+      )}
+      {contrarios.length > 0 && (
+        <AlertBanner variant="danger"
+          message={`${contrarios.map(({ conteo }) => conteo.producto_codigo).join(', ')} ${contrarios.length === 1 ? 'es un conteo' : 'son conteos'} `
+            + 'que va en sentido contrario a este documento: no se da por procesado. Devuélvelo a inventario o resuélvelo con el documento que corresponde.'} />
       )}
       {resultado?.fallos.length > 0 && (
         <AlertBanner variant="danger"

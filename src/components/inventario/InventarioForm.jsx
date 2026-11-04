@@ -23,6 +23,7 @@ import SugerenciasNota from '@/components/shared/SugerenciasNota';
 import SelectorIntercambio, { CLASIF_INTERCAMBIO } from '@/components/inventario/SelectorIntercambio';
 import AnalisisConteo from '@/components/inventario/AnalisisConteo';
 import { analizarConteo } from '@/lib/analisisConteo';
+import { cifraSospechosa, faltaRepetir } from '@/lib/barrerasConteo';
 
 
 // Extraída del formulario para poder probarla sin renderizar el componente.
@@ -65,6 +66,8 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
   const [coincidencias, setCoincidencias] = useState(null);
   const [avisoEscaneo, setAvisoEscaneo] = useState('');
   const [pendingData, setPendingData] = useState(null);
+  // La cifra, escrita por segunda vez, cuando la primera parece un dedazo.
+  const [repetida, setRepetida] = useState('');
 
   // Un código de barras puede corresponder a varios anuncios. Si hay más de
   // uno, elige el usuario: es el único que tiene el producto delante.
@@ -127,6 +130,12 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
     ? analizarConteo({ conteo: conteoReal, enAlmacen: desglose.enAlmacen, enTienda: desglose.enTienda, existencia: desglose.fisica })
     : null;
 
+  // Poka-yoke: una cifra descabellada —un cero de más— no pasa sin repetirla.
+  // Se compara contra la existencia de TKC, la misma con la que se calcula la
+  // diferencia, y solo cuando ya se tecleó algo.
+  const sospecha = desglose && contado ? cifraSospechosa({ conteo: conteoReal, existencia: efTkc }) : null;
+  const sinRepetir = faltaRepetir({ sospecha, repetida, conteo: conteoReal });
+
   // Sin el dato de TKC no se cuenta. Nuestra copia puede llevar horas, y una
   // diferencia calculada contra un número viejo es un ajuste equivocado: hace
   // falta volver a preguntar, no seguir adelante.
@@ -142,6 +151,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
   };
 
   const handleSubmit = () => {
+    if (sinRepetir) return;
     const err = validateInventario({ producto, detalles, fechaInv, notas });
     setValidError(err || '');
     if (err) return;
@@ -416,6 +426,24 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
             <div><p className="text-[10px] text-muted-foreground uppercase">Diferencia</p><p className={`text-lg font-medium ${difColor}`}>{diferencia > 0 ? '+' : ''}{diferencia}</p></div>
           </div>
 
+          {/* La barrera: no deja seguir hasta repetir la cifra a mano. */}
+          {sospecha && (
+            <div className="space-y-2 px-3 py-3 rounded-md border border-[var(--c-warn)]/40 bg-[var(--c-warn)]/10"
+              style={{ borderRadius: 'var(--r-ctl)' }}>
+              <p className="text-sm font-medium text-[var(--c-warn)]">Comprueba esta cifra antes de seguir</p>
+              <p className="text-xs text-muted-foreground">
+                {sospecha.motivo} ¿Es correcta? Si es un dedazo, corrígela arriba; si es verdad,
+                escríbela otra vez aquí para confirmarlo.
+              </p>
+              <Input type="number" min="0" value={repetida} onChange={(e) => setRepetida(e.target.value)}
+                aria-label="Repite la cantidad contada" placeholder="Repite la cantidad contada"
+                className="max-w-[220px]" style={{ borderRadius: 'var(--r-ctl)' }} />
+              {repetida !== '' && sinRepetir && (
+                <p className="text-xs text-[var(--c-bad)]">No coincide con el conteo ({conteoReal}).</p>
+              )}
+            </div>
+          )}
+
           {diferencia !== 0 && (
             <>
               <AlertBanner variant={diferencia > 0 ? 'warning' : 'danger'} message={`Diferencia detectada: ${diferencia > 0 ? 'sobrante' : 'faltante'} de ${Math.abs(diferencia)} unidades. Se requiere clasificación.`} />
@@ -455,7 +483,7 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
           <div className="flex justify-end gap-2">
             <Button onClick={handleSubmit}
               disabled={!producto || sinSubmayor || Boolean(conteoPrevio) || cargandoSubmayor
-                || (diferencia !== 0 && !clasifAjuste) || faltaIntercambio || isPending}
+                || (diferencia !== 0 && !clasifAjuste) || faltaIntercambio || sinRepetir || isPending}
               style={{ borderRadius: 'var(--r-ctl)' }}>
               <Save className="w-4 h-4 mr-1.5" /> {isPending ? 'Guardando...' : 'Confirmar conteo'}
             </Button>

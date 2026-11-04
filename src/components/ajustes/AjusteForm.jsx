@@ -15,6 +15,7 @@ import { useAccesoTkc } from '@/lib/useAccesoTkc';
 import PendientesInventario from '@/components/ajustes/PendientesInventario';
 import HistorialAjustes from '@/components/ajustes/HistorialAjustes';
 import CerrarConteos from '@/components/ajustes/CerrarConteos';
+import ComprobacionLineas from '@/components/ajustes/ComprobacionLineas';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MermasPanel from '@/components/mermas/MermasPanel';
 import { useAuth } from '@/lib/AuthContext';
@@ -82,6 +83,8 @@ export default function AjusteForm({ tipo, pestana: pestanaPedida }) {
   // Montar el documento vive en un modal: ocupaba la pantalla entera para una
   // tarea que no es la habitual. Lo habitual es mirar qué falta por ajustar.
   const [montarAbierto, setMontarAbierto] = useState(false);
+  // Poka-yoke de la disminución: no se monta lo que resta más de lo que hay.
+  const [comprobacion, setComprobacion] = useState({ vigente: false, bloqueado: false });
 
   // Un envío distinto, una clave distinta; repetir el mismo reutiliza la clave.
   const claveCrear = useRef({ firma: '', clave: '' });
@@ -95,9 +98,13 @@ export default function AjusteForm({ tipo, pestana: pestanaPedida }) {
   const { lines, errores } = useMemo(() => parseLineas(texto), [texto]);
 
   const faltaClasificacion = cfg.clasificacionObligatoria && !clasificacion;
+  // Restar es lo que no se puede deshacer desde aquí: antes de montar, cada línea
+  // se comprueba contra la existencia de TKC (ver lib/existenciaLineas.js).
+  const requiereComprobar = tipo === 'disminucion';
+  const comprobado = !requiereComprobar || (comprobacion.vigente && !comprobacion.bloqueado);
   const puedeMontar =
     !sinTkc && almacenValido && lines.length > 0 && errores.length === 0 &&
-    !faltaClasificacion && bloqueo !== 'crear';
+    !faltaClasificacion && bloqueo !== 'crear' && comprobado;
 
   const refrescar = () => queryClient.invalidateQueries({ queryKey: ['ajustes', tipo] });
 
@@ -282,10 +289,16 @@ export default function AjusteForm({ tipo, pestana: pestanaPedida }) {
           </ul>
         )}
 
+        {requiereComprobar && (
+          <ComprobacionLineas almacen={almacen} lines={lines} tipo="disminucion"
+            deshabilitado={!almacenValido || errores.length > 0 || sinTkc} onEstado={setComprobacion} />
+        )}
+
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             {lines.length} {lines.length === 1 ? 'producto' : 'productos'}, {lines.reduce((s, l) => s + l.quantity, 0)} unidades.
             Montarlo no mueve la existencia.
+            {requiereComprobar && lines.length > 0 && !comprobacion.vigente && ' Comprueba la existencia para poder montar.'}
           </p>
           <Button onClick={() => montar.mutate()} disabled={!puedeMontar || estaOcupado} style={{ borderRadius: 'var(--r-ctl)' }}>
             {montar.isPending && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
@@ -323,6 +336,7 @@ export default function AjusteForm({ tipo, pestana: pestanaPedida }) {
                   pantalla a teclear el número en cada uno. */}
               {documento?.code && confirmado[documento.id]?.tipo === 'confirmado' && resultado.conteos?.length > 0 && (
                 <CerrarConteos
+                  sentido={tipo}
                   conteos={resultado.conteos}
                   aceptadas={resultado.aceptadas}
                   documento={documento.code}

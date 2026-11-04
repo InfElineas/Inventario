@@ -796,8 +796,8 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
           {estadoContradictorio(inv.resultado, factData.fact_estado) && (
             <p className="text-xs text-[var(--c-warn)] bg-[var(--c-warn)]/10 px-3 py-2 rounded-md">
               El conteo dio un <strong>{inv.resultado}</strong> de {Math.abs(inv.diferencia ?? 0)} y
-              estás aplicando «{factData.fact_estado}», que va en sentido contrario. Puedes
-              continuar, pero comprueba que es lo que quieres.
+              estás aplicando «{factData.fact_estado}», que va en sentido contrario. No se puede
+              enviar así: elige el estado que corresponde o devuélvelo a inventario.
             </p>
           )}
           {factData.fact_estado === 'Procesamiento' && (
@@ -808,7 +808,7 @@ function InventarioDetail({ inv, role, user, onUpdate, onDelete, onClose, isUpda
           )}
           <Textarea placeholder="Notas FACT" value={factData.fact_notas} onChange={(e) => setFactData({ ...factData, fact_notas: e.target.value })} style={{ borderRadius: 'var(--r-ctl)' }} />
           <div className="flex gap-2">
-            <Button size="sm" disabled={isUpdating} onClick={async () => {
+            <Button size="sm" disabled={isUpdating || estadoContradictorio(inv.resultado, factData.fact_estado)} onClick={async () => {
               // Los conteos anteriores del mismo producto que siguen esperando
               // a facturación ya no valen: su diferencia se midió contra una
               // existencia de otro día. Aplicarles un ajuste además de este

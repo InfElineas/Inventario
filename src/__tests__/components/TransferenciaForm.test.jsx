@@ -34,6 +34,9 @@ const svc = vi.hoisted(() => ({
 vi.mock('@/services/transferenciasService', () => svc);
 vi.mock('@/services/ajustesService', () => ({ ErrorDeRed: class ErrorDeRed extends Error {} }));
 
+const comprobar = vi.hoisted(() => ({ fn: vi.fn() }));
+vi.mock('@/services/comprobacionLineas', () => ({ comprobarLineas: comprobar.fn }));
+
 const { default: TransferenciaForm } = await import('@/components/transferencias/TransferenciaForm');
 
 const CREADA = {
@@ -75,6 +78,9 @@ beforeEach(() => {
     status: 200, total: 1,
     body: [{ id: 55, code: 'TKCT0000055', status: 'editada', date: '2026-10-20', origin: 'TKC SUB 789', destination: 'TKC SUB 1005' }],
   });
+  comprobar.fn.mockReset().mockImplementation(async ({ lines }) => lines.map((l) => ({
+    code: l.code, quantity: l.quantity, existencia: { fisica: 100, enAlmacen: 100, enTienda: 0 },
+  })));
   svc.crearTransferencia.mockResolvedValue(CREADA);
   svc.confirmarTransferencia.mockResolvedValue({ status: 200, body: { status: 'confirmed' } });
   svc.cancelarTransferencia.mockResolvedValue({ status: 200, body: { status: 'cancelled' } });
@@ -108,6 +114,8 @@ describe('TransferenciaForm', () => {
     const user = userEvent.setup();
     montar();
     await rellenar(user);
+    await user.click(boton(/comprobar existencia/i));
+    await screen.findByText(/Comprobado contra TKC/);
     await user.click(boton(/montar transferencia/i));
 
     await screen.findByText(/TKCT0000077 montada en «editada»/);
@@ -122,6 +130,8 @@ describe('TransferenciaForm', () => {
     const user = userEvent.setup();
     montar();
     await rellenar(user);
+    await user.click(boton(/comprobar existencia/i));
+    await screen.findByText(/Comprobado contra TKC/);
     await user.click(boton(/montar transferencia/i));
     await user.click(await screen.findByRole('button', { name: /confirmar transferencia/i }));
 
@@ -168,5 +178,20 @@ describe('TransferenciaForm', () => {
     expect(await screen.findByText('Aceite 1 L')).toBeInTheDocument();
     expect(screen.queryByText('Arroz')).not.toBeInTheDocument();
     expect(base.filter.mock.calls[0][0]).toMatchObject({ resultado: 'faltante', estado_tarea: 'pend_fact' });
+  });
+
+  it('poka-yoke: no deja montar lo que el origen no tiene, y sin comprobar tampoco', async () => {
+    comprobar.fn.mockResolvedValue([{ code: '7622210833662', quantity: 3, existencia: { fisica: 2, enAlmacen: 2, enTienda: 0 } }]);
+    const user = userEvent.setup();
+    montar();
+    await rellenar(user);
+    // Sin comprobar, no.
+    expect(boton(/montar transferencia/i)).toBeDisabled();
+    expect(screen.getByText(/Comprueba la existencia del origen para poder montar/)).toBeInTheDocument();
+
+    await user.click(boton(/comprobar existencia/i));
+    expect(await screen.findByText(/Hay 2 en total y se piden 3/)).toBeInTheDocument();
+    expect(boton(/montar transferencia/i)).toBeDisabled();
+    expect(svc.crearTransferencia).not.toHaveBeenCalled();
   });
 });

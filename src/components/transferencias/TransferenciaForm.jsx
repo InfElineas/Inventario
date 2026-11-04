@@ -12,6 +12,7 @@ import AlertBanner from '@/components/shared/AlertBanner';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import PendientesInventario from '@/components/ajustes/PendientesInventario';
 import CerrarConteos from '@/components/ajustes/CerrarConteos';
+import ComprobacionLineas from '@/components/ajustes/ComprobacionLineas';
 import HistorialTransferencias from '@/components/transferencias/HistorialTransferencias';
 import { useAlmacen, filterAlmacenesByConfig } from '@/lib/useAlmacen';
 import { useConfirm } from '@/lib/useConfirm';
@@ -56,6 +57,8 @@ export default function TransferenciaForm() {
   const [verLineas, setVerLineas] = useState(null);   // { id, code }
   const [conteosUsados, setConteosUsados] = useState([]);
   const [montarAbierto, setMontarAbierto] = useState(false);
+  // Poka-yoke: no se monta lo que el origen no tiene (ver lib/existenciaLineas.js).
+  const [comprobacion, setComprobacion] = useState({ vigente: false, bloqueado: false });
 
   // Un envío distinto, una clave distinta; repetir el mismo reutiliza la clave.
   const claveCrear = useRef({ firma: '', clave: '' });
@@ -73,7 +76,8 @@ export default function TransferenciaForm() {
   const { lines, errores } = useMemo(() => parseLineas(texto), [texto]);
 
   const puedeMontar =
-    !sinTkc && almacenValido && destinoValido && lines.length > 0 && errores.length === 0 && bloqueo !== 'crear';
+    !sinTkc && almacenValido && destinoValido && lines.length > 0 && errores.length === 0 && bloqueo !== 'crear'
+    && comprobacion.vigente && !comprobacion.bloqueado;
 
   const refrescar = () => queryClient.invalidateQueries({ queryKey: ['transferencias'] });
 
@@ -264,9 +268,13 @@ export default function TransferenciaForm() {
               </ul>
             )}
 
+            <ComprobacionLineas almacen={almacen} lines={lines} tipo="transferencia"
+              deshabilitado={!almacenValido || errores.length > 0 || sinTkc} onEstado={setComprobacion} />
+
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs text-muted-foreground">
                 {lines.length} {lines.length === 1 ? 'producto' : 'productos'}, {lines.reduce((s, l) => s + l.quantity, 0)} unidades.
+                {lines.length > 0 && !comprobacion.vigente && ' Comprueba la existencia del origen para poder montar.'}
               </p>
               <Button onClick={() => montar.mutate()} disabled={!puedeMontar || estaOcupado} style={{ borderRadius: 'var(--r-ctl)' }}>
                 {montar.isPending && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
@@ -303,6 +311,7 @@ export default function TransferenciaForm() {
                   dan por procesados de una vez. */}
               {documento?.code && hecho?.tipo === 'confirmado' && resultado.conteos?.length > 0 && (
                 <CerrarConteos
+                  sentido="transferencia"
                   conteos={resultado.conteos}
                   aceptadas={resultado.aceptadas}
                   documento={documento.code}

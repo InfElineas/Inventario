@@ -108,4 +108,32 @@ describe('CerrarConteos', () => {
     await waitFor(() => expect(m.update).toHaveBeenCalledTimes(1));
     expect(m.update.mock.calls[0][0]).toBe('b');
   });
+
+  it('poka-yoke: un documento no da por procesado un conteo que va en sentido contrario', async () => {
+    // Un ajuste de aumento solo resuelve sobrantes: el faltante no entra, aunque TKC aceptara su línea.
+    pintar({
+      sentido: 'aumento',
+      conteos: [
+        { conteo: conteo('a', '7501', { resultado: 'sobrante' }), anteriores: [] },
+        { conteo: conteo('b', '7502', { resultado: 'faltante', diferencia: -3 }), anteriores: [] },
+      ],
+      aceptadas: [{ code: '7501' }, { code: '7502' }],
+    });
+
+    expect(await screen.findByRole('button', { name: /Enviar a auditoría \(1\)/i })).toBeInTheDocument();
+    expect(screen.getByText(/7502 es un conteo que va en sentido contrario/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Enviar a auditoría/i }));
+    await waitFor(() => expect(m.update).toHaveBeenCalledTimes(1));
+    expect(m.update.mock.calls[0][0]).toBe('a');
+  });
+
+  it('el aumento y la disminución admiten lo suyo; sin sentido, todo', async () => {
+    pintar({
+      sentido: 'disminucion',
+      conteos: [{ conteo: conteo('f', '7503', { resultado: 'faltante', diferencia: -2 }), anteriores: [] }],
+      aceptadas: [{ code: '7503' }],
+    });
+    expect(await screen.findByRole('button', { name: /Enviar a auditoría \(1\)/i })).toBeInTheDocument();
+    expect(screen.queryByText(/sentido contrario/i)).not.toBeInTheDocument();
+  });
 });

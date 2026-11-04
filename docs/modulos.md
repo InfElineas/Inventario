@@ -309,6 +309,25 @@ El grupo **ANÁLISIS** del menú es de auditoría (Reportes y Auditoría) y de l
 administradores. Supervisión, que es de los jefes de departamento, sale de él y
 está junto a Catálogo y Resumen de ventas.
 
+## Poka-yoke: el sistema no deja pasar el error
+
+Como la tarjeta SIM con la esquina cortada, que solo entra de una manera: en vez
+de confiar en que nadie se equivoque, el proceso está hecho para que el error no
+pase. El análisis de subir y bajar de tienda fue el primero; estas son las demás
+barreras, todas **bloquean** (no avisan) y todas dicen por qué:
+
+| Dónde | Qué impide | Cómo |
+|---|---|---|
+| **Conteo** | Un dedazo en la cifra (1500 contra 107: un cero de más) | Si la cifra es cinco veces más (o la quinta parte) que la existencia de TKC y la diferencia pasa de 20 unidades, **no se puede confirmar** hasta repetirla a mano. Sin existencia en TKC, desde 50 unidades. Contar cero no se frena: es un faltante legítimo |
+| **Ajuste de disminución** | Restar más de lo que hay | Antes de montar se comprueba cada línea contra A, T y EF de TKC. Si pide más que la reserva (A), dice **cuánto bajar de tienda antes**; si pide más que lo que hay en total, no alcanza. **Montar se queda apagado** hasta una comprobación limpia, y cambiar una línea la invalida |
+| **Transferencia** | Mandar lo que el origen no tiene | La misma comprobación contra la existencia total del origen |
+| **Conteos por facturar** | Resolver un sobrante con una disminución, o un faltante con un aumento | Un aumento solo da por procesados sobrantes y una disminución (o transferencia) solo faltantes. En el servicio también, que es lo último antes de escribir. El detalle antiguo de facturación ya no deja enviar con el estado contrario |
+
+Las líneas que no se pueden comprobar —TKC no responde, el producto no tiene
+anuncio— **no bloquean**: la API de transferencias las rechazará si no valen, y
+que falle una consulta no es motivo para impedir un ajuste. Se comprueban hasta
+100 líneas (cada una es una consulta a TKC, de cuatro en cuatro).
+
 ## Facturación
 
 Las mermas por facturar están en la pestaña **Mermas** de Ajuste de disminución.

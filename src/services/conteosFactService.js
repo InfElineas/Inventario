@@ -3,6 +3,7 @@ import {
   logTransicion, notificarTransicion, avisarConteoReemplazado,
 } from '@/lib/workflowService';
 import { registroFact, cierreSinAjuste } from '@/lib/conteosFact';
+import { sentidoValido } from '@/lib/ajusteFact';
 
 /**
  * Escribir en los conteos lo que pasa en las pantallas de ajustes.
@@ -22,14 +23,22 @@ import { registroFact, cierreSinAjuste } from '@/lib/conteosFact';
  * pudo escribir se devuelve, para decirlo en vez de dejar a medias sin avisar.
  *
  * @param {{ conteos: Array<{ conteo: object, anteriores?: object[] }>,
- *           documento: string, estado?: string, notas?: string, user: object }} p
+ *           documento: string, estado?: string, notas?: string, sentido?: 'aumento'|'disminucion'|'transferencia',
+ *           user: object }} p
  * @returns {Promise<{ hechos: object[], fallos: Array<{ conteo: object, motivo: string }> }>}
  */
-export async function procesarConteos({ conteos, documento, estado, notas, user }) {
+export async function procesarConteos({ conteos, documento, estado, notas, sentido, user }) {
   const hechos = [];
   const fallos = [];
 
   for (const { conteo, anteriores = [] } of conteos) {
+    // Poka-yoke: un documento no resuelve un conteo que va en sentido contrario.
+    // Aunque la pantalla ya no lo ofrece, es lo último que se comprueba antes de
+    // escribir en el conteo.
+    if (!sentidoValido(sentido, conteo.resultado)) {
+      fallos.push({ conteo, motivo: `es un ${conteo.resultado} y este documento va en sentido contrario` });
+      continue;
+    }
     try {
       const datos = registroFact({ conteo, documento, estado, notas, user });
       await base44.entities.Inventario.update(conteo.id, datos);
