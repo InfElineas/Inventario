@@ -221,8 +221,8 @@ export default function AjusteForm({ tipo, pestana: pestanaPedida }) {
       <Tabs value={pestanaActual} onValueChange={setPestana} className="space-y-4">
         <TabsList>
           {puedeAjustar && <TabsTrigger value="pendientes">Por ajustar</TabsTrigger>}
-          {puedeAjustar && <TabsTrigger value="historial">Historial de TKC</TabsTrigger>}
           {conMermas && <TabsTrigger value="mermas">Mermas</TabsTrigger>}
+          {puedeAjustar && <TabsTrigger value="historial">Historial de TKC</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="pendientes" className="space-y-4">
