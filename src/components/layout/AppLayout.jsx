@@ -91,7 +91,7 @@ const ROUTE_TITLES = {
   '/facturacion/mermas':     'Mermas por facturar',
   '/lotes':          'Vencimientos',
   '/ic':             'Casos de IC',
-  '/facturacion/ventas': 'Resumen de ventas',
+  '/ventas':             'Resumen de ventas',
   '/recepciones':    'Recepciones',
   '/anuncios':       'Anuncios',
   '/reportes':       'Reportes',

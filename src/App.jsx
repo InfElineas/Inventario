@@ -95,7 +95,9 @@ const AuthenticatedApp = () => {
               pantalla de su ajuste. El enlace viejo (marcadores, avisos) sigue llegando. */}
           <Route path="/facturacion/inventario" element={<Navigate to="/ajustes/disminucion" replace />} />
           <Route path="/facturacion/mermas"     element={<RoleGuard element={<Mermas ambito="facturacion" />} roles={ROLES_AJUSTES} />} />
-          <Route path="/facturacion/ventas"    element={<RoleGuard element={<ResumenVentas />} roles={ROLES_VENTAS} />} />
+          <Route path="/ventas"                element={<RoleGuard element={<ResumenVentas />} roles={ROLES_VENTAS} />} />
+          {/* Antes vivía bajo Facturación: el enlace viejo sigue llegando. */}
+          <Route path="/facturacion/ventas"    element={<Navigate to="/ventas" replace />} />
           <Route path="/ajustes/aumento"     element={<RoleGuard element={<AjusteAumento />} roles={ROLES_AJUSTES} />} />
           <Route path="/ajustes/disminucion" element={<RoleGuard element={<AjusteDisminucion />} roles={ROLES_AJUSTES} />} />
           <Route path="/procesamientos"      element={<RoleGuard element={<Procesamientos />} roles={ROLES_PROCESAMIENTOS} />} />

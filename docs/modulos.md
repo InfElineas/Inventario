@@ -234,9 +234,8 @@ abajo:
 2. **Ventas por mes** (barras, los últimos doce, con el mes en curso resaltado)
    junto al estado de la tienda. Sale de `/api/ventas/mensual`, que suma
    `rdp_rows_latest` por mes: la misma vista y la misma salvedad que el resumen de
-   ventas (el día en curso no está, y el mes en curso va a medias). Quien no ve las
-   ventas —solo `fact`, `auditor`, `jefe_depto` y administradores— no ve la
-   tarjeta, y el estado de la tienda ocupa todo el ancho.
+   ventas (el día en curso no está, y el mes en curso va a medias). Si un rol
+   no tuviera permiso de ver ventas, no vería la tarjeta, y el estado de la tienda ocupa todo el ancho.
 3. **Tres tarjetas de tareas**: vencimientos, lo que **espera a facturación**
    (repartido por la pantalla que lo resuelve: aumento, disminución,
    procesamientos, mermas, auditoría) y **lo que te devolvieron**, con su motivo.
@@ -392,12 +391,13 @@ mes (o desde una semana antes del conteo, si es más viejo) y se puede cambiar.
   directa, procesamiento, recepción) se reconocen por palabras clave y **no se han
   comprobado contra TKC**: si alguno sale en «Otros», hay que añadir su regla.
 
-### Resumen de ventas (`/facturacion/ventas`)
+### Resumen de ventas (`/ventas`)
 
 Lo que vendió la plataforma en un almacén entre dos fechas, por producto y por
 día, con unidades, órdenes, importe, costo y margen, y exportación a CSV. Es
-lo primero que pidió Facturación para conciliar. Lo ven `fact`, `auditor`,
-`jefe_depto` y los administradores.
+lo primero que pidió Facturación para conciliar, y ahora es de **acceso general**:
+está en el menú junto a PC General y Catálogo y lo ven todos los roles. El enlace
+viejo `/facturacion/ventas` redirige aquí.
 
 - Sale del informe RDP de la base (`public.rdp_rows_latest`), **la vista de la
   última corrida de cada día**: la tabla guarda todas las corridas y sumarla

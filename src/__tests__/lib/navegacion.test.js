@@ -83,3 +83,24 @@ describe('esRutaActiva', () => {
     expect(esRutaActiva('/inventariados', '/inventario')).toBe(false);
   });
 });
+
+describe('Resumen de ventas', () => {
+  it('es de acceso general: junto a PC General y Catálogo, y lo ve cualquier rol', () => {
+    const ventas = TODOS_LOS_DESTINOS.find((d) => d.path === '/ventas');
+    expect(ventas).toBeDefined();
+    // El mismo grupo que el catálogo: sin cabecera, arriba del todo.
+    expect(ventas.grupo).toBe(TODOS_LOS_DESTINOS.find((d) => d.path === '/productos').grupo);
+    for (const rol of ['inv', 'fact', 'auditor', 'ca', 'jefe_depto', 'administrador', 'superadmin']) {
+      expect(destinosDeMovil(con(rol), 99).enMenu.concat(destinosDeMovil(con(rol), 99).enBarra).some((d) => d.path === '/ventas'), rol).toBe(true);
+    }
+  });
+
+  it('en el móvil no le quita sitio en la barra a lo que un inventarista usa cada día', () => {
+    const { enBarra } = destinosDeMovil(con('inv'));
+    expect(enBarra.some((d) => d.path === '/ventas')).toBe(false);
+  });
+
+  it('la ruta vieja de Facturación ya no es una entrada del menú', () => {
+    expect(TODOS_LOS_DESTINOS.some((d) => d.path === '/facturacion/ventas')).toBe(false);
+  });
+});

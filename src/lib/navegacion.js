@@ -38,6 +38,9 @@ export const NAV_GROUPS = [
   {
     items: [
       { path: '/productos', label: 'Catálogo', icon: 'Package', roles: TODOS_LOS_ROLES, prioridad: 2 },
+      // Para todos, junto al catálogo. La prioridad es alta a propósito: en el
+      // móvil no le quita sitio en la barra a lo que se usa cada día.
+      { path: '/ventas', label: 'Resumen de ventas', corto: 'Ventas', icon: 'BarChart3', roles: ROLES_VENTAS, prioridad: 26 },
     ],
   },
   {
@@ -68,7 +71,6 @@ export const NAV_GROUPS = [
     groupIcon: 'Megaphone',
     items: [
       { path: '/facturacion/mermas',     label: 'Mermas por facturar',  corto: 'M. fact.', icon: 'TrendingDown',  roles: ROLES_AJUSTES, prioridad: 21 },
-      { path: '/facturacion/ventas', label: 'Resumen de ventas', corto: 'Ventas', icon: 'BarChart3', roles: ROLES_VENTAS, prioridad: 26 },
       { path: '/anuncios', label: 'Anuncios', icon: 'Megaphone', prioridad: 22,
         roles: ['inv','ca','auditor','jefe_depto','administrador','superadmin'] },
       { path: '/ajustes/aumento',     label: 'Ajuste de aumento',     corto: 'Aumento',  icon: 'PackagePlus',  roles: ROLES_AJUSTES, prioridad: 23 },

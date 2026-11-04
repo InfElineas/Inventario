@@ -191,9 +191,10 @@ describe('middleware de ventas', () => {
     db.query.mockResolvedValue({ rows: [{ ultima: null }] });
   });
 
-  it('la serie mensual: facturación la ve; inventario, no; sin sesión, 401', async () => {
+  it('la serie mensual: la ven todos los roles de la aplicación; uno desconocido, no; sin sesión, 401', async () => {
     expect((await llamar('/api/ventas/mensual?almacen=789', 'fact')).res.statusCode).toBe(200);
-    expect((await llamar('/api/ventas/mensual?almacen=789', 'inv')).res.statusCode).toBe(403);
+    expect((await llamar('/api/ventas/mensual?almacen=789', 'inv')).res.statusCode).toBe(200);
+    expect((await llamar('/api/ventas/mensual?almacen=789', 'visitante')).res.statusCode).toBe(403);
     expect((await llamar('/api/ventas/mensual?almacen=789', null)).res.statusCode).toBe(401);
   });
 
