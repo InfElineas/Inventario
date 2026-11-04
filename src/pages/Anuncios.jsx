@@ -219,22 +219,22 @@ const TIPO_CASO_WHY = {
   desact_ef_positivo: {
     titulo: '¿Por qué está aquí?',
     desc: 'El anuncio está desactivado en TKC pero el producto tiene existencia física positiva. Mientras esté desactivado, no se puede vender en línea aunque haya stock.',
-    accion: 'INV debe determinar si reactivar el anuncio o escalarlo a CA para revisión de precio o condiciones.',
+    accion: 'Facturación debe determinar si reactivar el anuncio o enviarlo a Anuncios (CA) para revisión de precio o condiciones.',
   },
   sin_id: {
     titulo: '¿Por qué está aquí?',
     desc: 'El producto tiene stock físico pero no tiene ID de tienda asignado en TKC. Sin ese ID, el artículo no puede publicarse ni venderse en línea.',
-    accion: 'INV debe verificar si aplica crear el anuncio, transferir el stock o darlo de baja.',
+    accion: 'Facturación debe verificar si aplica crear el anuncio, transferir el stock o darlo de baja.',
   },
   activo_ef_cero: {
     titulo: '¿Por qué está aquí?',
     desc: 'El anuncio aparece activo en TKC pero la existencia física registrada es cero. Puede generar ventas de un producto sin stock real.',
-    accion: 'INV debe confirmar si el stock es real, ajustar el conteo o desactivar el anuncio.',
+    accion: 'Facturación debe confirmar si el stock es real, ajustar el conteo o desactivar el anuncio.',
   },
 };
 
 const ESTADO_HINT = {
-  pendiente:     { msg: 'Esperando revisión de INV.',          color: 'text-[var(--c-yellow)]' },
+  pendiente:     { msg: 'Esperando revisión de Facturación.',  color: 'text-[var(--c-yellow)]' },
   pend_ca:       { msg: 'Esperando acción de CA (Anuncios).',  color: 'text-[var(--c-info-2)]' },
   en_auditoria:  { msg: 'En revisión por Auditoría.',          color: 'text-[var(--c-purple)]' },
   completado:    { msg: 'Proceso completado y cerrado.',        color: 'text-[var(--c-ok)]' },
@@ -256,13 +256,13 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
   }
 
   const needsCa = ['reactivar', 'escalar_ca'].includes(anuncio.accion_inv);
-  const steps = needsCa ? ['INV', 'CA', 'Auditor', 'Completado'] : ['INV', 'Auditor', 'Completado'];
+  const steps = needsCa ? ['FACT', 'CA', 'Auditor', 'Completado'] : ['FACT', 'Auditor', 'Completado'];
   const stepMap = needsCa
     ? { pendiente: 0, pend_ca: 1, en_auditoria: 2, completado: 3 }
     : { pendiente: 0, en_auditoria: 1, completado: 2 };
   const currentStep = stepMap[anuncio.estado_tarea] ?? 0;
 
-  const canInv = tieneRol(user, ['inv', 'administrador']) && anuncio.estado_tarea === 'pendiente';
+  const canFact = tieneRol(user, ['fact', 'administrador']) && anuncio.estado_tarea === 'pendiente';
   const canCa = tieneRol(user, ['ca', 'administrador']) && anuncio.estado_tarea === 'pend_ca';
   const canAudit = tieneRol(user, ['auditor', 'administrador']) && anuncio.estado_tarea === 'en_auditoria';
 
@@ -276,7 +276,7 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
       {/* Banner: quién actúa ahora */}
       {(() => {
         const hint = ESTADO_HINT[anuncio.estado_tarea];
-        const tieneAccion = canInv || canCa || canAudit;
+        const tieneAccion = canFact || canCa || canAudit;
         if (!hint || tieneAccion) return null;
         return (
           <p className={`text-xs px-3 py-2 rounded-md bg-secondary/60 border border-border ${hint.color}`}>
@@ -312,7 +312,7 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
       </ReadOnlyBlock>
 
       {anuncio.accion_inv && (
-        <ReadOnlyBlock title="Revisión INV">
+        <ReadOnlyBlock title="Revisión FACT">
           <ReadOnlyField label="Motivo TKC" value={anuncio.motivo_tkc} />
           <ReadOnlyField label="Motivo ELíneas" value={anuncio.motivo_elineas} />
           <ReadOnlyField label="Acción" value={anuncio.accion_inv} />
@@ -328,10 +328,10 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
         </ReadOnlyBlock>
       )}
 
-      {/* INV form */}
-      {canInv && (
+      {/* Revisión de facturación */}
+      {canFact && (
         <div className="space-y-3 p-4 border rounded-lg" style={{ borderRadius: 'var(--r-ctl)', borderWidth: '0.5px' }}>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Revisión INV</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Revisión FACT</p>
           <Select value={invForm.motivo_tkc} onValueChange={(v) => setInvForm({ ...invForm, motivo_tkc: v })}>
             <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Motivo TKC" /></SelectTrigger>
             <SelectContent>{MOTIVOS_TKC.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
@@ -349,7 +349,7 @@ function AnuncioDetail({ anuncio, role, user, onUpdate }) {
               <SelectItem value="mantener">Mantener (no pasa a Anuncios)</SelectItem>
             </SelectContent>
           </Select>
-          <Textarea value={invForm.nota_inv} onChange={(e) => setInvForm({ ...invForm, nota_inv: e.target.value })} placeholder="Nota INV" style={{ borderRadius: 'var(--r-ctl)' }} />
+          <Textarea value={invForm.nota_inv} onChange={(e) => setInvForm({ ...invForm, nota_inv: e.target.value })} placeholder="Nota FACT" style={{ borderRadius: 'var(--r-ctl)' }} />
           <Button size="sm" onClick={() => {
             const needsCaAction = ['reactivar', 'escalar_ca'].includes(invForm.accion_inv);
             handleTransicion({

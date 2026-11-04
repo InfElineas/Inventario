@@ -153,7 +153,19 @@ describe('actualización — anuncios y recepciones', () => {
     expect(puedeActualizar(ctx('ca'), 'anuncios_desact', { estado_tarea: 'pend_ca' }, { estado_tarea: 'en_auditoria' })).toBe(true);
   });
 
-  it('ca no toca un caso que sigue en INV', () => {
+  it('la revisión de un anuncio desactivado es de facturación: lo manda a Anuncios o lo resuelve', () => {
+    expect(puedeActualizar(ctx('fact'), 'anuncios_desact', { estado_tarea: 'pendiente' }, { estado_tarea: 'pend_ca' })).toBe(true);
+    // «Dar de baja» y «Mantener» no pasan por Anuncios: van directos a auditoría.
+    expect(puedeActualizar(ctx('fact'), 'anuncios_desact', { estado_tarea: 'pendiente' }, { estado_tarea: 'en_auditoria' })).toBe(true);
+  });
+
+  it('inventario ya no revisa anuncios, y facturación no toca lo que ya está en Anuncios o en auditoría', () => {
+    expect(puedeActualizar(ctx('inv'), 'anuncios_desact', { estado_tarea: 'pendiente' }, { estado_tarea: 'pend_ca' })).toBe(false);
+    expect(puedeActualizar(ctx('fact'), 'anuncios_desact', { estado_tarea: 'pend_ca' }, { estado_tarea: 'en_auditoria' })).toBe(false);
+    expect(puedeActualizar(ctx('fact'), 'anuncios_desact', { estado_tarea: 'en_auditoria' }, { estado_tarea: 'completado' })).toBe(false);
+  });
+
+  it('ca no toca un caso que sigue en la revisión de facturación', () => {
     expect(puedeActualizar(ctx('ca'), 'anuncios_desact', { estado_tarea: 'pendiente' }, {})).toBe(false);
   });
 

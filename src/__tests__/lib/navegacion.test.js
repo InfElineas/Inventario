@@ -137,3 +137,18 @@ describe('el grupo ANÁLISIS es de auditoría', () => {
     expect(supervision.grupo).toBeNull();
   });
 });
+
+describe('Anuncios, dentro de Facturación y de facturación', () => {
+  const anuncios = TODOS_LOS_DESTINOS.find((d) => d.path === '/anuncios');
+
+  it('está en el grupo FACTURACIÓN', () => {
+    expect(anuncios.grupo).toBe('FACTURACIÓN');
+  });
+
+  it('lo ven facturación, Anuncios (ca), auditoría, jefes y administradores; inventario ya no', () => {
+    for (const rol of ['fact', 'ca', 'auditor', 'jefe_depto', 'administrador', 'superadmin']) {
+      expect(anuncios.roles, rol).toContain(rol);
+    }
+    expect(anuncios.roles).not.toContain('inv');
+  });
+});

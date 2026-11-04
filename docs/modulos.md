@@ -237,8 +237,16 @@ algo generoso. Es el lado correcto por el que equivocarse.
 ## Anuncios (`/anuncios`)
 
 Productos con problema de anuncio en TKC: muertos o desactivados con
-existencia, o con existencia y sin ID de tienda. Inventario los detecta,
-comercial decide y auditoría cierra.
+existencia, o con existencia y sin ID de tienda. Está en el grupo
+**Facturación**, porque la revisión es de **facturación**: revisa el caso y decide
+—reactivarlo, darlo de baja, mantenerlo— o lo **envía a Anuncios** (comercial,
+`ca`), que actúa después; auditoría cierra. El flujo es FACT → CA (si se envía) →
+Auditor → Completado. Inventario ya no interviene.
+
+Los campos guardados conservan sus nombres de antes (`accion_inv`, `nota_inv`,
+`especialista_inv_*`): solo cambió quién los escribe y cómo se llaman en
+pantalla. Facturación recibe además un aviso diario con los anuncios que esperan
+su revisión, y su jefe los ve en la pestaña Anuncios de Supervisión.
 
 ## Catálogo y BD TKC (`/productos`, `/bd-tkc`)
 

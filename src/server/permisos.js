@@ -59,7 +59,9 @@ const FLUJOS = {
   anuncios_desact: {
     campoEstado: 'estado_tarea',
     transiciones: {
-      inv:     { desde: ['pendiente'],    hacia: ['pendiente', 'pend_ca'] },
+      // Facturación revisa el caso y decide: mandarlo a Anuncios (`pend_ca`) o
+      // resolverlo por su cuenta. Es de ellos, no de inventario.
+      fact:    { desde: ['pendiente'],    hacia: ['pendiente', 'pend_ca', 'en_auditoria'] },
       ca:      { desde: ['pend_ca'],      hacia: ['pend_ca', 'en_auditoria'] },
       auditor: { desde: ['en_auditoria'], hacia: ['en_auditoria', 'completado'] },
     },

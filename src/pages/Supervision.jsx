@@ -37,6 +37,8 @@ const DEPT_TABS = {
   facturacion: [
     { key: 'inventarios', label: 'Inventarios', tabla: 'inventarios',    icon: ClipboardList },
     { key: 'mermas',      label: 'Mermas',      tabla: 'mermas',          icon: TrendingDown  },
+    // La revisión de los anuncios desactivados es de facturación.
+    { key: 'anuncios',    label: 'Anuncios',    tabla: 'anuncios_desact', icon: Megaphone     },
   ],
   ca: [
     { key: 'anuncios',  label: 'Anuncios',  tabla: 'anuncios_desact', icon: Megaphone },
@@ -83,8 +85,8 @@ const DETAIL_FIELDS = {
   anuncios_desact: [
     ['producto_nombre','Producto'], ['producto_codigo','Código'],
     ['tipo_caso','Tipo caso'], ['ef_al_detectar','EF al detectar'],
-    ['motivo_tkc','Motivo TKC'], ['accion_inv','Acción INV'],
-    ['nota_inv','Nota INV'], ['especialista_inv_nombre','Especialista INV'],
+    ['motivo_tkc','Motivo TKC'], ['accion_inv','Acción FACT'],
+    ['nota_inv','Nota FACT'], ['especialista_inv_nombre','Especialista FACT'],
     ['estado_tarea','Estado'], ['accion_ca','Acción CA'],
     ['nota_ca','Nota CA'], ['nota_auditor','Nota auditor'],
   ],

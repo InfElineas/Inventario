@@ -214,6 +214,18 @@ export async function runSmartNotifications({
     }
   }
 
+  // 5b. Anuncios desactivados que esperan la revisión de facturación
+  if (['fact', 'administrador'].includes(role)) {
+    const pa = anuncios.filter(a => a.estado_tarea === 'pendiente').length;
+    if (pa > 0) {
+      rules.push({
+        tipo: 'merma', dedupKey: `anuncios_pend_fact_${today}`,
+        titulo: `${pa} anuncio${pa > 1 ? 's' : ''} por revisar`,
+        mensaje: 'Anuncios desactivados que esperan tu revisión: reactivarlos o enviarlos a Anuncios.',
+      });
+    }
+  }
+
   // 6. En auditoría (auditor)
   if (['auditor', 'administrador'].includes(role)) {
     const ea = mermas.filter(m => m.estado_tarea === 'en_auditoria').length

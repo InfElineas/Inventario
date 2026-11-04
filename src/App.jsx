@@ -89,7 +89,7 @@ const AuthenticatedApp = () => {
           <Route path="/recepciones/:id" element={<Recepciones />} />
           <Route path="/reabastecimiento" element={<Reabastecimiento />} />
           <Route path="/ic" element={<RoleGuard element={<CasosIC />} roles={['inv','ca','auditor','jefe_depto','administrador','superadmin']} />} />
-          <Route path="/anuncios"       element={<RoleGuard element={<Anuncios />} roles={['inv','ca','auditor','jefe_depto','administrador','superadmin']} />} />
+          <Route path="/anuncios"       element={<RoleGuard element={<Anuncios />} roles={['fact','ca','auditor','jefe_depto','administrador','superadmin']} />} />
           {/* Las mismas pantallas, abiertas desde facturación y con su filtro
               puesto: lo que le toca a esa área. Ver src/lib/ambito.js. */}
           {/* «Conteos por facturar» ya no existe: cada conteo se resuelve en la

@@ -70,8 +70,9 @@ export const NAV_GROUPS = [
     label: 'FACTURACIÓN',
     groupIcon: 'Megaphone',
     items: [
+      // Está en Facturación porque la revisión es de facturación; Anuncios actúa después.
       { path: '/anuncios', label: 'Anuncios', icon: 'Megaphone', prioridad: 22,
-        roles: ['inv','ca','auditor','jefe_depto','administrador','superadmin'] },
+        roles: ['fact','ca','auditor','jefe_depto','administrador','superadmin'] },
       { path: '/ajustes/aumento',     label: 'Ajuste de aumento',     corto: 'Aumento',  icon: 'PackagePlus',  roles: ROLES_AJUSTES, prioridad: 23 },
       // Con las mermas dentro: la ven también quien las registra y las sigue.
       { path: '/ajustes/disminucion', label: 'Ajuste de disminución', corto: 'Disminuc.', icon: 'PackageMinus', roles: ROLES_DISMINUCION, prioridad: 24 },
