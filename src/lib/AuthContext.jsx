@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
+import { clasificarError } from '@/components/shared/PantallaError';
 
 /**
  * Sesión del usuario.
@@ -19,6 +20,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  // 'servidor' | 'sinConexion' | 'fallo' cuando no se pudo ni preguntar por la sesión.
+  const [authError, setAuthError] = useState(null);
 
   /**
    * Pregunta al servidor quién es el usuario.
@@ -34,10 +37,14 @@ export const AuthProvider = ({ children }) => {
       const perfil = await base44.auth.me();
       setUser(perfil);
       setIsAuthenticated(Boolean(perfil));
+      setAuthError(null);
       return perfil;
-    } catch {
+    } catch (e) {
+      // Sin red o con el servidor caído no se sabe si hay sesión: se dice, en
+      // vez de mandar al login a quien la tiene.
       setUser(null);
       setIsAuthenticated(false);
+      setAuthError(clasificarError(e));
       return null;
     } finally {
       setIsLoadingAuth(false);
@@ -56,9 +63,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider value={{
       user, isAuthenticated, isLoadingAuth,
       authChecked: !isLoadingAuth,
-      // Se conserva para que App.jsx no tenga que cambiar: ya nunca hay un
-      // usuario autenticado a la espera de aprobación.
-      authError: null,
+      authError,
       isLoadingPublicSettings: false,
       appPublicSettings: null,
       logout,

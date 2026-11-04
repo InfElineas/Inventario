@@ -1,6 +1,5 @@
 import { Component } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import PantallaError, { clasificarError } from '@/components/shared/PantallaError';
 
 /**
  * Contiene el fallo de una pantalla para que no se lleve por delante la
@@ -83,21 +82,9 @@ export default class ErrorBoundary extends Component {
     const { error } = this.state;
     if (!error) return this.props.children;
 
+    const tipo = esModuloCaducado(error) ? 'fallo' : clasificarError(error);
     return (
-      <div className="flex flex-col items-center justify-center py-20 px-6 gap-3 text-center">
-        <AlertTriangle className="w-9 h-9 text-[var(--c-bad)] opacity-80" />
-        <p className="text-sm font-medium">Esta pantalla no se pudo mostrar</p>
-        <p className="text-xs text-muted-foreground max-w-md">
-          El resto del sistema sigue funcionando. Si vuelve a pasar, copia este
-          mensaje y pásalo a soporte:
-        </p>
-        <code className="text-[11px] text-[var(--c-bad)] bg-[var(--c-bad)]/10 px-3 py-2 rounded-md max-w-xl break-all">
-          {error.message || String(error)}
-        </code>
-        <Button variant="outline" size="sm" onClick={this.reintentar} style={{ borderRadius: 'var(--r-ctl)' }}>
-          <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Reintentar
-        </Button>
-      </div>
+      <PantallaError tipo={tipo} detalle={error.message || String(error)} onReintentar={this.reintentar} />
     );
   }
 }

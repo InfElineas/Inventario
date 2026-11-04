@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { tieneRol } from '@/lib/roles';
 import { SyncProvider } from '@/lib/SyncContext';
 import AccessDenied from '@/components/shared/AccessDenied';
+import PantallaError from '@/components/shared/PantallaError';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import AppLayout from '@/components/layout/AppLayout';
 import Login from '@/pages/Login';
@@ -53,7 +54,7 @@ const RoleGuard = ({ element, roles }) => {
 };
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isAuthenticated, authError } = useAuth();
+  const { isLoadingAuth, isAuthenticated, authError, refrescarSesion } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -67,6 +68,8 @@ const AuthenticatedApp = () => {
   // pantalla en blanco, con los grises de `slate` metidos a mano, que en modo
   // oscuro quedaba como un agujero.
   if (isLoadingAuth) return <EsqueletoApp />;
+
+  if (authError) return <PantallaError tipo={authError} pagina onReintentar={refrescarSesion} />;
 
   if (!isAuthenticated) return null;
 

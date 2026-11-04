@@ -160,6 +160,9 @@ export const base44 = {
      */
     me: async () => {
       const res = await fetch('/api/auth/me', { credentials: 'include' })
+      // 401/403 es «sin sesión»; un 5xx es el servidor caído y no debe
+      // confundirse con eso: mandaría al login a quien tiene sesión.
+      if (res.status >= 500) throw new Error(`Error ${res.status}`)
       if (!res.ok) return null
       const datos = await res.json().catch(() => null)
       return datos?.user ?? null
