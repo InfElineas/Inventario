@@ -43,7 +43,7 @@ export function EsperanFacturacion({ resumen }) {
     { clave: 'aumento', to: '/ajustes/aumento', texto: 'Ajuste de aumento', cantidad: resumen.aumento, color: 'var(--c-ok)' },
     { clave: 'disminucion', to: '/ajustes/disminucion', texto: 'Ajuste de disminución', cantidad: resumen.disminucion, color: 'var(--c-bad)' },
     { clave: 'procesamiento', to: '/procesamientos', texto: 'Procesamientos (intercambios)', cantidad: resumen.procesamiento, color: 'var(--c-info-2)' },
-    { clave: 'mermas', to: '/facturacion/mermas', texto: 'Mermas por facturar', cantidad: resumen.mermas, color: 'var(--c-orange)' },
+    { clave: 'mermas', to: '/ajustes/disminucion?tab=mermas', texto: 'Mermas por facturar', cantidad: resumen.mermas, color: 'var(--c-orange)' },
     { clave: 'auditoria', to: '/auditoria', texto: 'En auditoría', cantidad: resumen.enAuditoria, color: 'var(--c-purple)' },
   ].filter((f) => f.cantidad > 0);
 

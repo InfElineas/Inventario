@@ -10,6 +10,14 @@
 export const ROLES_AJUSTES = ['fact', 'administrador', 'superadmin']
 
 /**
+ * Quién ve las mermas, que son ajustes de disminución: quien las registra y las
+ * sigue, y quien las ajusta. Es el acceso a la pantalla de Ajuste de disminución;
+ * montar y confirmar ajustes sigue siendo solo de `ROLES_AJUSTES`.
+ */
+export const ROLES_MERMAS = ['inv', 'fact', 'auditor', 'jefe_depto', 'administrador', 'superadmin']
+export const ROLES_DISMINUCION = [...new Set([...ROLES_AJUSTES, ...ROLES_MERMAS])]
+
+/**
  * Quién ve las ventas: cualquiera que trabaje en la aplicación. Antes era solo
  * facturación y quien la supervisa; lo vendido sirve a quien cuenta, a quien
  * repone y a quien decide, y no lleva ningún dato de cuentas ni de clientes.

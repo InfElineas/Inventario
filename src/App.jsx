@@ -11,7 +11,7 @@ import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import AppLayout from '@/components/layout/AppLayout';
 import Login from '@/pages/Login';
 import { ROLES_PROCESAMIENTOS } from '@/lib/procesamientos';
-import { ROLES_AJUSTES, ROLES_VENTAS } from '@/lib/ajustes';
+import { ROLES_AJUSTES, ROLES_DISMINUCION, ROLES_VENTAS } from '@/lib/ajustes';
 import TkcCredencialesDialog from '@/components/shared/TkcCredencialesDialog';
 import EsqueletoApp, { EsqueletoRuta } from '@/components/shared/Esqueleto';
 
@@ -20,7 +20,6 @@ import EsqueletoApp, { EsqueletoRuta } from '@/components/shared/Esqueleto';
 // etc. antes de que el usuario los visite.
 const Dashboard     = lazy(() => import('@/pages/Dashboard'));
 const Inventario    = lazy(() => import('@/pages/Inventario'));
-const Mermas        = lazy(() => import('@/pages/Mermas'));
 const Lotes         = lazy(() => import('@/pages/Lotes'));
 const CasosIC       = lazy(() => import('@/pages/CasosIC'));
 const ResumenVentas = lazy(() => import('@/pages/ResumenVentas'));
@@ -78,7 +77,9 @@ const AuthenticatedApp = () => {
         <Route element={<AppLayout />}>
           <Route path="/"               element={<Dashboard />} />
           <Route path="/inventario"     element={<Inventario />} />
-          <Route path="/mermas"         element={<Mermas />} />
+          {/* Las mermas son ajustes de disminución: viven en su pestaña. Los
+              enlaces viejos (avisos, marcadores) siguen llegando. */}
+          <Route path="/mermas"         element={<Navigate to="/ajustes/disminucion?tab=mermas" replace />} />
           <Route path="/lotes"          element={<Lotes />} />
           <Route path="/recepciones"    element={<Recepciones />} />
           {/* La recepción abierta es una pantalla, no un modal: se usa desde
@@ -94,12 +95,12 @@ const AuthenticatedApp = () => {
           {/* «Conteos por facturar» ya no existe: cada conteo se resuelve en la
               pantalla de su ajuste. El enlace viejo (marcadores, avisos) sigue llegando. */}
           <Route path="/facturacion/inventario" element={<Navigate to="/ajustes/disminucion" replace />} />
-          <Route path="/facturacion/mermas"     element={<RoleGuard element={<Mermas ambito="facturacion" />} roles={ROLES_AJUSTES} />} />
+          <Route path="/facturacion/mermas"     element={<Navigate to="/ajustes/disminucion?tab=mermas" replace />} />
           <Route path="/ventas"                element={<RoleGuard element={<ResumenVentas />} roles={ROLES_VENTAS} />} />
           {/* Antes vivía bajo Facturación: el enlace viejo sigue llegando. */}
           <Route path="/facturacion/ventas"    element={<Navigate to="/ventas" replace />} />
           <Route path="/ajustes/aumento"     element={<RoleGuard element={<AjusteAumento />} roles={ROLES_AJUSTES} />} />
-          <Route path="/ajustes/disminucion" element={<RoleGuard element={<AjusteDisminucion />} roles={ROLES_AJUSTES} />} />
+          <Route path="/ajustes/disminucion" element={<RoleGuard element={<AjusteDisminucion />} roles={ROLES_DISMINUCION} />} />
           <Route path="/procesamientos"      element={<RoleGuard element={<Procesamientos />} roles={ROLES_PROCESAMIENTOS} />} />
           <Route path="/transferencias"      element={<RoleGuard element={<Transferencias />} roles={ROLES_AJUSTES} />} />
           <Route path="/notificaciones" element={<Notificaciones />} />

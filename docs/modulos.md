@@ -47,7 +47,17 @@ contenido
 En el teléfono, el contenido son fichas; de `sm` para arriba, una tabla. Las
 dos caras salen de la misma descripción de columnas.
 
-## Mermas (`/mermas`)
+## Mermas (pestaña de `/ajustes/disminucion`)
+
+Las mermas son ajustes de disminución, y **ya no tienen página propia**: son la
+pestaña **Mermas** de Ajuste de disminución (`/ajustes/disminucion?tab=mermas`).
+`/mermas` y `/facturacion/mermas` redirigen ahí. La pantalla la ven quienes
+registran y siguen las mermas (`inv`, `fact`, `auditor`, `jefe_depto`,
+administradores); a quien no monta ajustes —inventario, auditoría, jefes— solo se
+le enseña esa pestaña, y el selector de almacén de arriba es el que manda. La
+facturación ve por defecto las que esperan su ajuste; el resto, las que están en
+manos de inventario. El menú tiene una sola entrada, con el pendiente de los
+faltantes y de las mermas juntos.
 
 Lo que se perdió y por qué. El inventarista la registra; cuando se **baja de
 tienda** —se descuenta en TKC— pasa a facturación.
@@ -261,9 +271,7 @@ solo cubre desde que se activó.
 
 ## Facturación
 
-Las mermas por facturar son la pantalla de Mermas con su filtro puesto
-(`/facturacion/mermas`). Separarlas fue a petición: con todo junto, el
-administrador no distinguía lo suyo de lo del otro departamento.
+Las mermas por facturar están en la pestaña **Mermas** de Ajuste de disminución.
 
 Los ajustes de aumento y disminución, los procesamientos y las transferencias
 viven en `/ajustes/*`, `/procesamientos` y `/transferencias`, y hablan con

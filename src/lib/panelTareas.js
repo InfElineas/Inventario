@@ -53,7 +53,7 @@ export function devueltosDe(inventarios, mermas, limite = 4) {
     })),
     ...de(mermas, 'devuelto').map((m) => ({
       id: `m-${m.id}`, tipo: 'merma', nombre: m.producto_nombre || m.producto_codigo || 'Merma',
-      nota: m.fact_notas || m.nota_auditor || '', enlace: '/mermas',
+      nota: m.fact_notas || m.nota_auditor || '', enlace: '/ajustes/disminucion?tab=mermas',
     })),
   ];
   return { total: filas.length, filas: filas.slice(0, limite) };

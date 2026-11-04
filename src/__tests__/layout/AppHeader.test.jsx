@@ -254,8 +254,10 @@ describe('AppLayout — contadores del menú', () => {
       // Las entradas de facturación cuentan lo mismo pero por su estado; el
       // mock devuelve una cifra por entidad, así que repiten la suya.
       expect(await leerCounts()).toEqual({
-        '/mermas': 3, '/inventario': 1, '/anuncios': 7, '/lotes': 2,
-        '/facturacion/mermas': 3, '/ajustes/aumento': 1, '/ajustes/disminucion': 1,
+        '/inventario': 1, '/anuncios': 7, '/lotes': 2,
+        '/ajustes/aumento': 1,
+        // Faltantes por facturar (1) y mermas (3): las mermas son ajustes de disminución.
+        '/ajustes/disminucion': 4,
       });
     });
   });
@@ -264,7 +266,7 @@ describe('AppLayout — contadores del menú', () => {
     Object.assign(contadores, { Merma: 5 });
     render(<AppLayout />, { wrapper });
     await vi.waitFor(async () => {
-      expect(await leerCounts()).toEqual({ '/mermas': 5, '/facturacion/mermas': 5 });
+      expect(await leerCounts()).toEqual({ '/ajustes/disminucion': 5 });
     });
   });
 

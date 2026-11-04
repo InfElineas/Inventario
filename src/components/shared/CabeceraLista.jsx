@@ -20,7 +20,7 @@
  * que ahí el ancho sobra y subirlos ahorra una franja de scroll.
  *
  * @param {object} props
- * @param {string} props.titulo
+ * @param {string} [props.titulo]   Sin él, solo van los filtros: es una lista dentro de una pestaña.
  * @param {string} [props.subtitulo]   Una línea. Si no cabe, se recorta.
  * @param {React.ReactNode} [props.pestanas]  Las pestañas de la pantalla, bajo el título.
  * @param {React.ReactNode} [props.filtros]
@@ -31,16 +31,18 @@ export default function CabeceraLista({ titulo, subtitulo, pestanas, filtros, bu
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-medium">{titulo}</h1>
-          {subtitulo && (
-            // Una línea: el subtítulo explica la pantalla, y partido en tres
-            // deja de explicar nada y solo gasta alto.
-            <p className="text-sm text-muted-foreground mt-0.5 truncate">{subtitulo}</p>
-          )}
-        </div>
+        {titulo && (
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-medium">{titulo}</h1>
+            {subtitulo && (
+              // Una línea: el subtítulo explica la pantalla, y partido en tres
+              // deja de explicar nada y solo gasta alto.
+              <p className="text-sm text-muted-foreground mt-0.5 truncate">{subtitulo}</p>
+            )}
+          </div>
+        )}
         {filtros && (
-          <div className="flex flex-wrap items-center gap-2">{filtros}</div>
+          <div className={`flex flex-wrap items-center gap-2 ${titulo ? '' : 'w-full justify-end'}`}>{filtros}</div>
         )}
       </div>
 

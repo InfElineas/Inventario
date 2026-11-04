@@ -14,7 +14,7 @@ describe('EsperanFacturacion', () => {
 
     expect(screen.getByRole('link', { name: /Ajuste de aumento/ })).toHaveAttribute('href', '/ajustes/aumento');
     expect(screen.getByRole('link', { name: /Ajuste de disminución/ })).toHaveAttribute('href', '/ajustes/disminucion');
-    expect(screen.getByRole('link', { name: /Mermas por facturar/ })).toHaveAttribute('href', '/facturacion/mermas');
+    expect(screen.getByRole('link', { name: /Mermas por facturar/ })).toHaveAttribute('href', '/ajustes/disminucion?tab=mermas');
     expect(screen.getByText('19')).toBeInTheDocument();
     expect(screen.queryByText(/Procesamientos/)).not.toBeInTheDocument();
     expect(screen.queryByText(/En auditoría/)).not.toBeInTheDocument();

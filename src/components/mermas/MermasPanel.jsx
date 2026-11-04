@@ -19,7 +19,7 @@ import { ROLES_TIENDA } from '@/lib/ajustes';
 import { notifyJefeDepto } from '@/lib/notificationService';
 import { logTransicion, logBorrado, notificarTransicion } from '@/lib/workflowService';
 import { useSortable } from '@/lib/useSortable';
-import { tieneRol } from '@/lib/roles';
+import { rolesDe, tieneRol } from '@/lib/roles';
 import { puedeEliminarMerma } from '@/lib/conteos';
 import { useConfirm } from '@/lib/useConfirm';
 import DialogosConteo, { CeldaAcciones } from '@/components/inventario/AccionesConteo';
@@ -81,7 +81,18 @@ const ORDEN_COLUMNA = {
 const VISTA_GLOBAL_MERMAS = ['jefe_depto', 'fact', 'auditor', 'administrador', 'superadmin'];
 
 
-export default function Mermas({ ambito = 'inventario' }) {
+/**
+ * Las mermas, que son ajustes de disminución: viven en la pestaña «Mermas» de
+ * esa pantalla (`/ajustes/disminucion`), no en una página propia.
+ *
+ * @param {object} props
+ * @param {'inventario'|'facturacion'} [props.ambito]  Qué mermas le tocan por
+ *   defecto. Sin él, según el rol: facturación ve las que esperan su ajuste, y
+ *   quien cuenta o supervisa, las que están en manos de inventario.
+ * @param {boolean} [props.embebida]  Dentro de la pestaña: sin título ni selector
+ *   de almacén, que ya manda el de arriba.
+ */
+export default function MermasPanel({ ambito: ambitoFijo, embebida = false }) {
   const [showForm, setShowForm] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   // Por defecto, lo que le toca a esta sección. Ver src/lib/ambito.js.
@@ -102,6 +113,8 @@ export default function Mermas({ ambito = 'inventario' }) {
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const role = user?.role || 'inv';
+  const suyos = rolesDe(user);
+  const ambito = ambitoFijo ?? (!suyos.includes('inv') && suyos.includes('fact') ? 'facturacion' : 'inventario');
   // Igual que en inventario: cada uno ve lo suyo y lo de su almacén; la vista
   // global es del jefe de departamento y de quien tiene que procesarlas.
   const vistaGlobal = tieneRol(user, VISTA_GLOBAL_MERMAS);
@@ -228,8 +241,8 @@ export default function Mermas({ ambito = 'inventario' }) {
     <div className="space-y-6">
       {ConfirmDialogNode}
       <CabeceraLista
-        titulo="Mermas"
-        subtitulo={ambito === 'facturacion'
+        titulo={embebida ? undefined : 'Mermas'}
+        subtitulo={embebida ? undefined : ambito === 'facturacion'
           ? 'Mermas ya bajadas de tienda, a la espera de facturación'
           : 'Registro y seguimiento de mermas'}
         recuento={`${total} ${total === 1 ? 'resultado' : 'resultados'}`}
@@ -242,7 +255,7 @@ export default function Mermas({ ambito = 'inventario' }) {
         )}
         filtros={(
           <>
-          <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />
+          {!embebida && <SelectorAlmacen almacen={almacen} setAlmacen={setAlmacen} almacenesConfig={almacenesConfig} />}
           <FiltroIcono
             icono={ListFilter}
             etiqueta="Estado"

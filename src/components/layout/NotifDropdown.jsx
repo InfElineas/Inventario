@@ -10,14 +10,14 @@ import { es } from 'date-fns/locale';
 import { base44 } from '@/api/base44Client';
 
 const TYPE_CFG = {
-  merma:     { Icon: Package,       color: 'var(--c-bad)', defaultLink: '/mermas'    },
+  merma:     { Icon: Package,       color: 'var(--c-bad)', defaultLink: '/ajustes/disminucion?tab=mermas' },
   lote:      { Icon: Clock,         color: 'var(--c-warn)', defaultLink: '/lotes'     },
   recepcion: { Icon: Truck,         color: 'var(--c-info)', defaultLink: '/recepciones'},
-  reconteo:  { Icon: RefreshCw,     color: 'var(--c-warn)', defaultLink: '/mermas'    },
-  devuelto:  { Icon: Undo2,         color: 'var(--c-bad)', defaultLink: '/mermas'    },
+  reconteo:  { Icon: RefreshCw,     color: 'var(--c-warn)', defaultLink: '/ajustes/disminucion?tab=mermas' },
+  devuelto:  { Icon: Undo2,         color: 'var(--c-bad)', defaultLink: '/ajustes/disminucion?tab=mermas' },
   sistema:   { Icon: Database,      color: 'var(--c-ok)', defaultLink: null         },
   usuario:   { Icon: UserPlus,      color: 'var(--c-purple)', defaultLink: '/admin/usuarios' },
-  Merma:     { Icon: Package,       color: 'var(--c-bad)', defaultLink: '/mermas'    },
+  Merma:     { Icon: Package,       color: 'var(--c-bad)', defaultLink: '/ajustes/disminucion?tab=mermas' },
   Inventario:{ Icon: CheckCheck,    color: 'var(--c-info-2)', defaultLink: '/inventario'},
   Anuncio:   { Icon: AlertTriangle, color: 'var(--c-orange)', defaultLink: '/anuncios'  },
 };

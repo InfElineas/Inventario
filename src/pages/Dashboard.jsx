@@ -276,7 +276,7 @@ function MermasTable({ mermas, period }) {
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <h3 className="text-sm font-medium">Mermas <span className="text-xs text-muted-foreground">({period})</span></h3>
-        <Link to="/mermas" className="text-xs text-[var(--c-ok)] hover:underline">Ver todas →</Link>
+        <Link to="/ajustes/disminucion?tab=mermas" className="text-xs text-[var(--c-ok)] hover:underline">Ver todas →</Link>
       </div>
       {mermas.length === 0 ? (
         <p className="text-xs text-muted-foreground text-center py-8">Sin mermas en el período</p>

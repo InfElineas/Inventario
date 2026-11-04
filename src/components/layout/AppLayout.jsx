@@ -86,9 +86,7 @@ const ROUTE_TITLES = {
   '/productos':      'Catálogo',
   '/bd-tkc':         'Catálogo — BD TKC',
   '/inventario':     'Inventario',
-  '/mermas':         'Mermas',
   '/transferencias':         'Transferencias',
-  '/facturacion/mermas':     'Mermas por facturar',
   '/lotes':          'Vencimientos',
   '/ic':             'Casos de IC',
   '/ventas':             'Resumen de ventas',
@@ -297,14 +295,17 @@ export default function AppLayout() {
 
   // ── Pending sidebar counts ───────────────────────────────
   const pendingCounts = {};
-  if (mermasPending   > 0) pendingCounts['/mermas']     = mermasPending;
   if (invPending      > 0) pendingCounts['/inventario'] = invPending;
   if (anunciosPending > 0) pendingCounts['/anuncios']   = anunciosPending;
   if (lotesCriticos   > 0) pendingCounts['/lotes']      = lotesCriticos;
   if (icPending       > 0) pendingCounts['/ic']         = icPending;
-  if (mermasFact      > 0) pendingCounts['/facturacion/mermas']     = mermasFact;
   if (sobrantesFact   > 0) pendingCounts['/ajustes/aumento']     = sobrantesFact;
-  if (faltantesFact   > 0) pendingCounts['/ajustes/disminucion'] = faltantesFact;
+  // Las mermas son ajustes de disminución: su pendiente va en la misma entrada,
+  // junto a los faltantes. Facturación cuenta las que esperan su ajuste; el
+  // resto, las que le tocan por su rol.
+  const mermasDeAqui = (role === 'fact' ? mermasFact : mermasPending) ?? 0;
+  const disminucion = (faltantesFact ?? 0) + mermasDeAqui;
+  if (disminucion > 0) pendingCounts['/ajustes/disminucion'] = disminucion;
 
   return (
     <div className="min-h-screen bg-background">

@@ -14,7 +14,7 @@
  * con las suyas delante sin que haya que decidirlo rol por rol.
  */
 
-import { ROLES_AJUSTES, ROLES_VENTAS } from '@/lib/ajustes';
+import { ROLES_AJUSTES, ROLES_DISMINUCION, ROLES_VENTAS } from '@/lib/ajustes';
 import { ROLES_PROCESAMIENTOS } from '@/lib/procesamientos';
 import { tieneRol } from '@/lib/roles';
 
@@ -49,8 +49,6 @@ export const NAV_GROUPS = [
     items: [
       { path: '/inventario',  label: 'Inventario',  icon: 'ClipboardList', prioridad: 10,
         roles: ['inv','fact','auditor','jefe_depto','administrador','superadmin'] },
-      { path: '/mermas',      label: 'Mermas',      icon: 'TrendingDown',  prioridad: 11,
-        roles: ['inv','fact','auditor','jefe_depto','administrador','superadmin'] },
       { path: '/lotes',       label: 'Vencimientos', corto: 'Vencim.', icon: 'Clock', prioridad: 12,
         roles: ['inv','ca','auditor','jefe_depto','administrador','superadmin'] },
       // Lo que inventario manda a comercial desde Vencimientos y lo que
@@ -70,11 +68,11 @@ export const NAV_GROUPS = [
     label: 'FACTURACIÓN',
     groupIcon: 'Megaphone',
     items: [
-      { path: '/facturacion/mermas',     label: 'Mermas por facturar',  corto: 'M. fact.', icon: 'TrendingDown',  roles: ROLES_AJUSTES, prioridad: 21 },
       { path: '/anuncios', label: 'Anuncios', icon: 'Megaphone', prioridad: 22,
         roles: ['inv','ca','auditor','jefe_depto','administrador','superadmin'] },
       { path: '/ajustes/aumento',     label: 'Ajuste de aumento',     corto: 'Aumento',  icon: 'PackagePlus',  roles: ROLES_AJUSTES, prioridad: 23 },
-      { path: '/ajustes/disminucion', label: 'Ajuste de disminución', corto: 'Disminuc.', icon: 'PackageMinus', roles: ROLES_AJUSTES, prioridad: 24 },
+      // Con las mermas dentro: la ven también quien las registra y las sigue.
+      { path: '/ajustes/disminucion', label: 'Ajuste de disminución', corto: 'Disminuc.', icon: 'PackageMinus', roles: ROLES_DISMINUCION, prioridad: 24 },
       { path: '/procesamientos',      label: 'Procesamientos',        corto: 'Proces.',  icon: 'Repeat',       roles: ROLES_PROCESAMIENTOS, prioridad: 25 },
       { path: '/transferencias',      label: 'Transferencias',        corto: 'Transf.',  icon: 'ArrowLeftRight', roles: ROLES_AJUSTES, prioridad: 27 },
     ],

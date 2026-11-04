@@ -9,7 +9,7 @@ const TABLA_LABEL = {
 }
 
 const TABLA_LINK = {
-  mermas:          '/mermas',
+  mermas:          '/ajustes/disminucion?tab=mermas',
   inventarios:     '/inventario',
   anuncios_desact: '/anuncios',
   lotes_ic:        '/ic',

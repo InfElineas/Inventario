@@ -104,3 +104,20 @@ describe('Resumen de ventas', () => {
     expect(TODOS_LOS_DESTINOS.some((d) => d.path === '/facturacion/ventas')).toBe(false);
   });
 });
+
+describe('Mermas, dentro de Ajuste de disminución', () => {
+  it('ya no hay entradas de mermas: son una pestaña de la disminución', () => {
+    expect(TODOS_LOS_DESTINOS.some((d) => d.path === '/mermas')).toBe(false);
+    expect(TODOS_LOS_DESTINOS.some((d) => d.path === '/facturacion/mermas')).toBe(false);
+  });
+
+  it('la disminución la ven también quienes registran y siguen las mermas, no solo facturación', () => {
+    const disminucion = TODOS_LOS_DESTINOS.find((d) => d.path === '/ajustes/disminucion');
+    for (const rol of ['inv', 'fact', 'auditor', 'jefe_depto', 'administrador', 'superadmin']) {
+      expect(disminucion.roles, rol).toContain(rol);
+    }
+    // El aumento sigue siendo de facturación.
+    const aumento = TODOS_LOS_DESTINOS.find((d) => d.path === '/ajustes/aumento');
+    expect(aumento.roles).not.toContain('inv');
+  });
+});

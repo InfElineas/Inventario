@@ -25,6 +25,11 @@ const svc = vi.hoisted(() => ({
 }));
 vi.mock('@/services/ajustesService', () => ({ ...svc, ErrorDeRed: class ErrorDeRed extends Error {} }));
 
+// Las mermas tienen su propia pantalla de pruebas: aquí solo importa dónde se montan.
+vi.mock('@/components/mermas/MermasPanel', () => ({
+  default: ({ embebida }) => <div data-testid="mermas" data-embebida={String(embebida)}>panel de mermas</div>,
+}));
+
 const { default: AjusteForm } = await import('@/components/ajustes/AjusteForm');
 
 const CREADO = {
@@ -37,9 +42,9 @@ const CREADO = {
   },
 };
 
-function montar(tipo) {
+function montar(tipo, props = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(<QueryClientProvider client={qc}><AjusteForm tipo={tipo} /></QueryClientProvider>);
+  render(<QueryClientProvider client={qc}><AjusteForm tipo={tipo} {...props} /></QueryClientProvider>);
 }
 
 const boton = (nombre) => screen.getByRole('button', { name: nombre });
@@ -283,5 +288,38 @@ describe('AjusteForm — disminución', () => {
     const fila = (await screen.findByText('TKCE0000055')).closest('tr');
     await user.click(within(fila).getByRole('button', { name: /^confirmar$/i }));
     expect(await screen.findByRole('alertdialog')).toHaveTextContent(/RESTARÁ/);
+  });
+});
+
+describe('AjusteForm — las mermas son ajustes de disminución', () => {
+  it('la disminución tiene una pestaña de Mermas; el aumento, no', async () => {
+    const user = userEvent.setup();
+    montar('disminucion');
+    expect(screen.getByRole('tab', { name: 'Mermas' })).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Mermas' }));
+    // Sin título ni selector de almacén propios: manda el de arriba.
+    expect(await screen.findByTestId('mermas')).toHaveAttribute('data-embebida', 'true');
+
+    cleanup();
+    montar('aumento');
+    expect(screen.queryByRole('tab', { name: 'Mermas' })).not.toBeInTheDocument();
+  });
+
+  it('un enlace con ?tab=mermas abre esa pestaña', async () => {
+    montar('disminucion', { pestana: 'mermas' });
+    expect(await screen.findByTestId('mermas')).toBeInTheDocument();
+    expect(screen.queryByText(/Montar un ajuste a mano/)).toBeInTheDocument();
+  });
+
+  it('quien no ajusta —inventario— solo ve las mermas, y no puede montar ajustes', async () => {
+    auth.user = { role: 'inv', tiene_tkc: false, almacenes_config: [] };
+    montar('disminucion');
+
+    expect(await screen.findByTestId('mermas')).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /Por ajustar/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /Historial/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Montar un ajuste a mano/)).not.toBeInTheDocument();
+    // Y sin el aviso de credenciales de TKC, que no es cosa suya.
+    expect(screen.queryByText(/credenciales/i)).not.toBeInTheDocument();
   });
 });

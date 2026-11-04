@@ -55,7 +55,7 @@ describe('devueltosDe', () => {
     expect(d.total).toBe(2);
     expect(d.filas).toEqual([
       { id: 'i-1', tipo: 'conteo', nombre: 'Aceite', nota: 'Falta el pasillo 3', enlace: '/inventario' },
-      { id: 'm-9', tipo: 'merma', nombre: 'X1', nota: 'Sin foto', enlace: '/mermas' },
+      { id: 'm-9', tipo: 'merma', nombre: 'X1', nota: 'Sin foto', enlace: '/ajustes/disminucion?tab=mermas' },
     ]);
   });
 

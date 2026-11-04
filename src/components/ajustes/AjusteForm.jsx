@@ -16,10 +16,13 @@ import PendientesInventario from '@/components/ajustes/PendientesInventario';
 import HistorialAjustes from '@/components/ajustes/HistorialAjustes';
 import CerrarConteos from '@/components/ajustes/CerrarConteos';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import MermasPanel from '@/components/mermas/MermasPanel';
+import { useAuth } from '@/lib/AuthContext';
+import { tieneRol } from '@/lib/roles';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import { WAREHOUSES } from '@/services/tkc/warehouses';
 import {
-  TIPOS_AJUSTE, parseLineas, nuevaClave, interpretar, mensajeDeError,
+  TIPOS_AJUSTE, ROLES_AJUSTES, parseLineas, nuevaClave, interpretar, mensajeDeError,
 } from '@/lib/ajustes';
 import { SIN_SONDEO } from '@/lib/query-client';
 import { lineasAjuste, crearAjuste, confirmarAjuste, ErrorDeRed,
@@ -35,9 +38,30 @@ const hoy = () => format(new Date(), 'yyyy-MM-dd');
  * diálogo aparte— es lo que la mueve. Nunca van encadenados.
  *
  * Todo sale con la cuenta de TKC de quien lo hace.
+ *
+ * En la disminución hay una pestaña más, **Mermas**: las mermas son ajustes de
+ * disminución, y quien las registra o las sigue entra aquí aunque no monte
+ * ajustes. A esos usuarios solo se les enseña esa pestaña.
+ *
+ * @param {object} props
+ * @param {'aumento'|'disminucion'} props.tipo
+ * @param {string} [props.pestana]  Pestaña a la que ir (`mermas`), p. ej. desde un aviso.
  */
-export default function AjusteForm({ tipo }) {
+export default function AjusteForm({ tipo, pestana: pestanaPedida }) {
   const cfg = TIPOS_AJUSTE[tipo];
+  const { user } = useAuth();
+  const conMermas = tipo === 'disminucion';
+  // Sin usuario todavía se da por hecho que ajusta: la sesión llega antes que la
+  // pantalla, y lo contrario parpadearía con la pestaña de mermas sola.
+  const puedeAjustar = !user || tieneRol(user, ROLES_AJUSTES);
+  const [pestana, setPestana] = useState(
+    conMermas && (pestanaPedida === 'mermas' || !puedeAjustar) ? 'mermas' : 'pendientes',
+  );
+  useEffect(() => {
+    if (conMermas && pestanaPedida === 'mermas') setPestana('mermas');
+  }, [conMermas, pestanaPedida]);
+  // Quien no ajusta no tiene otra pestaña que esa.
+  const pestanaActual = conMermas && !puedeAjustar ? 'mermas' : pestana;
   const { tiene: conTkc, cargando: cargandoUsuario } = useAccesoTkc();
   const sinTkc = !cargandoUsuario && !conTkc;
   const queryClient = useQueryClient();
@@ -155,7 +179,7 @@ export default function AjusteForm({ tipo }) {
         <p className="text-sm text-muted-foreground mt-0.5">{cfg.descripcion}</p>
       </div>
 
-      {sinTkc && <TkcBloqueoAviso funcion="montar o confirmar ajustes" />}
+      {sinTkc && puedeAjustar && <TkcBloqueoAviso funcion="montar o confirmar ajustes" />}
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <label className="block space-y-1.5 text-xs text-muted-foreground w-full max-w-xs">
@@ -171,10 +195,12 @@ export default function AjusteForm({ tipo }) {
             No vacía el texto a propósito: tras un «se envió y no se pudo comprobar»
             hay que poder reabrir y reenviar LO MISMO, para que la clave de
             idempotencia se reutilice y TKC devuelva el documento ya hecho. */}
-        <Button disabled={!almacenValido} onClick={() => setMontarAbierto(true)}
-          style={{ borderRadius: 'var(--r-ctl)' }}>
-          Montar un ajuste a mano
-        </Button>
+        {puedeAjustar && (
+          <Button disabled={!almacenValido} onClick={() => setMontarAbierto(true)}
+            style={{ borderRadius: 'var(--r-ctl)' }}>
+            Montar un ajuste a mano
+          </Button>
+        )}
       </div>
 
       {bloqueo && (
@@ -192,10 +218,11 @@ export default function AjusteForm({ tipo }) {
 
       {/* Dos pestañas: lo que hay que ajustar, y lo que TKC ya tiene. Antes
           la pantalla solo enseñaba lo segundo, que es lo que menos se mira. */}
-      <Tabs defaultValue="pendientes" className="space-y-4">
+      <Tabs value={pestanaActual} onValueChange={setPestana} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="pendientes">Por ajustar</TabsTrigger>
-          <TabsTrigger value="historial">Historial de TKC</TabsTrigger>
+          {puedeAjustar && <TabsTrigger value="pendientes">Por ajustar</TabsTrigger>}
+          {puedeAjustar && <TabsTrigger value="historial">Historial de TKC</TabsTrigger>}
+          {conMermas && <TabsTrigger value="mermas">Mermas</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="pendientes" className="space-y-4">
@@ -316,6 +343,13 @@ export default function AjusteForm({ tipo }) {
           {resultado.tipo === 'sin_verificar' && <AlertBanner variant="warning" message={resultado.mensaje || 'No se pudo comprobar el resultado.'} />}
         </Card>
       )}
+
+        {conMermas && (
+          <TabsContent value="mermas">
+            {/* El almacén de arriba es el que manda: el panel no trae el suyo. */}
+            <MermasPanel embebida />
+          </TabsContent>
+        )}
 
         <TabsContent value="historial">
           <HistorialAjustes
