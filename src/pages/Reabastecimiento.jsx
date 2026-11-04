@@ -17,6 +17,7 @@ import { CalendarRange, Download, Factory, Loader2, Megaphone, RefreshCw, Search
   ShoppingCart } from 'lucide-react';
 import BotonAccion from '@/components/shared/BotonAccion';
 import { FiltroIcono, SelectorAlmacen } from '@/components/shared/ControlesLista';
+import MultiSelect from '@/components/shared/MultiSelect';
 import CabeceraLista from '@/components/shared/CabeceraLista';
 
 /**
@@ -122,7 +123,7 @@ export default function Reabastecimiento() {
   const [dias, setDias] = useState(leerDias);
   const [estado, setEstado] = useState('TODOS');
   const [busqueda, setBusqueda] = useState('');
-  const [suministrador, setSuministrador] = useState('');
+  const [suministrador, setSuministrador] = useState([]);
   const [anuncio, setAnuncio] = useState(ANUNCIO_POR_DEFECTO);
   const [cantidades, setCantidades] = useState({});
   const [page, setPage] = useState(1);
@@ -152,7 +153,7 @@ export default function Reabastecimiento() {
 
   // Cambiar de filtro devuelve a la primera página: quedarse en la siete de
   // una lista que ahora tiene dos deja la tabla vacía.
-  const firma = `${almacen}|${dias}|${estado}|${busqueda.trim()}|${suministrador}|${anuncio}`;
+  const firma = `${almacen}|${dias}|${estado}|${busqueda.trim()}|${suministrador.join('|')}|${anuncio}`;
   const previa = useRef(firma);
   useEffect(() => {
     if (previa.current !== firma) { previa.current = firma; setPage(1); }
@@ -185,7 +186,7 @@ export default function Reabastecimiento() {
     const q = busqueda.trim().toLowerCase();
     const lista = porAnuncio.filter((f) => {
       if (estado !== 'TODOS' && f.estadoTienda !== estado) return false;
-      if (suministrador && f.suministrador !== suministrador) return false;
+      if (suministrador.length > 0 && !suministrador.includes(f.suministrador)) return false;
       if (q && !f.nombre?.toLowerCase().includes(q) && !String(f.codigo).toLowerCase().includes(q)) return false;
       return true;
     });
@@ -256,16 +257,13 @@ export default function Reabastecimiento() {
               ...anuncios.map((a) => ({ valor: a, label: a })),
             ]}
           />
-          <FiltroIcono
+          <MultiSelect
             icono={Factory}
-            etiqueta="Suministrador"
-            valor={suministrador || 'all'}
-            porDefecto="all"
-            onChange={(v) => setSuministrador(v === 'all' ? '' : v)}
-            opciones={[
-              { valor: 'all', label: 'Todos los suministradores' },
-              ...suministradores.map((x) => ({ valor: x, label: x })),
-            ]}
+            value={suministrador}
+            onChange={setSuministrador}
+            placeholder="Todos los suministradores"
+            etiquetaVarios={(n) => `${n} suministradores`}
+            options={suministradores.map((x) => ({ value: x, label: x }))}
           />
           {/* Un solo campo, no tres piezas: «Cubrir», la caja y «días»
               ocupaban media fila para pedir un numero. El icono y la «d»

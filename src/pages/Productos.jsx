@@ -39,6 +39,7 @@ import { base44 } from '@/api/base44Client';
 import { SIN_SONDEO } from '@/lib/query-client';
 import { tieneRol } from '@/lib/roles';
 import { ALTO, FiltroIcono } from '@/components/shared/ControlesLista';
+import MultiSelect from '@/components/shared/MultiSelect';
 
 // ── Constants ─────────────────────────────────────────────────
 const PAGE_SIZE = 50;
@@ -83,7 +84,7 @@ const ESTADOS_ANUNCIO_TKC = [
 ];
 
 const DEFAULT_FILTERS = {
-  existencia: 'all', suministrador: '', categoria: '',
+  existencia: 'all', suministrador: [], categoria: '',
   estadoTienda: 'all', estadoAnuncio: 'all', precioMin: '', precioMax: '',
 };
 
@@ -413,7 +414,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
     // sí/no sin «Muerto», y su `tienda` un binario almacén/tienda, no los
     // siete estados— y filtrar en el navegador sobre páginas suyas daría
     // resultados falsos. Ver src/services/catalogoService.js.
-    queryKey: ['catalogo', almacen, page, tkcLimit, debouncedSearch.trim(), tkcSort.key, tkcSort.dir, tkcExistencia, advFilters.estadoTienda, advFilters.estadoAnuncio, advFilters.suministrador],
+    queryKey: ['catalogo', almacen, page, tkcLimit, debouncedSearch.trim(), tkcSort.key, tkcSort.dir, tkcExistencia, advFilters.estadoTienda, advFilters.estadoAnuncio, advFilters.suministrador.join('|')],
     queryFn: () => fetchCatalogo({
       almacen,
       page,
@@ -607,7 +608,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
       // que elegir cualquiera de ellos no devolvía nunca nada.
       if (advFilters.estadoTienda !== 'all'   && estadoTiendaDe(p) !== advFilters.estadoTienda) return false;
       if (advFilters.estadoAnuncio !== 'all'  && estadoAnuncioDe(p) !== advFilters.estadoAnuncio) return false;
-      if (advFilters.suministrador && p.suministrador !== advFilters.suministrador) return false;
+      if (advFilters.suministrador.length > 0 && !advFilters.suministrador.includes(p.suministrador)) return false;
       if (advFilters.categoria     && p.categoria_elineas !== advFilters.categoria)  return false;
       if (advFilters.precioMin     && (p.precio_costo ?? 0) < Number(advFilters.precioMin)) return false;
       if (advFilters.precioMax     && (p.precio_costo ?? 0) > Number(advFilters.precioMax)) return false;
@@ -689,12 +690,12 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   const FILTER_INPUT_CLS = "pl-3 pr-3 py-2 text-sm rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:border-[var(--c-ok)]/30 transition-colors focus:outline-hidden focus:ring-1 focus:ring-[var(--c-ok)]/50 h-9 w-20";
   const SET_FILTER = (key) => (e) => { setAdvFilters(f => ({ ...f, [key]: e.target.value })); resetPage(); };
 
-  const hayFiltrosEL  = search || Object.values(advFilters).some(v => v && v !== 'all');
+  const hayFiltrosEL  = search || Object.values(advFilters).some(v => (Array.isArray(v) ? v.length > 0 : v && v !== 'all'));
   // Para el boton de «Filtros» del movil: un filtro puesto que no se ve es la
   // forma mas rapida de no entender por que falta algo en la lista.
-  const filtrosPuestos = Object.values(advFilters).filter(v => v && v !== 'all').length;
+  const filtrosPuestos = Object.values(advFilters).filter(v => (Array.isArray(v) ? v.length > 0 : v && v !== 'all')).length;
   const hayFiltrosTKC = search || tkcSort.key !== 'nombre' || tkcSort.dir !== 'asc'
-    || advFilters.estadoTienda !== 'all' || advFilters.estadoAnuncio !== 'all' || advFilters.suministrador
+    || advFilters.estadoTienda !== 'all' || advFilters.estadoAnuncio !== 'all' || advFilters.suministrador.length > 0
     || tkcExistencia !== TKC_EXISTENCIA_DEFAULT;
 
   const resetFiltros = () => {
@@ -797,16 +798,12 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                       ...ESTADOS_ANUNCIO_TKC.map(e => ({ valor: e, label: e })),
                     ]} />
 
-                  <SearchableSelect
+                  <MultiSelect
                     value={advFilters.suministrador} icono={Factory}
-                    activo={Boolean(advFilters.suministrador)}
                     onChange={v => { setAdvFilters(f => ({ ...f, suministrador: v })); resetPage(); }}
-                    placeholder="Suministrador"
-                    maxWidth="max-w-[200px]"
-                    options={[
-                      { value: '', label: 'Suministrador: todos' },
-                      ...suministradores.map(sx => ({ value: sx, label: sx })),
-                    ]}
+                    placeholder="Suministrador: todos"
+                    etiquetaVarios={(n) => `${n} suministradores`}
+                    options={suministradores.map(sx => ({ value: sx, label: sx }))}
                   />
 
                   <ColPicker cols={TKC_COLUMN_DEFS} visible={tkcCols}
@@ -852,14 +849,11 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                       { valor: 'SIN ID', label: 'Sin ID' },
                     ]} />
 
-                  <SearchableSelect value={advFilters.suministrador} icono={Factory}
-                    activo={Boolean(advFilters.suministrador)}
+                  <MultiSelect value={advFilters.suministrador} icono={Factory}
                     onChange={v => { setAdvFilters(f => ({ ...f, suministrador: v })); resetPage(); }}
                     placeholder="Suministrador: todos"
-                    options={[
-                      { value: '', label: 'Suministrador: todos' },
-                      ...suministradores.map(s => ({ value: s, label: s.replace('SEL ', '') })),
-                    ]} />
+                    etiquetaVarios={(n) => `${n} suministradores`}
+                    options={suministradores.map(s => ({ value: s, label: s.replace('SEL ', '') }))} />
 
                   <SearchableSelect value={advFilters.categoria} icono={Tag}
                     activo={Boolean(advFilters.categoria)}

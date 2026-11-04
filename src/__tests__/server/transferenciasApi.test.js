@@ -373,6 +373,15 @@ describe('errores de la API', () => {
     expect(res.cuerpo.error.message).toMatch(/identity server/i);
   });
 
+  it('«no tiene el permiso X» nombra el permiso que falta y dónde pedirlo', async () => {
+    apiResponde(403, { error: { code: 'forbidden', message: 'El usuario no tiene el permiso «down-shop:read» en este sistema.' } });
+    const { res } = await llamar('/api/ajustes/aumentos', CREAR, 'POST');
+    expect(res.statusCode).toBe(403);
+    expect(res.cuerpo.error.code).toBe('sin_permiso_transferencias');
+    expect(res.cuerpo.error.message).toMatch(/down-shop:read/);
+    expect(res.cuerpo.error.message).toMatch(/identity server/i);
+  });
+
   it('un 401 de la API NO se reenvía como 401 (mandaría al login sin motivo)', async () => {
     apiResponde(401, { error: { code: 'unauthorized', message: 'x' } });
     const { res } = await llamar('/api/ajustes/aumentos');

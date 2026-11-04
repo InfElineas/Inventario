@@ -262,6 +262,17 @@ function reenviar(res, { status, datos, extra }) {
       'No se puede dar desde inventario.',
     )
   }
+  // «El usuario no tiene el permiso «down-shop:read» en este sistema»: el rol
+  // existe pero le falta un permiso concreto. Tal cual no dice quién lo da ni
+  // dónde, y a quien lo lee le parece un fallo de la pantalla.
+  const faltante = status === 403 && /no tiene el permiso\s*[«"]([^»"]+)[»"]/i.exec(JSON.stringify(datos))
+  if (faltante) {
+    return fallo(
+      res, 403, 'sin_permiso_transferencias',
+      `Tu rol no tiene el permiso «${faltante[1]}» del sistema de transferencias, que hace falta para subir y bajar de tienda. ` +
+      'Pide que lo añadan a tu rol en el Identity Server; no se puede dar desde inventario.',
+    )
+  }
   return json(res, estadoPublico(status), datos, extra)
 }
 

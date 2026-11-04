@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import MultiSelect from '@/components/shared/MultiSelect';
 import { X, FileText, Download, Loader2, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -65,7 +65,7 @@ function buildPDF({ filtros, inventarios, movimientos, suministradores }) {
   const filtroTexto = [
     filtros.fechaDesde ? `Desde: ${fmtDate(filtros.fechaDesde)}` : null,
     filtros.fechaHasta ? `Hasta: ${fmtDate(filtros.fechaHasta)}` : null,
-    filtros.suministrador !== 'all' ? `Suministrador: ${filtros.suministrador}` : null,
+    filtros.suministrador.length > 0 ? `Suministrador: ${filtros.suministrador.join(', ')}` : null,
   ].filter(Boolean).join('  |  ') || 'Sin filtros aplicados';
   doc.text(generado, MARGIN, 25);
   doc.text(filtroTexto, MARGIN, 31);
@@ -266,7 +266,7 @@ export default function GeneradorPDF({ onClose }) {
   const [filtros, setFiltros] = useState({
     fechaDesde: firstOfMonth,
     fechaHasta: today,
-    suministrador: 'all',
+    suministrador: [],
   });
   const [generating, setGenerating] = useState(false);
 
@@ -295,7 +295,7 @@ export default function GeneradorPDF({ onClose }) {
       const d = i.fecha_inv ? new Date(i.fecha_inv) : null;
       if (desde && d && d < desde) return false;
       if (hasta && d && d > hasta) return false;
-      if (filtros.suministrador !== 'all' && i.suministrador !== filtros.suministrador) return false;
+      if (filtros.suministrador.length > 0 && !filtros.suministrador.includes(i.suministrador)) return false;
       return true;
     });
 
@@ -357,13 +357,11 @@ export default function GeneradorPDF({ onClose }) {
         </div>
         <div>
           <label className="text-xs text-muted-foreground block mb-1">Suministrador</label>
-          <Select value={filtros.suministrador} onValueChange={v => setFiltros(f => ({ ...f, suministrador: v }))}>
-            <SelectTrigger style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los suministradores</SelectItem>
-              {suministradores.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <MultiSelect bloque value={filtros.suministrador}
+            onChange={v => setFiltros(f => ({ ...f, suministrador: v }))}
+            placeholder="Todos los suministradores"
+            etiquetaVarios={(n) => `${n} suministradores`}
+            options={suministradores.map(s => ({ value: s, label: s }))} />
         </div>
       </div>
 

@@ -135,7 +135,11 @@ function condiciones({ almacen, filtros }) {
 
   if (filtros.estadoTienda  && filtros.estadoTienda  !== 'all') c.estado_tienda = filtros.estadoTienda
   if (filtros.estadoAnuncio && filtros.estadoAnuncio !== 'all') c.estado_anuncio_tkc = filtros.estadoAnuncio
-  if (filtros.suministrador) c.suministrador = filtros.suministrador
+  // Varios a la vez: la API de datos traduce un array a IN. Un texto suelto
+  // (de antes del multiselector) sigue valiendo.
+  if (Array.isArray(filtros.suministrador) ? filtros.suministrador.length > 0 : filtros.suministrador) {
+    c.suministrador = filtros.suministrador
+  }
   if (filtros.categoria)     c.categoria_elineas = filtros.categoria
 
   return c
