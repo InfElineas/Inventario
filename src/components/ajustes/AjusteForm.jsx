@@ -18,6 +18,7 @@ import CerrarConteos from '@/components/ajustes/CerrarConteos';
 import ComprobacionLineas from '@/components/ajustes/ComprobacionLineas';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MermasPanel from '@/components/mermas/MermasPanel';
+import PendientesMermas from '@/components/ajustes/PendientesMermas';
 import { useAuth } from '@/lib/AuthContext';
 import { tieneRol } from '@/lib/roles';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
@@ -238,6 +239,13 @@ export default function AjusteForm({ tipo, pestana: pestanaPedida }) {
             almacen={almacen}
             onUsar={(lineas, conteos) => { setTexto(lineas); setConteosUsados(conteos ?? []); setMontarAbierto(true); }}
           />
+          {/* Las mermas bajadas de tienda esperan su ajuste igual que los conteos. */}
+          {conMermas && (
+            <PendientesMermas
+              almacen={almacen}
+              onUsar={(lineas, conteos) => { setTexto(lineas); setConteosUsados(conteos ?? []); setMontarAbierto(true); }}
+            />
+          )}
         </TabsContent>
 
       {/* ── Montar: en modal ───────────────────────────────────── */}

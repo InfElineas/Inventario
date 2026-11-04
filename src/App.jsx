@@ -12,7 +12,7 @@ import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import AppLayout from '@/components/layout/AppLayout';
 import Login from '@/pages/Login';
 import { ROLES_PROCESAMIENTOS } from '@/lib/procesamientos';
-import { ROLES_AJUSTES, ROLES_DISMINUCION, ROLES_VENTAS } from '@/lib/ajustes';
+import { ROLES_AJUSTES, ROLES_DISMINUCION, ROLES_MERMAS_INVENTARIO, ROLES_VENTAS } from '@/lib/ajustes';
 import TkcCredencialesDialog from '@/components/shared/TkcCredencialesDialog';
 import EsqueletoApp, { EsqueletoRuta } from '@/components/shared/Esqueleto';
 
@@ -21,6 +21,7 @@ import EsqueletoApp, { EsqueletoRuta } from '@/components/shared/Esqueleto';
 // etc. antes de que el usuario los visite.
 const Dashboard     = lazy(() => import('@/pages/Dashboard'));
 const Inventario    = lazy(() => import('@/pages/Inventario'));
+const Mermas        = lazy(() => import('@/pages/Mermas'));
 const Lotes         = lazy(() => import('@/pages/Lotes'));
 const CasosIC       = lazy(() => import('@/pages/CasosIC'));
 const ResumenVentas = lazy(() => import('@/pages/ResumenVentas'));
@@ -80,9 +81,9 @@ const AuthenticatedApp = () => {
         <Route element={<AppLayout />}>
           <Route path="/"               element={<Dashboard />} />
           <Route path="/inventario"     element={<Inventario />} />
-          {/* Las mermas son ajustes de disminución: viven en su pestaña. Los
-              enlaces viejos (avisos, marcadores) siguen llegando. */}
-          <Route path="/mermas"         element={<Navigate to="/ajustes/disminucion?tab=mermas" replace />} />
+          {/* Inventario registra y sigue sus mermas aquí; facturación las ajusta
+              en la pestaña Mermas de Ajuste de disminución. */}
+          <Route path="/mermas"         element={<RoleGuard element={<Mermas />} roles={ROLES_MERMAS_INVENTARIO} />} />
           <Route path="/lotes"          element={<Lotes />} />
           <Route path="/recepciones"    element={<Recepciones />} />
           {/* La recepción abierta es una pantalla, no un modal: se usa desde

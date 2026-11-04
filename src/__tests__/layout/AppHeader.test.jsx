@@ -259,7 +259,7 @@ describe('AppLayout — contadores del menú', () => {
         // Faltantes por facturar (1) en disminución; las mermas (3), quien no
         // es facturación las ve en su entrada de Inventario.
         '/ajustes/disminucion': 1,
-        '/ajustes/disminucion?tab=mermas': 3,
+        '/mermas': 3,
       });
     });
   });
@@ -268,7 +268,7 @@ describe('AppLayout — contadores del menú', () => {
     Object.assign(contadores, { Merma: 5 });
     render(<AppLayout />, { wrapper });
     await vi.waitFor(async () => {
-      expect(await leerCounts()).toEqual({ '/ajustes/disminucion?tab=mermas': 5 });
+      expect(await leerCounts()).toEqual({ '/mermas': 5 });
     });
   });
 

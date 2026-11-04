@@ -106,8 +106,11 @@ describe('Resumen de ventas', () => {
 });
 
 describe('Mermas, dentro de Ajuste de disminución', () => {
-  it('ya no hay entradas de mermas: son una pestaña de la disminución', () => {
-    expect(TODOS_LOS_DESTINOS.some((d) => d.path === '/mermas')).toBe(false);
+  it('inventario tiene su página de Mermas para registrarlas; facturación, la pestaña', () => {
+    const mermas = TODOS_LOS_DESTINOS.find((d) => d.path === '/mermas');
+    expect(mermas.grupo).toBe('INVENTARIO');
+    expect(mermas.roles).toContain('inv');
+    expect(mermas.roles).not.toContain('fact');
     expect(TODOS_LOS_DESTINOS.some((d) => d.path === '/facturacion/mermas')).toBe(false);
   });
 

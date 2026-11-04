@@ -51,6 +51,7 @@ export default function CerrarConteos({ conteos, aceptadas, documento, estado, s
       setHechos((prev) => new Set([...prev, ...r.hechos.map((c) => c.id)]));
       queryClient.invalidateQueries({ queryKey: ['pend-fact'] });
       queryClient.invalidateQueries({ queryKey: ['inventarios'] });
+      queryClient.invalidateQueries({ queryKey: ['mermas'] });
       if (r.fallos.length === 0) onHecho?.();
     },
   });

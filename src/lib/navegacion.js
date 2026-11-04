@@ -14,7 +14,7 @@
  * con las suyas delante sin que haya que decidirlo rol por rol.
  */
 
-import { ROLES_AJUSTES, ROLES_DISMINUCION, ROLES_VENTAS } from '@/lib/ajustes';
+import { ROLES_AJUSTES, ROLES_DISMINUCION, ROLES_MERMAS_INVENTARIO, ROLES_VENTAS } from '@/lib/ajustes';
 import { ROLES_PROCESAMIENTOS } from '@/lib/procesamientos';
 import { tieneRol } from '@/lib/roles';
 
@@ -51,11 +51,9 @@ export const NAV_GROUPS = [
     items: [
       { path: '/inventario',  label: 'Inventario',  icon: 'ClipboardList', prioridad: 10,
         roles: ['inv','fact','auditor','jefe_depto','administrador','superadmin'] },
-      // Las mermas son ajustes de disminución y viven en su pestaña, pero quien
-      // las registra es inventario y no mira en el grupo de Facturación: esta
-      // entrada lleva directa a la pestaña. Facturación ya la tiene en su grupo.
-      { path: '/ajustes/disminucion?tab=mermas', label: 'Mermas', icon: 'PackageMinus', prioridad: 11,
-        roles: ['inv','auditor','jefe_depto','administrador','superadmin'] },
+      // Donde inventario registra y sigue sus mermas. Facturación las ajusta en
+      // la pestaña Mermas de Ajuste de disminución.
+      { path: '/mermas', label: 'Mermas', icon: 'PackageMinus', prioridad: 11, roles: ROLES_MERMAS_INVENTARIO },
       { path: '/lotes',       label: 'Vencimientos', corto: 'Vencim.', icon: 'Clock', prioridad: 12,
         roles: ['inv','ca','auditor','jefe_depto','administrador','superadmin'] },
       // Lo que inventario manda a comercial desde Vencimientos y lo que

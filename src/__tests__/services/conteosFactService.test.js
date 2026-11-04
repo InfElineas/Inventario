@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const m = vi.hoisted(() => ({ update: vi.fn() }));
-vi.mock('@/api/base44Client', () => ({ base44: { entities: { Inventario: { update: m.update } } } }));
+const merma = vi.hoisted(() => ({ update: vi.fn() }));
+vi.mock('@/api/base44Client', () => ({
+  base44: { entities: { Inventario: { update: m.update }, Merma: { update: merma.update } } },
+}));
 vi.mock('@/lib/workflowService', () => ({
   logTransicion: vi.fn().mockResolvedValue(undefined),
   notificarTransicion: vi.fn().mockResolvedValue(undefined),
@@ -14,6 +17,20 @@ const USER = { email: 'fact@x.com', full_name: 'Fran' };
 const conteo = (id, resultado) => ({ id, producto_codigo: id, resultado, diferencia: resultado === 'faltante' ? -2 : 2, clasif_ajuste: 'Robo' });
 
 beforeEach(() => m.update.mockReset().mockResolvedValue({}));
+
+describe('procesarConteos — mermas', () => {
+  it('una merma se escribe en su entidad, con su clasificación, y pasa a auditoría', async () => {
+    merma.update.mockReset().mockResolvedValue({});
+    const m1 = { id: 'm1', producto_codigo: '111', resultado: 'faltante', origen_registro: 'merma', clasif_merma: 'Roto' };
+    const r = await procesarConteos({ conteos: [{ conteo: m1 }], documento: 'TKCS9', sentido: 'disminucion', user: USER });
+
+    expect(r.hechos).toHaveLength(1);
+    expect(m.update).not.toHaveBeenCalled();
+    expect(merma.update).toHaveBeenCalledWith('m1', expect.objectContaining({
+      fact_no_factura: 'TKCS9', fact_clasif: 'Roto', estado_tarea: 'en_auditoria',
+    }));
+  });
+});
 
 describe('procesarConteos — poka-yoke del sentido', () => {
   it('un faltante no se da por resuelto con un ajuste de aumento: no se escribe y se dice por qué', async () => {

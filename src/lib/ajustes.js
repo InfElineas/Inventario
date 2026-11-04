@@ -15,7 +15,9 @@ export const ROLES_AJUSTES = ['fact', 'administrador', 'superadmin']
  * montar y confirmar ajustes sigue siendo solo de `ROLES_AJUSTES`.
  */
 export const ROLES_MERMAS = ['inv', 'fact', 'auditor', 'jefe_depto', 'administrador', 'superadmin']
-export const ROLES_DISMINUCION = [...new Set([...ROLES_AJUSTES, ...ROLES_MERMAS])]
+/** Quién entra a la página de Mermas de inventario (facturación las tiene en su ajuste de disminución). */
+export const ROLES_MERMAS_INVENTARIO = ROLES_MERMAS.filter((r) => r !== 'fact')
+export const ROLES_DISMINUCION =[...new Set([...ROLES_AJUSTES, ...ROLES_MERMAS])]
 
 /**
  * Quién ve las ventas: cualquiera que trabaje en la aplicación. Antes era solo

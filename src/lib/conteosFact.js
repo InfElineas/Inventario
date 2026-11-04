@@ -124,7 +124,7 @@ export function lineasDePares(pares) {
 export function registroFact({ conteo, documento, estado, notas, user, ahora = new Date() }) {
   return {
     fact_no_factura: documento ?? '',
-    fact_clasif: conteo.clasif_ajuste ?? '',
+    fact_clasif: conteo.clasif_ajuste ?? conteo.clasif_merma ?? '',
     fact_estado: estado ?? ESTADO_POR_RESULTADO[conteo.resultado] ?? '',
     fact_notas: notas ?? '',
     fact_especialista_id: user?.email,

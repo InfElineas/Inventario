@@ -40,10 +40,14 @@ export async function procesarConteos({ conteos, documento, estado, notas, senti
       continue;
     }
     try {
+      // Una merma pendiente de facturación se resuelve igual que un conteo: mismo
+      // registro de facturación y mismo paso a auditoría, en su propia entidad.
+      const esMerma = conteo.origen_registro === 'merma';
       const datos = registroFact({ conteo, documento, estado, notas, user });
-      await base44.entities.Inventario.update(conteo.id, datos);
-      logTransicion('inventarios', conteo, datos.estado_tarea, user, datos).catch(() => {});
-      notificarTransicion('inventarios', { ...conteo, ...datos }, datos.estado_tarea, user).catch(() => {});
+      await base44.entities[esMerma ? 'Merma' : 'Inventario'].update(conteo.id, datos);
+      const tabla = esMerma ? 'mermas' : 'inventarios';
+      logTransicion(tabla, conteo, datos.estado_tarea, user, datos).catch(() => {});
+      notificarTransicion(tabla, { ...conteo, ...datos }, datos.estado_tarea, user).catch(() => {});
       hechos.push(conteo);
     } catch (e) {
       fallos.push({ conteo, motivo: e?.message ?? 'No se pudo escribir.' });
