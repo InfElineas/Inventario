@@ -661,7 +661,10 @@ export function createTransferenciasApiMiddleware() {
       // procesamientos, de facturación. Esto solo decide quién ve la pantalla:
       // el permiso de verdad lo comprueba la API contra el Identity Server.
       const rolesPermitidos = esTienda ? ROLES_TIENDA : ROLES_AJUSTES
-      if (!rolesPermitidos.includes(sesion.usuario.role)) {
+      // Con CUALQUIERA de sus roles basta. Antes se miraba solo `role`, el de más
+      // autoridad: quien es jefe de departamento y además factura quedaba como
+      // `jefe_depto` y no podía ni montar un ajuste.
+      if (!tieneAlgun(sesion.usuario, rolesPermitidos)) {
         return fallo(res, 403, 'forbidden', esTienda
           ? 'Tu rol no puede subir ni bajar de tienda.'
           : 'Tu rol no puede gestionar ajustes ni procesamientos de facturación.')

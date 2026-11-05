@@ -12,6 +12,7 @@
 
 import { queryOne } from './db.js'
 import { resolverSesion } from './session.js'
+import { rolesDe } from '../lib/roles.js'
 
 // Los mismos roles que podían lanzar el sync manual desde Configuración.
 const ROLES = ['inv', 'administrador', 'superadmin']
@@ -43,7 +44,8 @@ export function createSyncApiMiddleware() {
       const sesion = await resolverSesion(req, res)
       if (!sesion) return responder(res, 401, { error: 'Sin sesión' })
 
-      if (!ROLES.includes(sesion.usuario.role)) {
+      // Con cualquiera de sus roles, no solo el de más autoridad.
+      if (!rolesDe(sesion.usuario).some((r) => ROLES.includes(r))) {
         return responder(res, 403, { error: 'Sin permiso para sincronizar' })
       }
 

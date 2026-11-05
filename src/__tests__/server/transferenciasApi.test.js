@@ -128,6 +128,19 @@ describe('enrutado y acceso', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it('un jefe de departamento que además factura SÍ puede: vale cualquiera de sus roles, no solo el de más autoridad', async () => {
+    resolverSesion.mockResolvedValue({ ...SESION('jefe_depto'), usuario: { role: 'jefe_depto', roles: ['jefe_depto', 'jefe_facturacion', 'fact'] } });
+    apiResponde(200, []);
+    const { res } = await llamar('/api/ajustes/aumentos');
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('un jefe sin el rol que factura sigue sin poder', async () => {
+    resolverSesion.mockResolvedValue({ ...SESION('jefe_depto'), usuario: { role: 'jefe_depto', roles: ['jefe_depto', 'jefe_inventario'] } });
+    const { res } = await llamar('/api/ajustes/aumentos');
+    expect(res.statusCode).toBe(403);
+  });
+
   it.each(ROLES_AJUSTES)('el rol %s sí puede', async (rol) => {
     resolverSesion.mockResolvedValue(SESION(rol));
     apiResponde(200, []);
