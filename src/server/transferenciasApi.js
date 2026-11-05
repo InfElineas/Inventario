@@ -258,7 +258,7 @@ function reenviar(res, { status, datos, extra }) {
     return fallo(
       res, 403, 'sin_rol_transferencias',
       'Tu usuario no tiene rol en el sistema de transferencias, que es el que mueve la existencia en TKC. ' +
-      'Pide que te lo asignen en el Identity Server, con permiso para subir y bajar de tienda. ' +
+      'Pide que te lo asignen en el Identity Server, con los permisos de ajustes, procesamientos y tienda. ' +
       'No se puede dar desde inventario.',
     )
   }
@@ -269,7 +269,7 @@ function reenviar(res, { status, datos, extra }) {
   if (faltante) {
     return fallo(
       res, 403, 'sin_permiso_transferencias',
-      `Tu rol no tiene el permiso «${faltante[1]}» del sistema de transferencias, que hace falta para subir y bajar de tienda. ` +
+      `Tu rol no tiene el permiso «${faltante[1]}» del sistema de transferencias, que hace falta para esta operación. ` +
       'Pide que lo añadan a tu rol en el Identity Server; no se puede dar desde inventario.',
     )
   }
