@@ -42,6 +42,9 @@ const difColor = (d) => (d === 0 ? 'text-[var(--c-ok-dim)]' : d > 0 ? 'text-[var
 /**
  * Todos los conteos que ha hecho una persona, en cualquier estado.
  *
+ * En Inventario es el historial PROPIO de cada quien (`vistaGlobal` falso). Elegir
+ * de quién es de quien supervisa, y vive en Supervisión.
+ *
  * La lista de Inventario enseña lo que está en manos de inventario —lo que
  * falta por enviar o corregir—; esto es lo que quedó hecho: qué contó, dónde,
  * con qué diferencia y en qué punto está cada conteo. Con fechas, almacén y
@@ -55,7 +58,7 @@ const difColor = (d) => (d === 0 ? 'text-[var(--c-ok-dim)]' : d > 0 ? 'text-[var
  * @param {boolean} props.vistaGlobal  Puede mirar a otras personas.
  * @param {React.ReactNode} props.pestanas
  */
-export default function HistorialPorUsuario({ user, vistaGlobal, pestanas }) {
+export default function HistorialPorUsuario({ user, vistaGlobal, pestanas, embebido = false }) {
   const { almacenesConfig } = useAlmacen();
   const [email, setEmail] = useState('');
   const [almacen, setAlmacen] = useState('');
@@ -123,8 +126,8 @@ export default function HistorialPorUsuario({ user, vistaGlobal, pestanas }) {
   return (
     <div className="space-y-6">
       <CabeceraLista
-        titulo="Inventario"
-        subtitulo={persona ? `Conteos hechos por ${nombre}` : 'Elige una persona'}
+        titulo={embebido ? undefined : 'Inventario'}
+        subtitulo={!vistaGlobal ? 'Tus conteos hechos' : persona ? `Conteos hechos por ${nombre}` : 'Elige una persona'}
         pestanas={pestanas}
         recuento={`${total} ${total === 1 ? 'conteo' : 'conteos'}`}
         buscador={(
@@ -175,7 +178,7 @@ export default function HistorialPorUsuario({ user, vistaGlobal, pestanas }) {
         titulos={TITULOS}
         filas={filas}
         cargando={cargando}
-        vacio="Esta persona no tiene conteos con estos filtros."
+        vacio={vistaGlobal ? 'Esta persona no tiene conteos con estos filtros.' : 'No tienes conteos con estos filtros.'}
         claveDe={(inv) => inv.id}
         encabezado="producto"
         celda={(inv, k, enTabla) => celdaConteo(inv, k, enTabla, difColor, () => null)}

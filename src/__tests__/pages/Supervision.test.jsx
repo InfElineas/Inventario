@@ -128,3 +128,15 @@ describe('Supervisión — comentarios con destinatario', () => {
     expect(screen.getByText('sin destinatario')).toBeInTheDocument();
   });
 });
+
+describe('Supervisión — historial por usuario', () => {
+  it('quien supervisa elige de quién ver los conteos, y la lista de tareas se esconde', async () => {
+    const user = userEvent.setup();
+    pintar();
+    await screen.findByText('Aceite 1 L');
+    await user.click(screen.getByRole('tab', { name: /Historial por usuario/ }));
+
+    expect(await screen.findByLabelText('Persona')).toBeInTheDocument();
+    expect(screen.queryByText('Aceite 1 L')).toBeNull();
+  });
+});

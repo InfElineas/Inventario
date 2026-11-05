@@ -5,7 +5,8 @@ import { fetchAlmacenes, isExternaConfigured } from '@/services/syncService'
 import { useAuth } from '@/lib/AuthContext'
 import { useSyncManager } from '@/lib/SyncContext'
 import TkcCredencialesForm from '@/components/shared/TkcCredencialesForm'
-import { Check, KeyRound, Warehouse, RefreshCw, Clock, Plus, Trash2, AlertTriangle, Zap } from 'lucide-react'
+import { Check, KeyRound, Warehouse, RefreshCw, Clock, Plus, Trash2, AlertTriangle, Zap, FileSpreadsheet } from 'lucide-react'
+import TabImportar from '@/components/import/TabImportar'
 import { tieneRol } from '@/lib/roles'
 
 const SYNC_ROLES = ['administrador', 'inv', 'superadmin']
@@ -232,6 +233,15 @@ export default function Configuracion() {
             description="Las acciones que consultan TKC se hacen con tu usuario. Las pones una vez y duran 7 días."
           >
             <TkcCredencialesForm />
+          </Section>
+
+          {/* Cada persona sube su propio historial: sale en su pestaña Historial. */}
+          <Section
+            icon={FileSpreadsheet}
+            title="Importar mi historial"
+            description="Carga desde tu Excel las hojas BD Ajuste I-F y BD Merma, en el plazo que elijas. Quedan a tu nombre."
+          >
+            <TabImportar />
           </Section>
 
           {/* Almacenes */}

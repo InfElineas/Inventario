@@ -9,8 +9,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import HistorialPorUsuario from '@/components/inventario/HistorialPorUsuario';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MessageSquare, Send, ClipboardList, TrendingDown, PackageOpen, Megaphone, Clock, X, Eye } from 'lucide-react';
+import { MessageSquare, Send, ClipboardList, TrendingDown, PackageOpen, Megaphone, Clock, X, Eye, History } from 'lucide-react';
 import { format } from 'date-fns';
 import { base44 } from '@/api/base44Client';
 import { notificarComentario } from '@/lib/notificationService';
@@ -33,6 +34,8 @@ const DEPT_TABS = {
     { key: 'inventarios', label: 'Inventarios', tabla: 'inventarios',    icon: ClipboardList },
     { key: 'mermas',      label: 'Mermas',      tabla: 'mermas',          icon: TrendingDown  },
     { key: 'recepciones', label: 'Recepciones', tabla: 'recepciones',     icon: PackageOpen   },
+    // Sin tabla: no es una lista de tareas sino el historial de conteos de cada persona.
+    { key: 'historial',   label: 'Historial por usuario', icon: History },
   ],
   facturacion: [
     { key: 'inventarios', label: 'Inventarios', tabla: 'inventarios',    icon: ClipboardList },
@@ -225,6 +228,7 @@ export default function Supervision() {
       </div>
 
       {/* KPIs */}
+      {activeTabCfg?.key !== 'historial' && (
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Total',      value: stats.total,      color: 'text-foreground' },
@@ -238,6 +242,7 @@ export default function Supervision() {
           </Card>
         ))}
       </div>
+      )}
 
       {/* Tabs de módulos */}
       <Tabs value={activeTab} onValueChange={handleTabChange}>
@@ -254,6 +259,11 @@ export default function Supervision() {
         </TabsList>
       </Tabs>
 
+      {activeTabCfg?.key === 'historial' ? (
+        // Quien supervisa elige de quién mirar los conteos.
+        <HistorialPorUsuario user={user} vistaGlobal embebido />
+      ) : (
+      <>
       {/* Layout: lista + panel de detalle */}
       <div className={selected ? 'grid gap-4 lg:grid-cols-[1fr_380px]' : ''}>
 
@@ -423,6 +433,8 @@ export default function Supervision() {
           </div>
         )}
       </div>
+      </>
+      )}
 
     </div>
   );

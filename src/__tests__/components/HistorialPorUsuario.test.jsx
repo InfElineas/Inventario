@@ -57,7 +57,7 @@ describe('HistorialPorUsuario', () => {
     pintar();
 
     expect((await screen.findAllByText('Aceite 1 L')).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Conteos hechos por Ana Pérez/)).toBeInTheDocument();
+    expect(screen.getByText(/Tus conteos hechos/)).toBeInTheDocument();
     expect(m.filter.mock.calls[0][0]).toEqual({ especialista_id: 'ana@x.com' });
     // Sin filtro de estado: también lo ya completado.
     expect(m.filter.mock.calls[0][0]).not.toHaveProperty('estado_tarea');
@@ -101,6 +101,6 @@ describe('HistorialPorUsuario', () => {
     m.filter.mockResolvedValue([]);
     m.count.mockResolvedValue(0);
     pintar();
-    expect(await screen.findByText(/no tiene conteos con estos filtros/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no tienes conteos con estos filtros/i)).toBeInTheDocument();
   });
 });

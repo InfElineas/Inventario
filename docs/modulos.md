@@ -95,13 +95,23 @@ tienes a medias.
 Cuando hay varios conteos del mismo producto, solo cuenta el último: los
 anteriores quedan ocultos con un aviso.
 
-La pestaña **Historial por usuario** enseña todos los conteos que ha hecho una
-persona, en cualquier estado —lo ya completado también—, con filtros de almacén,
-estado y fechas, búsqueda por producto, y un resumen (conteos, sin diferencia,
-sobrantes y faltantes) que cuenta la base entera y no solo la página. Un
-inventarista ve los suyos; el jefe de departamento, facturación, auditoría y los
-administradores eligen de quién. La lista de la pestaña *Conteos* sigue siendo lo
-que está en manos de inventario.
+La pestaña **Por contar** (la de por defecto) lista los productos del almacén y los
+suministradores elegidos, por la prioridad de tienda (`prioridad_tienda`: 1 es lo más
+urgente). El botón *Contar* abre el formulario con ese producto; el contado hoy sale
+marcado. Los suministradores se muestran y filtran con su nombre exacto
+(«SEL PUCARA» y «PUCARA» son distintos).
+
+La pestaña **Historial** es el historial propio de cada persona: todos sus conteos, en
+cualquier estado —lo ya completado también—, con filtros de almacén, estado y fechas,
+búsqueda por producto, y un resumen (conteos, sin diferencia, sobrantes y faltantes) que
+cuenta la base entera. Elegir de quién mirar es de quien supervisa y está en
+**Supervisión → Historial por usuario** (jefe de departamento y administradores). La
+lista de la pestaña *Conteos* sigue siendo lo que está en manos de inventario.
+
+**Importar el historial** (Configuración → *Importar mi historial*, para cualquier
+usuario): carga las hojas *BD Ajuste I-F* y *BD Merma* del Excel, en un plazo
+(desde/hasta). Las filas se guardan **a nombre de quien importa y con el almacén de cada
+fila** —sin eso no salían en ninguna lista— y lo que ya estaba no se duplica.
 
 El **buscador de productos** de los formularios (nuevo conteo, merma, recepción)
 pone **primero los que tienen existencia** y detrás el resto: pide por separado

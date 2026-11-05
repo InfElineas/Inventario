@@ -348,7 +348,7 @@ export default function Inventario() {
       <TabsList>
         <TabsTrigger value="porContar">Por contar</TabsTrigger>
         <TabsTrigger value="conteos">Conteos</TabsTrigger>
-        <TabsTrigger value="historial">Historial por usuario</TabsTrigger>
+        <TabsTrigger value="historial">Historial</TabsTrigger>
       </TabsList>
     </Tabs>
   );
@@ -380,7 +380,7 @@ export default function Inventario() {
   if (vista === 'historial') {
     return (
       <div className="space-y-6">
-        <HistorialPorUsuario user={user} vistaGlobal={vistaGlobal} pestanas={pestanas} />
+        <HistorialPorUsuario user={user} vistaGlobal={false} pestanas={pestanas} />
       </div>
     );
   }

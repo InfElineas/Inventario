@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle, Loader2, X, RotateCcw, ChevronDown, ChevronRight } from 'lucide-react'
 import { base44 } from '@/api/base44Client'
 import { fetchAllRows } from '@/lib/paginacion'
+import { useQueryClient } from '@tanstack/react-query'
+import { useAuth } from '@/lib/AuthContext'
+import { atribuir, dentroDelPlazo, separarDuplicados, claveDuplicado } from '@/lib/importHistorial'
 
 // ── Normalización de valores ──────────────────────────────────
 const ESTADO_MAP = {
@@ -162,6 +165,11 @@ function mapMermaRow(row, idMap, codigoMap) {
 
 // ── Componente principal ──────────────────────────────────────
 export default function TabImportar() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  // El plazo a importar: solo las filas con fecha dentro de él.
+  const [desde, setDesde] = useState('')
+  const [hasta, setHasta] = useState('')
   const [file,          setFile]          = useState(null)
   // El ArrayBuffer del fichero, no el workbook ya parseado: hucre lee la hoja a
   // partir del buffer (readSheetObjects), y el buffer sigue usable después de
@@ -233,9 +241,12 @@ export default function TabImportar() {
     }
 
     const isAjuste = sheetName === 'BD Ajuste I-F'
-    const mapped = dataRows.map(r =>
-      isAjuste ? mapAjusteRow(r, idMap, codigoMap) : mapMermaRow(r, idMap, codigoMap)
-    )
+    const mapped = dataRows.map(r => {
+      const fila = isAjuste ? mapAjusteRow(r, idMap, codigoMap) : mapMermaRow(r, idMap, codigoMap)
+      // El almacén de cada fila; si no lo trae, el de la hoja.
+      const propio = s(col(buildRowIndex(r), 'No. Almacén', 'No. Almacen', 'almacen', 'almacén', 'no almacen') ?? '')
+      return { ...fila, almacen_num: propio || almacenNum }
+    })
 
     const matched = mapped.filter(r => r._matched).length
     setMatchStats({
@@ -245,34 +256,55 @@ export default function TabImportar() {
     setAllRows(mapped); setPreview(mapped.slice(0, 5)); setStatus('ready')
   }
 
+  // Con producto y dentro del plazo: lo que se puede importar.
+  const importables = allRows.filter(r => r._matched && dentroDelPlazo(r.fecha_inv, desde, hasta))
+
   async function handleImport() {
     const entidad  = selectedSheet === 'BD Ajuste I-F' ? 'Inventario' : 'Merma'
-    const toInsert = allRows
-      .filter(r => r._matched)
-      .map(({ _matched, _idTienda, _codigo, _nombre, ...r }) => r)
+    if (!importables.length || !user?.email) return
 
-    if (!toInsert.length) return
-
-    const BATCH = 50; let done = 0; let errors = 0
     setStatus('importing'); setProgress(0)
 
+    // A nombre de quien importa y con su almacén: así sale en SU historial.
+    const atribuidas = importables
+      .map(({ _matched, _idTienda, _codigo, _nombre, ...r }) => atribuir(r, user, matchStats?.almacenNum))
+
+    // Lo que ya está no se vuelve a guardar: importar dos veces el mismo archivo
+    // dejaba cada conteo duplicado.
+    const existentes = new Set()
+    try {
+      for (const almacen of new Set(atribuidas.map(r => r.almacen_num))) {
+        const ya = await fetchAllRows(entidad, { especialista_id: user.email, almacen_num: almacen }, '-fecha_inv', 2000,
+          ['almacen_num', 'producto_id', 'fecha_inv', entidad === 'Merma' ? 'cantidad' : 'conteo_real'])
+        for (const f of ya) existentes.add(claveDuplicado(entidad, f))
+      }
+    } catch (e) { console.error('import: no se pudo comprobar lo existente:', e) }
+    const { nuevas: toInsert, duplicadas } = separarDuplicados(entidad, atribuidas, existentes)
+
+    const BATCH = 50; let done = 0; let errors = 0; let ultimoError = ''
     for (let i = 0; i < toInsert.length; i += BATCH) {
       const batch = toInsert.slice(i, i + BATCH)
       try {
-        await base44.entities[entidad].createMany(batch)
-        done += batch.length
-      } catch (e) { errors += batch.length; console.error('import error:', e) }
+        done += await base44.entities[entidad].createMany(batch)
+      } catch (e) { errors += batch.length; ultimoError = e?.message ?? String(e); console.error('import error:', e) }
       setProgress(Math.round(((i + batch.length) / toInsert.length) * 100))
     }
 
-    setResult({ done, errors, skipped: allRows.length - toInsert.length, table: entidad })
+    queryClient.invalidateQueries({ queryKey: ['inventarios'] })
+    queryClient.invalidateQueries({ queryKey: ['inventarios-historial'] })
+    queryClient.invalidateQueries({ queryKey: ['inventarios-historial-resumen'] })
+    queryClient.invalidateQueries({ queryKey: ['mermas'] })
+    setResult({
+      done, errors, duplicadas, ultimoError, table: entidad,
+      skipped: allRows.length - importables.length,
+    })
     setStatus('done')
   }
 
   function reset() {
     setFile(null); setBuf(null); setSheets([]); setSelectedSheet(null)
     setPreview([]); setAllRows([]); setMatchStats(null); setDetectedCols([])
-    setStatus('idle'); setProgress(0); setResult(null)
+    setStatus('idle'); setProgress(0); setResult(null); setDesde(''); setHasta('')
     if (fileRef.current) fileRef.current.value = ''
   }
 
@@ -453,11 +485,32 @@ export default function TabImportar() {
           )}
 
           {status === 'ready' && (
-            <Button onClick={handleImport} disabled={matchStats.matched === 0}
-              className="w-full" style={{ borderRadius: 'var(--r-ctl)' }}>
-              <Upload className="w-4 h-4 mr-2" />
-              Importar {matchStats.matched} registros en {isAjuste ? 'inventarios' : 'mermas'}
-            </Button>
+            <>
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="text-xs text-muted-foreground space-y-1">
+                  Desde
+                  <input type="date" value={desde} max={hasta || undefined} onChange={e => setDesde(e.target.value)}
+                    className="block h-9 rounded-lg border border-border bg-card px-2.5 text-sm text-foreground" />
+                </label>
+                <label className="text-xs text-muted-foreground space-y-1">
+                  Hasta
+                  <input type="date" value={hasta} min={desde || undefined} onChange={e => setHasta(e.target.value)}
+                    className="block h-9 rounded-lg border border-border bg-card px-2.5 text-sm text-foreground" />
+                </label>
+                <p className="text-xs text-muted-foreground pb-2">
+                  Solo se importan las filas con fecha dentro del plazo. Sin plazo, todas.
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Se guardan a tu nombre y con el almacén de cada fila: las verás en tu pestaña Historial de Inventario.
+                Lo que ya tengas importado no se duplica.
+              </p>
+              <Button onClick={handleImport} disabled={importables.length === 0 || !user?.email}
+                className="w-full" style={{ borderRadius: 'var(--r-ctl)' }}>
+                <Upload className="w-4 h-4 mr-2" />
+                Importar {importables.length} registros en {isAjuste ? 'inventarios' : 'mermas'}
+              </Button>
+            </>
           )}
 
           {status === 'importing' && (
@@ -477,10 +530,12 @@ export default function TabImportar() {
             <Card className="p-5 space-y-4" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-[var(--c-ok)]" />
-                <span className="text-sm font-medium">Importación completada</span>
+                <span className="text-sm font-medium">
+                  {result.errors > 0 ? 'Importación terminada con errores' : 'Importación completada'}
+                </span>
                 <span className="text-xs text-muted-foreground ml-1">→ tabla <code className="text-xs">{result.table}</code></span>
               </div>
-              <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="grid grid-cols-4 gap-3 text-center">
                 <div>
                   <p className="text-2xl font-bold text-[var(--c-ok)]">{result.done}</p>
                   <p className="text-xs text-muted-foreground">Insertados</p>
@@ -490,10 +545,17 @@ export default function TabImportar() {
                   <p className="text-xs text-muted-foreground">Errores</p>
                 </div>
                 <div>
+                  <p className="text-2xl font-bold text-muted-foreground">{result.duplicadas}</p>
+                  <p className="text-xs text-muted-foreground">Ya estaban</p>
+                </div>
+                <div>
                   <p className="text-2xl font-bold text-muted-foreground">{result.skipped}</p>
-                  <p className="text-xs text-muted-foreground">Omitidos</p>
+                  <p className="text-xs text-muted-foreground">Fuera del plazo o sin producto</p>
                 </div>
               </div>
+              {result.errors > 0 && (
+                <p className="text-xs text-[var(--c-bad)]">No se pudieron guardar {result.errors}: {result.ultimoError || 'error desconocido'}</p>
+              )}
               <Button variant="outline" size="sm" onClick={reset} className="w-full" style={{ borderRadius: 'var(--r-ctl)' }}>
                 <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Importar otro archivo
               </Button>
