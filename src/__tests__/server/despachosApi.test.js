@@ -121,31 +121,29 @@ describe('acceso y rutas', () => {
     const { res } = await llamar('/api/despachos/almacenes');
     expect(res.statusCode).toBe(200);
     expect(res.cuerpo.configurado).toBe(true);
-    expect(res.cuerpo.almacenes.map((a) => a.key)).toEqual(['789', '1005']);
-    expect(res.cuerpo.almacenes[0].nombre).toMatch(/789/);
+    expect(res.cuerpo.almacenes.map((a) => a.key)).toEqual(expect.arrayContaining(['789', '1005']));
+    expect(res.cuerpo.almacenes.find((a) => a.key === '789').nombre).toMatch(/789/);
   });
 
-  it('sin proveedores configurados lo dice, para que el botón no ofrezca nada', async () => {
+  it('sin configurar nada salen todos los almacenes del catálogo de TKC', async () => {
     process.env.DESPACHOS_PROVEEDORES = '';
     const { res } = await llamar('/api/despachos/almacenes');
-    expect(res.cuerpo).toEqual({ almacenes: [], configurado: false });
+    expect(res.cuerpo.configurado).toBe(true);
+    expect(res.cuerpo.almacenes.length).toBeGreaterThan(20);
   });
 
-  it('con DESPACHOS_PROVEEDOR salen todos los almacenes, y el de por almacén gana', async () => {
-    process.env.DESPACHOS_PROVEEDOR = '9999';
-    try {
-      const { res } = await llamar('/api/despachos/almacenes');
-      expect(res.cuerpo.almacenes.length).toBeGreaterThan(2);
-      expect(res.cuerpo.almacenes.map((a) => a.key)).toEqual(expect.arrayContaining(['789', '1005']));
+  it('el proveedor sale del almacén (su id de TKC: 789 → 351) y el mapa del .env gana', async () => {
+    process.env.DESPACHOS_PROVEEDORES = '{"789":"1508"}';
+    const a789 = await llamar('/api/despachos/pendientes?almacen=789');
+    expect(a789.res.cuerpo.proveedorId).toBe('1508');
+    const a1005 = await llamar('/api/despachos/pendientes?almacen=1005');
+    expect(a1005.res.cuerpo.proveedorId).toBe('726');
+  });
 
-      const r789 = await llamar('/api/despachos/pendientes?almacen=789');
-      expect(r789.res.cuerpo.proveedorId).toBe('1508');   // el mapa gana
-      const otro = res.cuerpo.almacenes.find((a) => !['789', '1005'].includes(a.key)).key;
-      const rOtro = await llamar(`/api/despachos/pendientes?almacen=${otro}`);
-      expect(rOtro.res.cuerpo.proveedorId).toBe('9999');   // el resto, el de por defecto
-    } finally {
-      delete process.env.DESPACHOS_PROVEEDOR;
-    }
+  it('un almacén que no existe no llega a TKC', async () => {
+    const { res } = await llamar('/api/despachos/pendientes?almacen=nope');
+    expect(res.statusCode).toBe(400);
+    expect(res.cuerpo.error.code).toBe('sin_proveedor');
   });
 });
 
@@ -165,7 +163,7 @@ describe('pendientes (solo lectura)', () => {
   });
 
   it('un almacén sin proveedor: 400 con la explicación', async () => {
-    const { res } = await llamar('/api/despachos/pendientes?almacen=615');
+    const { res } = await llamar('/api/despachos/pendientes?almacen=nope');
     expect(res.statusCode).toBe(400);
     expect(res.cuerpo.error.code).toBe('sin_proveedor');
     expect(tkc.iniciarSesion).not.toHaveBeenCalled();
@@ -259,7 +257,7 @@ describe('cerrar', () => {
   });
 
   it('almacén sin proveedor: 400; sin credenciales: 403; cuerpo roto: 400. No arranca nada', async () => {
-    expect((await llamar('/api/despachos/cerrar', { almacen: '615' }, 'POST')).res.statusCode).toBe(400);
+    expect((await llamar('/api/despachos/cerrar', { almacen: 'nope' }, 'POST')).res.statusCode).toBe(400);
     leerCredenciales.mockReturnValue(null);
     expect((await llamar('/api/despachos/cerrar', { almacen: '789' }, 'POST')).res.statusCode).toBe(403);
     leerCredenciales.mockReturnValue(CREDS);

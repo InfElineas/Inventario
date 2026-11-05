@@ -12,9 +12,10 @@
  * credenciales selladas en su sesión), no con una cuenta fija. Sin credenciales no
  * se hace nada, y nunca se cae a una cuenta de servicio.
  *
- * El almacén se traduce a su proveedor de TKC con `DESPACHOS_PROVEEDORES`, un JSON
- * `{"789":"1508"}` del .env: el workflow original trabajaba con un proveedor fijo,
- * y qué proveedor es de qué almacén no se puede adivinar.
+ * El almacén se traduce a su proveedor de TKC por su id interno (789 → 351). El
+ * workflow original trabajaba con un proveedor fijo; aquí son varios almacenes.
+ * `DESPACHOS_PROVEEDORES`, un JSON `{"789":"1508"}` del .env, corrige un almacén
+ * cuyo proveedor sea otro.
  *
  * Los trabajos viven en memoria: si el contenedor se reinicia a mitad, el cierre
  * se corta, y no pasa nada que no se pueda repetir —lo cerrado en TKC ya no sale
@@ -26,7 +27,7 @@ import { resolverSesion } from './session.js'
 import { leerCredenciales } from './credencialesTkc.js'
 import { query } from './db.js'
 import { puedeCerrarDespachos, rolesDe } from '../lib/roles.js'
-import { warehouseName, WAREHOUSES } from '../services/tkc/warehouses.js'
+import { warehouseName, keyToTkcValue, WAREHOUSES } from '../services/tkc/warehouses.js'
 import {
   fechaLimite, iniciarSesion, leerPagina, parsearActivos, sesionActiva,
 } from '../services/tkc/despachos.js'
@@ -121,12 +122,13 @@ export function createDespachosApiMiddleware({ ejecutar = ejecutarCierre } = {})
         return fallo(res, 403, 'forbidden', 'Tu rol no puede cerrar despachos de TKC.')
       }
 
-      // Con `DESPACHOS_PROVEEDOR` todos los almacenes usan ese proveedor (como el
-      // workflow de n8n, que tenía uno fijo); `DESPACHOS_PROVEEDORES` lo afina por almacén.
-      const porDefecto = /^\d{1,10}$/.test(process.env.DESPACHOS_PROVEEDOR ?? '') ? process.env.DESPACHOS_PROVEEDOR : null
+      // El proveedor de TKC de cada almacén es su id interno de TKC (el mismo que
+      // la aplicación usa para consultarlo: 789 → 351), así que sale del almacén
+      // elegido en la pantalla sin configurar nada. `DESPACHOS_PROVEEDORES`
+      // queda para la excepción de un almacén cuyo proveedor sea otro.
       const mapa = proveedoresConfigurados()
-      const claves = porDefecto ? [...new Set([...WAREHOUSES.map((w) => w.key), ...Object.keys(mapa)])] : Object.keys(mapa)
-      const proveedores = Object.fromEntries(claves.map((k) => [k, mapa[k] ?? porDefecto]))
+      const claves = WAREHOUSES.map((w) => w.key)
+      const proveedores = Object.fromEntries(claves.map((k) => [k, mapa[k] ?? keyToTkcValue(k)]))
 
       if (accion === 'almacenes') {
         return json(res, 200, {
@@ -154,7 +156,7 @@ export function createDespachosApiMiddleware({ ejecutar = ejecutarCierre } = {})
       const proveedorId = proveedores[clave]
       if (!proveedorId) {
         return fallo(res, 400, 'sin_proveedor',
-          `El almacén ${clave || '—'} no tiene un proveedor de TKC asignado. Un administrador debe añadirlo a DESPACHOS_PROVEEDORES o fijar DESPACHOS_PROVEEDOR.`)
+          `El almacén ${clave || '—'} no está en el catálogo de TKC: no se sabe qué proveedor es.`)
       }
 
       const credenciales = leerCredenciales(req, sesion.email)

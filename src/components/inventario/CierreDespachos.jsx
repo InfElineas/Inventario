@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { CheckCircle2, CircleAlert, Loader2, PackageCheck, Search, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import AlertBanner from '@/components/shared/AlertBanner';
 import BotonAccion from '@/components/shared/BotonAccion';
@@ -12,7 +11,7 @@ import { useConfirm } from '@/lib/useConfirm';
 import { SIN_SONDEO } from '@/lib/query-client';
 import { warehouseName } from '@/services/tkc/warehouses';
 import {
-  cancelarDespachos, cerrarDespachos, listarAlmacenesDespachos, pendientesDespachos, trabajoDespachos,
+  cancelarDespachos, cerrarDespachos, pendientesDespachos, trabajoDespachos,
 } from '@/services/despachosService';
 
 const ESTADO_FILA = {
@@ -37,30 +36,17 @@ const mensajeDe = (r) => r?.body?.error?.message ?? `Error ${r?.status ?? ''} al
  *      antiguo, para probar.
  *   4. El cierre corre en el servidor y aquí se ve cómo avanza; se puede parar.
  *
- * Cambiar de almacén invalida lo revisado.
+ * El almacén es el del filtro de la página; cambiarlo invalida lo revisado.
  */
 export default function CierreDespachos({ almacenInicial }) {
   const [abierto, setAbierto] = useState(false);
-  const [almacen, setAlmacen] = useState('');
+  // El almacén es el del filtro de la página, no se elige aquí: el servidor
+  // saca de él el proveedor de TKC.
+  const almacen = almacenInicial ?? '';
   const [trabajoId, setTrabajoId] = useState(null);
   const { tiene: conTkc, cargando: cargandoUsuario } = useAccesoTkc();
   const sinTkc = !cargandoUsuario && !conTkc;
   const { confirmDialog, ConfirmDialogNode } = useConfirm();
-
-  const almacenes = useQuery({
-    queryKey: ['despachos-almacenes'],
-    queryFn: listarAlmacenesDespachos,
-    enabled: abierto,
-    staleTime: 5 * 60 * 1000,
-    ...SIN_SONDEO,
-  });
-  const lista = almacenes.data?.body?.almacenes ?? [];
-
-  // El almacén con el que se trabaja: el activo si tiene proveedor; si no, el primero.
-  useEffect(() => {
-    if (!abierto || lista.length === 0 || lista.some((a) => a.key === almacen)) return;
-    setAlmacen(lista.some((a) => a.key === almacenInicial) ? almacenInicial : lista[0].key);
-  }, [abierto, lista, almacen, almacenInicial]);
 
   // Lo revisado es de ESE almacén: si cambia, deja de valer.
   const [revisado, setRevisado] = useState(null);   // { almacen, ...respuesta }
@@ -119,24 +105,17 @@ export default function CierreDespachos({ almacenInicial }) {
 
           {sinTkc && <TkcBloqueoAviso funcion="cerrar despachos de TKC" />}
 
-          {almacenes.isLoading && <p className="text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando…</p>}
-          {almacenes.data && !almacenes.data.body?.configurado && (
-            <AlertBanner variant="warning"
-              message="Ningún almacén tiene un proveedor de TKC asignado. Un administrador debe fijar DESPACHOS_PROVEEDOR (o DESPACHOS_PROVEEDORES) en el servidor." />
+          {!almacen && (
+            <AlertBanner variant="warning" message="Elige un almacén en el filtro de la página y vuelve a abrir esto." />
           )}
 
-          {lista.length > 0 && (
+          {almacen && (
             <div className="space-y-4">
-              <div className="flex flex-wrap items-end gap-3">
-                <label className="space-y-1.5 text-xs text-muted-foreground">
-                  Almacén
-                  <Select value={almacen} onValueChange={setAlmacen} disabled={corriendo}>
-                    <SelectTrigger className="w-[220px]" style={{ borderRadius: 'var(--r-ctl)' }}><SelectValue placeholder="Elige un almacén" /></SelectTrigger>
-                    <SelectContent>
-                      {lista.map((a) => <SelectItem key={a.key} value={a.key}>{a.nombre}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </label>
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <p className="text-sm">
+                  <span className="text-xs text-muted-foreground block">Almacén (el del filtro de la página)</span>
+                  <strong>{warehouseName(almacen)}</strong>
+                </p>
                 <Button variant="outline" disabled={!almacen || sinTkc || corriendo || revisar.isPending}
                   onClick={() => revisar.mutate()} style={{ borderRadius: 'var(--r-ctl)' }}>
                   {revisar.isPending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Search className="w-4 h-4 mr-1.5" />}

@@ -151,10 +151,10 @@ se reintenta en la pasada; 3 fallos seguidos o un cambio en la página de TKC
 detienen el cierre; un cierre a la vez por almacén; máximo 200. Cada cierre
 queda en `historial_movimientos` (`cierre_despachos`).
 
-**Configuración (`.env` del servidor):** `DESPACHOS_PROVEEDOR=1508` usa ese proveedor
-en todos los almacenes; `DESPACHOS_PROVEEDORES={"789":"1508"}` lo afina por almacén
-(gana sobre el anterior). Sin ninguna, el botón avisa. El diálogo abre con el almacén
-elegido en la página.
+**Proveedor:** sale del almacén elegido en el filtro de la página: su id interno de
+TKC (789 → 351), sin configurar nada. Solo si un almacén tiene otro proveedor, se
+corrige en `DESPACHOS_PROVEEDORES={"789":"1508"}` del `.env`. El diálogo no trae
+selector: trabaja con el almacén del filtro.
 
 **Sin verificar:** el HTML de TKC se dedujo de las expresiones del workflow n8n (no
 hay capturas reales) y no se sabe si las cuentas personales ven

@@ -19,14 +19,13 @@ const auth = vi.hoisted(() => ({ user: null }));
 vi.mock('@/lib/AuthContext', () => ({ useAuth: () => ({ user: auth.user }) }));
 
 const svc = vi.hoisted(() => ({
-  listarAlmacenesDespachos: vi.fn(), pendientesDespachos: vi.fn(), cerrarDespachos: vi.fn(),
+  pendientesDespachos: vi.fn(), cerrarDespachos: vi.fn(),
   trabajoDespachos: vi.fn(), cancelarDespachos: vi.fn(),
 }));
 vi.mock('@/services/despachosService', () => svc);
 
 const { default: CierreDespachos } = await import('@/components/inventario/CierreDespachos');
 
-const ALMACENES = { status: 200, body: { almacenes: [{ key: '789', nombre: 'Almacén 789' }], configurado: true } };
 const PENDIENTES = {
   status: 200,
   body: {
@@ -35,23 +34,22 @@ const PENDIENTES = {
   },
 };
 
-function montar() {
+function montar(almacen = '789') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(<QueryClientProvider client={qc}><CierreDespachos almacenInicial="789" /></QueryClientProvider>);
+  render(<QueryClientProvider client={qc}><CierreDespachos almacenInicial={almacen} /></QueryClientProvider>);
 }
 
 const boton = (nombre) => screen.getByRole('button', { name: nombre });
 
 async function abrir(user) {
   await user.click(boton(/Cerrar despachos/i));
-  await screen.findByText('Almacén 789');
+  await screen.findByText('TKC SUB 789');
 }
 
 beforeEach(() => {
   cleanup();
   auth.user = { role: 'inv', tiene_tkc: true };
   Object.values(svc).forEach((f) => f.mockReset());
-  svc.listarAlmacenesDespachos.mockResolvedValue(ALMACENES);
   svc.pendientesDespachos.mockResolvedValue(PENDIENTES);
   svc.cerrarDespachos.mockResolvedValue({ status: 202, body: { id: 'j1' } });
   svc.trabajoDespachos.mockResolvedValue({
@@ -76,7 +74,6 @@ describe('CierreDespachos', () => {
     const user = userEvent.setup();
     montar();
     await abrir(user);
-    await user.selectOptions(screen.getByLabelText('Almacén'), '789');
     await user.click(boton(/Revisar pendientes/i));
 
     expect(await screen.findByText('205')).toBeTruthy();
@@ -88,7 +85,6 @@ describe('CierreDespachos', () => {
     const user = userEvent.setup();
     montar();
     await abrir(user);
-    await user.selectOptions(screen.getByLabelText('Almacén'), '789');
     await user.click(boton(/Revisar pendientes/i));
     await user.click(await screen.findByRole('button', { name: /Cerrar los 2 pendientes/i }));
 
@@ -100,7 +96,6 @@ describe('CierreDespachos', () => {
     const user = userEvent.setup();
     montar();
     await abrir(user);
-    await user.selectOptions(screen.getByLabelText('Almacén'), '789');
     await user.click(boton(/Revisar pendientes/i));
     await user.click(await screen.findByRole('button', { name: /Cerrar solo el más antiguo/i }));
     await user.click(await screen.findByRole('button', { name: 'Confirmar' }));
@@ -118,11 +113,11 @@ describe('CierreDespachos', () => {
     expect(boton(/Revisar pendientes/i).disabled).toBe(true);
   });
 
-  it('sin almacenes configurados lo explica', async () => {
-    svc.listarAlmacenesDespachos.mockResolvedValue({ status: 200, body: { almacenes: [], configurado: false } });
+  it('sin almacén en el filtro de la página pide elegir uno y no deja revisar', async () => {
     const user = userEvent.setup();
-    montar();
+    montar('');
     await user.click(boton(/Cerrar despachos/i));
-    expect(await screen.findByText(/DESPACHOS_PROVEEDORES/)).toBeTruthy();
+    expect(await screen.findByText(/Elige un almacén en el filtro/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Revisar pendientes/i })).toBeNull();
   });
 });

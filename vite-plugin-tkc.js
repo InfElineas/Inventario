@@ -73,7 +73,7 @@ export function tkcApiPlugin() {
       // process.env, pero loadEnv solo devuelve un objeto: hay que volcarlas.
       // Sin pisar lo que ya venga del shell, que tiene precedencia.
       for (const clave of ['AUTH_API_URL', 'AUTH_PUBLIC_URL', 'APP_URL', 'SYSTEM_SLUG', 'DATABASE_URL',
-        'TRANSFERENCIAS_API_URL', 'TKC_SECRET_KEY', 'TKC_HANDOFF_KEY', 'TKC_BASE', 'DESPACHOS_PROVEEDOR', 'DESPACHOS_PROVEEDORES']) {
+        'TRANSFERENCIAS_API_URL', 'TKC_SECRET_KEY', 'TKC_HANDOFF_KEY', 'TKC_BASE', 'DESPACHOS_PROVEEDORES']) {
         if (!process.env[clave] && env[clave]) process.env[clave] = env[clave]
       }
 

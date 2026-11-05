@@ -31,8 +31,7 @@ navegador no recibe ninguna.
 | `DATABASE_URL` | ELINEAS_BD como `elineas_backend_app`, por nombre de contenedor |
 | `TKC_BASE`, `TKC_USER`, `TKC_PASS` | La cuenta de servicio de TKC |
 | `TKC_SECRET_KEY`, `TKC_HANDOFF_KEY` | Cifrado de las credenciales de TKC por sesión |
-| `DESPACHOS_PROVEEDOR` | Un id de proveedor de TKC para TODOS los almacenes (lo más simple: así sale el selector de almacén completo) |
-| `DESPACHOS_PROVEEDORES` | JSON `{"almacén":"id de proveedor"}`: qué proveedor de TKC es de cada almacén, para cerrar sus despachos |
+| `DESPACHOS_PROVEEDORES` | Opcional. JSON `{"almacén":"id de proveedor"}` para un almacén cuyo proveedor de TKC no sea su id interno (789 → 351), que es el que se usa por defecto al cerrar despachos |
 | `TRANSFERENCIAS_API_URL` | elineas-transferencia: ajustes, tienda, procesos |
 | `REAB_API_URL`, `REAB_USER`, `REAB_PASS` | apireab: pedidos de compra |
 | `REPORTES_API_URL` | elineas-api. **Otra aplicación**, otro contenedor |
