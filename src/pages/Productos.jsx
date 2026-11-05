@@ -8,6 +8,7 @@ import { useAccesoTkc } from '@/lib/useAccesoTkc';
 import TkcBloqueoAviso from '@/components/shared/TkcBloqueoAviso';
 import { fetchCatalogo } from '@/services/catalogoService';
 import { TKC_COLUMN_DEFS, TKC_COLUMN_BY_KEY, TKC_SORT_COLUMNS, IMAGE_COL, ACCIONES_COL, isStockCol, esOrdenablePropia } from '@/services/tkc/columns';
+import { useSearchParams } from 'react-router-dom';
 import { EXISTENCIA_FILTERS } from '@/services/tkc/body';
 import { warehouseName } from '@/services/tkc/warehouses';
 import { getLastSync } from '@/lib/useAutoSync';
@@ -95,6 +96,7 @@ const DEFAULT_FILTERS = {
 const TKC_COLS_KEY   = 'tkc_cols_v2';
 const TKC_PAGE_SIZES = [50, 100, 250];
 const TKC_EXISTENCIA_DEFAULT = 'existencia';
+const ESTADOS_TIENDA_VALIDOS = ['SIN RESERVA', 'NO TIENDA', 'ULTIMAS PIEZAS', 'PROXIMO', 'DISPONIBLE', 'AGOTADO', 'SIN ID'];
 const TKC_EXISTENCIA_LABELS = { todos: 'Todos', existencia: 'Con existencia', 'no-existencia': 'Sin existencia' };
 const TKC_EXISTENCIA_OPTIONS = EXISTENCIA_FILTERS.map((value) => ({ value, label: TKC_EXISTENCIA_LABELS[value] }));
 
@@ -347,7 +349,13 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   const [showImport, setShowImport] = useState(false);
   const [cols, setCols] = useState(() => loadColsWithOrder(PROD_COLS_KEY, PROD_COL_DEFS).visible);
   const [colOrder, setColOrder] = useState(() => loadColsWithOrder(PROD_COLS_KEY, PROD_COL_DEFS).order);
-  const [advFilters, setAdvFilters] = useState(DEFAULT_FILTERS);
+  // El panel manda aquí con el filtro puesto: `?estadoTienda=SIN RESERVA`. Un
+  // estado de tienda sin existencia (AGOTADO, SIN ID) no sale con el filtro de
+  // «con existencia» que trae la pantalla, así que con un estado se ve todo.
+  const [params] = useSearchParams();
+  const estadoDeUrl = ESTADOS_TIENDA_VALIDOS.includes(params.get('estadoTienda')) ? params.get('estadoTienda') : null;
+  const existenciaDeUrl = EXISTENCIA_FILTERS.includes(params.get('existencia')) ? params.get('existencia') : null;
+  const [advFilters, setAdvFilters] = useState(() => (estadoDeUrl ? { ...DEFAULT_FILTERS, estadoTienda: estadoDeUrl } : DEFAULT_FILTERS));
   const { sort, setSort, onSort } = useSortable('nombre');
 
   // ── TKC state ─────────────────────────────────────────────
@@ -358,7 +366,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   const [tkcCols, setTkcCols] = useState(() => loadColsWithOrder(TKC_COLS_KEY, TKC_COLUMN_DEFS).visible);
   const [tkcColOrder, setTkcColOrder] = useState(() => loadColsWithOrder(TKC_COLS_KEY, TKC_COLUMN_DEFS).order);
   const { sort: tkcSort, setSort: setTkcSort, onSort: onTkcSort } = useSortable('nombre');
-  const [tkcExistencia, setTkcExistencia] = useState(TKC_EXISTENCIA_DEFAULT);
+  const [tkcExistencia, setTkcExistencia] = useState(existenciaDeUrl ?? (estadoDeUrl ? 'todos' : TKC_EXISTENCIA_DEFAULT));
   const [syncFailures, setSyncFailures] = useState([]);
   const [showFailures, setShowFailures] = useState(false);
   const [showFailureHistory, setShowFailureHistory] = useState(false);

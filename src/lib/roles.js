@@ -139,3 +139,17 @@ export function departamentosACargo(usuario) {
 export function puedeCerrarDespachos(usuario) {
   return tieneRol(usuario, ['administrador', 'inv']) || departamentosACargo(usuario).includes('inventario');
 }
+
+/**
+ * ¿Hay que obligar a esta persona a elegir sus almacenes? Sí si no tiene ninguno
+ * configurado —sin selección ve todos, y eso en la práctica es no haber elegido— y
+ * no es jefe de departamento, que supervisa varios y sí ve todos. Un administrador
+ * o superadmin tampoco: trabajan sobre todo el sistema.
+ */
+export function debeElegirAlmacenes(usuario) {
+  if (!usuario?.email) return false;
+  if (Array.isArray(usuario.almacenes_config) && usuario.almacenes_config.length > 0) return false;
+  const suyos = rolesDe(usuario);
+  if (suyos.some((r) => ['jefe_depto', 'administrador', 'superadmin'].includes(r))) return false;
+  return departamentosACargo(usuario).length === 0;
+}

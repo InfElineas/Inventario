@@ -14,6 +14,7 @@ import { useAlmacen } from '@/lib/useAlmacen';
 import { fetchResumenLotes } from '@/services/lotesService';
 import { SIN_SONDEO } from '@/lib/query-client';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
+import ElegirAlmacenesDialog from '@/components/layout/ElegirAlmacenesDialog';
 import { EsqueletoRuta } from '@/components/shared/Esqueleto';
 import { ROLES } from '@/lib/constants';
 import { tieneRol } from '@/lib/roles';
@@ -311,6 +312,8 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background">
+
+      <ElegirAlmacenesDialog />
 
       <Sidebar
         user={user}

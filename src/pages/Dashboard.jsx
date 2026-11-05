@@ -185,12 +185,12 @@ function PeriodSelector({ period, setPeriod, customFrom, setCustomFrom, customTo
 }
 
 // ── Estado de Tienda (tabla interna del almacén) ──────────────
-function EstadoTiendaTable({ breakdown, total }) {
+function EstadoTiendaTable({ breakdown, total, alElegir }) {
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <h3 className="text-sm font-medium">Estado de Tienda</h3>
-        <Link to="/bd-tkc" className="text-xs text-[var(--c-ok)] hover:underline">Ver catálogo →</Link>
+        <Link to="/productos?existencia=todos" className="text-xs text-[var(--c-ok)] hover:underline">Ver catálogo →</Link>
       </div>
       <table className="w-full text-sm">
         <thead>
@@ -208,7 +208,11 @@ function EstadoTiendaTable({ breakdown, total }) {
             const pct   = total > 0 ? (n / total * 100) : 0
             const color = EST_COLOR[est] ?? '#888'
             return (
-              <tr key={est} className="hover:bg-white/[0.02]">
+              // Cada estado lleva al catálogo con ese filtro puesto.
+              <tr key={est} className="hover:bg-accent/40 cursor-pointer" role="link" tabIndex={0}
+                aria-label={`Ver en el catálogo: ${est}`}
+                onClick={() => alElegir(est)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alElegir(est) } }}>
                 <td className="px-4 py-2.5">
                   <span className="inline-flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
@@ -528,6 +532,8 @@ export default function Dashboard() {
 
   const syncLabel = fmtDate(lastSync?.fecha)
   const openModal = key => setKpiModal(key)
+  // Un estado de la tienda lleva al catálogo con ese filtro puesto.
+  const verEstado = (estado) => navigate(`/productos?estadoTienda=${encodeURIComponent(estado)}`)
 
   return (
     <div className="space-y-5 p-4 lg:p-6">
@@ -671,8 +677,8 @@ export default function Dashboard() {
         <>
           {/* Lo urgente arriba: cuatro cifras, cada una lleva a donde se resuelve. */}
           <BloqueMetricas columnas="sm:grid-cols-4" metricas={[
-            { clave: 'sinReserva', titulo: 'Sin reserva',  valor: stats.sinReserva, sub: 'urgente · A=0 y T>6', color: 'var(--c-bad)', alerta: stats.sinReserva > 0, onClick: () => navigate('/reabastecimiento') },
-            { clave: 'noTienda',   titulo: 'No en tienda', valor: stats.noTienda,   sub: 'EF>0 · T=0',          color: 'var(--c-orange)', alerta: stats.noTienda > 0, onClick: () => navigate('/productos') },
+            { clave: 'sinReserva', titulo: 'Sin reserva',  valor: stats.sinReserva, sub: 'urgente · A=0 y T>6', color: 'var(--c-bad)', alerta: stats.sinReserva > 0, onClick: () => verEstado('SIN RESERVA') },
+            { clave: 'noTienda',   titulo: 'No en tienda', valor: stats.noTienda,   sub: 'EF>0 · T=0',          color: 'var(--c-orange)', alerta: stats.noTienda > 0, onClick: () => verEstado('NO TIENDA') },
             { clave: 'porFacturar', titulo: 'Por facturar', valor: facturacion.total, color: 'var(--c-info)', alerta: facturacion.total > 0,
               sub: `${facturacion.aumento} aumentos · ${facturacion.disminucion} disminuciones`, onClick: () => navigate('/ajustes/disminucion') },
             { clave: 'lotes',      titulo: 'Lotes críticos', valor: lotesCriticos, color: 'var(--c-warn)', alerta: lotesCriticos > 0,
@@ -683,7 +689,7 @@ export default function Dashboard() {
               no ve las ventas, el gráfico no sale y el estado ocupa todo el ancho. */}
           <div className={`grid grid-cols-1 gap-4 ${ventasMensual.error?.status === 403 ? '' : 'lg:grid-cols-2'}`}>
             <VentasPorMes meses={12} consulta={ventasMensual} />
-            <EstadoTiendaTable breakdown={stats.breakdown} total={stats.total} />
+            <EstadoTiendaTable breakdown={stats.breakdown} total={stats.total} alElegir={verEstado} />
           </div>
 
           {/* Las tareas: vencimientos, lo que espera a facturación y lo que te
@@ -697,13 +703,13 @@ export default function Dashboard() {
           {/* El resto del catálogo, más callado: no se puede resolver desde aquí. */}
           <BloqueMetricas metricas={[
             { clave: 'conStock',   titulo: 'Con stock',    valor: stats.conStock,   color: 'var(--c-ok)',
-              sub: `EF > 0 · ${stats.enTienda.toLocaleString()} en tienda` },
+              sub: `EF > 0 · ${stats.enTienda.toLocaleString()} en tienda`, onClick: () => navigate('/productos?existencia=existencia') },
             { clave: 'enTienda',   titulo: 'En tienda',    valor: stats.enTienda,   color: 'var(--c-info-2)',
               sub: `T > 0 · ${stats.total > 0 ? ((stats.enTienda / stats.total) * 100).toFixed(0) : 0}% del catálogo` },
-            { clave: 'agotados',   titulo: 'Agotados',     valor: stats.agotados,   color: 'var(--c-bad)', sub: 'con ID · EF=0' },
-            { clave: 'sinId',      titulo: 'Sin ID c/EF',  valor: stats.sinId,      sub: 'sin anuncio TKC', color: 'var(--c-warn)' },
+            { clave: 'agotados',   titulo: 'Agotados',     valor: stats.agotados,   color: 'var(--c-bad)', sub: 'con ID · EF=0', onClick: () => verEstado('AGOTADO') },
+            { clave: 'sinId',      titulo: 'Sin ID c/EF',  valor: stats.sinId,      sub: 'sin anuncio TKC', color: 'var(--c-warn)', onClick: () => verEstado('SIN ID') },
             { clave: 'total',      titulo: 'Total SKUs',   valor: stats.total,      color: 'var(--c-gray)',
-              sub: `${stats.sinIdEf0.toLocaleString()} sin ID/EF` },
+              sub: `${stats.sinIdEf0.toLocaleString()} sin ID/EF`, onClick: () => navigate('/productos?existencia=todos') },
             { clave: 'monto',      titulo: 'Monto mermas', valor: `$${mermaStats.monto.toFixed(2)}`, sub: `período ${periodLabel} completado`, color: 'var(--c-purple)' },
           ]} />
 

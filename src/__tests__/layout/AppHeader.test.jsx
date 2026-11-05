@@ -52,7 +52,7 @@ vi.mock('@/services/lotesService', () => ({
 
 vi.mock('@/lib/AuthContext', () => ({
   useAuth: () => ({
-    user: { email: 'test@test.com', role: 'inv', full_name: 'Test User', avatar_url: null },
+    user: { email: 'test@test.com', role: 'inv', full_name: 'Test User', avatar_url: null, almacenes_config: ['789'] },
     logout: vi.fn(),
   }),
 }));
