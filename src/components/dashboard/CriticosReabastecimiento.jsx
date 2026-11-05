@@ -26,6 +26,31 @@ const CUANTOS = 8;
 /** El mismo que trae por defecto la pantalla de reabastecimiento. */
 const DIAS = 15;
 
+const unidades = (n) => `${n} ${n === 1 ? 'unidad' : 'unidades'}`;
+
+/**
+ * Cuánto aguanta lo que queda, en palabras: «0.1 días» no le dice nada a quien no
+ * maneja cobertura. Se redondea a lo que se puede decir sin falsa precisión.
+ */
+export function duracionLegible(dias) {
+  if (!Number.isFinite(dias)) return '—';
+  if (dias < 1) return 'Se acaba hoy';
+  if (dias < 2) return 'Alcanza para 1 día';
+  if (dias < 7) return `Alcanza para ${Math.round(dias)} días`;
+  if (dias < 14) return 'Alcanza para 1 semana';
+  return `Alcanza para ${Math.round(dias / 7)} semanas`;
+}
+
+/** Cuánto se vende, en una frase: «0.04/día» pasa a «unas 3 al mes». */
+export function ritmoLegible(porDia) {
+  if (!Number.isFinite(porDia) || porDia <= 0) return 'casi no se vende';
+  if (porDia >= 1) return `unas ${Math.round(porDia)} al día`;
+  const semana = porDia * 7;
+  if (semana >= 1) return `unas ${Math.round(semana)} por semana`;
+  const mes = Math.max(1, Math.round(porDia * 30));
+  return `unas ${mes} al mes`;
+}
+
 /**
  * Los que se acaban primero: con anuncio activado y existencia (los agotados ya no
  * se acaban), las ÚLTIMAS PIEZAS delante y luego los de menos cobertura.
@@ -88,16 +113,16 @@ export default function CriticosReabastecimiento({ almacen }) {
               <span className="flex-1 min-w-0">
                 <span className="block text-sm line-clamp-1" title={f.nombre}>{f.nombre}</span>
                 <span className="block text-[11px] text-muted-foreground">
-                  {f.estadoTienda === 'ULTIMAS PIEZAS' ? 'Últimas piezas · ' : ''}{f.suministrador || '—'} · quedan {f.existencia} · vende {f.diaria.toFixed(2)}/día
+                  {f.estadoTienda === 'ULTIMAS PIEZAS' ? 'Últimas piezas · ' : ''}{f.suministrador || '—'} · quedan {unidades(f.existencia)} · se vende {ritmoLegible(f.diaria)}
                 </span>
               </span>
               <span className="text-right whitespace-nowrap">
                 <span className={`block text-sm font-medium tabular-nums ${
                   f.cobertura < DIAS / 2 ? 'text-[var(--c-bad)]' : 'text-[var(--c-warn)]'
                 }`}>
-                  {`${f.cobertura.toFixed(1)} días`}
+                  {duracionLegible(f.cobertura)}
                 </span>
-                <span className="block text-[11px] text-muted-foreground">pedir {f.faltan}</span>
+                <span className="block text-[11px] text-muted-foreground">conviene pedir {unidades(f.faltan)}</span>
               </span>
             </div>
           ))}

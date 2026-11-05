@@ -10,6 +10,7 @@ import { ChevronDown, Clock, CalendarDays, X } from 'lucide-react'
 import { base44 } from '@/api/base44Client';
 import CriticosReabastecimiento from '@/components/dashboard/CriticosReabastecimiento'
 import { EsperanFacturacion, Devueltos } from '@/components/dashboard/TarjetasTareas'
+import PorFacturarDialog from '@/components/dashboard/PorFacturarDialog'
 import VentasPorMes from '@/components/dashboard/VentasPorMes'
 import { fetchVentasMensuales } from '@/services/ventasService'
 import { devueltosDe, primerNombre, resumenFacturacion, saludoDe } from '@/lib/panelTareas'
@@ -368,6 +369,7 @@ export default function Dashboard() {
   const [customFrom, setCustomFrom]   = useState('')
   const [customTo, setCustomTo]       = useState('')
   const [showCustom, setShowCustom]   = useState(false)
+  const [porFacturar, setPorFacturar] = useState(false)   // el diálogo de «Por facturar»
   const [kpiModal, setKpiModal]       = useState(null)   // null | 'conStock' | 'enTienda' | ...
   const { almacen, setAlmacen, almacenesConfig } = useAlmacen()
   const navigate = useNavigate()
@@ -538,6 +540,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-5 p-4 lg:p-6">
 
+      {porFacturar && <PorFacturarDialog resumen={facturacion} onClose={() => setPorFacturar(false)} />}
+
       {/* ── Modal KPI ── */}
       {kpiModal && (
         <KPIBreakdownModal
@@ -680,7 +684,7 @@ export default function Dashboard() {
             { clave: 'sinReserva', titulo: 'Sin reserva',  valor: stats.sinReserva, sub: 'urgente · A=0 y T>6', color: 'var(--c-bad)', alerta: stats.sinReserva > 0, onClick: () => verEstado('SIN RESERVA') },
             { clave: 'noTienda',   titulo: 'No en tienda', valor: stats.noTienda,   sub: 'EF>0 · T=0',          color: 'var(--c-orange)', alerta: stats.noTienda > 0, onClick: () => verEstado('NO TIENDA') },
             { clave: 'porFacturar', titulo: 'Por facturar', valor: facturacion.total, color: 'var(--c-info)', alerta: facturacion.total > 0,
-              sub: `${facturacion.aumento} aumentos · ${facturacion.disminucion} disminuciones`, onClick: () => navigate('/ajustes/disminucion') },
+              sub: `${facturacion.aumento} aumentos · ${facturacion.disminucion} disminuciones${facturacion.mermas > 0 ? ` · ${facturacion.mermas} mermas` : ''}`, onClick: () => setPorFacturar(true) },
             { clave: 'lotes',      titulo: 'Lotes críticos', valor: lotesCriticos, color: 'var(--c-warn)', alerta: lotesCriticos > 0,
               sub: `${conteosLotes.vencido ?? 0} ya vencidos`, onClick: () => navigate('/lotes') },
           ]} />
