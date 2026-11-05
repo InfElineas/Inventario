@@ -22,7 +22,8 @@ un ajuste.
 
 **Almacenes al entrar.** Quien no es jefe de departamento (ni administrador) y no
 tiene ningún almacén configurado ve un diálogo que **no se puede cerrar** hasta
-elegir al menos uno. Se guarda en su perfil; después se cambia en Configuración.
+elegir **su almacén** (uno solo) y pulsar *Aceptar*. Ese pasa a ser el almacén que ve
+en toda la aplicación; se guarda en su perfil y se cambia después en Configuración.
 
 **Jefes de departamento.** El departamento forma parte del rol, y se asigna en el
 Identity Server (sistema `inventario`): `jefe_facturacion` es jefe de

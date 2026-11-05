@@ -5,12 +5,16 @@ import userEvent from '@testing-library/user-event';
 const auth = vi.hoisted(() => ({ user: null, refrescar: vi.fn() }));
 vi.mock('@/lib/AuthContext', () => ({ useAuth: () => ({ user: auth.user, refrescarSesion: auth.refrescar }) }));
 
+const alm = vi.hoisted(() => ({ setAlmacen: vi.fn() }));
+vi.mock('@/lib/useAlmacen', () => ({ useAlmacen: () => ({ almacen: '', setAlmacen: alm.setAlmacen, almacenesConfig: [] }) }));
+
 const { default: ElegirAlmacenesDialog } = await import('@/components/layout/ElegirAlmacenesDialog');
 const { debeElegirAlmacenes } = await import('@/lib/roles');
 
 beforeEach(() => {
   cleanup();
   auth.refrescar.mockReset().mockResolvedValue(null);
+  alm.setAlmacen.mockReset();
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 200 })));
   auth.user = { email: 'ana@x.com', role: 'inv', almacenes_config: [] };
 });
@@ -34,46 +38,57 @@ describe('debeElegirAlmacenes', () => {
 });
 
 describe('ElegirAlmacenesDialog', () => {
-  it('sale cuando no hay almacenes y no se puede guardar sin elegir uno', () => {
+  it('sale cuando no hay almacén y Aceptar no se puede pulsar sin elegir uno', () => {
     render(<ElegirAlmacenesDialog />);
-    expect(screen.getByText(/Con qué almacenes trabajas/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Elige al menos un almacén/ })).toBeDisabled();
+    expect(screen.getByText(/En qué almacén trabajas/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Aceptar' })).toBeDisabled();
   });
 
-  it('no sale si ya tiene almacenes', () => {
+  it('no sale si ya tiene almacén', () => {
     auth.user = { email: 'ana@x.com', role: 'inv', almacenes_config: ['789'] };
     render(<ElegirAlmacenesDialog />);
-    expect(screen.queryByText(/Con qué almacenes trabajas/)).toBeNull();
+    expect(screen.queryByText(/En qué almacén trabajas/)).toBeNull();
   });
 
   it('no se cierra con Escape', async () => {
     const user = userEvent.setup();
     render(<ElegirAlmacenesDialog />);
     await user.keyboard('{Escape}');
-    expect(screen.getByText(/Con qué almacenes trabajas/)).toBeInTheDocument();
+    expect(screen.getByText(/En qué almacén trabajas/)).toBeInTheDocument();
   });
 
-  it('guarda los elegidos en el perfil y refresca la sesión', async () => {
+  it('es de un solo almacén: elegir otro cambia la elección, no la suma', async () => {
     const user = userEvent.setup();
     render(<ElegirAlmacenesDialog />);
-    await user.click(screen.getByRole('button', { name: /TKC SUB 789/ }));
-    await user.click(screen.getByRole('button', { name: /TKC SUB 1005/ }));
-    await user.click(screen.getByRole('button', { name: /Guardar \(2\)/ }));
+    await user.click(screen.getByRole('radio', { name: /TKC SUB 789/ }));
+    await user.click(screen.getByRole('radio', { name: /TKC SUB 1005/ }));
+
+    expect(screen.getByRole('radio', { name: /TKC SUB 789/ })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('radio', { name: /TKC SUB 1005/ })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('Aceptar guarda ese almacén en el perfil, lo deja como el activo y refresca la sesión', async () => {
+    const user = userEvent.setup();
+    render(<ElegirAlmacenesDialog />);
+    await user.click(screen.getByRole('radio', { name: /TKC SUB 789/ }));
+    await user.click(screen.getByRole('button', { name: 'Aceptar' }));
 
     await waitFor(() => expect(auth.refrescar).toHaveBeenCalled());
     const [url, opts] = fetch.mock.calls[0];
     expect(url).toBe('/api/auth/perfil');
-    expect(JSON.parse(opts.body)).toEqual({ almacenes_config: ['789', '1005'], almacen_num: '789' });
+    expect(JSON.parse(opts.body)).toEqual({ almacenes_config: ['789'], almacen_num: '789' });
+    expect(alm.setAlmacen).toHaveBeenCalledWith('789');
   });
 
   it('si no se pudo guardar, lo dice y sigue abierto', async () => {
     fetch.mockResolvedValue(new Response(JSON.stringify({ error: 'Sin permiso' }), { status: 403 }));
     const user = userEvent.setup();
     render(<ElegirAlmacenesDialog />);
-    await user.click(screen.getByRole('button', { name: /TKC SUB 789/ }));
-    await user.click(screen.getByRole('button', { name: /Guardar \(1\)/ }));
+    await user.click(screen.getByRole('radio', { name: /TKC SUB 789/ }));
+    await user.click(screen.getByRole('button', { name: 'Aceptar' }));
 
     expect(await screen.findByText('Sin permiso')).toBeInTheDocument();
     expect(auth.refrescar).not.toHaveBeenCalled();
+    expect(alm.setAlmacen).not.toHaveBeenCalled();
   });
 });
