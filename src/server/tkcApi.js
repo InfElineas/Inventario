@@ -255,6 +255,8 @@ export function createTkcApiMiddleware({ tkc }) {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)
       // El detalle es útil aquí: el operador es quien depura las credenciales.
+      // Y al log, para no depender de que alguien abra la pestaña de red.
+      console.error(`[tkc] ${route}: ${msg}`)
       return json(res, 502, { error: `Error consultando TKC: ${msg}` })
     }
   }
