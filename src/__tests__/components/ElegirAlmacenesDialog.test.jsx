@@ -44,6 +44,14 @@ describe('ElegirAlmacenesDialog', () => {
     expect(screen.getByRole('button', { name: 'Aceptar' })).toBeDisabled();
   });
 
+  it('el botón Aceptar no es hijo directo del diálogo: la regla que oculta la X lo escondería', () => {
+    render(<ElegirAlmacenesDialog />);
+    const aceptar = screen.getByRole('button', { name: 'Aceptar' });
+    const dialogo = screen.getByRole('dialog');
+    expect(aceptar.parentElement).not.toBe(dialogo);
+    expect(dialogo.className).toMatch(/\[&>button\]:hidden/);
+  });
+
   it('no sale si ya tiene almacén', () => {
     auth.user = { email: 'ana@x.com', role: 'inv', almacenes_config: ['789'] };
     render(<ElegirAlmacenesDialog />);

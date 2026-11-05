@@ -61,6 +61,9 @@ export default function ElegirAlmacenesDialog() {
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
+        {/* Todo dentro de un contenedor: `[&>button]:hidden` oculta la X del diálogo, y
+            también cualquier botón que sea hijo directo suyo, como «Aceptar». */}
+        <div className="space-y-4">
         <DialogTitle className="text-base font-medium">¿En qué almacén trabajas?</DialogTitle>
         <DialogDescription className="text-sm">
           Elige tu almacén. Es el que verás en toda la aplicación; lo puedes cambiar después en Configuración.
@@ -88,6 +91,7 @@ export default function ElegirAlmacenesDialog() {
           {guardando && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
           Aceptar
         </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
