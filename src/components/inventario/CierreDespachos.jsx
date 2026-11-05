@@ -122,7 +122,7 @@ export default function CierreDespachos({ almacenInicial }) {
           {almacenes.isLoading && <p className="text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando…</p>}
           {almacenes.data && !almacenes.data.body?.configurado && (
             <AlertBanner variant="warning"
-              message="Ningún almacén tiene un proveedor de TKC asignado. Un administrador debe añadirlos a DESPACHOS_PROVEEDORES en el servidor." />
+              message="Ningún almacén tiene un proveedor de TKC asignado. Un administrador debe fijar DESPACHOS_PROVEEDOR (o DESPACHOS_PROVEEDORES) en el servidor." />
           )}
 
           {lista.length > 0 && (

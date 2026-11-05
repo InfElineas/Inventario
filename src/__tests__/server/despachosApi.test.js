@@ -130,6 +130,23 @@ describe('acceso y rutas', () => {
     const { res } = await llamar('/api/despachos/almacenes');
     expect(res.cuerpo).toEqual({ almacenes: [], configurado: false });
   });
+
+  it('con DESPACHOS_PROVEEDOR salen todos los almacenes, y el de por almacén gana', async () => {
+    process.env.DESPACHOS_PROVEEDOR = '9999';
+    try {
+      const { res } = await llamar('/api/despachos/almacenes');
+      expect(res.cuerpo.almacenes.length).toBeGreaterThan(2);
+      expect(res.cuerpo.almacenes.map((a) => a.key)).toEqual(expect.arrayContaining(['789', '1005']));
+
+      const r789 = await llamar('/api/despachos/pendientes?almacen=789');
+      expect(r789.res.cuerpo.proveedorId).toBe('1508');   // el mapa gana
+      const otro = res.cuerpo.almacenes.find((a) => !['789', '1005'].includes(a.key)).key;
+      const rOtro = await llamar(`/api/despachos/pendientes?almacen=${otro}`);
+      expect(rOtro.res.cuerpo.proveedorId).toBe('9999');   // el resto, el de por defecto
+    } finally {
+      delete process.env.DESPACHOS_PROVEEDOR;
+    }
+  });
 });
 
 describe('pendientes (solo lectura)', () => {

@@ -26,7 +26,7 @@ import { resolverSesion } from './session.js'
 import { leerCredenciales } from './credencialesTkc.js'
 import { query } from './db.js'
 import { puedeCerrarDespachos, rolesDe } from '../lib/roles.js'
-import { warehouseName } from '../services/tkc/warehouses.js'
+import { warehouseName, WAREHOUSES } from '../services/tkc/warehouses.js'
 import {
   fechaLimite, iniciarSesion, leerPagina, parsearActivos, sesionActiva,
 } from '../services/tkc/despachos.js'
@@ -121,12 +121,17 @@ export function createDespachosApiMiddleware({ ejecutar = ejecutarCierre } = {})
         return fallo(res, 403, 'forbidden', 'Tu rol no puede cerrar despachos de TKC.')
       }
 
-      const proveedores = proveedoresConfigurados()
+      // Con `DESPACHOS_PROVEEDOR` todos los almacenes usan ese proveedor (como el
+      // workflow de n8n, que tenía uno fijo); `DESPACHOS_PROVEEDORES` lo afina por almacén.
+      const porDefecto = /^\d{1,10}$/.test(process.env.DESPACHOS_PROVEEDOR ?? '') ? process.env.DESPACHOS_PROVEEDOR : null
+      const mapa = proveedoresConfigurados()
+      const claves = porDefecto ? [...new Set([...WAREHOUSES.map((w) => w.key), ...Object.keys(mapa)])] : Object.keys(mapa)
+      const proveedores = Object.fromEntries(claves.map((k) => [k, mapa[k] ?? porDefecto]))
 
       if (accion === 'almacenes') {
         return json(res, 200, {
-          almacenes: Object.keys(proveedores).map((k) => ({ key: k, nombre: warehouseName(k) })),
-          configurado: Object.keys(proveedores).length > 0,
+          almacenes: claves.map((k) => ({ key: k, nombre: warehouseName(k) })),
+          configurado: claves.length > 0,
         })
       }
 
@@ -149,7 +154,7 @@ export function createDespachosApiMiddleware({ ejecutar = ejecutarCierre } = {})
       const proveedorId = proveedores[clave]
       if (!proveedorId) {
         return fallo(res, 400, 'sin_proveedor',
-          `El almacén ${clave || '—'} no tiene un proveedor de TKC asignado. Un administrador debe añadirlo a DESPACHOS_PROVEEDORES.`)
+          `El almacén ${clave || '—'} no tiene un proveedor de TKC asignado. Un administrador debe añadirlo a DESPACHOS_PROVEEDORES o fijar DESPACHOS_PROVEEDOR.`)
       }
 
       const credenciales = leerCredenciales(req, sesion.email)
