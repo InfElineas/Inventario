@@ -124,7 +124,7 @@ export default function ProductSearch({ onSelect, placeholder: placeholderRaw })
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{p.nombre}</p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {p.codigo_producto} · {p.suministrador?.replace('SEL ', '') || '—'} · EF: {p.exist_fisica ?? 0} · A: {p.almacen ?? 0} · T: {p.tienda ?? 0} · ${(p.precio_costo ?? 0).toFixed(2)}
+                    {p.codigo_producto} · {p.suministrador || '—'} · EF: {p.exist_fisica ?? 0} · A: {p.almacen ?? 0} · T: {p.tienda ?? 0} · ${(p.precio_costo ?? 0).toFixed(2)}
                   </p>
                 </div>
               </button>

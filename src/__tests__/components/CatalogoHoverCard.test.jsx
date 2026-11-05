@@ -47,7 +47,7 @@ describe('CatalogoHoverCard', () => {
     expect(screen.getByText('ELíneas Electrocuba (789)')).toBeInTheDocument();
     expect(screen.getByText('Tous')).toBeInTheDocument();
     // El prefijo "SEL " del suministrador estorba y se recorta.
-    expect(screen.getByText('TOUS COLGANTES')).toBeInTheDocument();
+    expect(screen.getByText('SEL TOUS COLGANTES')).toBeInTheDocument();
     expect(screen.getByText('ACTIVADO')).toBeInTheDocument();
   });
 

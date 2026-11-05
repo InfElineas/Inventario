@@ -72,8 +72,8 @@ describe('PorContar', () => {
     montar();
     await screen.findAllByText('Anillo plata');
     await user.click(screen.getByRole('button', { name: /Suministrador: todos/ }));
-    await user.click(await screen.findByRole('option', { name: 'PUCARA' }));
-    await user.click(screen.getByRole('option', { name: 'APOLO' }));
+    await user.click(await screen.findByRole('option', { name: 'SEL PUCARA' }));
+    await user.click(screen.getByRole('option', { name: 'SEL APOLO' }));
 
     await waitFor(() => {
       expect(cat.fetchCatalogo.mock.calls.at(-1)[0].filtros.suministrador).toEqual(['SEL PUCARA', 'SEL APOLO']);

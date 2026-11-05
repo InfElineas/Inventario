@@ -399,6 +399,19 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   });
   const productos = productosRaw ?? [];
 
+  // ── Suministradores y categorías ──────────────────────────
+  const { data: suministradoresRaw } = useQuery({
+    queryKey: ['filter-suministradores', almacen],
+    // Lo resuelve la base con un DISTINCT. Antes esto se descargaba los 55.000
+    // productos —con sus 31 columnas— para quedarse con una lista de nombres.
+    // Acotado al almacén: ofrecer suministradores que no tienen nada aquí
+    // deja al usuario con una tabla vacía y sin saber por qué.
+    queryFn: () => base44.entities.Producto.distinct('suministrador', { activo: true, ...(almacen ? { almacen_num: almacen } : {}) }),
+    staleTime: 15 * 60 * 1000,
+    select: d => Array.isArray(d) ? d : [],
+  });
+  const suministradores = suministradoresRaw ?? [];
+
   // ── TKC productos (lectura directa del DataTables de TKC) ──
   // Paginado en servidor: cada cambio de página, búsqueda u orden es una
   // petición nueva. placeholderData mantiene la página anterior en pantalla
@@ -561,19 +574,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
   });
   const failureHistory = failureHistoryRaw ?? [];
 
-  // ── Suministradores y categorías ──────────────────────────
-  const { data: suministradoresRaw } = useQuery({
-    queryKey: ['filter-suministradores', almacen],
-    // Lo resuelve la base con un DISTINCT. Antes esto se descargaba los 55.000
-    // productos —con sus 31 columnas— para quedarse con una lista de nombres.
-    // Acotado al almacén: ofrecer suministradores que no tienen nada aquí
-    // deja al usuario con una tabla vacía y sin saber por qué.
-    queryFn: () => base44.entities.Producto.distinct('suministrador', { activo: true, ...(almacen ? { almacen_num: almacen } : {}) }),
-    staleTime: 15 * 60 * 1000,
-    select: d => Array.isArray(d) ? d : [],
-  });
-  const suministradores = suministradoresRaw ?? [];
-
+  // ── Categorías ────────────────────────────────────────────
   const { data: categoriasRaw } = useQuery({
     queryKey: ['filter-categorias'],
     queryFn: () => base44.entities.Producto.distinct('categoria_elineas', { activo: true }),
@@ -803,7 +804,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                     onChange={v => { setAdvFilters(f => ({ ...f, suministrador: v })); resetPage(); }}
                     placeholder="Suministrador: todos"
                     etiquetaVarios={(n) => `${n} suministradores`}
-                    options={suministradores.map(sx => ({ value: sx, label: sx }))}
+                    options={[...suministradores].sort((a, b) => a.localeCompare(b)).map(sx => ({ value: sx, label: sx }))}
                   />
 
                   <ColPicker cols={TKC_COLUMN_DEFS} visible={tkcCols}
@@ -853,7 +854,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                     onChange={v => { setAdvFilters(f => ({ ...f, suministrador: v })); resetPage(); }}
                     placeholder="Suministrador: todos"
                     etiquetaVarios={(n) => `${n} suministradores`}
-                    options={suministradores.map(s => ({ value: s, label: s.replace('SEL ', '') }))} />
+                    options={[...suministradores].sort((a, b) => a.localeCompare(b)).map(sx => ({ value: sx, label: sx }))} />
 
                   <SearchableSelect value={advFilters.categoria} icono={Tag}
                     activo={Boolean(advFilters.categoria)}
@@ -1060,7 +1061,7 @@ export default function Productos({ initialSource: initialSourceRaw }) {
                                 ),
                                 codigo:        <td key={k} className="p-3 text-xs text-muted-foreground font-mono hidden sm:table-cell">{p.codigo_producto || '—'}</td>,
                                 id_tienda:     <td key={k} className="p-3 text-xs font-mono text-muted-foreground hidden sm:table-cell">{p.id_tienda || '—'}</td>,
-                                suministrador: <td key={k} className="p-3 text-xs hidden md:table-cell">{p.suministrador?.replace('SEL ', '') || '—'}</td>,
+                                suministrador: <td key={k} className="p-3 text-xs hidden md:table-cell">{p.suministrador || '—'}</td>,
                                 ef:            <td key={k} className={`p-3 text-right font-semibold tabular-nums ${ef === 0 ? 'text-[var(--c-bad)]' : ''}`}>{ef}</td>,
                                 a:             <td key={k} className="p-3 text-right text-muted-foreground tabular-nums hidden sm:table-cell">{a}</td>,
                                 t:             <td key={k} className="p-3 text-right text-muted-foreground tabular-nums hidden sm:table-cell">{t}</td>,

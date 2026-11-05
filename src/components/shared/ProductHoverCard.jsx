@@ -83,7 +83,7 @@ export default function ProductHoverCard({ producto, rect }) {
           </>}
           {producto.suministrador && <>
             <span className="text-muted-foreground">Suministrador</span>
-            <span className="text-foreground truncate">{producto.suministrador?.replace('SEL ','')}</span>
+            <span className="text-foreground truncate">{producto.suministrador}</span>
           </>}
           {producto.categoria_elineas && <>
             <span className="text-muted-foreground">Categoría</span>

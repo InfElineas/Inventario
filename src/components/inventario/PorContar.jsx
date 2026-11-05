@@ -73,7 +73,7 @@ export default function PorContar({ pestanas, onContar }) {
     queryFn: () => base44.entities.Producto.distinct('suministrador', { activo: true, almacen_num: almacen }),
     enabled: Boolean(almacen),
     staleTime: 5 * 60 * 1000,
-    select: (d) => (Array.isArray(d) ? d.filter(Boolean).sort() : []),
+    select: (d) => (Array.isArray(d) ? d.filter(Boolean) : []),
     ...SIN_SONDEO,
   });
 
@@ -132,7 +132,7 @@ export default function PorContar({ pestanas, onContar }) {
           </div>,
         );
       case 'suministrador':
-        return envolver(<span className="text-xs text-muted-foreground">{f.suministrador?.replace('SEL ', '') || '—'}</span>);
+        return envolver(<span className="text-xs text-muted-foreground">{f.suministrador || '—'}</span>);
       case 'existencia':
         return envolver(
           <span className="text-xs tabular-nums">{f.ef} · {f.enAlmacen} · {f.enTienda}</span>,
@@ -183,7 +183,8 @@ export default function PorContar({ pestanas, onContar }) {
               onChange={setSuministradores}
               placeholder="Suministrador: todos"
               etiquetaVarios={(n) => `${n} suministradores`}
-              options={opciones.map((s) => ({ value: s, label: s.replace('SEL ', '') }))}
+              // Nombre exacto: «SEL PUCARA» y «PUCARA» son suministradores distintos.
+              options={[...opciones].sort((a, b) => a.localeCompare(b)).map((s) => ({ value: s, label: s }))}
             />
             <FiltroIcono
               icono={Boxes}

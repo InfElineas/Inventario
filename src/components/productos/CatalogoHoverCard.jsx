@@ -200,7 +200,7 @@ export default function CatalogoHoverCard({ producto, rect, enVivo, cargando, er
         <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[11px]">
           <Dato label="Código">{producto.codigo}</Dato>
           <Dato label="ID tienda">{producto.idOnline}</Dato>
-          <Dato label="Suministrador">{producto.suministrador?.replace('SEL ', '')}</Dato>
+          <Dato label="Suministrador">{producto.suministrador}</Dato>
           <Dato label="Proveedor">{producto.proveedor}</Dato>
           <Dato label="Marca">{producto.marca}</Dato>
           <Dato label="Categoría">{producto.categoriaOnline}</Dato>
