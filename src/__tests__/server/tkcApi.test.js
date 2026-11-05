@@ -139,6 +139,15 @@ describe('createTkcApiMiddleware', () => {
     expect(fetchExistencia).not.toHaveBeenCalled()
   })
 
+  it('POST /api/tkc/existencia sin idTienda pero con código busca por el código (insumos)', async () => {
+    const middleware = createTkcApiMiddleware({ tkc: TKC })
+    fetchExistencia.mockResolvedValue({ codigo: 'INS-1', existencia: { fisica: 4, enAlmacen: 4, enTienda: 0 } })
+    const res = fakeRes()
+    await middleware(fakeReq({ url: '/api/tkc/existencia', body: { almacen: '789', codigo: 'INS-1' } }), res, vi.fn())
+    expect(res.statusCode).toBe(200)
+    expect(fetchExistencia).toHaveBeenCalledWith(TKC, { idTienda: '', codigo: 'INS-1', almacen: '351' })
+  })
+
   it('POST /api/tkc/existencia responde 404 si el submayor no tiene el producto', async () => {
     fetchExistencia.mockResolvedValue(null)
     const middleware = createTkcApiMiddleware({ tkc: TKC })
@@ -155,7 +164,7 @@ describe('createTkcApiMiddleware', () => {
     await middleware(fakeReq({ url: '/api/tkc/existencia', body: { almacen: '789', idTienda: '139494' } }), res, vi.fn())
     expect(res.statusCode).toBe(200)
     expect(res.body).toEqual(producto)
-    expect(fetchExistencia).toHaveBeenCalledWith(TKC, { idTienda: '139494', almacen: '351' })
+    expect(fetchExistencia).toHaveBeenCalledWith(TKC, { idTienda: '139494', codigo: '', almacen: '351' })
   })
 
   it('POST /api/tkc/existencias pasa los ids (como string) y el flag de refresco', async () => {

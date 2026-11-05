@@ -129,17 +129,18 @@ export async function refrescarSubmayor({ almacen, refrescar = false }) {
  * Ni el listado ni nuestra copia lo saben: solo TKC guarda el documento de
  * cada movimiento y quién lo hizo.
  *
- * @param {{ almacen: string, idTienda: string, desde?: string, hasta?: string }} params
+ * @param {{ almacen: string, idTienda?: string, codigo?: string, desde?: string, hasta?: string }} params
  *        Sin fechas, el último mes.
  * @returns {Promise<null | { titulo: string, desde: string, hasta: string,
  *   movimientos: Array<{fecha: string, documento: string, saldoInicial: number|null,
  *     entrada: number|null, salida: number|null, saldoFinal: number|null, usuario: string}> }>}
  *   null si el submayor no tiene ese producto en ese almacén.
  */
-export async function fetchHistorialTkc({ almacen, idTienda, desde, hasta }) {
-  if (!almacen || !idTienda) return null
+export async function fetchHistorialTkc({ almacen, idTienda, codigo, desde, hasta }) {
+  // Sin ID de tienda se busca por código: los insumos sin ID también tienen movimiento.
+  if (!almacen || (!idTienda && !codigo)) return null
 
-  const { res, data } = await postTkc(ENDPOINT_HISTORIAL, { almacen, idTienda, desde, hasta })
+  const { res, data } = await postTkc(ENDPOINT_HISTORIAL, { almacen, idTienda, codigo, desde, hasta })
 
   if (res.status === 404) return null
   if (!res.ok) {
@@ -155,17 +156,19 @@ export async function fetchHistorialTkc({ almacen, idTienda, desde, hasta }) {
  * publica el submayor, y de producto en producto. Por eso se pide bajo demanda
  * (al hacer hover sobre la fila) y no para la tabla entera.
  *
- * @param {{ almacen: string, idTienda: string }} params
- *        `idTienda` es el campo `idOnline` de la fila del listado.
+ * @param {{ almacen: string, idTienda?: string, codigo?: string }} params
+ *        `idTienda` es el campo `idOnline` de la fila del listado; `codigo`, solo
+ *        para los productos sin ID.
  * @returns {Promise<null | { idTienda: string, codigo: string, nombre: string,
  *   unidadMedida: string, precio: number,
  *   existencia: { fisica: number, enAlmacen: number, enTienda: number } }>}
  *   null si el submayor no tiene ese producto en ese almacén (no es un error).
  */
-export async function fetchExistenciaTkc({ almacen, idTienda }) {
-  if (!almacen || !idTienda) return null
+export async function fetchExistenciaTkc({ almacen, idTienda, codigo }) {
+  // Sin ID de tienda se busca por código, que TKC también casa.
+  if (!almacen || (!idTienda && !codigo)) return null
 
-  const { res, data } = await postTkc(ENDPOINT_EXISTENCIA, { almacen, idTienda })
+  const { res, data } = await postTkc(ENDPOINT_EXISTENCIA, { almacen, idTienda, codigo })
 
   if (res.status === 404) return null
   if (!res.ok) {

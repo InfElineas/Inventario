@@ -17,7 +17,7 @@ describe('comprobarLineas', () => {
 
     expect(r.map((x) => [x.code, x.quantity, x.existencia.enAlmacen])).toEqual([['A', 2, 40], ['B', 3, 40]]);
     expect(m.producto).toHaveBeenCalledWith({ codigo_producto: 'A', almacen_num: '789', activo: true }, '-updated_date', 5);
-    expect(m.existencia).toHaveBeenCalledWith({ almacen: '789', idTienda: 'T1' });
+    expect(m.existencia).toHaveBeenCalledWith(expect.objectContaining({ almacen: '789', idTienda: 'T1' }));
   });
 
   it('un producto que no está en el catálogo sale sin dato y con su motivo, sin tumbar los demás', async () => {
@@ -29,8 +29,15 @@ describe('comprobarLineas', () => {
     expect(r[1].motivoSinDato).toMatch(/catálogo/);
   });
 
-  it('un producto sin anuncio (sin id de tienda) no se puede comprobar', async () => {
+  it('un producto sin id de tienda (insumo) se comprueba por su código', async () => {
     m.producto.mockResolvedValue([{ id: 'p', id_tienda: null }]);
+    const r = await comprobarLineas({ almacen: '789', lines: [{ code: 'A', quantity: 1 }] });
+    expect(m.existencia).toHaveBeenCalledWith({ almacen: '789', idTienda: null, codigo: 'A' });
+    expect(r[0].existencia).not.toBeNull();
+  });
+
+  it('un código que no está en el catálogo del almacén no se puede comprobar', async () => {
+    m.producto.mockResolvedValue([]);
     const r = await comprobarLineas({ almacen: '789', lines: [{ code: 'A', quantity: 1 }] });
     expect(r[0].existencia).toBeNull();
     expect(m.existencia).not.toHaveBeenCalled();

@@ -198,8 +198,9 @@ export function createTkcApiMiddleware({ tkc }) {
 
       if (route === 'historial') {
         const idTienda = String(body.idTienda ?? '').trim()
-        if (!idTienda) {
-          return json(res, 400, { error: 'Falta idTienda (el campo id_online del listado).' })
+        const codigo = String(body.codigo ?? '').trim()
+        if (!idTienda && !codigo) {
+          return json(res, 400, { error: 'Falta idTienda (el campo id_online del listado) o, sin ID, el código del producto.' })
         }
         // Sin rango, el último mes: pedir «todo» en un producto que se mueve a
         // diario devuelve cientos de líneas que nadie va a leer.
@@ -207,10 +208,10 @@ export function createTkcApiMiddleware({ tkc }) {
         const hasta = String(body.hasta ?? fecha(hoy))
         const desde = String(body.desde ?? fecha(new Date(hoy.getTime() - DIAS_HISTORIAL * 86400000)))
 
-        const historial = await fetchHistorial(tkc, { idTienda, almacen: tkcValue, desde, hasta })
+        const historial = await fetchHistorial(tkc, { idTienda, codigo, almacen: tkcValue, desde, hasta })
         if (!historial.encontrado) {
           return json(res, 404, {
-            error: `El submayor no tiene el producto ${idTienda} en este almacén.`,
+            error: `El submayor no tiene el producto ${idTienda || codigo} en este almacén.`,
           })
         }
         return json(res, 200, { ...historial, desde, hasta })
@@ -227,15 +228,16 @@ export function createTkcApiMiddleware({ tkc }) {
 
       if (route === 'existencia') {
         const idTienda = String(body.idTienda ?? '').trim()
-        if (!idTienda) {
-          return json(res, 400, { error: 'Falta idTienda (el campo id_online del listado).' })
+        const codigo = String(body.codigo ?? '').trim()
+        if (!idTienda && !codigo) {
+          return json(res, 400, { error: 'Falta idTienda (el campo id_online del listado) o, sin ID, el código del producto.' })
         }
 
-        const producto = await fetchExistencia(tkc, { idTienda, almacen: tkcValue })
+        const producto = await fetchExistencia(tkc, { idTienda, codigo, almacen: tkcValue })
         if (!producto) {
           // 404 y no 502: el submayor respondió bien, el producto no está ahí.
           return json(res, 404, {
-            error: `El submayor no tiene el producto ${idTienda} en este almacén.`,
+            error: `El submayor no tiene el producto ${idTienda || codigo} en este almacén.`,
           })
         }
         return json(res, 200, producto)

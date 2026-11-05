@@ -86,12 +86,14 @@ export function parsearCabecera(html) {
  * Historial de un producto entre dos fechas.
  *
  * @param {{ tkcBase: string, tkcUser: string, tkcPass: string }} config
- * @param {{ idTienda: string, almacen: string, desde: string, hasta: string }} params
+ * @param {{ idTienda?: string, codigo?: string, almacen: string, desde: string, hasta: string }} params
+ *        `codigo` solo se usa cuando el producto no tiene `idTienda`.
  *        `almacen` es el id TKC; las fechas, `YYYY-MM-DD`.
  * @returns {Promise<{ encontrado: boolean, titulo: string, movimientos: object[] }>}
  */
-export async function fetchHistorial(config, { idTienda, almacen, desde, hasta }) {
-  const buscado = String(idTienda ?? '').trim()
+export async function fetchHistorial(config, { idTienda, codigo, almacen, desde, hasta }) {
+  // El ID si lo hay; si no (insumos sin ID), el código: también tienen movimiento.
+  const buscado = String(idTienda ?? '').trim() || String(codigo ?? '').trim()
   if (!buscado || !almacen) return { encontrado: false, titulo: '', movimientos: [] }
 
   // Primero la fila, porque la ruta del historial quiere SU id, no el de
@@ -99,7 +101,7 @@ export async function fetchHistorial(config, { idTienda, almacen, desde, hasta }
   const pagina = await fetchSubmayorPage(config, {
     start: 0, length: 25, search: buscado, almacen, soloConExistencia: false,
   })
-  const fila = pickRow(pagina?.data, buscado)
+  const fila = pickRow(pagina?.data, idTienda, codigo)
   if (!fila?.id) return { encontrado: false, titulo: '', movimientos: [] }
 
   const html = await tkcGetHtml(config, {

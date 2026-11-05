@@ -93,9 +93,11 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
   // venía calculando la diferencia del inventario.
   const { tiene: conTkc } = useAccesoTkc();
   const { data: submayor, isLoading: cargandoSubmayor, isError: errorSubmayor, refetch: refetchSubmayor } = useQuery({
-    queryKey: ['submayor-producto', almacen, producto?.id_tienda],
-    queryFn: () => fetchExistenciaTkc({ almacen, idTienda: producto.id_tienda }),
-    enabled: conTkc && Boolean(almacen && producto?.id_tienda),
+    // Sin ID de tienda (los insumos, por ejemplo) se busca por código: también
+    // tienen existencia y movimiento en el submayor.
+    queryKey: ['submayor-producto', almacen, producto?.id_tienda || producto?.codigo_producto],
+    queryFn: () => fetchExistenciaTkc({ almacen, idTienda: producto.id_tienda, codigo: producto.codigo_producto }),
+    enabled: conTkc && Boolean(almacen && (producto?.id_tienda || producto?.codigo_producto)),
     staleTime: 60_000,
     ...SIN_SONDEO,
     retry: false,
@@ -359,14 +361,14 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
               <div className="flex-1 text-xs text-[var(--c-bad)]">
                 <p className="font-medium">No hay existencia de TKC para este producto.</p>
                 <p className="mt-0.5">
-                  {!producto.id_tienda
-                    ? 'No tiene ID de tienda, así que no está en el submayor. Hay que crearle el anuncio en TKC antes de contarlo.'
-                    : errorSubmayor
-                      ? 'No se pudo consultar el submayor. Vuelve a intentarlo; si sigue sin responder, avisa a soporte.'
+                  {errorSubmayor
+                    ? 'No se pudo consultar el submayor. Vuelve a intentarlo; si sigue sin responder, avisa a soporte.'
+                    : !producto.id_tienda
+                      ? `No tiene ID de tienda y el submayor no lo encuentra por su código (${producto.codigo_producto}) en el almacén ${almacen}, o ese código sale en más de una fila.`
                       : `El submayor no tiene este producto en el almacén ${almacen}.`}
                 </p>
               </div>
-              {producto.id_tienda && (
+              {(producto.id_tienda || producto.codigo_producto) && (
                 <Button type="button" variant="outline" size="sm" onClick={() => refetchSubmayor()}
                   disabled={cargandoSubmayor} style={{ borderRadius: 'var(--r-ctl)' }}>
                   <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${cargandoSubmayor ? 'animate-spin' : ''}`} />

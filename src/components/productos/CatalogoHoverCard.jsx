@@ -221,9 +221,9 @@ export default function CatalogoHoverCard({ producto, rect, enVivo, cargando, er
         {/* La existencia en vivo de TKC, cuando se puede saber. Lo de arriba es
             nuestra copia; esto es lo que TKC dice ahora mismo. */}
         <div className="pt-1.5 border-t border-border text-[10px]">
-          {!producto.idOnline ? (
+          {!producto.idOnline && !producto.codigo ? (
             <p className="text-muted-foreground">
-              Sin ID de tienda: el submayor de TKC no puede buscarlo.
+              Sin ID de tienda ni código: el submayor de TKC no puede buscarlo.
             </p>
           ) : sinAccesoTkc ? (
             <p className="text-muted-foreground">

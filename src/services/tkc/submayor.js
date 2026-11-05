@@ -135,15 +135,29 @@ function num(value) {
 }
 
 /**
- * Localiza una fila exacta por `idTienda` dentro de una respuesta del submayor.
+ * Localiza una fila exacta dentro de una respuesta del submayor: por `idTienda` y,
+ * si el producto no tiene ID, por `codigo`.
  *
  * Hace falta porque la búsqueda de TKC es un «contiene»: buscar 139494 también
  * trae 1394940. Se separa de la petición para poder probarla sin red.
+ *
+ * Un producto sin ID (los insumos, por ejemplo) también tiene movimiento en el
+ * submayor, y TKC busca por código además de por ID. Por código solo se acepta
+ * UNA fila: si el mismo código sale en varias no se adivina cuál es —se prefiere
+ * la que no tiene ID, que es la de este producto— porque contar contra la
+ * existencia de otro anuncio es un ajuste equivocado.
  */
-export function pickRow(rows, idTienda) {
+export function pickRow(rows, idTienda, codigo) {
+  const lista = rows ?? []
   const wanted = String(idTienda ?? '').trim()
-  if (!wanted) return null
-  return (rows ?? []).find((r) => String(r?.idTienda ?? '').trim() === wanted) ?? null
+  if (wanted) return lista.find((r) => String(r?.idTienda ?? '').trim() === wanted) ?? null
+
+  const cod = String(codigo ?? '').trim()
+  if (!cod) return null
+  const mismas = lista.filter((r) => String(r?.codigo ?? '').trim() === cod)
+  const sinId = mismas.filter((r) => !String(r?.idTienda ?? '').trim())
+  const candidatas = sinId.length > 0 ? sinId : mismas
+  return candidatas.length === 1 ? candidatas[0] : null
 }
 
 /**
@@ -157,14 +171,16 @@ export function pickRow(rows, idTienda) {
  * filtro», así que un producto a cero también se encuentra en vez de dar null.
  *
  * @param {{ tkcBase: string, tkcUser: string, tkcPass: string }} config
- * @param {{ idTienda: string, almacen: string }} params `almacen` es el id TKC.
+ * @param {{ idTienda?: string, codigo?: string, almacen: string }} params `almacen` es el id TKC.
+ *        `codigo` solo se usa cuando el producto no tiene `idTienda`.
  * @returns {Promise<null | { idTienda: string, codigo: string, nombre: string,
  *   unidadMedida: string, precio: number,
  *   existencia: { fisica: number, enAlmacen: number, enTienda: number } }>}
  *   null si el submayor no tiene ese producto en ese almacén.
  */
-export async function fetchExistencia(config, { idTienda, almacen }) {
-  const wanted = String(idTienda ?? '').trim()
+export async function fetchExistencia(config, { idTienda, codigo, almacen }) {
+  // El ID si lo hay; si no (insumos sin ID), el código del producto.
+  const wanted = String(idTienda ?? '').trim() || String(codigo ?? '').trim()
   if (!wanted || !almacen) return null
 
   const response = await fetchSubmayorPage(config, {
@@ -175,7 +191,7 @@ export async function fetchExistencia(config, { idTienda, almacen }) {
     soloConExistencia: false,
   })
 
-  const row = pickRow(response?.data, wanted)
+  const row = pickRow(response?.data, idTienda, codigo)
   if (!row) return null
 
   return {

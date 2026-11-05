@@ -27,11 +27,13 @@ export default function HistorialSubmayorDialog({ producto, almacen, onClose }) 
   const [hasta, setHasta] = useState(hoy);
 
   const idTienda = producto?.idOnline ?? producto?.id_tienda ?? '';
+  // Sin ID de tienda (insumos) el submayor se busca por código.
+  const codigo = producto?.codigo ?? producto?.codigo_producto ?? '';
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['historial-submayor', almacen, idTienda, desde, hasta],
-    queryFn: () => fetchHistorialTkc({ almacen, idTienda, desde, hasta }),
-    enabled: Boolean(producto && almacen && idTienda),
+    queryKey: ['historial-submayor', almacen, idTienda || codigo, desde, hasta],
+    queryFn: () => fetchHistorialTkc({ almacen, idTienda, codigo, desde, hasta }),
+    enabled: Boolean(producto && almacen && (idTienda || codigo)),
     retry: false,
     ...SIN_SONDEO,
   });
@@ -68,8 +70,8 @@ export default function HistorialSubmayorDialog({ producto, almacen, onClose }) 
           </div>
 
           {!idTienda && (
-            <AlertBanner variant="warning"
-              message="Este producto no tiene id de tienda, y el submayor busca por ese id. Hay que crearle el anuncio en TKC." />
+            <AlertBanner variant="info"
+              message="Este producto no tiene id de tienda: se busca en el submayor por su código." />
           )}
           {error && <AlertBanner variant="danger" message={error.message} />}
           {data === null && !isLoading && !error && (

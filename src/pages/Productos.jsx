@@ -483,9 +483,10 @@ export default function Productos({ initialSource: initialSourceRaw }) {
     isLoading: loadingExistencia,
     error: existenciaError,
   } = useQuery({
-    queryKey: ['tkc_existencia', almacen, hoveredTkc?.fila?.idOnline],
-    queryFn: () => fetchExistenciaTkc({ almacen, idTienda: hoveredTkc.fila.idOnline }),
-    enabled: conTkc && source === 'tkc' && Boolean(almacen) && Boolean(hoveredTkc?.fila?.idOnline),
+    // Sin ID de tienda (insumos) se busca por código.
+    queryKey: ['tkc_existencia', almacen, hoveredTkc?.fila?.idOnline || hoveredTkc?.fila?.codigo],
+    queryFn: () => fetchExistenciaTkc({ almacen, idTienda: hoveredTkc.fila.idOnline, codigo: hoveredTkc.fila.codigo }),
+    enabled: conTkc && source === 'tkc' && Boolean(almacen) && Boolean(hoveredTkc?.fila?.idOnline || hoveredTkc?.fila?.codigo),
     staleTime: 5 * 60 * 1000,
     ...SIN_SONDEO,
     gcTime: 5 * 60 * 1000,

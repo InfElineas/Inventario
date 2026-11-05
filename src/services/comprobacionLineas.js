@@ -29,11 +29,12 @@ export async function comprobarLineas({ almacen, lines }, concurrencia = 4) {
       const productos = await base44.entities.Producto.filter(
         { codigo_producto: code, almacen_num: almacen, activo: true }, '-updated_date', 5,
       );
-      const producto = (productos ?? []).find((p) => p.id_tienda) ?? null;
+      // El que tenga ID de anuncio; si ninguno lo tiene (insumos), se busca por código.
+      const producto = (productos ?? []).find((p) => p.id_tienda) ?? (productos ?? [])[0] ?? null;
       if (!producto) {
-        return { code, quantity, existencia: null, motivoSinDato: 'No está en el catálogo de este almacén, o no tiene anuncio en TKC.' };
+        return { code, quantity, existencia: null, motivoSinDato: 'No está en el catálogo de este almacén.' };
       }
-      const submayor = await fetchExistenciaTkc({ almacen, idTienda: producto.id_tienda });
+      const submayor = await fetchExistenciaTkc({ almacen, idTienda: producto.id_tienda, codigo: code });
       if (!submayor?.existencia) {
         return { code, quantity, existencia: null, motivoSinDato: 'El submayor de TKC no tiene este producto.' };
       }

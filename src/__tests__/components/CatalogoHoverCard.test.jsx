@@ -51,11 +51,15 @@ describe('CatalogoHoverCard', () => {
     expect(screen.getByText('ACTIVADO')).toBeInTheDocument();
   });
 
-  it('sin ID de tienda explica por qué no hay existencia en vivo', () => {
-    // Este era el caso que parecía un fallo: el submayor se busca por ID de
-    // tienda, así que sin ID no hay nada que consultar. Antes no se decía.
-    render(<CatalogoHoverCard producto={producto({ idOnline: '' })} rect={RECT} />);
-    expect(screen.getByText(/Sin ID de tienda/i)).toBeInTheDocument();
+  it('sin ID de tienda pero con código, se consulta igual por código (insumos)', () => {
+    render(<CatalogoHoverCard producto={producto({ idOnline: '' })} rect={RECT} cargando />);
+    expect(screen.getByText(/Consultando el submayor/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Sin ID de tienda/i)).toBeNull();
+  });
+
+  it('sin ID de tienda ni código no hay por dónde buscarlo, y lo explica', () => {
+    render(<CatalogoHoverCard producto={producto({ idOnline: '', codigo: '' })} rect={RECT} />);
+    expect(screen.getByText(/Sin ID de tienda ni código/i)).toBeInTheDocument();
   });
 
   it('sin credenciales de TKC lo dice en vez de callar', () => {

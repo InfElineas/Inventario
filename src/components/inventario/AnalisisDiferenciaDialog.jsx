@@ -51,9 +51,10 @@ export default function AnalisisDiferenciaDialog({ inv, idTienda, onClose }) {
   const [hasta, setHasta] = useState(hoy);
 
   const historial = useQuery({
-    queryKey: ['historial-submayor', almacen, idTienda, desde, hasta],
-    queryFn: () => fetchHistorialTkc({ almacen, idTienda, desde, hasta }),
-    enabled: Boolean(almacen && idTienda),
+    // Sin ID de tienda se busca por el código del producto.
+    queryKey: ['historial-submayor', almacen, idTienda || inv.producto_codigo, desde, hasta],
+    queryFn: () => fetchHistorialTkc({ almacen, idTienda, codigo: inv.producto_codigo, desde, hasta }),
+    enabled: Boolean(almacen && (idTienda || inv.producto_codigo)),
     retry: false,
     ...SIN_SONDEO,
   });
@@ -109,8 +110,8 @@ export default function AnalisisDiferenciaDialog({ inv, idTienda, onClose }) {
         </div>
 
         {!idTienda && (
-          <AlertBanner variant="warning"
-            message="Este producto no tiene id de tienda, y el submayor busca por ese id. Hay que crearle el anuncio en TKC." />
+          <AlertBanner variant="info"
+            message="Este producto no tiene id de tienda: se busca en el submayor por su código." />
         )}
         {historial.error && <AlertBanner variant="danger" message={historial.error.message} />}
         {historial.data === null && !historial.isLoading && !historial.error && (

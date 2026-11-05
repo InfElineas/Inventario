@@ -329,4 +329,28 @@ describe('submayor', () => {
     expect(pickRow(undefined, '139494')).toBeNull()
     expect(pickRow(rows, '')).toBeNull()
   })
+
+  describe('pickRow por código (productos sin ID de tienda)', () => {
+    it('sin ID, casa el código exacto', () => {
+      const rows = [{ idTienda: '', codigo: 'INS-10' }, { idTienda: '', codigo: 'INS-1' }]
+      expect(pickRow(rows, '', 'INS-1')).toEqual({ idTienda: '', codigo: 'INS-1' })
+      expect(pickRow(rows, undefined, 'INS-9')).toBeNull()
+    })
+
+    it('si el código sale en varios anuncios, prefiere la fila sin ID', () => {
+      const rows = [{ idTienda: '555', codigo: 'X1' }, { idTienda: '', codigo: 'X1' }]
+      expect(pickRow(rows, '', 'X1')).toEqual({ idTienda: '', codigo: 'X1' })
+    })
+
+    it('si sigue habiendo más de una, no adivina cuál es', () => {
+      const rows = [{ idTienda: '555', codigo: 'X1' }, { idTienda: '556', codigo: 'X1' }]
+      expect(pickRow(rows, '', 'X1')).toBeNull()
+      expect(pickRow([{ idTienda: '', codigo: 'X1' }, { idTienda: '', codigo: 'X1' }], '', 'X1')).toBeNull()
+    })
+
+    it('con ID, el código no se usa', () => {
+      const rows = [{ idTienda: '555', codigo: 'X1' }]
+      expect(pickRow(rows, '999', 'X1')).toBeNull()
+    })
+  })
 })

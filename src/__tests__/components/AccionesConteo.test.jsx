@@ -55,7 +55,7 @@ describe('DialogosConteo', () => {
 
     expect(await screen.findByText(/Faltan 10: hay que bajar 6 de tienda/i)).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: /cantidad a mover/i })).toHaveValue(6);
-    expect(mocks.existencia).toHaveBeenCalledWith({ almacen: '789', idTienda: 'T1' });
+    expect(mocks.existencia).toHaveBeenCalledWith(expect.objectContaining({ almacen: '789', idTienda: 'T1' }));
   });
 
   it('avisa si la existencia cambió desde el conteo', async () => {

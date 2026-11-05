@@ -23,10 +23,12 @@ export default function ExistenciaAhora({ inv }) {
   });
 
   const idTienda = producto?.id_tienda;
+  // Sin ID de tienda se busca por código.
+  const codigo = producto?.codigo_producto || inv.producto_codigo;
   const { data: submayor, isLoading } = useQuery({
-    queryKey: ['submayor-producto', inv.almacen_num, idTienda],
-    queryFn: () => fetchExistenciaTkc({ almacen: inv.almacen_num, idTienda }),
-    enabled: Boolean(inv.almacen_num && idTienda),
+    queryKey: ['submayor-producto', inv.almacen_num, idTienda || codigo],
+    queryFn: () => fetchExistenciaTkc({ almacen: inv.almacen_num, idTienda, codigo }),
+    enabled: Boolean(inv.almacen_num && (idTienda || codigo) && producto),
     retry: false,
     ...SIN_SONDEO,
   });

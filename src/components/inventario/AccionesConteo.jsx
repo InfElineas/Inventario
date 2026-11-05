@@ -109,13 +109,15 @@ export default function DialogosConteo({ accion, sugerir, onHecho, onClose }) {
     ...SIN_SONDEO,
   });
   const idTienda = producto?.id_tienda;
+  // Sin ID de tienda (insumos) se busca en el submayor por código.
+  const codigo = producto?.codigo_producto || inv?.producto_codigo;
 
   // Solo subir y bajar necesitan la existencia en vivo.
   const muevePieza = tipo === 'subir' || tipo === 'bajar';
   const { data: submayor, isLoading: cargaSubmayor, error: errorSubmayor } = useQuery({
-    queryKey: ['submayor-producto', inv?.almacen_num, idTienda],
-    queryFn: () => fetchExistenciaTkc({ almacen: inv.almacen_num, idTienda }),
-    enabled: muevePieza && Boolean(inv?.almacen_num && idTienda),
+    queryKey: ['submayor-producto', inv?.almacen_num, idTienda || codigo],
+    queryFn: () => fetchExistenciaTkc({ almacen: inv.almacen_num, idTienda, codigo }),
+    enabled: muevePieza && Boolean(inv?.almacen_num && (idTienda || codigo)),
     retry: false,
     ...SIN_SONDEO,
   });
@@ -147,9 +149,9 @@ export default function DialogosConteo({ accion, sugerir, onHecho, onClose }) {
     return <Espera inv={inv} onClose={onClose} error="Esta fila no está ligada a un producto del catálogo." />;
   }
   if (cargaProducto) return <Espera inv={inv} onClose={onClose} />;
-  if (!idTienda) {
+  if (!idTienda && !codigo) {
     return <Espera inv={inv} onClose={onClose}
-      error={producto ? 'El producto no tiene id de anuncio en TKC: no se puede consultar.' : 'No se encontró el producto en el catálogo de este almacén.'} />;
+      error={producto ? 'El producto no tiene id de anuncio ni código: no se puede consultar.' : 'No se encontró el producto en el catálogo de este almacén.'} />;
   }
 
   if (tipo === 'analizar') {
