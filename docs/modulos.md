@@ -15,7 +15,14 @@
 | `administrador`, `superadmin` | Pasan por encima de todo |
 
 Una persona puede tener **varios**, y lo que puede hacer es la suma. En el
-código se comprueba siempre con `tieneRol(user, [...])`.
+código se comprueba siempre con `tieneRol(user, [...])`, y en el servidor con la
+lista completa (`rolesDe`), **nunca con `usuario.role`**: ese es solo el de más
+autoridad, y quien es jefe y además factura quedaba como jefe y no podía montar
+un ajuste.
+
+**Almacenes al entrar.** Quien no es jefe de departamento (ni administrador) y no
+tiene ningún almacén configurado ve un diálogo que **no se puede cerrar** hasta
+elegir al menos uno. Se guarda en su perfil; después se cambia en Configuración.
 
 **Jefes de departamento.** El departamento forma parte del rol, y se asigna en el
 Identity Server (sistema `inventario`): `jefe_facturacion` es jefe de
@@ -62,17 +69,19 @@ contenido
 En el teléfono, el contenido son fichas; de `sm` para arriba, una tabla. Las
 dos caras salen de la misma descripción de columnas.
 
-## Mermas (pestaña de `/ajustes/disminucion`)
+## Mermas (`/mermas` para inventario, pestaña de `/ajustes/disminucion` para facturación)
 
-Las mermas son ajustes de disminución, y **ya no tienen página propia**: son la
-pestaña **Mermas** de Ajuste de disminución (`/ajustes/disminucion?tab=mermas`).
-`/mermas` y `/facturacion/mermas` redirigen ahí. La pantalla la ven quienes
-registran y siguen las mermas (`inv`, `fact`, `auditor`, `jefe_depto`,
-administradores); a quien no monta ajustes —inventario, auditoría, jefes— solo se
-le enseña esa pestaña, y el selector de almacén de arriba es el que manda. La
-facturación ve por defecto las que esperan su ajuste; el resto, las que están en
-manos de inventario. El menú tiene una sola entrada, con el pendiente de los
-faltantes y de las mermas juntos.
+Las mermas son ajustes de disminución. **Inventario las registra y las sigue en
+`/mermas`** (grupo INVENTARIO del menú, con su contador); **facturación las ajusta
+en la pestaña Mermas** de Ajuste de disminución (`?tab=mermas`), que es donde
+llegan los avisos. `/facturacion/mermas` redirige ahí. La ven `inv`, `auditor`,
+`jefe_depto` y administradores en `/mermas`; `fact` en su pestaña.
+
+En esa pestaña, **Por ajustar** trae, bajo los conteos con faltante, el bloque
+**Mermas esperando este ajuste**: las ya bajadas de tienda (`pend_fact`) del
+almacén. Se eligen, se pasan al formulario y, con el documento confirmado, el
+mismo «Enviar a auditoría» las da por procesadas (se escriben en `mermas`, no en
+`inventarios`).
 
 Lo que se perdió y por qué. El inventarista la registra; cuando se **baja de
 tienda** —se descuenta en TKC— pasa a facturación.
@@ -87,31 +96,36 @@ almacén: cada envío a TKC va a uno solo.
 ## Inventario (`/inventario`)
 
 Conteos contra la existencia de TKC. El inventarista cuenta, el sistema marca
-la diferencia y, si la hay, va a facturación.
+la diferencia y, si la hay, va a facturación. Tres pestañas: **Por contar** (la de
+por defecto), **Conteos** e **Historial** (los conteos propios de cada quien).
+
+**Por contar** lista los productos del almacén y suministradores elegidos por
+`prioridad_tienda` (1 es lo más urgente; ver `supabase/estado_tienda_columna.sql`).
+*Contar* abre el formulario con ese producto; el contado hoy sale marcado. Los
+suministradores se muestran y filtran **con su nombre exacto**: «SEL PUCARA» y
+«PUCARA» son suministradores distintos y los llevan personas distintas.
+
+Elegir de quién mirar el historial es de quien supervisa: está en **Supervisión →
+Historial por usuario**.
+
+**Importar el historial** (Configuración → *Importar mi historial*, para cualquier
+usuario): carga las hojas *BD Ajuste I-F* y *BD Merma* del Excel en un plazo
+(desde/hasta). Las filas se guardan **a nombre de quien importa y con el almacén de
+cada fila** —las listas buscan por ambos— y lo que ya estaba no se duplica.
+
+**Productos sin ID de tienda.** Los insumos y otros productos sin `id_tienda` también
+tienen existencia y movimiento en el submayor, así que **se pueden contar y se les
+consulta el historial**: el submayor se busca por su **código** cuando no hay ID.
+Por código solo se acepta una fila —se prefiere la que no tiene ID—; si el código
+sale en varias, no se adivina cuál es y el conteo se bloquea («el submayor no lo
+encuentra»). Siguen sin entrar en Reabastecimiento (la rotación de venta se cruza
+por ID).
 
 Un conteo sin enviar solo lo ve quien lo hizo. La pantalla avisa de cuántos
 tienes a medias.
 
 Cuando hay varios conteos del mismo producto, solo cuenta el último: los
 anteriores quedan ocultos con un aviso.
-
-La pestaña **Por contar** (la de por defecto) lista los productos del almacén y los
-suministradores elegidos, por la prioridad de tienda (`prioridad_tienda`: 1 es lo más
-urgente). El botón *Contar* abre el formulario con ese producto; el contado hoy sale
-marcado. Los suministradores se muestran y filtran con su nombre exacto
-(«SEL PUCARA» y «PUCARA» son distintos).
-
-La pestaña **Historial** es el historial propio de cada persona: todos sus conteos, en
-cualquier estado —lo ya completado también—, con filtros de almacén, estado y fechas,
-búsqueda por producto, y un resumen (conteos, sin diferencia, sobrantes y faltantes) que
-cuenta la base entera. Elegir de quién mirar es de quien supervisa y está en
-**Supervisión → Historial por usuario** (jefe de departamento y administradores). La
-lista de la pestaña *Conteos* sigue siendo lo que está en manos de inventario.
-
-**Importar el historial** (Configuración → *Importar mi historial*, para cualquier
-usuario): carga las hojas *BD Ajuste I-F* y *BD Merma* del Excel, en un plazo
-(desde/hasta). Las filas se guardan **a nombre de quien importa y con el almacén de cada
-fila** —sin eso no salían en ninguna lista— y lo que ya estaba no se duplica.
 
 El **buscador de productos** de los formularios (nuevo conteo, merma, recepción)
 pone **primero los que tienen existencia** y detrás el resto: pide por separado
@@ -296,13 +310,21 @@ incluido el id de tienda.
 Desde aquí se sube y se baja de tienda, se mira el historial del submayor y
 los conteos que ha tenido el producto.
 
+Se puede llegar con el filtro puesto: `/productos?estadoTienda=SIN RESERVA` (los
+siete estados) y `?existencia=todos|existencia|no-existencia`. Con un estado, la
+existencia se pone en «todos»: AGOTADO y SIN ID no tienen existencia y el filtro
+por defecto (con existencia) los dejaba vacíos. El panel enlaza así.
+
 ## Panel (`/`)
 
 Saluda por la hora y por el nombre, y con un almacén elegido se lee de arriba
 abajo:
 
-1. **Cuatro cifras urgentes**, cada una con su enlace: sin reserva, no en tienda,
-   por facturar (con cuántos aumentos y disminuciones) y lotes críticos.
+1. **Cuatro cifras urgentes**: sin reserva y no en tienda llevan **al catálogo con
+   ese estado filtrado**; *por facturar* abre un **diálogo con una tabla por caso**
+   (aumento, disminución, procesamientos, mermas, auditoría) y de ahí se va a cada
+   pantalla; lotes críticos va a Vencimientos. Cada fila de **Estado de Tienda**
+   lleva también al catálogo con su estado.
 2. **Ventas por mes** (barras, los últimos doce, con el mes en curso resaltado)
    junto al estado de la tienda. Sale de `/api/ventas/mensual`, que suma
    `rdp_rows_latest` por mes: la misma vista y la misma salvedad que el resumen de
@@ -312,8 +334,11 @@ abajo:
    (repartido por la pantalla que lo resuelve: aumento, disminución,
    procesamientos, mermas, auditoría) y **lo que te devolvieron**, con su motivo.
    Lo que está en cero no se pinta.
-4. El resto del catálogo, qué hay que comprar hoy y lo último de inventarios y
-   mermas.
+4. El resto del catálogo, **Se acaban primero** y lo último de inventarios y
+   mermas. *Se acaban primero* no lista agotados (ya se acabaron): primero las
+   **últimas piezas** y luego lo de menos cobertura, con anuncio activado. Se dice
+   en palabras («Se acaba hoy», «Alcanza para 4 días», «se vende unas 3 por
+   semana»), no en décimas de día.
 
 Sin almacén elegido se ve la vista global de siempre. Falta el gráfico de
 existencia por almacén, que necesita la fotografía diaria (`existencia_diaria`) y
@@ -351,6 +376,10 @@ nadie.
 - Los comentarios anteriores a esto no tienen destinatario (`para_depto` vacío):
   los ven solo quienes supervisan, y salen marcados como «sin destinatario».
 - Requiere la migración `supabase/comentarios_para.sql` (columna `para_depto`).
+
+**Historial por usuario** es una pestaña de Supervisión (departamento de Inventario):
+quien supervisa elige de quién ver los conteos hechos, con almacén, estado y fechas.
+Sigue el orden de la web: tarjetas, pestañas, filtros, lista.
 
 El grupo **ANÁLISIS** del menú es de auditoría (Reportes y Auditoría) y de los
 administradores. Supervisión, que es de los jefes de departamento, sale de él y
