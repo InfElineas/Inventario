@@ -50,9 +50,14 @@ vi.mock('@/services/lotesService', () => ({
   fetchResumenLotes: async () => ({ conteos: { critico: contadores.Lote, vencido: 0 }, lotes: [] }),
 }));
 
+const auth = vi.hoisted(() => ({
+  user: { email: 'test@test.com', role: 'inv', full_name: 'Test User', avatar_url: null, almacenes_config: ['789'] },
+}));
+const USUARIO_INV = auth.user;
+
 vi.mock('@/lib/AuthContext', () => ({
   useAuth: () => ({
-    user: { email: 'test@test.com', role: 'inv', full_name: 'Test User', avatar_url: null, almacenes_config: ['789'] },
+    user: auth.user,
     logout: vi.fn(),
   }),
 }));
@@ -244,7 +249,22 @@ describe('AppLayout — contadores del menú', () => {
     JSON.parse((await screen.findByTestId('sidebar')).dataset.counts);
 
   beforeEach(() => {
+    auth.user = USUARIO_INV;
     Object.assign(contadores, { Merma: 0, Inventario: 0, AnuncioDesact: 0, Lote: 0 });
+  });
+
+  it('un jefe que además factura cuenta como facturación, no como inventario', async () => {
+    // `role` es el de más autoridad (jefe_depto), pero también tiene `fact`.
+    auth.user = { ...USUARIO_INV, role: 'jefe_depto', roles: ['jefe_depto', 'jefe_facturacion', 'fact'] };
+    Object.assign(contadores, { Merma: 3, Inventario: 1 });
+    render(<AppLayout />, { wrapper });
+    await vi.waitFor(async () => {
+      const c = await leerCounts();
+      // Las mermas por facturar van con los faltantes en Ajuste de disminución…
+      expect(c['/ajustes/disminucion']).toBe(1 + 3);
+      // …y no tiene la entrada de mermas de inventario.
+      expect(c['/mermas']).toBeUndefined();
+    });
   });
 
   it('pasa a Sidebar lo que devuelve count(), sin descargar registros', async () => {

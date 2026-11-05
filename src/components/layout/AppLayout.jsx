@@ -17,7 +17,7 @@ import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import ElegirAlmacenesDialog from '@/components/layout/ElegirAlmacenesDialog';
 import { EsqueletoRuta } from '@/components/shared/Esqueleto';
 import { ROLES } from '@/lib/constants';
-import { tieneRol } from '@/lib/roles';
+import { tieneRol, rolesDe } from '@/lib/roles';
 import { ROLES_RESPONDE_IC } from '@/lib/ic';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
@@ -201,16 +201,19 @@ export default function AppLayout() {
 
   // ── Contadores del menú ──────────────────────────────────
   // El estado que cuenta como "pendiente" depende del rol.
+  //
+  // Con TODOS los roles de la persona, no solo `user.role`, que es el de más
+  // autoridad: un jefe de facturación con `jefe_depto` y `fact` salía con los
+  // contadores de inventario.
+  const suyos = rolesDe(user);
+  const esFact    = suyos.includes('fact');
+  const veFact    = esFact || suyos.includes('administrador');
+  const esAuditor = suyos.includes('auditor');
+  const veCA      = suyos.includes('ca') || suyos.includes('administrador');
   const estadoPendiente = {
-    mermas:      role === 'fact' || role === 'administrador' ? 'pend_fact'
-               : role === 'auditor'                          ? 'en_auditoria'
-               : 'reconteo_solicitado',
-    inventarios: role === 'fact' || role === 'administrador' ? 'pend_fact'
-               : role === 'auditor'                          ? 'en_auditoria'
-               : 'devuelto',
-    anuncios:    role === 'ca'   || role === 'administrador' ? 'pend_ca'
-               : role === 'auditor'                          ? 'en_auditoria'
-               : 'pendiente',
+    mermas:      veFact ? 'pend_fact' : esAuditor ? 'en_auditoria' : 'reconteo_solicitado',
+    inventarios: veFact ? 'pend_fact' : esAuditor ? 'en_auditoria' : 'devuelto',
+    anuncios:    veCA   ? 'pend_ca'   : esAuditor ? 'en_auditoria' : 'pendiente',
   };
 
   // Cuentan contra la tabla entera y no traen ni una fila. Son las únicas que
@@ -304,11 +307,11 @@ export default function AppLayout() {
   // Las mermas son ajustes de disminución: su pendiente va en la misma entrada,
   // junto a los faltantes. Facturación cuenta las que esperan su ajuste; el
   // resto, las que le tocan por su rol.
-  const mermasDeAqui = (role === 'fact' ? mermasFact : mermasPending) ?? 0;
-  const disminucion = (faltantesFact ?? 0) + (role === 'fact' ? mermasDeAqui : 0);
+  const mermasDeAqui = (esFact ? mermasFact : mermasPending) ?? 0;
+  const disminucion = (faltantesFact ?? 0) + (esFact ? mermasDeAqui : 0);
   if (disminucion > 0) pendingCounts['/ajustes/disminucion'] = disminucion;
   // Quien no es facturación las ve en su propia entrada de Inventario.
-  if (role !== 'fact' && mermasDeAqui > 0) pendingCounts['/mermas'] = mermasDeAqui;
+  if (!esFact && mermasDeAqui > 0) pendingCounts['/mermas'] = mermasDeAqui;
 
   return (
     <div className="min-h-screen bg-background">
