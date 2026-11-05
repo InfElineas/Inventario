@@ -197,6 +197,22 @@ export default function Supervision() {
     completados:tasks.filter(t => t[cols.status] === 'completado').length,
   };
 
+  const pestanasNodo = (
+    <Tabs value={activeTab} onValueChange={handleTabChange}>
+      <TabsList>
+        {tabs.map(t => {
+          const Icon = t.icon;
+          return (
+            <TabsTrigger key={t.key} value={t.key} className="text-xs gap-1.5">
+              <Icon className="w-3.5 h-3.5" />
+              {t.label}
+            </TabsTrigger>
+          );
+        })}
+      </TabsList>
+    </Tabs>
+  );
+
   return (
     <div className="space-y-5">
 
@@ -244,24 +260,13 @@ export default function Supervision() {
       </div>
       )}
 
-      {/* Tabs de módulos */}
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList>
-          {tabs.map(t => {
-            const Icon = t.icon;
-            return (
-              <TabsTrigger key={t.key} value={t.key} className="text-xs gap-1.5">
-                <Icon className="w-3.5 h-3.5" />
-                {t.label}
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
-      </Tabs>
+      {activeTabCfg?.key !== 'historial' && pestanasNodo}
 
       {activeTabCfg?.key === 'historial' ? (
         // Quien supervisa elige de quién mirar los conteos.
-        <HistorialPorUsuario user={user} vistaGlobal embebido />
+        // Las tarjetas van antes de las pestañas, como en el resto de la pantalla:
+        // las pone el propio historial y recibe las pestañas para ponerlas debajo.
+        <HistorialPorUsuario user={user} vistaGlobal embebido pestanas={pestanasNodo} />
       ) : (
       <>
       {/* Layout: lista + panel de detalle */}

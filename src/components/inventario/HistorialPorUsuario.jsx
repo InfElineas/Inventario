@@ -131,6 +131,22 @@ export default function HistorialPorUsuario({ user, vistaGlobal, pestanas, embeb
   if (embebido) {
     return (
       <div className="space-y-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: 'Conteos',        value: total,                   color: 'text-foreground' },
+            { label: 'Sin diferencia', value: resumen?.sinDiferencia,  color: 'text-[var(--c-ok)]' },
+            { label: 'Sobrantes',      value: resumen?.sobrantes,      color: 'text-[var(--c-warn)]' },
+            { label: 'Faltantes',      value: resumen?.faltantes,      color: 'text-[var(--c-bad)]' },
+          ].map((k) => (
+            <Card key={k.label} className="px-4 py-3" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{k.label}</p>
+              <p className={`text-2xl font-semibold mt-1 ${k.color}`}>{k.value ?? '—'}</p>
+            </Card>
+          ))}
+        </div>
+
+        {pestanas}
+
         <div className="flex flex-wrap items-center gap-2">
           {vistaGlobal && (
             <select value={persona} onChange={(e) => cambiar(setEmail)(e.target.value)}
@@ -162,20 +178,6 @@ export default function HistorialPorUsuario({ user, vistaGlobal, pestanas, embeb
             <Input value={buscar} onChange={(e) => cambiar(setBuscar)(e.target.value)}
               placeholder="Buscar por producto o código…" className="pl-10 h-9" style={{ borderRadius: 'var(--r-ctl)' }} />
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: 'Conteos',        value: total,                   color: 'text-foreground' },
-            { label: 'Sin diferencia', value: resumen?.sinDiferencia,  color: 'text-[var(--c-ok)]' },
-            { label: 'Sobrantes',      value: resumen?.sobrantes,      color: 'text-[var(--c-warn)]' },
-            { label: 'Faltantes',      value: resumen?.faltantes,      color: 'text-[var(--c-bad)]' },
-          ].map((k) => (
-            <Card key={k.label} className="px-4 py-3" style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }}>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{k.label}</p>
-              <p className={`text-2xl font-semibold mt-1 ${k.color}`}>{k.value ?? '—'}</p>
-            </Card>
-          ))}
         </div>
 
         <Card style={{ borderRadius: 'var(--r-card)', borderWidth: '0.5px' }} className="overflow-hidden">

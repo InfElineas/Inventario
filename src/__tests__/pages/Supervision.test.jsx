@@ -139,4 +139,18 @@ describe('Supervisión — historial por usuario', () => {
     expect(await screen.findByLabelText('Persona')).toBeInTheDocument();
     expect(screen.queryByText('Aceite 1 L')).toBeNull();
   });
+
+  it('el orden es el de toda la web: tarjetas, pestañas, filtros y contenido', async () => {
+    const user = userEvent.setup();
+    pintar();
+    await screen.findByText('Aceite 1 L');
+    await user.click(screen.getByRole('tab', { name: /Historial por usuario/ }));
+
+    const tarjetas = await screen.findByText('Sin diferencia');
+    const pestanas = screen.getByRole('tablist');
+    const filtros = screen.getByLabelText('Persona');
+    const antes = (x, y) => Boolean(x.compareDocumentPosition(y) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(antes(tarjetas, pestanas)).toBe(true);
+    expect(antes(pestanas, filtros)).toBe(true);
+  });
 });
