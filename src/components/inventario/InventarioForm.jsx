@@ -50,10 +50,11 @@ export function validateInventario({ producto, detalles, fechaInv, notas }) {
   return null;
 }
 
-export default function InventarioForm({ user, onSubmit, onCancel, isPending: isPendingRaw }) {
+export default function InventarioForm({ user, onSubmit, onCancel, isPending: isPendingRaw, productoInicial = null }) {
   const isPending = isPendingRaw ?? false;
   const { almacen }         = useAlmacen();
-  const [producto, setProducto] = useState(null);
+  // `productoInicial`: viene de la lista «Por contar», que ya sabe cuál toca.
+  const [producto, setProducto] = useState(productoInicial);
   const [detalles, setDetalles] = useState([{ fecha_vencimiento: '', no_lote: '', cantidad: 0 }]);
   const [contado, setContado] = useState(false);   // ya se tecleó una cantidad
   const [clasifAjuste, setClasifAjuste] = useState('');

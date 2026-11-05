@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AlertBanner from '@/components/shared/AlertBanner';
 import SugerenciasNota from '@/components/shared/SugerenciasNota';
 import InventarioForm from '@/components/inventario/InventarioForm';
+import PorContar from '@/components/inventario/PorContar';
 import ReadOnlyBlock, { ReadOnlyField } from '@/components/shared/ReadOnlyBlock';
 import Timeline from '@/components/shared/Timeline';
 import { ChevronRight, ClipboardList, ListFilter, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
@@ -130,7 +131,9 @@ export default function Inventario() {
   const [accionFila, setAccionFila] = useState(null);   // { tipo, inv } del menú de la fila
   // Por defecto, lo que le toca a esta sección. Ver src/lib/ambito.js.
   const { almacen, setAlmacen, almacenesConfig } = useAlmacen();
-  const [vista, setVista] = useState('conteos');   // 'conteos' | 'historial'
+  // Lo que se abre por defecto es qué contar hoy; los conteos ya hechos, en su pestaña.
+  const [vista, setVista] = useState('porContar');   // 'porContar' | 'conteos' | 'historial'
+  const [productoInicial, setProductoInicial] = useState(null);   // el de «Contar» en Por contar
   const [filterEstado, setFilterEstado] = useState('ambito');
   const [searchQ, setSearchQ] = useState('');
   const [cols, setCols] = useState(() => loadColsWithOrder(INV_COLS_KEY, INV_COL_DEFS).visible);
@@ -195,7 +198,9 @@ export default function Inventario() {
     mutationFn: (data) => base44.entities.Inventario.create(data),
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['inventarios'] });
+      queryClient.invalidateQueries({ queryKey: ['por-contar-hoy'] });
       setShowForm(false);
+      setProductoInicial(null);
       // La otra mitad del intercambio. El id de este conteo no existía hasta
       // ahora, así que el enlace de vuelta se escribe aquí.
       if (variables.intercambio_id && result?.id) {
@@ -337,15 +342,40 @@ export default function Inventario() {
   const difColor = (d) => d === 0 ? 'text-[var(--c-ok-dim)]' : d > 0 ? 'text-[var(--c-warn)]' : 'text-[var(--c-bad)]';
 
 
-  // Las mismas dos pestañas bajo el título en las dos vistas.
+  // Las mismas pestañas bajo el título en todas las vistas.
   const pestanas = (
     <Tabs value={vista} onValueChange={setVista}>
       <TabsList>
+        <TabsTrigger value="porContar">Por contar</TabsTrigger>
         <TabsTrigger value="conteos">Conteos</TabsTrigger>
         <TabsTrigger value="historial">Historial por usuario</TabsTrigger>
       </TabsList>
     </Tabs>
   );
+
+  if (vista === 'porContar') {
+    const puedeContar = tieneRol(user, ['inv', 'administrador', 'superadmin']);
+    return (
+      <div className="space-y-6">
+        {ConfirmDialogNode}
+        <PorContar
+          pestanas={pestanas}
+          onContar={puedeContar ? (producto) => { setProductoInicial(producto); setShowForm(true); } : undefined}
+        />
+        <Dialog open={showForm} onOpenChange={(o) => { if (!o && !createMutation.isPending) { setShowForm(false); setProductoInicial(null); } }}>
+          <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Nuevo conteo de inventario</DialogTitle>
+            </DialogHeader>
+            <InventarioForm user={user} productoInicial={productoInicial}
+              onSubmit={(d) => createMutation.mutate(d)}
+              onCancel={() => { setShowForm(false); setProductoInicial(null); }}
+              isPending={createMutation.isPending} />
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
 
   if (vista === 'historial') {
     return (
