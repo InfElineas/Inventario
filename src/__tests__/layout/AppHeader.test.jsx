@@ -109,6 +109,10 @@ vi.mock('react-router-dom', async (importOriginal) => {
 });
 
 import AppLayout from '@/components/layout/AppLayout';
+import { RELEASES } from '@/data/releases';
+
+// Con las novedades sin ver sale un diálogo que tapa la cabecera: aquí ya están vistas.
+beforeEach(() => { localStorage.setItem('eb:release-vista', RELEASES[0].version); });
 
 // El Suspense refleja el de App.jsx, que envuelve a AppLayout en la app real.
 // Hace falta desde que BarcodeScannerModal se carga con lazy(): sin el, montar

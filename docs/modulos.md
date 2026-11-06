@@ -373,6 +373,28 @@ Sin almacén elegido se ve la vista global de siempre. Falta el gráfico de
 existencia por almacén, que necesita la fotografía diaria (`existencia_diaria`) y
 solo cubre desde que se activó.
 
+## Novedades y aviso de versión nueva
+
+Tres piezas, todas alimentadas por **`src/data/releases.js`**:
+
+- **Aviso de versión nueva.** Cada compilación lleva un identificador (`__BUILD_ID__`)
+  y publica `/version.json` con él y con la última novedad. Una pestaña abierta lo
+  consulta al volver a ella y cada cinco minutos; si el servidor tiene otra
+  compilación, sale un diálogo con lo que cambia y un botón **Actualizar ahora**.
+  *Más tarde* lo cierra sin recargar (a mitad de un conteo se perdería lo escrito) y no
+  insiste con la misma versión. En desarrollo no avisa. El servidor sirve `version.json`
+  sin caché.
+- **Diálogo de novedades.** La primera vez que alguien abre la web con una entrada que
+  no ha visto, sale una vez («Entendido»); se recuerda en ese navegador.
+- **Sección Novedades** (`/novedades`, en Configuración): todo el histórico, lo último
+  arriba.
+
+**Cómo publicar una novedad.** Con cada cambio que afecte a lo que la gente hace o ve
+(función nueva, flujo distinto, pantalla cambiada, arreglo que se nota), añadir una
+entrada **arriba** de `RELEASES`: `version` única, `fecha`, `titulo` y `cambios`
+(`nuevo`, `mejora` o `arreglo`), escritos para quien usa la web. Refactors, pruebas y
+documentación no llevan entrada. Una prueba comprueba el formato y el orden.
+
 ## Las demás
 
 | Pantalla | Para qué |

@@ -96,6 +96,7 @@ export const NAV_GROUPS = [
     groupIcon: 'Settings2',
     items: [
       { path: '/configuracion',  label: 'Configuración', corto: 'Config.', icon: 'Settings2', roles: TODOS_LOS_ROLES, prioridad: 40 },
+      { path: '/novedades',      label: 'Novedades',     corto: 'Novedades', icon: 'Sparkles', roles: TODOS_LOS_ROLES, prioridad: 42 },
       { path: '/admin/usuarios', label: 'Usuarios',      icon: 'Users',     prioridad: 41, roles: ['administrador','superadmin'] },
     ],
   },

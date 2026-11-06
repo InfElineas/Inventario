@@ -6,10 +6,29 @@ import { fileURLToPath } from 'url'
 import path from 'path'
 import { tkcApiPlugin } from './vite-plugin-tkc.js'
 import { SECURITY_HEADERS } from './src/server/securityHeaders.js'
+import { RELEASES } from './src/data/releases.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// Identifica ESTA compilación. Cada `vite build` saca uno distinto, y el mismo se
+// publica en /version.json: una pestaña abierta compara el suyo con el del
+// servidor para saber que hay una versión nueva (ver src/lib/version.js).
+const BUILD_ID = new Date().toISOString()
+
+/** Publica `/version.json`: la compilación y la última entrada de novedades. */
+const versionJson = () => ({
+  name: 'version-json',
+  generateBundle() {
+    this.emitFile({
+      type: 'asset',
+      fileName: 'version.json',
+      source: JSON.stringify({ build: BUILD_ID, release: RELEASES[0] ?? null }),
+    })
+  },
+})
+
 export default defineConfig({
+  define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
   // tkcApiPlugin sirve /api/tkc/inventario en dev y preview: el login de TKC
   // necesita cookies + CSRF, imposible desde el navegador.
   plugins: [
@@ -31,6 +50,7 @@ export default defineConfig({
     // y autoprefixer sobran (v4 prefija con lightningcss).
     tailwindcss(),
     tkcApiPlugin(),
+    versionJson(),
   ],
   resolve: {
     alias: {

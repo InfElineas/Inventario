@@ -15,9 +15,11 @@ import { fetchResumenLotes } from '@/services/lotesService';
 import { SIN_SONDEO } from '@/lib/query-client';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import ElegirAlmacenesDialog from '@/components/layout/ElegirAlmacenesDialog';
+import AvisoActualizacion from '@/components/layout/AvisoActualizacion';
+import NovedadesDialog from '@/components/layout/NovedadesDialog';
 import { EsqueletoRuta } from '@/components/shared/Esqueleto';
 import { ROLES } from '@/lib/constants';
-import { tieneRol, rolesDe } from '@/lib/roles';
+import { tieneRol, rolesDe, debeElegirAlmacenes } from '@/lib/roles';
 import { ROLES_RESPONDE_IC } from '@/lib/ic';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
@@ -317,6 +319,9 @@ export default function AppLayout() {
     <div className="min-h-screen bg-background">
 
       <ElegirAlmacenesDialog />
+      <AvisoActualizacion />
+      {/* Tras elegir almacén: dos diálogos a la vez se pisan. */}
+      {!debeElegirAlmacenes(user) && <NovedadesDialog />}
 
       <Sidebar
         user={user}

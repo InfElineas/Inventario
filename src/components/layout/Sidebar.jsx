@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import {
   LayoutDashboard, ClipboardList, TrendingDown, Clock, PackageOpen,
   Megaphone, BarChart3, Package, ShieldCheck, Users, Warehouse,
-  ChevronsLeft, ChevronsRight, Settings2, Eye, Crown, ChevronDown,
+  ChevronsLeft, ChevronsRight, Settings2, Eye, Crown, Sparkles, ChevronDown,
   PackagePlus, PackageMinus, Repeat, ShoppingCart, ArrowLeftRight,
 } from 'lucide-react';
 import { tieneRol } from '@/lib/roles';
@@ -12,7 +12,7 @@ import { NAV_GROUPS } from '@/lib/navegacion';
 
 const ICONS = {
   LayoutDashboard, ClipboardList, TrendingDown, Clock, PackageOpen,
-  Megaphone, BarChart3, Package, ShieldCheck, Users, Settings2, Eye, Crown,
+  Megaphone, BarChart3, Package, ShieldCheck, Users, Settings2, Eye, Crown, Sparkles,
   PackagePlus, PackageMinus, Repeat, ShoppingCart, ArrowLeftRight,
 };
 

@@ -126,9 +126,12 @@ async function serveStatic(req, res) {
   // index.html cambia con cada build; los assets de Vite llevan hash en el
   // nombre, así que cachearlos "para siempre" no sirve contenido viejo bajo
   // una URL vieja.
+  // `version.json` es lo que dice si hay una versión nueva: cacheado, no avisaría.
   res.setHeader(
     'Cache-Control',
-    filePath.endsWith('index.html') ? 'no-cache' : 'public, max-age=31536000, immutable',
+    filePath.endsWith('version.json') ? 'no-store'
+      : filePath.endsWith('index.html') ? 'no-cache'
+        : 'public, max-age=31536000, immutable',
   )
   res.end(content)
 }

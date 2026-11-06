@@ -22,6 +22,7 @@ import EsqueletoApp, { EsqueletoRuta } from '@/components/shared/Esqueleto';
 const Dashboard     = lazy(() => import('@/pages/Dashboard'));
 const Inventario    = lazy(() => import('@/pages/Inventario'));
 const Mermas        = lazy(() => import('@/pages/Mermas'));
+const Novedades     = lazy(() => import('@/pages/Novedades'));
 const Lotes         = lazy(() => import('@/pages/Lotes'));
 const CasosIC       = lazy(() => import('@/pages/CasosIC'));
 const ResumenVentas = lazy(() => import('@/pages/ResumenVentas'));
@@ -111,6 +112,7 @@ const AuthenticatedApp = () => {
           <Route path="/productos"      element={<Productos />} />
           <Route path="/bd-tkc"          element={<Productos initialSource="tkc" />} />
           <Route path="/configuracion"  element={<Configuracion />} />
+          <Route path="/novedades"      element={<Novedades />} />
           <Route
             path="/supervision"
             element={<RoleGuard element={<Supervision />} roles={['jefe_depto', 'administrador', 'superadmin']} />}

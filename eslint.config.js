@@ -23,7 +23,7 @@ export default [
       // servidor (`src/server`, `src/services/tkc`). Separarlos en dos
       // bloques seria mas estricto, pero lo que se busca aqui es que ningun
       // fichero se quede sin linar, que es como pasó lo de arriba.
-      globals: { ...globals.browser, ...globals.node },
+      globals: { ...globals.browser, ...globals.node, __BUILD_ID__: "readonly" },
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: "module",

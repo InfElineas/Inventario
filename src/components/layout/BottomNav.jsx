@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ClipboardList, TrendingDown, Clock, PackageOpen,
-  Megaphone, BarChart3, Package, ShieldCheck, Users, Settings2, Eye, Crown,
+  Megaphone, BarChart3, Package, ShieldCheck, Users, Settings2, Eye, Crown, Sparkles,
   PackagePlus, PackageMinus, Repeat, ShoppingCart, ArrowLeftRight, MoreHorizontal, X,
 } from 'lucide-react';
 import { destinosDeMovil, esRutaActiva } from '@/lib/navegacion';
 
 const ICONS = {
   LayoutDashboard, ClipboardList, TrendingDown, Clock, PackageOpen,
-  Megaphone, BarChart3, Package, ShieldCheck, Users, Settings2, Eye, Crown,
+  Megaphone, BarChart3, Package, ShieldCheck, Users, Settings2, Eye, Crown, Sparkles,
   PackagePlus, PackageMinus, Repeat, ShoppingCart, ArrowLeftRight,
 };
 
