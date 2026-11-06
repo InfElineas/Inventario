@@ -47,7 +47,7 @@ const COLUMNAS = ['prioridad', 'producto', 'suministrador', 'existencia', 'accio
 /** 1–3 urge, 4–6 conviene, el resto puede esperar. */
 const colorDe = (p) => (p == null ? 'text-muted-foreground' : p <= 3 ? 'text-[var(--c-bad)]' : p <= 6 ? 'text-[var(--c-warn)]' : 'text-muted-foreground');
 
-export default function PorContar({ pestanas, onContar }) {
+export default function PorContar({ pestanas, onContar, user }) {
   const { almacen, setAlmacen, almacenesConfig } = useAlmacen();
   const [suministradores, setSuministradores] = useState([]);
   const [existencia, setExistencia] = useState('all');
@@ -96,13 +96,23 @@ export default function PorContar({ pestanas, onContar }) {
   const fecha = hoy();
   const { data: contados } = useQuery({
     queryKey: ['por-contar-hoy', almacen, fecha],
-    queryFn: () => base44.entities.Inventario.filter({ almacen_num: almacen, fecha_inv: fecha }, '-created_date', 1000),
+    // Solo las columnas que el servidor enseña de los conteos de otros: quién contó qué.
+    queryFn: () => base44.entities.Inventario.filter(
+      { almacen_num: almacen, fecha_inv: fecha }, '-created_date', 1000, 0,
+      ['id', 'producto_id', 'almacen_num', 'fecha_inv', 'especialista_id', 'especialista_nombre'],
+    ),
     enabled: Boolean(almacen),
     staleTime: 30 * 1000,
-    select: (d) => new Set((Array.isArray(d) ? d : []).map((i) => i.producto_id)),
+    // producto → quién lo contó
+    select: (d) => new Map((Array.isArray(d) ? d : []).map((i) => [i.producto_id, i])),
     ...SIN_SONDEO,
   });
-  const yaContado = (f) => contados?.has(f.id) ?? false;
+  const contadoPor = (f) => {
+    const c = contados?.get(f.id);
+    if (!c) return null;
+    return c.especialista_id === user?.email ? 'ti' : (c.especialista_nombre || c.especialista_id || 'otra persona');
+  };
+  const yaContado = (f) => contadoPor(f) !== null;
 
   const contar = async (fila) => {
     setAbriendo(fila.id);
@@ -139,10 +149,10 @@ export default function PorContar({ pestanas, onContar }) {
           'text-right',
         );
       case 'accion':
-        if (!onContar) return envolver(yaContado(f) ? <span className="text-xs text-[var(--c-ok-dim)]">Contado hoy</span> : null, 'text-right');
+        if (!onContar) return envolver(yaContado(f) ? <span className="text-xs text-[var(--c-ok-dim)]">Contado por {contadoPor(f)}</span> : null, 'text-right');
         return envolver(
           yaContado(f)
-            ? <span className="text-xs text-[var(--c-ok-dim)]">Contado hoy</span>
+            ? <span className="text-xs text-[var(--c-ok-dim)]">Contado por {contadoPor(f)}</span>
             : (
               <Button size="sm" disabled={abriendo === f.id} onClick={(e) => { e.stopPropagation(); contar(f); }}
                 style={{ borderRadius: 'var(--r-ctl)' }}>

@@ -91,8 +91,11 @@ estado y fechas, y búsqueda por producto.
 (`restringirLectura` en `src/server/permisos.js`), no la pantalla: quien no supervisa ni
 factura —inventario, comercial…— recibe solo las filas que él registró y solo de los
 almacenes que tiene configurados. Ven todo cada jefe de departamento, facturación,
-auditoría y la administración. Consecuencia: «ya contado hoy» y «un conteo por producto
-al día» miran solo los conteos propios.
+auditoría y la administración. Con **una excepción acotada**: «quién
+contó este producto hoy». Un inventarista puede ver, de los conteos de otros, solo
+producto, quién lo contó y su estado —nada más— de un día cercano a hoy y de un
+almacén suyo. Así *Por contar* dice «Contado por Fulana» y el formulario avisa «Ya
+contado por Fulana» en vez de dejar contar dos veces.
 
 **Clasificaciones.** Conteos, mermas y facturación usan **una sola lista**, la de
 *Clasificación Ajuste TKC* (`CLASIFICACIONES` en `src/lib/constants.js`). Se guarda

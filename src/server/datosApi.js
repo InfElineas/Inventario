@@ -192,7 +192,7 @@ export function createDatosApiMiddleware() {
 
         // Conteos y mermas: quien no supervisa ni factura ve solo lo suyo y solo
         // de sus almacenes. Lo impone el servidor, no la pantalla.
-        condiciones = restringirLectura(ctx, tablaPerm, condiciones)
+        condiciones = restringirLectura(ctx, tablaPerm, condiciones, { campos: cuerpo.campos })
 
         const valores = []
         let clausula = await where(tabla, condiciones, valores)

@@ -359,6 +359,7 @@ export default function Inventario() {
       <div className="space-y-6">
         {ConfirmDialogNode}
         <PorContar
+          user={user}
           pestanas={pestanas}
           onContar={puedeContar ? (producto) => { setProductoInicial(producto); setShowForm(true); } : undefined}
         />

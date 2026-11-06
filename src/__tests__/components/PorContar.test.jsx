@@ -91,15 +91,17 @@ describe('PorContar', () => {
     expect(base.filterProducto.mock.calls[0][0]).toEqual({ id: 'a' });
   });
 
-  it('un producto contado hoy sale marcado y sin botón: no se cuenta dos veces', async () => {
-    base.filterInv.mockResolvedValue([{ producto_id: 'a' }]);
+  it('un producto contado hoy sale marcado con el nombre de quien lo contó, y sin botón', async () => {
+    base.filterInv.mockResolvedValue([{ producto_id: 'a', especialista_id: 'luis@x.com', especialista_nombre: 'Luis Gómez' }]);
     montar();
     await screen.findAllByText('Anillo plata');
 
-    expect((await screen.findAllByText('Contado hoy')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Contado por Luis Gómez')).length).toBeGreaterThan(0);
     // Solo queda el botón del otro producto (tabla y ficha).
     expect(screen.getAllByRole('button', { name: 'Contar' }).length).toBe(2);
     expect(base.filterInv.mock.calls[0][0]).toEqual({ almacen_num: '789', fecha_inv: format(new Date(), 'yyyy-MM-dd') });
+    // Solo pide las columnas que el servidor enseña de los conteos de otros.
+    expect(base.filterInv.mock.calls[0][4]).not.toContain('conteo_real');
   });
 
   it('quien no cuenta ve la lista sin botones', async () => {

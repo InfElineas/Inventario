@@ -246,6 +246,25 @@ const VEN_TODO = ['fact', 'auditor', 'administrador', 'superadmin']
 const veTodo = (rol) => VEN_TODO.includes(rol) || rol === 'jefe_depto' || String(rol).startsWith('jefe_')
 
 /**
+ * Lo único que se enseña de los conteos de otros: quién contó qué producto HOY en un
+ * almacén. Hace falta para que quien va a contar un producto sepa que ya lo contó
+ * alguien (y quién), sin abrirle los conteos de los demás: solo estas columnas, de un
+ * solo día cercano a hoy y de un solo almacén suyo.
+ */
+const CAMPOS_DE_AVISO = ['id', 'producto_id', 'almacen_num', 'fecha_inv', 'especialista_id', 'especialista_nombre', 'estado_tarea']
+const DIA = /^\d{4}-\d{2}-\d{2}$/
+
+function esConsultaDeAviso(tabla, condiciones, campos, ahora) {
+  if (tabla !== 'inventarios') return false
+  if (!Array.isArray(campos) || campos.length === 0 || !campos.every((c) => CAMPOS_DE_AVISO.includes(c))) return false
+  const dia = condiciones?.fecha_inv
+  if (typeof dia !== 'string' || !DIA.test(dia) || typeof condiciones.almacen_num !== 'string') return false
+  // Hoy, con un día de margen por la hora del servidor frente a la del navegador.
+  const diferencia = Math.abs(new Date(`${dia}T12:00:00Z`).getTime() - ahora)
+  return diferencia <= 2 * 24 * 3600 * 1000
+}
+
+/**
  * Las condiciones de una lectura, con lo que le toca a quien pregunta añadido.
  *
  * Quien ve todo recibe las condiciones tal cual. Los demás, además de las suyas: solo
@@ -254,12 +273,14 @@ const veTodo = (rol) => VEN_TODO.includes(rol) || rol === 'jefe_depto' || String
  *
  * @returns {object} las condiciones que hay que aplicar.
  */
-export function restringirLectura(ctx, tabla, condiciones = {}) {
+export function restringirLectura(ctx, tabla, condiciones = {}, { campos, ahora = Date.now() } = {}) {
   const campo = LECTURA_PROPIA[tabla]
   if (!campo) return condiciones
   if (rolesDel(ctx).some(veTodo)) return condiciones
 
-  const salida = { ...condiciones, [campo]: ctx.email }
+  // «Quién contó esto hoy»: sin el filtro de lo propio, pero sí el de sus almacenes.
+  const aviso = esConsultaDeAviso(tabla, condiciones, campos, ahora)
+  const salida = aviso ? { ...condiciones } : { ...condiciones, [campo]: ctx.email }
 
   const almacenes = Array.isArray(ctx.almacenes) ? ctx.almacenes.map(String).filter(Boolean) : []
   if (almacenes.length > 0) {

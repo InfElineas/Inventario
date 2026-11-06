@@ -38,6 +38,34 @@ describe('restringirLectura — cada quien ve lo suyo', () => {
     expect(c).toEqual({});
   });
 
+  describe('quién contó esto hoy: lo único que se enseña de los conteos de otros', () => {
+    const AHORA = new Date('2026-11-06T15:00:00Z').getTime();
+    const CAMPOS = ['id', 'producto_id', 'especialista_id', 'especialista_nombre', 'estado_tarea'];
+    const aviso = { almacen_num: '789', fecha_inv: '2026-11-06' };
+
+    it('con esas columnas, de un día cercano a hoy y de un almacén suyo, no se filtra por quién', () => {
+      const c = restringirLectura(inv, 'inventarios', aviso, { campos: CAMPOS, ahora: AHORA });
+      expect(c.especialista_id).toBeUndefined();
+      expect(c.almacen_num).toEqual(['789']);
+    });
+
+    it('de un almacén que no es suyo no devuelve nada', () => {
+      const c = restringirLectura(inv, 'inventarios', { ...aviso, almacen_num: '1005' }, { campos: CAMPOS, ahora: AHORA });
+      expect(c.almacen_num).toEqual([]);
+    });
+
+    it('pidiendo otras columnas, o sin columnas, sigue siendo solo lo suyo', () => {
+      expect(restringirLectura(inv, 'inventarios', aviso, { campos: [...CAMPOS, 'conteo_real'], ahora: AHORA }).especialista_id).toBe('ana@x.com');
+      expect(restringirLectura(inv, 'inventarios', aviso, { ahora: AHORA }).especialista_id).toBe('ana@x.com');
+    });
+
+    it('de un día lejano, o un rango, o de mermas, sigue siendo solo lo suyo', () => {
+      expect(restringirLectura(inv, 'inventarios', { ...aviso, fecha_inv: '2026-09-01' }, { campos: CAMPOS, ahora: AHORA }).especialista_id).toBe('ana@x.com');
+      expect(restringirLectura(inv, 'inventarios', { ...aviso, fecha_inv: { gte: '2026-11-06' } }, { campos: CAMPOS, ahora: AHORA }).especialista_id).toBe('ana@x.com');
+      expect(restringirLectura(inv, 'mermas', aviso, { campos: CAMPOS, ahora: AHORA }).especialista_id).toBe('ana@x.com');
+    });
+  });
+
   it('otras tablas no se tocan', () => {
     const cond = { activo: true };
     expect(restringirLectura(inv, 'productos', cond)).toBe(cond);

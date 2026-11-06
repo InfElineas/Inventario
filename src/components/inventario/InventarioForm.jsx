@@ -110,8 +110,11 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
   // ya existe: para eso está, y así queda uno solo.
   const { data: yaContado } = useQuery({
     queryKey: ['conteo-del-dia', almacen, producto?.id, fechaInv],
+    // Solo estas columnas: es lo único que el servidor enseña de los conteos de
+    // otras personas, para poder decir quién lo contó ya.
     queryFn: () => base44.entities.Inventario.filter(
-      { almacen_num: almacen, producto_id: producto.id, fecha_inv: fechaInv }, '-created_date', 5,
+      { almacen_num: almacen, producto_id: producto.id, fecha_inv: fechaInv }, '-created_date', 5, 0,
+      ['id', 'producto_id', 'almacen_num', 'fecha_inv', 'especialista_id', 'especialista_nombre', 'estado_tarea'],
     ),
     enabled: Boolean(almacen && producto?.id && fechaInv),
     select: (d) => (Array.isArray(d) ? d : []),
@@ -381,10 +384,13 @@ export default function InventarioForm({ user, onSubmit, onCancel, isPending: is
           {/* Ya hay un conteo suyo hoy: se corrige ese, no se crea otro. */}
           {conteoPrevio && (
             <div className="px-3 py-2.5 rounded-md border border-[var(--c-warn)]/30 bg-[var(--c-warn)]/10 text-xs text-[var(--c-warn)]">
-              <p className="font-medium">Este producto ya se contó hoy en este almacén.</p>
+              <p className="font-medium">
+                Ya contado por {conteoPrevio.especialista_id === user?.email
+                  ? 'ti'
+                  : (conteoPrevio.especialista_nombre || conteoPrevio.especialista_id || 'otra persona')}.
+              </p>
               <p className="mt-0.5">
-                Lo contó {conteoPrevio.especialista_nombre || conteoPrevio.especialista_id || 'otra persona'} y
-                está en «{conteoPrevio.estado_tarea}». Si hay que volver a contarlo, corrige ese conteo desde
+                Este producto ya se contó hoy en este almacén y está en «{conteoPrevio.estado_tarea}». Si hay que volver a contarlo, corrige ese conteo desde
                 la lista en vez de crear otro: dos conteos del mismo día son dos ajustes por la misma diferencia.
               </p>
             </div>
