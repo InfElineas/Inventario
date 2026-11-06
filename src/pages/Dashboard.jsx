@@ -11,6 +11,8 @@ import { base44 } from '@/api/base44Client';
 import CriticosReabastecimiento from '@/components/dashboard/CriticosReabastecimiento'
 import { EsperanFacturacion, Devueltos } from '@/components/dashboard/TarjetasTareas'
 import PorFacturarDialog from '@/components/dashboard/PorFacturarDialog'
+import AlertasCriticas from '@/components/dashboard/AlertasCriticas'
+import { veAlertasDeAnuncios } from '@/lib/roles'
 import VentasPorMes from '@/components/dashboard/VentasPorMes'
 import { fetchVentasMensuales } from '@/services/ventasService'
 import { devueltosDe, primerNombre, resumenFacturacion, saludoDe } from '@/lib/panelTareas'
@@ -688,6 +690,9 @@ export default function Dashboard() {
             { clave: 'lotes',      titulo: 'Lotes críticos', valor: lotesCriticos, color: 'var(--c-warn)', alerta: lotesCriticos > 0,
               sub: `${conteosLotes.vencido ?? 0} ya vencidos`, onClick: () => navigate('/lotes') },
           ]} />
+
+          {/* Lo que está mal y no se arregla solo (productos con existencia y sin ID…). */}
+          {veAlertasDeAnuncios(usuario) && <AlertasCriticas almacen={almacen} />}
 
           {/* La tendencia: ventas por mes junto al estado de la tienda. Si el rol
               no ve las ventas, el gráfico no sale y el estado ocupa todo el ancho. */}

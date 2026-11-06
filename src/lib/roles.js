@@ -135,6 +135,17 @@ export function departamentosACargo(usuario) {
   return suyos.includes('jefe_depto') && usuario?.departamento ? [usuario.departamento] : [];
 }
 
+/**
+ * Quién ve las alertas del panel sobre anuncios (productos con existencia y sin ID,
+ * anuncios muertos o activos sin existencia): son avisos para **facturación y
+ * anuncios**, que son quienes los resuelven, y para quien dirige esas áreas y la
+ * administración. Inventario no las ve: no es suyo arreglarlas.
+ */
+export function veAlertasDeAnuncios(usuario) {
+  if (tieneRol(usuario, ['fact', 'ca', 'esp_anuncio', 'administrador'])) return true;
+  return departamentosACargo(usuario).some((d) => d === 'facturacion' || d === 'ca');
+}
+
 /** Quién puede cerrar despachos de TKC: inventario, su jefe y los administradores. */
 export function puedeCerrarDespachos(usuario) {
   return tieneRol(usuario, ['administrador', 'inv']) || departamentosACargo(usuario).includes('inventario');

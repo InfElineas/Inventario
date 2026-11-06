@@ -32,6 +32,7 @@ export const RELEASES = [
       { tipo: 'nuevo', texto: 'La web avisa cuando hay una versión nueva y se actualiza con un botón, sin tener que recargar a ciegas.' },
       { tipo: 'nuevo', texto: 'Sección Novedades (Configuración): todo lo que va cambiando en la web, con su fecha.' },
       { tipo: 'nuevo', texto: 'Historial de mermas por almacén, en una pestaña nueva de Mermas.' },
+      { tipo: 'nuevo', texto: 'Alertas en el panel para facturación y anuncios: productos con existencia y sin ID de tienda (con cuánto llevan así), anuncios muertos o desactivados con existencia y anuncios activos sin existencia.' },
       { tipo: 'mejora', texto: 'Cada usuario ve solo sus conteos y sus mermas, y solo de los almacenes que tiene configurados.' },
       { tipo: 'mejora', texto: 'Si un producto ya se contó hoy, se dice quién lo contó («Contado por…»).' },
       { tipo: 'mejora', texto: 'Los roles y los almacenes se actualizan solos: ya no hace falta recargar tras un cambio.' },

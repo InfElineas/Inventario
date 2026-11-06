@@ -9,7 +9,7 @@ const alm = vi.hoisted(() => ({ setAlmacen: vi.fn() }));
 vi.mock('@/lib/useAlmacen', () => ({ useAlmacen: () => ({ almacen: '', setAlmacen: alm.setAlmacen, almacenesConfig: [] }) }));
 
 const { default: ElegirAlmacenesDialog } = await import('@/components/layout/ElegirAlmacenesDialog');
-const { debeElegirAlmacenes } = await import('@/lib/roles');
+const { debeElegirAlmacenes, veAlertasDeAnuncios } = await import('@/lib/roles');
 
 beforeEach(() => {
   cleanup();
@@ -34,6 +34,20 @@ describe('debeElegirAlmacenes', () => {
   });
   it('sin usuario todavía, no se pregunta', () => {
     expect(debeElegirAlmacenes(null)).toBe(false);
+  });
+});
+
+describe('veAlertasDeAnuncios: aviso para facturación y anuncios', () => {
+  it('lo ven facturación, anuncios, quien dirige esas áreas y la administración', () => {
+    for (const roles of [['fact'], ['ca'], ['esp_anuncio'], ['administrador'], ['superadmin'], ['jefe_depto', 'jefe_facturacion'], ['jefe_depto', 'jefe_ca']]) {
+      expect(veAlertasDeAnuncios({ email: 'a@x', roles }), roles.join()).toBe(true);
+    }
+  });
+
+  it('inventario, auditoría y el jefe de inventario no', () => {
+    for (const roles of [['inv'], ['auditor'], ['supervisor'], ['jefe_depto', 'jefe_inventario']]) {
+      expect(veAlertasDeAnuncios({ email: 'a@x', roles }), roles.join()).toBe(false);
+    }
   });
 });
 

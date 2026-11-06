@@ -371,7 +371,17 @@ abajo:
    (repartido por la pantalla que lo resuelve: aumento, disminución,
    procesamientos, mermas, auditoría) y **lo que te devolvieron**, con su motivo.
    Lo que está en cero no se pinta.
-4. El resto del catálogo, **Se acaban primero** y lo último de inventarios y
+4. **Alertas** (solo facturación, anuncios, quien dirige esas áreas y la administración;
+   `veAlertasDeAnuncios`): lo que está mal y no se arregla solo. La principal es
+   *productos con existencia y sin ID de tienda*: sin anuncio en TKC no se venden en
+   línea. Es **crítica** si el producto lleva 30 días o más así, o hay 500 unidades o
+   más, o valen 500 o más; si no, de atención. Cuánto llevan sale del submayor (la fecha
+   de su primera entrada, mirando un año atrás), de los ocho con más existencia, y por eso
+   necesita la cuenta de TKC; sin ella la gravedad sale solo de la existencia y el valor.
+   Pulsarla abre la lista con *Historial* de cada producto. Suma los casos de anuncio
+   abiertos que son un problema (muertos o desactivados con existencia, activos sin
+   existencia), que llevan a Anuncios. Código en `src/lib/alertasPanel.js`.
+5. El resto del catálogo, **Se acaban primero** y lo último de inventarios y
    mermas. *Se acaban primero* no lista agotados (ya se acabaron): primero las
    **últimas piezas** y luego lo de menos cobertura, con anuncio activado. Se dice
    en palabras («Se acaba hoy», «Alcanza para 4 días», «se vende unas 3 por
