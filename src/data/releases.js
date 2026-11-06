@@ -35,6 +35,7 @@ export const RELEASES = [
       { tipo: 'mejora', texto: 'Cada usuario ve solo sus conteos y sus mermas, y solo de los almacenes que tiene configurados.' },
       { tipo: 'mejora', texto: 'Si un producto ya se contó hoy, se dice quién lo contó («Contado por…»).' },
       { tipo: 'mejora', texto: 'Los roles y los almacenes se actualizan solos: ya no hace falta recargar tras un cambio.' },
+      { tipo: 'mejora', texto: 'Cuando el submayor de TKC dice otras cifras que las que teníamos de un producto, se corrigen solas (existencia, almacén y tienda).' },
       { tipo: 'mejora', texto: 'Conteos, mermas y facturación usan ahora la misma lista de clasificaciones.' },
       { tipo: 'arreglo', texto: 'Al entrar se elige un solo almacén y ahora sí aparece el botón Aceptar.' },
     ],

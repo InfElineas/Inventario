@@ -163,8 +163,58 @@ describe('createTkcApiMiddleware', () => {
     const res = fakeRes()
     await middleware(fakeReq({ url: '/api/tkc/existencia', body: { almacen: '789', idTienda: '139494' } }), res, vi.fn())
     expect(res.statusCode).toBe(200)
-    expect(res.body).toEqual(producto)
+    expect(res.body).toEqual({ ...producto, actualizado: false })
     expect(fetchExistencia).toHaveBeenCalledWith(TKC, { idTienda: '139494', codigo: '', almacen: '351' })
+  })
+
+  describe('el submayor manda: si la copia difiere, se corrige', () => {
+    const producto = { idTienda: '139494', existencia: { fisica: 8, enAlmacen: 2, enTienda: 6 } }
+
+    beforeEach(() => { query.mockReset(); fetchExistencia.mockResolvedValue(producto) })
+
+    it('escribe las tres cifras del submayor donde la copia no coincide, y lo dice', async () => {
+      query.mockResolvedValue({ rows: [{ id: 'p1' }] })
+      const res = fakeRes()
+      await createTkcApiMiddleware({ tkc: TKC })(
+        fakeReq({ url: '/api/tkc/existencia', body: { almacen: '789', idTienda: '139494' } }), res, vi.fn())
+
+      expect(res.body.actualizado).toBe(true)
+      const [sql, valores] = query.mock.calls.at(-1)
+      expect(sql).toContain('UPDATE productos')
+      // Solo si alguna cifra es distinta: sin diferencia no se toca la fila.
+      expect(sql).toContain('IS DISTINCT FROM')
+      expect(valores).toEqual([8, 2, 6, '789', '139494', ''])
+    })
+
+    it('si ya coincidía no cambia nada y no avisa', async () => {
+      query.mockResolvedValue({ rows: [] })
+      const res = fakeRes()
+      await createTkcApiMiddleware({ tkc: TKC })(
+        fakeReq({ url: '/api/tkc/existencia', body: { almacen: '789', idTienda: '139494' } }), res, vi.fn())
+      expect(res.body.actualizado).toBe(false)
+    })
+
+    it('sin ID de tienda lo busca por código, entre los que tampoco tienen ID', async () => {
+      query.mockResolvedValue({ rows: [{ id: 'p1' }] })
+      fetchExistencia.mockResolvedValue({ codigo: 'INS-1', existencia: { fisica: 4, enAlmacen: 4, enTienda: 0 } })
+      const res = fakeRes()
+      await createTkcApiMiddleware({ tkc: TKC })(
+        fakeReq({ url: '/api/tkc/existencia', body: { almacen: '789', codigo: 'INS-1' } }), res, vi.fn())
+
+      const [sql, valores] = query.mock.calls.at(-1)
+      expect(sql).toContain("btrim(id_tienda) = ''")
+      expect(valores).toEqual([4, 4, 0, '789', '', 'INS-1'])
+    })
+
+    it('que falle la escritura no impide devolver lo que dijo el submayor', async () => {
+      query.mockRejectedValue(new Error('base caída'))
+      const res = fakeRes()
+      await createTkcApiMiddleware({ tkc: TKC })(
+        fakeReq({ url: '/api/tkc/existencia', body: { almacen: '789', idTienda: '139494' } }), res, vi.fn())
+      expect(res.statusCode).toBe(200)
+      expect(res.body.existencia).toEqual(producto.existencia)
+      expect(res.body.actualizado).toBe(false)
+    })
   })
 
   it('POST /api/tkc/existencias pasa los ids (como string) y el flag de refresco', async () => {

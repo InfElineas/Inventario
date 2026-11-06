@@ -339,6 +339,14 @@ incluido el id de tienda.
 Desde aquí se sube y se baja de tienda, se mira el historial del submayor y
 los conteos que ha tenido el producto.
 
+**El submayor manda.** Cada vez que se consulta el submayor de UN producto (la tarjeta
+del catálogo, el formulario de conteo, subir y bajar de tienda…), si sus cifras (existencia
+física, en almacén y en tienda) no coinciden con las de `productos`, el servidor
+**corrige la copia** (`reflejarExistencia` en `src/server/tkcApi.js`) y avisa con
+`actualizado: true`; entonces el navegador relee el catálogo y «Por contar». El estado de
+tienda y la prioridad son columnas generadas y se recalculan solas. Si la escritura falla,
+la persona sigue viendo lo que dijo el submayor.
+
 Se puede llegar con el filtro puesto: `/productos?estadoTienda=SIN RESERVA` (los
 siete estados) y `?existencia=todos|existencia|no-existencia`. Con un estado, la
 existencia se pone en «todos»: AGOTADO y SIN ID no tienen existencia y el filtro

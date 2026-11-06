@@ -6,6 +6,7 @@
  * `server/index.js` en producción), que es quien hace el login en TKC y consulta
  * su DataTables. La sesión la aporta la cookie httpOnly que fija /api/auth/login.
  */
+import { queryClientInstance } from '@/lib/query-client'
 
 import { WAREHOUSES } from '@/services/tkc/warehouses'
 import { conCredencialesTkc } from '@/lib/tkcCredenciales'
@@ -174,5 +175,15 @@ export async function fetchExistenciaTkc({ almacen, idTienda, codigo }) {
   if (!res.ok) {
     throw new Error(data?.error ?? `Error ${res.status} al consultar el submayor de TKC`)
   }
+  // El servidor corrigió nuestra copia porque el submayor decía otra cosa: lo que
+  // las listas tienen en pantalla ya no es verdad, así que se vuelven a leer.
+  if (data?.actualizado) refrescarListasDeProductos()
   return data
+}
+
+/** Vuelve a leer lo que se pinta de `productos` (catálogo, por contar…). */
+function refrescarListasDeProductos() {
+  queryClientInstance.invalidateQueries({
+    predicate: (q) => ['catalogo', 'por-contar', 'productos'].includes(q.queryKey?.[0]),
+  })
 }

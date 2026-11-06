@@ -132,6 +132,44 @@ async function guardarExistencias(clave, existencias) {
   return actualizados
 }
 
+/**
+ * Pone en `productos` lo que el submayor acaba de decir de UN producto, si es
+ * distinto de lo que había.
+ *
+ * Al consultar el submayor de un producto —el hover del catálogo, el formulario de
+ * conteo— la pantalla enseñaba nuestra copia y, al lado, «submayor ahora» con otros
+ * números, y la copia se quedaba así hasta el siguiente volcado. El submayor es la
+ * fuente: si no coincide, se corrige la copia.
+ *
+ * Se busca por `id_tienda` y, si el producto no lo tiene (insumos), por código entre
+ * los que tampoco tienen. El estado de tienda y la prioridad son columnas generadas:
+ * se recalculan solos con las tres cifras nuevas.
+ *
+ * @returns {Promise<boolean>} true si cambió alguna fila.
+ */
+export async function reflejarExistencia(clave, { idTienda, codigo, existencia }) {
+  if (!existencia || (!idTienda && !codigo)) return false
+  const { rows } = await query(
+    `UPDATE productos
+        SET exist_fisica   = $1::numeric,
+            almacen        = $2::numeric,
+            tienda         = $3::numeric,
+            existencias_en = now(),
+            updated_date   = now()
+      WHERE almacen_num = $4
+        AND (
+              ($5::text <> '' AND id_tienda = $5::text)
+           OR ($5::text = '' AND (id_tienda IS NULL OR btrim(id_tienda) = '') AND codigo_producto = $6::text)
+        )
+        AND (   exist_fisica IS DISTINCT FROM $1::numeric
+             OR almacen      IS DISTINCT FROM $2::numeric
+             OR tienda       IS DISTINCT FROM $3::numeric)
+    RETURNING id`,
+    [existencia.fisica, existencia.enAlmacen, existencia.enTienda, clave, idTienda || '', codigo || ''],
+  )
+  return rows.length > 0
+}
+
 async function volcarSubmayor(tkc, { almacenTkc, clave, refrescar }) {
   const { existencias, progreso } = await submayorCompleto(tkc, almacenTkc, refrescar)
   const actualizados = await guardarExistencias(clave, existencias)
@@ -240,7 +278,15 @@ export function createTkcApiMiddleware({ tkc }) {
             error: `El submayor no tiene el producto ${idTienda || codigo} en este almacén.`,
           })
         }
-        return json(res, 200, producto)
+        // Lo que dice el submayor manda: si la copia difiere, se corrige. Que falle
+        // no puede impedir la respuesta, que es lo que la persona pidió ver.
+        let actualizado = false
+        try {
+          actualizado = await reflejarExistencia(String(body.almacen), { idTienda, codigo, existencia: producto.existencia })
+        } catch (e) {
+          console.error(`[tkc] no se pudo reflejar la existencia de ${idTienda || codigo}: ${e.message}`)
+        }
+        return json(res, 200, { ...producto, actualizado })
       }
 
       const result = await listInventory(tkc, {
