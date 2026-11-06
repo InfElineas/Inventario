@@ -64,8 +64,97 @@ export const ESTADO_FV = {
   sin_fecha: { label: 'Sin fecha', bg: 'bg-[var(--c-gray)]/8', text: 'text-[var(--c-gray)]', dot: 'bg-[var(--c-gray)]' },
 };
 
-// Merma classifications
+/**
+ * LA clasificación: una sola lista para conteos, mermas y facturación (Clasificación
+ * Ajuste TKC). El motivo por el que la existencia no cuadra no cambia según quién
+ * lo escriba, y dos vocabularios obligaban a traducir de uno a otro. Está tal como
+ * la usa quien factura; no se corrige la ortografía aunque falten acentos, porque es
+ * el texto que se guarda y se busca.
+ */
+export const CLASIFICACIONES = [
+  'Faltante Inventario',
+  'Sobrante en inventario',
+  'Sustitucion de inventario',
+  'Incidencias Picker',
+  'Reposicion de inventario',
+  'Reposicion productos sobreventa',
+  'Robo',
+  'Transferencia almacén Externo',
+  'Cuenta casa atenciones',
+  'Cuenta casa eventos',
+  'Devolucion a proveedor',
+  'Error contable-Fac NO',
+  'Error contable-Fact - o +',
+  'Error contable-Inventario',
+  'Faltante de origen',
+  'Producto incontable',
+  'Reclasificacion de calidad',
+  'Responsabilidad de materiales',
+  'Venta Directa',
+  'Venta SP',
+  'Merma-Manipulacion',
+  'Merma-Ratones',
+  'Merma-FV',
+  'Mal estado-Sin presencia comercial',
+  'Mal estado-sin calidad',
+  'Salida de insumos-Medios Basicos',
+  'Salida de insumos-Preparacion ordenes',
+  'Salida de insumos-Mantenimiento',
+  'Cuenta casa administrativa-Eli',
+  'Cuenta casa administrativa-Mandy padre',
+  'Cuenta casa administrativa-Yanet',
+  'Cuenta casa administrativa-Belkis',
+  'Cuenta casa administrativa-Pablo',
+  'Cuenta casa administrativa-Rene',
+  'Transferencia a Thaba no registrada',
+  'Transferencia a Latino no registrada',
+  'Error antiguo',
+  'Sin explicación',
+  'No Procesar x Fact',
+  'Procesamiento-PP',
+  'Procesamiento-Fact',
+  'Error contable-VD',
+  'Mal estado-solo AC-VD',
+  'Fitosanitario e Higiene',
+  'Creación de anuncio',
+  'Higiene',
+  'Reserva Transporte',
+  'Veterinario',
+  'Modulo para trabajadores',
+  'Error Fact +-',
+  'Merma de Origen',
+  'Reposicion del provedor',
+  'Intercambio de Producto',
+  'En investigación',
+  'Reclasificacion del producto',
+  'Transferencia de Latino no registrada',
+  'Sobrante de Origen',
+  'Devolucion por Merma FF-Yeya',
+];
+
+/**
+ * Las mermas con estas clasificaciones NO pasan por facturación: son consumo interno
+ * o trámites que no mueven la factura, y van directo a auditoría.
+ *
+ * Incluye también los nombres de ANTES de unificar la lista («Cuenta casa — Administrativa
+ * Eli»…): hay mermas guardadas así y no pueden empezar a pedir facturación de pronto.
+ */
 export const CLASIF_MERMA_SIN_FACT = [
+  'Cuenta casa atenciones',
+  'Cuenta casa eventos',
+  'Cuenta casa administrativa-Eli',
+  'Cuenta casa administrativa-Mandy padre',
+  'Cuenta casa administrativa-Yanet',
+  'Cuenta casa administrativa-Belkis',
+  'Cuenta casa administrativa-Pablo',
+  'Cuenta casa administrativa-Rene',
+  'Fitosanitario e Higiene',
+  'Higiene',
+  'Creación de anuncio',
+  'Veterinario',
+  'Reclasificacion de calidad',
+  'Reclasificacion del producto',
+  // Los nombres anteriores, para las mermas que ya existen.
   'Cuenta casa — Administrativa Eli',
   'Cuenta casa — Administrativa Mandy padre',
   'Cuenta casa — Administrativa Yanet',
@@ -75,36 +164,10 @@ export const CLASIF_MERMA_SIN_FACT = [
   'Cuenta casa — Atenciones',
   'Cuenta casa — Eventos',
   'Fitosanitario e higiene',
-  'Higiene',
-  'Creación de anuncio',
-  'Veterinario',
   'Reclasificación de calidad',
 ];
 
-const CLASIF_MERMA_CON_FACT = [
-  'Mal estado — Roto',
-  'Mal estado — Dañado',
-  'Mal estado — Húmedo',
-  'Mal estado — Derramado',
-  'Mal estado — Contaminado',
-  'Merma-FV — Vencido',
-  'Merma-FV — Próximo a vencer',
-  'Salida insumos — Empaque',
-  'Salida insumos — Etiquetas',
-  'Salida insumos — Limpieza',
-  'Salida insumos — Herramientas',
-  'Devolución cliente',
-  'Error de despacho',
-  'Faltante sin justificar',
-  'Robo / hurto',
-  'Avería en transporte',
-  'Error de etiquetado',
-  'Producto no conforme',
-  'Muestra comercial',
-  'Donación',
-];
-
-export const ALL_CLASIF_MERMA = [...CLASIF_MERMA_SIN_FACT, ...CLASIF_MERMA_CON_FACT];
+export const ALL_CLASIF_MERMA = CLASIFICACIONES;
 
 // Destinos válidos
 export const DESTINOS_MERMA = [
@@ -152,66 +215,7 @@ export const MOTIVOS_RECONTEO = [
 
 // Navegación
 // Clasificación FACT (Ajuste TKC)
-export const CLASIF_FACT = [
-  'Faltante Inventario',
-  'Sobrante en inventario',
-  'Sustitución de inventario',
-  'Incidencias Picker',
-  'Reposicion de inventario',
-  'Reposicion productos sobreventa',
-  'Robo',
-  'Transferencia almacén Externo',
-  'Cuenta casa atenciones',
-  'Cuenta casa eventos',
-  'Devolución a proveedor',
-  'Error contable-Fac NO',
-  'Error contable-Fac -o +',
-  'Error contable-Inventario',
-  'Faltante de origen',
-  'Producto incontable',
-  'Reclasificación de calidad',
-  'Responsabilidad de materiales',
-  'Venta Directa',
-  'Venta SP',
-  'Merma-Manipulación',
-  'Merma-Ratones',
-  'Merma-FV',
-  'Mal estado-Sin presencia comercial',
-  'Mal estado-sin calidad',
-  'Salida de insumos Medios Básicos',
-  'Salida de insumos Preparación ordenes',
-  'Salida de insumos Mantenimiento',
-  'Cuenta casa administrativa-Eli',
-  'Cuenta casa administrativa-Mandy padre',
-  'Cuenta casa administrativa-Yanet',
-  'Cuenta casa administrativa-Belkis',
-  'Cuenta casa administrativa-Pablo',
-  'Cuenta casa administrativa-Rene',
-  'Transferencia a Thaba no registrada',
-  'Transferencia a Latino no registrada',
-  'Error antiguo',
-  'Sin explicación',
-  'No Procesar x Fact',
-  'Procesamiento PP',
-  'Procesamiento-Fact',
-  'Error contable-VD',
-  'Mal estado-solo AC-VD',
-  'No disponibilidad TKC',
-  'Transferencia bodegón no registrada',
-  'Cuenta casa administrativa-Libia',
-  // Las que faltaban del catálogo de TKC. Sin ellas, quien clasificaba un
-  // ajuste tenía que elegir la más parecida, y el motivo real se perdía.
-  'Fitosanitario e Higiene',
-  'Higiene',
-  'Veterinario',
-  'Creación de anuncio',
-  'Reserva Transporte',
-  'Módulo para trabajadores',
-  'Error Fact +-',
-  'Merma de Origen',
-  'Reposición del proveedor',
-  'Intercambio de Producto',
-]
+export const CLASIF_FACT = CLASIFICACIONES
 
 /**
  * Clasificación de un ajuste de inventario.

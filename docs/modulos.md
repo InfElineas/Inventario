@@ -78,6 +78,15 @@ en la pestaña Mermas** de Ajuste de disminución (`?tab=mermas`), que es donde
 llegan los avisos. `/facturacion/mermas` redirige ahí. La ven `inv`, `auditor`,
 `jefe_depto` y administradores en `/mermas`; `fact` en su pestaña.
 
+**Clasificaciones.** Conteos, mermas y facturación usan **una sola lista**, la de
+*Clasificación Ajuste TKC* (`CLASIFICACIONES` en `src/lib/constants.js`). Se guarda
+tal cual está escrita, sin corregir acentos: es el texto que se busca. Las mermas con
+clasificación de consumo interno (cuenta casa, higiene, fitosanitario, creación de
+anuncio, veterinario, reclasificación) no pasan por facturación y van a auditoría
+(`CLASIF_MERMA_SIN_FACT`, que conserva también los nombres antiguos para las mermas ya
+guardadas). Un registro con una clasificación de antes sigue mostrándola en su
+desplegable.
+
 En esa pestaña, **Por ajustar** trae, bajo los conteos con faltante, el bloque
 **Mermas esperando este ajuste**: las ya bajadas de tienda (`pend_fact`) del
 almacén. Se eligen, se pasan al formulario y, con el documento confirmado, el
