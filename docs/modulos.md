@@ -20,6 +20,11 @@ lista completa (`rolesDe`), **nunca con `usuario.role`**: ese es solo el de más
 autoridad, y quien es jefe y además factura quedaba como jefe y no podía montar
 un ajuste.
 
+**El perfil se mantiene al día solo.** Roles, almacenes, nombre y avatar se releen en
+segundo plano al volver a la pestaña y cada dos minutos, y al guardar el perfil o
+Configuración. Un cambio hecho por un administrador, o por la propia persona en otra
+pestaña, se ve sin recargar. Un fallo de red en ese refresco no cierra la sesión.
+
 **Almacenes al entrar.** Quien no es jefe de departamento (ni administrador) y no
 tiene ningún almacén configurado ve un diálogo que **no se puede cerrar** hasta
 elegir **su almacén** (uno solo) y pulsar *Aceptar*. Ese pasa a ser el almacén que ve
@@ -77,6 +82,17 @@ Las mermas son ajustes de disminución. **Inventario las registra y las sigue en
 en la pestaña Mermas** de Ajuste de disminución (`?tab=mermas`), que es donde
 llegan los avisos. `/facturacion/mermas` redirige ahí. La ven `inv`, `auditor`,
 `jefe_depto` y administradores en `/mermas`; `fact` en su pestaña.
+
+**Historial de mermas.** `/mermas` tiene dos pestañas: **Mermas** (la bandeja de
+trabajo) e **Historial**, con todas las del almacén en cualquier estado, filtros de
+estado y fechas, y búsqueda por producto.
+
+**Cada quien ve lo suyo.** Los conteos y las mermas los filtra el **servidor**
+(`restringirLectura` en `src/server/permisos.js`), no la pantalla: quien no supervisa ni
+factura —inventario, comercial…— recibe solo las filas que él registró y solo de los
+almacenes que tiene configurados. Ven todo cada jefe de departamento, facturación,
+auditoría y la administración. Consecuencia: «ya contado hoy» y «un conteo por producto
+al día» miran solo los conteos propios.
 
 **Clasificaciones.** Conteos, mermas y facturación usan **una sola lista**, la de
 *Clasificación Ajuste TKC* (`CLASIFICACIONES` en `src/lib/constants.js`). Se guarda

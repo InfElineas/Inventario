@@ -89,10 +89,11 @@ const VISTA_GLOBAL_MERMAS = ['jefe_depto', 'fact', 'auditor', 'administrador', '
  * @param {'inventario'|'facturacion'} [props.ambito]  Qué mermas le tocan por
  *   defecto. Sin él, según el rol: facturación ve las que esperan su ajuste, y
  *   quien cuenta o supervisa, las que están en manos de inventario.
+ * @param {React.ReactNode} [props.pestanas]  Las pestañas de la página, bajo el título.
  * @param {boolean} [props.embebida]  Dentro de la pestaña: sin título ni selector
  *   de almacén, que ya manda el de arriba.
  */
-export default function MermasPanel({ ambito: ambitoFijo, embebida = false }) {
+export default function MermasPanel({ ambito: ambitoFijo, embebida = false, pestanas }) {
   const [showForm, setShowForm] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   // Por defecto, lo que le toca a esta sección. Ver src/lib/ambito.js.
@@ -241,6 +242,7 @@ export default function MermasPanel({ ambito: ambitoFijo, embebida = false }) {
     <div className="space-y-6">
       {ConfirmDialogNode}
       <CabeceraLista
+        pestanas={pestanas}
         titulo={embebida ? undefined : 'Mermas'}
         subtitulo={embebida ? undefined : ambito === 'facturacion'
           ? 'Mermas ya bajadas de tienda, a la espera de facturación'

@@ -14,7 +14,7 @@ import { olvidarLotes } from './lotesApi.js'
 import { columnaSegura, columnasDe, soloColumnas, tiposDe } from './columnas.js'
 import { resolverSesion } from './session.js'
 import {
-  puedeLeer, puedeCrear, puedeActualizar, puedeBorrar, filtroPropias, esAdmin,
+  puedeLeer, puedeCrear, puedeActualizar, puedeBorrar, filtroPropias, restringirLectura, esAdmin,
 } from './permisos.js'
 
 // Mismo mapeo que tenía base44Client. El cliente lleva la lista de nombres
@@ -170,7 +170,12 @@ export function createDatosApiMiddleware() {
 
       // `roles` es la lista completa; `rol` queda por si el usuario se guardó
       // antes de que existiera la columna.
-      const ctx = { rol: sesion.usuario.role, roles: sesion.usuario.roles, email: sesion.email }
+      const ctx = {
+        rol: sesion.usuario.role,
+        roles: sesion.usuario.roles,
+        email: sesion.email,
+        almacenes: sesion.usuario.almacenes_config,
+      }
       const tablaPerm = TABLA_PERMISOS[tabla] ?? tabla
       const cuerpo = req.method === 'POST' ? await leerJson(req) : {}
 
@@ -178,12 +183,16 @@ export function createDatosApiMiddleware() {
       if (accion === 'list' || accion === 'filter' || accion === 'count') {
         if (!puedeLeer(ctx, tablaPerm)) return responder(res, 403, { error: 'Sin permiso' })
 
-        const condiciones = { ...(cuerpo.conditions ?? {}) }
+        let condiciones = { ...(cuerpo.conditions ?? {}) }
 
         // Las tablas de filas propias se filtran siempre en el servidor: que
         // el cliente mande o no la condición es irrelevante.
         const propio = filtroPropias(ctx, tablaPerm)
         if (propio) condiciones[propio.campo] = propio.valor
+
+        // Conteos y mermas: quien no supervisa ni factura ve solo lo suyo y solo
+        // de sus almacenes. Lo impone el servidor, no la pantalla.
+        condiciones = restringirLectura(ctx, tablaPerm, condiciones)
 
         const valores = []
         let clausula = await where(tabla, condiciones, valores)

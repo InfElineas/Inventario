@@ -3,10 +3,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useTheme } from '@/lib/useTheme'
+import { useAuth } from '@/lib/AuthContext'
 import { Sun, Moon, User, Settings2, ArrowRight } from 'lucide-react'
 
 export default function ProfileModal({ user, open, onClose }) {
   const queryClient  = useQueryClient()
+  const { refrescarSesion } = useAuth()
   const navigate     = useNavigate()
   const { isDark, toggleTheme } = useTheme()
 
@@ -29,6 +31,8 @@ export default function ProfileModal({ user, open, onClose }) {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
       queryClient.invalidateQueries({ queryKey: ['currentUser'] })
+      // El apodo se ve en la cabecera: sin refrescar la sesión salía el viejo.
+      refrescarSesion()
     },
   })
 

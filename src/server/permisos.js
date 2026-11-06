@@ -232,6 +232,49 @@ function puedeLeerConRol({ rol }, tabla) {
   return true
 }
 
+// ── Lectura de lo propio ───────────────────────────────────────
+//
+// Los conteos y las mermas son de quien los hizo. Antes cualquier inventarista los
+// leía todos: la pantalla filtraba por «mío», pero ese filtro lo ponía el navegador,
+// y la API contestaba lo que se le pidiera. Ahora lo impone el servidor.
+//
+// Ven todo quienes supervisan o facturan: cada jefe de departamento, facturación,
+// auditoría y la administración. El resto —inventario, comercial…— ve solo lo
+// suyo, y solo de los almacenes que tiene configurados.
+const LECTURA_PROPIA = { mermas: 'especialista_id', inventarios: 'especialista_id' }
+const VEN_TODO = ['fact', 'auditor', 'administrador', 'superadmin']
+const veTodo = (rol) => VEN_TODO.includes(rol) || rol === 'jefe_depto' || String(rol).startsWith('jefe_')
+
+/**
+ * Las condiciones de una lectura, con lo que le toca a quien pregunta añadido.
+ *
+ * Quien ve todo recibe las condiciones tal cual. Los demás, además de las suyas: solo
+ * sus filas, y —si tienen almacenes configurados— solo esos almacenes. Si la petición
+ * ya trae un almacén, se respeta cuando es uno de los suyos y, si no, no devuelve nada.
+ *
+ * @returns {object} las condiciones que hay que aplicar.
+ */
+export function restringirLectura(ctx, tabla, condiciones = {}) {
+  const campo = LECTURA_PROPIA[tabla]
+  if (!campo) return condiciones
+  if (rolesDel(ctx).some(veTodo)) return condiciones
+
+  const salida = { ...condiciones, [campo]: ctx.email }
+
+  const almacenes = Array.isArray(ctx.almacenes) ? ctx.almacenes.map(String).filter(Boolean) : []
+  if (almacenes.length > 0) {
+    const pedido = condiciones.almacen_num
+    if (pedido === undefined) {
+      salida.almacen_num = almacenes
+    } else {
+      const pedidos = (Array.isArray(pedido) ? pedido : [pedido]).map(String)
+      // Un array vacío no casa con nada: pidió un almacén que no es suyo.
+      salida.almacen_num = pedidos.filter((a) => almacenes.includes(a))
+    }
+  }
+  return salida
+}
+
 /**
  * Filtro obligatorio para las tablas de filas propias. El llamador DEBE
  * aplicarlo a la consulta: devolver null significa "sin filtro".

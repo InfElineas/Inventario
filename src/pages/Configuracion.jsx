@@ -84,7 +84,7 @@ function Toggle({ value, onChange }) {
 }
 
 export default function Configuracion() {
-  const { user }    = useAuth()
+  const { user, refrescarSesion } = useAuth()
   const queryClient = useQueryClient()
   const role        = user?.role || 'inv'
   const canSync     = isExternaConfigured && tieneRol(user, SYNC_ROLES)
@@ -196,6 +196,9 @@ export default function Configuracion() {
       setSaveError('')
       setTimeout(() => setSaved(false), 2500)
       queryClient.invalidateQueries({ queryKey: ['currentUser'] })
+      // El perfil de la sesión también: sin esto los almacenes nuevos no se veían
+      // en el resto de la web hasta recargar.
+      refrescarSesion()
     },
     onError: (err) => {
       const msg = err?.message || ''

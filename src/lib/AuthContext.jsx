@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { clasificarError } from '@/components/shared/PantallaError';
 
@@ -22,6 +22,8 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   // 'servidor' | 'sinConexion' | 'fallo' cuando no se pudo ni preguntar por la sesión.
   const [authError, setAuthError] = useState(null);
+  // La última versión del perfil que se pintó, para no repintar si no cambió.
+  const ultimo = useRef('');
 
   /**
    * Pregunta al servidor quién es el usuario.
@@ -35,6 +37,7 @@ export const AuthProvider = ({ children }) => {
   const refrescar = useCallback(async () => {
     try {
       const perfil = await base44.auth.me();
+      ultimo.current = JSON.stringify(perfil ?? null);
       setUser(perfil);
       setIsAuthenticated(Boolean(perfil));
       setAuthError(null);
@@ -52,6 +55,50 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => { refrescar(); }, [refrescar]);
+
+  /**
+   * Mantiene el perfil al día sin recargar. El perfil (roles, almacenes, nombre,
+   * avatar) se leía una vez al abrir la web: si un administrador cambiaba un rol o
+   * la propia persona guardaba sus almacenes, no se veía hasta recargar.
+   *
+   * Es en segundo plano y por eso distinto de `refrescar`: un fallo de red NO tumba
+   * la sesión ni enseña la pantalla de error —se queda con lo que había—, y solo
+   * se escribe el estado si el perfil cambió de verdad, para no repintar todo cada
+   * vez. Si el servidor dice que ya no hay sesión, sí se cierra.
+   */
+  const sincronizar = useCallback(async () => {
+    try {
+      const perfil = await base44.auth.me();
+      const firma = JSON.stringify(perfil ?? null);
+      if (firma === ultimo.current) return;
+      ultimo.current = firma;
+      setUser(perfil);
+      setIsAuthenticated(Boolean(perfil));
+    } catch {
+      // Sin red o con el servidor caído: se conserva lo que hay.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    let ultimaVez = Date.now();
+    const alVolver = () => {
+      // Al volver a la pestaña, no más de una vez cada 30 s.
+      if (document.visibilityState !== 'visible' || Date.now() - ultimaVez < 30_000) return;
+      ultimaVez = Date.now();
+      sincronizar();
+    };
+    const periodico = setInterval(() => {
+      if (document.visibilityState === 'visible') { ultimaVez = Date.now(); sincronizar(); }
+    }, 2 * 60 * 1000);
+    document.addEventListener('visibilitychange', alVolver);
+    window.addEventListener('focus', alVolver);
+    return () => {
+      clearInterval(periodico);
+      document.removeEventListener('visibilitychange', alVolver);
+      window.removeEventListener('focus', alVolver);
+    };
+  }, [isAuthenticated, sincronizar]);
 
   const logout = async () => {
     await base44.auth.logout();

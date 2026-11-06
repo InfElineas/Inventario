@@ -14,7 +14,7 @@ vi.mock('@/server/session', () => ({ resolverSesion }));
 
 // Columnas reales de las tablas que tocan estas pruebas.
 const COLUMNAS = {
-  mermas: ['id', 'estado_tarea', 'especialista_id', 'cantidad', 'created_date', 'fact_no_factura', 'auditor_id'],
+  mermas: ['id', 'estado_tarea', 'especialista_id', 'cantidad', 'created_date', 'fact_no_factura', 'auditor_id', 'almacen_num'],
   notificaciones: ['id', 'usuario_id', 'leida', 'titulo', 'created_date'],
   lotes_vigencia: ['id', 'estado_fv', 'created_date'],
   // Marca el tiempo en `synced_at`: no tiene `created_date`.
@@ -140,18 +140,35 @@ describe('list y filter', () => {
   });
 
   it('las condiciones van parametrizadas, nunca interpoladas', async () => {
+    // Facturación ve todo: con `inv` se añadiría «solo lo mío» y el SQL cambia.
+    resolverSesion.mockResolvedValue({ email: 'f@mercadoelineas.com', usuario: { role: 'fact', email: 'f@mercadoelineas.com' } });
     await llamar('/api/datos/Merma/filter', { conditions: { estado_tarea: 'pend_fact' } });
     expect(ultimoSql()).toContain('WHERE "estado_tarea" = $1');
     expect(ultimosValores()).toEqual(['pend_fact']);
   });
 
   it('un array se traduce a IN', async () => {
+    // Facturación ve todo: con `inv` se añadiría «solo lo mío» y el SQL cambia.
+    resolverSesion.mockResolvedValue({ email: 'f@mercadoelineas.com', usuario: { role: 'fact', email: 'f@mercadoelineas.com' } });
     await llamar('/api/datos/Merma/filter', { conditions: { estado_tarea: ['pend_fact', 'en_auditoria'] } });
     expect(ultimoSql()).toContain('IN ($1, $2)');
     expect(ultimosValores()).toEqual(['pend_fact', 'en_auditoria']);
   });
 
-  it('null se traduce a IS NULL', async () => {
+  it('un inventarista solo lee sus mermas y conteos, y de sus almacenes: lo impone el servidor', async () => {
+    resolverSesion.mockResolvedValue({
+      email: 'yo@mercadoelineas.com',
+      usuario: { role: 'inv', roles: ['inv'], email: 'yo@mercadoelineas.com', almacenes_config: ['789'] },
+    });
+    await llamar('/api/datos/Merma/filter', { conditions: { especialista_id: 'otro@mercadoelineas.com' } });
+    expect(ultimoSql()).toContain('"especialista_id" = $1');
+    expect(ultimosValores()[0]).toBe('yo@mercadoelineas.com');
+    expect(ultimoSql()).toContain('"almacen_num" IN ($2)');
+    expect(ultimosValores()).toEqual(['yo@mercadoelineas.com', '789']);
+  });
+
+  it('null se traduce a IS NULL', async () => {    resolverSesion.mockResolvedValue({ email: 'f@mercadoelineas.com', usuario: { role: 'fact', email: 'f@mercadoelineas.com' } });
+
     await llamar('/api/datos/Merma/filter', { conditions: { auditor_id: null } });
     expect(ultimoSql()).toContain('"auditor_id" IS NULL');
   });
