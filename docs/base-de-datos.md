@@ -124,6 +124,7 @@ Siguen en Postgres porque son reglas de la base, no de la aplicación:
 | `estado_tienda_columna.sql` | `estado_tienda` y `prioridad_tienda` como generadas |
 | `estado_anuncio_tkc.sql`, `catalogo_origen.sql` | El estado de anuncio tal como lo dice TKC |
 | `existencias_en.sql`, `ajustes_marcan_existencias.sql` | Que un ajuste se note sin esperar al sync |
+| `sync_protege_almacen_vacio.sql` | La sincronización no desactiva un almacén cuyo origen viene vacío o cortado (menos de la mitad de lo activo); lo lista en `protegidos` |
 | `deteccion_casos_anuncio.sql` | La función que busca casos de anuncio |
 | `recepciones_pedido.sql` | Atar la recepción al pedido de compra |
 | `recepciones_almacen.sql` | A qué almacén entró la mercancía |
