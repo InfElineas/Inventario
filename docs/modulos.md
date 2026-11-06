@@ -97,6 +97,14 @@ producto, quién lo contó y su estado —nada más— de un día cercano a hoy 
 almacén suyo. Así *Por contar* dice «Contado por Fulana» y el formulario avisa «Ya
 contado por Fulana» en vez de dejar contar dos veces.
 
+**Buscar en el historial de ajustes de TKC.** El texto lo filtra el **servidor**
+(`buscarEnHistorial`, `src/lib/busquedaHistorial.js`), no la API de transferencias, que solo
+casaba algunos campos: se le pide el periodo entero sin texto y se filtra por código,
+observación, cliente, estado, tipo, fecha y monto, sin mayúsculas ni tildes y con todas las
+palabras. Las observaciones de las **salidas** (disminuciones y ventas directas) vienen en el
+listado de TKC y se buscan; las de las **entradas** (ajustes de aumento) TKC no las trae en el
+listado, solo dentro de cada documento (`/info/{id}`), así que ahí no hay nada que buscar.
+
 **Clasificaciones.** Conteos, mermas y facturación usan **una sola lista**, la de
 *Clasificación Ajuste TKC* (`CLASIFICACIONES` en `src/lib/constants.js`). Se guarda
 tal cual está escrita, sin corregir acentos: es el texto que se busca. Las mermas con

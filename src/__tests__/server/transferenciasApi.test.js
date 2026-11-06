@@ -308,13 +308,56 @@ describe('listar y líneas', () => {
     expect(res.cabeceras['x-next-offset']).toBe('20');
   });
 
+  describe('buscar en el historial: el texto lo filtra el servidor, no la API', () => {
+    const FILAS = [
+      { id: 1, code: 'TKCS1', type: 'Venta Directa', status: 'confirmada', observacion: 'VD facturas 5922, 5923' },
+      { id: 2, code: 'TKCS2', type: 'Ajuste Disminución', status: 'editada', observacion: 'RETIRO POR MERMA' },
+      { id: 3, code: 'TKCS3', type: 'Ajuste Disminución', status: 'confirmada', observacion: 'FACT. 5939' },
+    ];
+
+    it('pide el periodo entero a la API SIN el texto ni la paginación, y devuelve lo que casa', async () => {
+      apiResponde(200, FILAS, { 'X-Total-Count': '3' });
+      const { res } = await llamar('/api/ajustes/disminuciones?almacen=789&from=2026-10-01&q=merma&limit=20&offset=0');
+
+      const { url } = ultimaLlamada();
+      expect(url.searchParams.get('q')).toBeNull();
+      expect(url.searchParams.get('limit')).toBeNull();
+      expect(res.cuerpo.map((f) => f.code)).toEqual(['TKCS2']);
+      expect(res.cabeceras['x-total-count']).toBe('1');
+    });
+
+    it('encuentra un número de factura que solo está en la observación', async () => {
+      apiResponde(200, FILAS);
+      const { res } = await llamar('/api/ajustes/disminuciones?almacen=789&q=5922');
+      expect(res.cuerpo.map((f) => f.code)).toEqual(['TKCS1']);
+    });
+
+    it('pagina lo que casó, con el total y el siguiente desplazamiento', async () => {
+      apiResponde(200, FILAS);
+      const { res } = await llamar('/api/ajustes/disminuciones?almacen=789&q=tkcs&limit=2&offset=0');
+      expect(res.cuerpo).toHaveLength(2);
+      expect(res.cabeceras['x-total-count']).toBe('3');
+      expect(res.cabeceras['x-next-offset']).toBe('2');
+
+      apiResponde(200, FILAS);
+      const dos = await llamar('/api/ajustes/disminuciones?almacen=789&q=tkcs&limit=2&offset=2');
+      expect(dos.res.cuerpo.map((f) => f.code)).toEqual(['TKCS3']);
+      expect(dos.res.cabeceras['x-next-offset']).toBeUndefined();
+    });
+
+    it('sin texto, todo sigue igual: la API pagina', async () => {
+      apiResponde(200, FILAS, { 'X-Total-Count': '40' });
+      await llamar('/api/ajustes/disminuciones?almacen=789&limit=20');
+      expect(ultimaLlamada().url.searchParams.get('limit')).toBe('20');
+    });
+  });
+
   it('las disminuciones pasan el tipo de salida: ahí están las ventas directas', async () => {
     apiResponde(200, []);
-    await llamar('/api/ajustes/disminuciones?almacen=789&type=direct-sale&q=FACT');
+    await llamar('/api/ajustes/disminuciones?almacen=789&type=direct-sale');
     const { url } = ultimaLlamada();
     expect(url.pathname).toBe('/api/v1/decreases');
     expect(url.searchParams.get('type')).toBe('direct-sale');
-    expect(url.searchParams.get('q')).toBe('FACT');
   });
 
   it('un tipo de salida que no es suyo no se reenvía, ni a un aumento', async () => {

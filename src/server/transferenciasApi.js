@@ -49,6 +49,7 @@ import { sellar } from './secretBox.js'
 import { keyToTkcValue } from '../services/tkc/warehouses.js'
 import { ROLES_AJUSTES, ROLES_TIENDA } from '../lib/ajustes.js'
 import { rolesDe } from '../lib/roles.js'
+import { buscarEnHistorial } from '../lib/busquedaHistorial.js'
 import { cobertura, baseReportes } from './rotacionApi.js'
 import { listarPedidos, lineasDePedido, hayPedidos, ESTADOS_PEDIDO } from './pedidosApi.js'
 import { lotesDe, resumenLotes } from './lotesApi.js'
@@ -693,6 +694,11 @@ export function createTransferenciasApiMiddleware() {
       const prefijo = tipo.ruta
 
       if (operacion === 'listar') {
+        // Con texto de búsqueda se busca AQUÍ y no en la API: ella solo casaba
+        // algunos campos y una observación o un número de factura no daba nada. Se
+        // le pide el periodo entero sin texto y se filtra por código,
+        // observación, cliente, estado, tipo… (ver `buscarEnHistorial`).
+        const texto = (consulta.get('q') ?? '').trim()
         const resultado = await llamarApi(ctx, {
           metodo: 'GET',
           ruta: prefijo,
@@ -701,16 +707,28 @@ export function createTransferenciasApiMiddleware() {
             from: consulta.get('from') ?? undefined,
             to: consulta.get('to') ?? undefined,
             status: consulta.get('status') ?? undefined,
-            q: consulta.get('q') ?? undefined,
+            q: texto ? undefined : (consulta.get('q') ?? undefined),
             // El tipo de salida solo existe en las disminuciones: ahí también
             // están las ventas directas (solo lectura). Un valor que no es
             // suyo no se reenvía.
             type: tipo.ruta === 'decreases' && TIPOS_SALIDA.includes(consulta.get('type'))
               ? consulta.get('type') : undefined,
-            limit: consulta.get('limit') ?? undefined,
-            offset: consulta.get('offset') ?? undefined,
+            limit: texto ? undefined : (consulta.get('limit') ?? undefined),
+            offset: texto ? undefined : (consulta.get('offset') ?? undefined),
           },
         })
+
+        // Lo buscado se pagina aquí, con el total de lo que casó.
+        if (texto && resultado.status === 200 && Array.isArray(resultado.datos)) {
+          const casadas = buscarEnHistorial(resultado.datos, texto)
+          const limite = /^\d{1,4}$/.test(consulta.get('limit') ?? '') ? Number(consulta.get('limit')) : casadas.length
+          const desde = /^\d{1,7}$/.test(consulta.get('offset') ?? '') ? Number(consulta.get('offset')) : 0
+          const pagina = casadas.slice(desde, desde + limite)
+          const extra = { ...resultado.extra, 'x-total-count': String(casadas.length) }
+          delete extra['x-next-offset']
+          if (desde + limite < casadas.length) extra['x-next-offset'] = String(desde + limite)
+          return reenviar(res, { ...resultado, datos: pagina, extra })
+        }
         return reenviar(res, resultado)
       }
 

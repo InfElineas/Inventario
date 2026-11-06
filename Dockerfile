@@ -60,6 +60,7 @@ COPY src/services/tkc ./src/services/tkc
 # ellos el contenedor muere al arrancar buscando el módulo.
 COPY src/lib/roles.js ./src/lib/roles.js
 COPY src/lib/ajustes.js ./src/lib/ajustes.js
+COPY src/lib/busquedaHistorial.js ./src/lib/busquedaHistorial.js
 
 # Usuario sin privilegios que ya trae la imagen oficial.
 USER bun
